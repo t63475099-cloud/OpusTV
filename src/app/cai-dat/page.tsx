@@ -284,7 +284,7 @@ function SettingsInner() {
             <RowLink
               icon={<User className="w-5 h-5" />}
               label="Tài khoản"
-              desc={profile.loggedIn ? profile.name : "Đăng nhập & đồng bộ đa thiết bị"}
+              desc={profile.loggedIn ? profile.name : "Đăng nhập"}
               onClick={() => go("account")}
             />
             <RowLink
@@ -379,8 +379,7 @@ function SettingsInner() {
               className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-red-600/20 via-rose-600/10 to-orange-500/10 px-4 py-3.5 text-sm text-white backdrop-blur-md hover:border-red-500/40 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
             >
               <span>
-                <span className="font-semibold block">Đăng nhập / Đăng ký (Neon)</span>
-                <span className="text-xs text-zinc-400">Đồng bộ Android · iPhone · PC · không mất dữ liệu</span>
+                <span className="font-semibold block">Đăng nhập / Đăng ký</span>
               </span>
               <span className="text-red-400 text-xs font-medium shrink-0">Mở →</span>
             </Link>
@@ -426,7 +425,7 @@ function SettingsInner() {
                 }}
                 className="space-y-3"
               >
-                <p className="text-sm text-[#aaa]">Tên hiển thị local trên máy này (không đồng bộ cloud).</p>
+                
                 <Link
                   href="/tai-khoan"
                   className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-600/30 hover:brightness-110 transition duration-300"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Eye,
@@ -19,7 +19,6 @@ import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
 
 type Mode = "login" | "register" | "recover";
-
 type FieldErrors = {
   user?: string;
   displayName?: string;
@@ -46,23 +45,137 @@ function validateUsername(v: string): string | undefined {
   const t = v.trim().toLowerCase();
   if (!t) return "Vui lòng nhập tên tài khoản";
   if (t.length < 3) return "Tối thiểu 3 ký tự";
-  if (!/^[a-z0-9._]+$/.test(t)) return "Chỉ dùng a–z, 0–9, dấu chấm (.) và gạch dưới (_)";
+  if (!/^[a-z0-9._]+$/.test(t)) return "Chỉ dùng a–z, 0–9, . và _";
   return undefined;
 }
 
-function validatePassword(pw: string, strict = true): string | undefined {
+function validatePassword(pw: string): string | undefined {
   if (!pw) return "Vui lòng nhập mật khẩu";
   if (pw.length < 8) return "Tối thiểu 8 ký tự";
-  if (strict) {
-    if (!/[a-z]/.test(pw)) return "Cần có chữ thường";
-    if (!/[A-Z]/.test(pw)) return "Cần có chữ hoa";
-    if (!/\d/.test(pw) && !/[^a-zA-Z0-9]/.test(pw)) return "Cần có số hoặc ký tự đặc biệt";
-  }
+  if (!/[a-z]/.test(pw)) return "Cần có chữ thường";
+  if (!/[A-Z]/.test(pw)) return "Cần có chữ hoa";
+  if (!/\d/.test(pw) && !/[^a-zA-Z0-9]/.test(pw)) return "Cần có số hoặc ký tự đặc biệt";
   return undefined;
+}
+
+function AuroraBg() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      <div className="absolute inset-0 bg-[#05050a]" />
+      <div className="auth-orb auth-orb-1" />
+      <div className="auth-orb auth-orb-2" />
+      <div className="auth-orb auth-orb-3" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(5,5,10,0.7)_70%)]" />
+    </div>
+  );
+}
+
+function GlassCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || window.matchMedia("(pointer: coarse)").matches) return;
+    const onMove = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = `perspective(900px) rotateY(${x * 4}deg) rotateX(${-y * 4}deg) translateZ(0)`;
+    };
+    const onLeave = () => {
+      el.style.transform = "perspective(900px) rotateY(0) rotateX(0)";
+    };
+    el.addEventListener("mousemove", onMove);
+    el.addEventListener("mouseleave", onLeave);
+    return () => {
+      el.removeEventListener("mousemove", onMove);
+      el.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`auth-glass relative will-change-transform transition-transform duration-200 ease-out ${className}`}
+      style={{ transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)" }}
+    >
+      <div className="auth-glass-border pointer-events-none absolute inset-0 rounded-[inherit]" />
+      {children}
+    </div>
+  );
+}
+
+function FloatingField({
+  id,
+  label,
+  value,
+  onChange,
+  onBlur,
+  type = "text",
+  autoComplete,
+  error,
+  rightSlot,
+  inputMode,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+  type?: string;
+  autoComplete?: string;
+  error?: string;
+  rightSlot?: React.ReactNode;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+}) {
+  const filled = value.length > 0;
+  return (
+    <div className="auth-field group relative mb-5">
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        placeholder=" "
+        className={`peer auth-input w-full rounded-2xl border bg-white/[0.04] px-4 pb-2.5 pt-6 text-sm text-white outline-none transition-all duration-300 ${
+          rightSlot ? "pr-12" : ""
+        } ${
+          error
+            ? "border-red-500/50 focus:border-red-400 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.2)]"
+            : "border-white/10 focus:border-rose-400/60 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.18),0_0_24px_rgba(244,63,94,0.12)]"
+        }`}
+      />
+      <label
+        htmlFor={id}
+        className={`pointer-events-none absolute left-4 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          filled
+            ? "top-2 text-[10px] font-medium text-rose-300/90"
+            : "top-1/2 -translate-y-1/2 text-sm text-zinc-500 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-medium peer-focus:text-rose-300/90"
+        }`}
+      >
+        {label}
+      </label>
+      {rightSlot}
+      {error && (
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-400">
+          <X className="h-3 w-3 shrink-0" /> {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function AccountPage() {
-  const { username, storage, lastSyncAt, login, register, logout, syncNow, resetPassword } =
+  const { username, lastSyncAt, login, register, logout, syncNow, resetPassword } =
     useAccountStore();
   const updateProfile = useSettingsStore((s) => s.updateProfile);
 
@@ -84,10 +197,23 @@ export default function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [newPin, setNewPin] = useState("");
   const [pinMsg, setPinMsg] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   const strength = useMemo(() => passwordStrength(pass), [pass]);
 
-  // Real-time validation
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const r = localStorage.getItem("opusfilm-remember");
+      if (r) {
+        setUser(r);
+        setRemember(true);
+      }
+    } catch {
+      /* */
+    }
+  }, []);
+
   useEffect(() => {
     const next: FieldErrors = {};
     if (touched.user || user) next.user = validateUsername(user);
@@ -97,18 +223,20 @@ export default function AccountPage() {
     }
     if (touched.pass || pass) {
       next.pass =
-        mode === "login" ? (pass.length < 1 ? "Vui lòng nhập mật khẩu" : undefined) : validatePassword(pass);
+        mode === "login"
+          ? pass.length < 1
+            ? "Vui lòng nhập mật khẩu"
+            : undefined
+          : validatePassword(pass);
     }
     if ((mode === "register" || mode === "recover") && (touched.pass2 || pass2)) {
       if (!pass2) next.pass2 = "Vui lòng xác nhận mật khẩu";
       else if (pass2 !== pass) next.pass2 = "Mật khẩu không khớp";
     }
     if ((mode === "register" || mode === "recover") && (touched.pin || pin)) {
-      if (!/^\d{4,8}$/.test(pin.trim())) next.pin = "Mã khôi phục: 4–8 chữ số";
+      if (!/^\d{4,8}$/.test(pin.trim())) next.pin = "4–8 chữ số";
     }
-    if (mode === "register" && touched.terms && !terms) {
-      next.terms = "Bạn cần đồng ý Điều khoản & Dịch vụ";
-    }
+    if (mode === "register" && touched.terms && !terms) next.terms = "Cần đồng ý điều khoản";
     setErrors(next);
   }, [user, displayName, pass, pass2, pin, terms, mode, touched]);
 
@@ -123,7 +251,6 @@ export default function AccountPage() {
       if (!terms) return false;
       return true;
     }
-    // recover
     if (!/^\d{4,8}$/.test(pin.trim())) return false;
     if (validatePassword(pass)) return false;
     if (pass !== pass2) return false;
@@ -145,17 +272,16 @@ export default function AccountPage() {
     setErr("");
     setMsg("");
     if (!formValid) {
-      setErr("Vui lòng kiểm tra lại các trường chưa hợp lệ.");
+      setErr("Kiểm tra lại thông tin.");
       return;
     }
     setBusy(true);
-
     if (mode === "recover") {
       const res = await resetPassword(user.trim().toLowerCase(), pin.trim(), pass);
       setBusy(false);
-      if (!res.ok) setErr(res.error || "Không đặt lại được mật khẩu");
+      if (!res.ok) setErr(res.error || "Thất bại");
       else {
-        setMsg(res.message || "Đã đặt lại mật khẩu. Hãy đăng nhập.");
+        setMsg(res.message || "Đã đặt lại mật khẩu.");
         setPass("");
         setPass2("");
         setPin("");
@@ -163,216 +289,163 @@ export default function AccountPage() {
       }
       return;
     }
-
     if (mode === "login") {
-      if (typeof window !== "undefined") {
+      try {
         if (remember) localStorage.setItem("opusfilm-remember", user.trim().toLowerCase());
         else localStorage.removeItem("opusfilm-remember");
+      } catch {
+        /* */
       }
       const res = await login(user.trim().toLowerCase(), pass);
       setBusy(false);
       if (!res.ok) setErr(res.error || "Đăng nhập thất bại");
       else {
-        setMsg("Đăng nhập thành công — dữ liệu đã được gộp & đồng bộ.");
+        setMsg("Đăng nhập thành công.");
         setPass("");
       }
       return;
     }
-
-    // register
     const res = await register(user.trim().toLowerCase(), pass, pin.trim());
     setBusy(false);
     if (!res.ok) setErr(res.error || "Đăng ký thất bại");
     else {
       updateProfile({ name: displayName.trim().slice(0, 40) });
-      setMsg("Tạo tài khoản thành công. Hãy ghi nhớ mã khôi phục để dùng khi quên mật khẩu.");
+      setMsg("Tạo tài khoản thành công.");
       setPass("");
       setPass2("");
       setPin("");
     }
   };
 
-  const onSync = async () => {
-    setBusy(true);
-    setErr("");
-    const res = await syncNow();
-    setBusy(false);
-    if (!res.ok) setErr(res.error || "Lỗi đồng bộ");
-    else setMsg("Đã đồng bộ lên đám mây.");
-  };
-
-  const onSavePin = async () => {
-    setPinMsg("");
-    if (!/^\d{4,8}$/.test(newPin.trim())) {
-      setPinMsg("Mã khôi phục: 4–8 chữ số");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch("/api/auth/set-recovery-pin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recoveryPin: newPin.trim() }),
-      });
-      const data = await res.json();
-      if (!data.ok) setPinMsg(data.error || "Lỗi");
-      else {
-        setPinMsg("Đã lưu mã khôi phục.");
-        setNewPin("");
-      }
-    } catch {
-      setPinMsg("Lỗi mạng");
-    }
-    setBusy(false);
-  };
-
-  useEffect(() => {
-    try {
-      const remembered = localStorage.getItem("opusfilm-remember");
-      if (remembered) {
-        setUser(remembered);
-        setRemember(true);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const inputBase =
-    "w-full rounded-xl border bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:ring-2 focus:ring-red-500/40";
-  const inputOk = "border-white/10 focus:border-red-500/60";
-  const inputErr = "border-red-500/50 focus:border-red-500";
-
-  const EyeBtn = ({
-    show,
-    onToggle,
-  }: {
-    show: boolean;
-    onToggle: () => void;
-  }) => (
+  const EyeBtn = ({ show, toggle }: { show: boolean; toggle: () => void }) => (
     <button
       type="button"
-      onClick={onToggle}
-      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
-      aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+      onClick={toggle}
+      className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
       tabIndex={-1}
+      aria-label={show ? "Ẩn" : "Hiện"}
     >
       {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
     </button>
   );
 
-  const FieldError = ({ msg }: { msg?: string }) =>
-    msg ? (
-      <p className="mt-1.5 flex items-start gap-1 text-xs text-red-400">
-        <X className="mt-0.5 h-3 w-3 shrink-0" /> {msg}
-      </p>
-    ) : null;
+  const titles = {
+    login: "Đăng nhập",
+    register: "Đăng ký",
+    recover: "Khôi phục",
+  };
 
-  // —— Logged in ——
   if (username) {
     return (
-      <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-16 pt-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(244,63,94,0.15),_transparent_55%)]" />
-        <div className="relative mx-auto max-w-md animate-fade-in">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl backdrop-blur-xl sm:p-8">
+      <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
+        <AuroraBg />
+        <div
+          className={`relative z-10 mx-auto max-w-md ${mounted ? "auth-enter" : "opacity-0"}`}
+        >
+          <GlassCard className="rounded-3xl p-6 sm:p-8">
             <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shadow-red-600/30">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 shadow-lg shadow-rose-600/40">
                 <Shield className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Tài khoản</h1>
-                <p className="text-sm text-zinc-400">Đã đăng nhập</p>
+                <h1 className="text-xl font-bold text-white">{username}</h1>
+                <p className="text-xs text-zinc-400">
+                  {lastSyncAt ? new Date(lastSyncAt).toLocaleString("vi-VN") : "Đã đăng nhập"}
+                </p>
               </div>
             </div>
-            <p className="text-white">
-              Xin chào, <strong className="text-red-300">{username}</strong>
-            </p>
-            <p className="mt-1 text-xs text-zinc-500">
-              {storage === "neon" ? "Neon PostgreSQL · persistent" : "—"}
-              {lastSyncAt ? ` · Đồng bộ ${new Date(lastSyncAt).toLocaleString("vi-VN")}` : ""}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={onSync}
                 disabled={busy}
-                className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 active:scale-[0.98] disabled:opacity-60"
+                onClick={async () => {
+                  setBusy(true);
+                  const r = await syncNow();
+                  setBusy(false);
+                  if (!r.ok) setErr(r.error || "Lỗi");
+                  else setMsg("Đã đồng bộ.");
+                }}
+                className="auth-btn-primary inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Đồng bộ ngay
+                Đồng bộ
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  await logout();
-                  setMsg("Đã đăng xuất.");
-                }}
-                className="inline-flex items-center gap-2 rounded-full bg-zinc-800 px-4 py-2.5 text-sm text-zinc-200 transition hover:bg-zinc-700 active:scale-[0.98]"
+                onClick={() => logout()}
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-sm text-zinc-200 transition hover:bg-white/15 active:scale-95"
               >
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
             </div>
-
-            <div className="mt-6 space-y-2 border-t border-white/10 pt-5">
-              <p className="flex items-center gap-2 text-sm text-zinc-300">
-                <KeyRound className="h-4 w-4 text-amber-400" /> Mã khôi phục (quên mật khẩu)
-              </p>
-              <div className="relative">
-                <input
-                  type={showPin ? "text" : "password"}
-                  inputMode="numeric"
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                  placeholder="4–8 chữ số"
-                  className={`${inputBase} ${inputOk} pr-11`}
-                />
-                <EyeBtn show={showPin} onToggle={() => setShowPin(!showPin)} />
-              </div>
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <FloatingField
+                id="newpin"
+                label="Mã khôi phục"
+                value={newPin}
+                onChange={(v) => setNewPin(v.replace(/\D/g, "").slice(0, 8))}
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                rightSlot={<EyeBtn show={showPin} toggle={() => setShowPin(!showPin)} />}
+              />
               <button
                 type="button"
-                onClick={onSavePin}
                 disabled={busy}
-                className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500 disabled:opacity-60"
+                onClick={async () => {
+                  setPinMsg("");
+                  if (!/^\d{4,8}$/.test(newPin.trim())) {
+                    setPinMsg("4–8 chữ số");
+                    return;
+                  }
+                  setBusy(true);
+                  try {
+                    const res = await fetch("/api/auth/set-recovery-pin", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ recoveryPin: newPin.trim() }),
+                    });
+                    const data = await res.json();
+                    setPinMsg(data.ok ? "Đã lưu." : data.error || "Lỗi");
+                    if (data.ok) setNewPin("");
+                  } catch {
+                    setPinMsg("Lỗi mạng");
+                  }
+                  setBusy(false);
+                }}
+                className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500 active:scale-95"
               >
-                Lưu mã khôi phục
+                Lưu mã
               </button>
-              {pinMsg && <p className="text-xs text-emerald-400">{pinMsg}</p>}
+              {pinMsg && <p className="mt-2 text-xs text-emerald-400">{pinMsg}</p>}
             </div>
+          </GlassCard>
+          {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
+          {msg && <p className="mt-3 text-center text-sm text-emerald-400">{msg}</p>}
+          <div className="mt-6 text-center">
+            <Link href="/cai-dat" className="text-sm text-rose-400 hover:underline">
+              ← Cài đặt
+            </Link>
           </div>
-          {err && <p className="mt-3 text-sm text-red-400">{err}</p>}
-          {msg && <p className="mt-3 text-sm text-emerald-400">{msg}</p>}
-          <Link href="/cai-dat" className="mt-6 inline-block text-sm text-red-400 hover:underline">
-            ← Về Cài đặt
-          </Link>
         </div>
       </div>
     );
   }
 
-  // —— Auth forms ——
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-16 pt-20">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,_rgba(244,63,94,0.2),_transparent_55%),radial-gradient(ellipse_60%_40%_at_100%_0%,_rgba(168,85,247,0.12),_transparent_50%)]" />
+    <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
+      <AuroraBg />
 
-      <div className="relative mx-auto w-full max-w-[420px] animate-fade-in">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-lg shadow-red-600/40 ring-1 ring-white/20">
+      <div
+        className={`relative z-10 mx-auto w-full max-w-[420px] ${mounted ? "auth-enter" : "opacity-0"}`}
+      >
+        <div className="mb-6 text-center auth-stagger-1">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-[0_8px_32px_rgba(244,63,94,0.45)] ring-1 ring-white/25">
             <Shield className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            {mode === "login" ? "Đăng nhập" : mode === "register" ? "Tạo tài khoản" : "Khôi phục mật khẩu"}
-          </h1>
-          <p className="mt-1.5 text-sm text-zinc-400">
-            {mode === "login"
-              ? "Đồng bộ lịch sử & yêu thích trên mọi thiết bị"
-              : mode === "register"
-                ? "Tài khoản OpusFilm — lưu trên Neon PostgreSQL"
-                : "Dùng mã khôi phục đã lưu khi đăng ký"}
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">{titles[mode]}</h1>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-black/30 p-1 backdrop-blur-md">
+        <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-black/40 p-1 backdrop-blur-xl auth-stagger-2">
           {(
             [
               ["login", "Đăng nhập", LogIn],
@@ -384,11 +457,12 @@ export default function AccountPage() {
               key={m}
               type="button"
               onClick={() => switchMode(m)}
-              className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-semibold transition duration-300 sm:text-sm ${
+              className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-semibold transition-all duration-300 sm:text-sm ${
                 mode === m
-                  ? "bg-white text-black shadow-md"
+                  ? "bg-white text-black shadow-lg"
                   : "text-zinc-400 hover:bg-white/5 hover:text-white"
               }`}
+              style={{ transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)" }}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{label}</span>
@@ -396,247 +470,335 @@ export default function AccountPage() {
           ))}
         </div>
 
-        <form
-          onSubmit={onSubmit}
-          noValidate
-          className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-7"
-        >
-          {/* Display name — register only */}
-          {mode === "register" && (
-            <div className="mb-4">
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Họ và tên / Tên hiển thị</label>
-              <input
+        <GlassCard className="rounded-3xl p-5 sm:p-7 auth-stagger-3">
+          <form onSubmit={onSubmit} noValidate>
+            {mode === "register" && (
+              <FloatingField
+                id="displayName"
+                label="Họ và tên"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={setDisplayName}
                 onBlur={() => setTouched((t) => ({ ...t, displayName: true }))}
-                placeholder="Ví dụ: Phương Anh"
                 autoComplete="name"
-                className={`${inputBase} ${errors.displayName ? inputErr : inputOk}`}
+                error={errors.displayName}
               />
-              <FieldError msg={errors.displayName} />
-            </div>
-          )}
-
-          {/* Username */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-              Tên tài khoản
-            </label>
-            <input
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              onBlur={() => setTouched((t) => ({ ...t, user: true }))}
-              placeholder="a–z, 0–9, . và _"
-              autoComplete="username"
-              className={`${inputBase} ${errors.user ? inputErr : inputOk}`}
-            />
-            <FieldError msg={errors.user} />
-          </div>
-
-          {/* Recovery pin — recover first, or register later */}
-          {mode === "recover" && (
-            <div className="mb-4">
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Mã khôi phục</label>
-              <div className="relative">
-                <input
-                  type={showPin ? "text" : "password"}
-                  inputMode="numeric"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                  onBlur={() => setTouched((t) => ({ ...t, pin: true }))}
-                  placeholder="4–8 chữ số"
-                  className={`${inputBase} pr-11 ${errors.pin ? inputErr : inputOk}`}
-                />
-                <EyeBtn show={showPin} onToggle={() => setShowPin(!showPin)} />
-              </div>
-              <FieldError msg={errors.pin} />
-            </div>
-          )}
-
-          {/* Password */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-              {mode === "recover" ? "Mật khẩu mới" : "Mật khẩu"}
-            </label>
-            <div className="relative">
-              <input
-                type={showPass ? "text" : "password"}
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
-                onBlur={() => setTouched((t) => ({ ...t, pass: true }))}
-                placeholder={mode === "login" ? "••••••••" : "Tối thiểu 8 ký tự"}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                className={`${inputBase} pr-11 ${errors.pass ? inputErr : inputOk}`}
-              />
-              <EyeBtn show={showPass} onToggle={() => setShowPass(!showPass)} />
-            </div>
-            <FieldError msg={errors.pass} />
-
-            {/* Strength — register & recover */}
-            {(mode === "register" || mode === "recover") && pass && (
-              <div className="mt-2.5">
-                <div className="mb-1 flex gap-1">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                        strength.score >= i ? strength.color : "bg-zinc-700"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <p className="text-[11px] text-zinc-400">
-                  Độ mạnh: <span className="font-medium text-zinc-200">{strength.label}</span>
-                  {" · "}Có chữ hoa, thường, số/ký tự đặc biệt
-                </p>
-              </div>
             )}
-          </div>
 
-          {/* Confirm password */}
-          {(mode === "register" || mode === "recover") && (
-            <div className="mb-4">
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-                {mode === "recover" ? "Xác nhận mật khẩu mới" : "Xác nhận mật khẩu"}
-              </label>
-              <div className="relative">
-                <input
-                  type={showPass2 ? "text" : "password"}
-                  value={pass2}
-                  onChange={(e) => setPass2(e.target.value)}
-                  onBlur={() => setTouched((t) => ({ ...t, pass2: true }))}
-                  placeholder="Nhập lại mật khẩu"
-                  autoComplete="new-password"
-                  className={`${inputBase} pr-11 ${errors.pass2 ? inputErr : inputOk}`}
-                />
-                <EyeBtn show={showPass2} onToggle={() => setShowPass2(!showPass2)} />
-              </div>
-              <FieldError msg={errors.pass2} />
-              {!errors.pass2 && pass2 && pass === pass2 && (
-                <p className="mt-1.5 flex items-center gap-1 text-xs text-emerald-400">
-                  <Check className="h-3 w-3" /> Mật khẩu khớp
-                </p>
+            <FloatingField
+              id="username"
+              label="Tên tài khoản"
+              value={user}
+              onChange={setUser}
+              onBlur={() => setTouched((t) => ({ ...t, user: true }))}
+              autoComplete="username"
+              error={errors.user}
+            />
+
+            {mode === "recover" && (
+              <FloatingField
+                id="pin"
+                label="Mã khôi phục"
+                value={pin}
+                onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 8))}
+                onBlur={() => setTouched((t) => ({ ...t, pin: true }))}
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                error={errors.pin}
+                rightSlot={<EyeBtn show={showPin} toggle={() => setShowPin(!showPin)} />}
+              />
+            )}
+
+            <div className="mb-1">
+              <FloatingField
+                id="password"
+                label={mode === "recover" ? "Mật khẩu mới" : "Mật khẩu"}
+                value={pass}
+                onChange={setPass}
+                onBlur={() => setTouched((t) => ({ ...t, pass: true }))}
+                type={showPass ? "text" : "password"}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                error={errors.pass}
+                rightSlot={<EyeBtn show={showPass} toggle={() => setShowPass(!showPass)} />}
+              />
+              {(mode === "register" || mode === "recover") && pass && (
+                <div className="-mt-3 mb-4 px-0.5">
+                  <div className="mb-1 flex gap-1">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-all duration-500 ${
+                          strength.score >= i ? strength.color : "bg-zinc-700/80"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-zinc-500">{strength.label}</p>
+                </div>
               )}
             </div>
-          )}
 
-          {/* Recovery pin on register */}
-          {mode === "register" && (
-            <div className="mb-4">
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-                Mã khôi phục (bắt buộc)
-              </label>
-              <div className="relative">
-                <input
-                  type={showPin ? "text" : "password"}
-                  inputMode="numeric"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                  onBlur={() => setTouched((t) => ({ ...t, pin: true }))}
-                  placeholder="4–8 chữ số — dùng khi quên mật khẩu"
-                  className={`${inputBase} pr-11 ${errors.pin ? inputErr : inputOk}`}
-                />
-                <EyeBtn show={showPin} onToggle={() => setShowPin(!showPin)} />
-              </div>
-              <FieldError msg={errors.pin} />
-              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-400/90">
-                Ghi nhớ mã này. Không chia sẻ cho người khác.
-              </p>
-            </div>
-          )}
-
-          {/* Remember me — login */}
-          {mode === "login" && (
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/20 bg-black/40 text-red-600 focus:ring-red-500/40"
-                />
-                Ghi nhớ đăng nhập
-              </label>
-              <button
-                type="button"
-                onClick={() => switchMode("recover")}
-                className="text-sm font-medium text-red-400 transition hover:text-red-300 hover:underline"
-              >
-                Quên mật khẩu?
-              </button>
-            </div>
-          )}
-
-          {/* Terms — register */}
-          {mode === "register" && (
-            <div className="mb-5">
-              <label className="flex cursor-pointer items-start gap-2.5 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={terms}
-                  onChange={(e) => {
-                    setTerms(e.target.checked);
-                    setTouched((t) => ({ ...t, terms: true }));
-                  }}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-red-600 focus:ring-red-500/40"
-                />
-                <span>
-                  Tôi đồng ý với{" "}
-                  <span className="text-red-400 underline-offset-2 hover:underline">
-                    Điều khoản & Dịch vụ
-                  </span>{" "}
-                  của OpusFilm
-                </span>
-              </label>
-              <FieldError msg={errors.terms} />
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={busy || !formValid}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-500 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-600/25 transition duration-200 hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none"
-          >
-            {busy ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Đang xử lý…
-              </>
-            ) : mode === "login" ? (
-              <>
-                <LogIn className="h-4 w-4" /> Đăng nhập
-              </>
-            ) : mode === "register" ? (
-              <>
-                <UserPlus className="h-4 w-4" /> Tạo tài khoản
-              </>
-            ) : (
-              <>
-                <KeyRound className="h-4 w-4" /> Đặt lại mật khẩu
-              </>
+            {(mode === "register" || mode === "recover") && (
+              <FloatingField
+                id="pass2"
+                label="Xác nhận mật khẩu"
+                value={pass2}
+                onChange={setPass2}
+                onBlur={() => setTouched((t) => ({ ...t, pass2: true }))}
+                type={showPass2 ? "text" : "password"}
+                autoComplete="new-password"
+                error={errors.pass2}
+                rightSlot={<EyeBtn show={showPass2} toggle={() => setShowPass2(!showPass2)} />}
+              />
             )}
-          </button>
-        </form>
+            {!errors.pass2 && pass2 && pass === pass2 && (mode === "register" || mode === "recover") && (
+              <p className="-mt-3 mb-4 flex items-center gap-1 text-xs text-emerald-400">
+                <Check className="h-3 w-3" /> Khớp
+              </p>
+            )}
+
+            {mode === "register" && (
+              <FloatingField
+                id="regpin"
+                label="Mã khôi phục"
+                value={pin}
+                onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 8))}
+                onBlur={() => setTouched((t) => ({ ...t, pin: true }))}
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                error={errors.pin}
+                rightSlot={<EyeBtn show={showPin} toggle={() => setShowPin(!showPin)} />}
+              />
+            )}
+
+            {mode === "login" && (
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/20 bg-black/40 text-rose-600 focus:ring-rose-500/40"
+                  />
+                  Ghi nhớ
+                </label>
+                <button
+                  type="button"
+                  onClick={() => switchMode("recover")}
+                  className="text-sm font-medium text-rose-400 transition hover:text-rose-300"
+                >
+                  Quên mật khẩu?
+                </button>
+              </div>
+            )}
+
+            {mode === "register" && (
+              <div className="mb-5">
+                <label className="flex cursor-pointer items-start gap-2.5 text-sm text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={terms}
+                    onChange={(e) => {
+                      setTerms(e.target.checked);
+                      setTouched((t) => ({ ...t, terms: true }));
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600 focus:ring-rose-500/40"
+                  />
+                  <span>Đồng ý Điều khoản & Dịch vụ</span>
+                </label>
+                {errors.terms && (
+                  <p className="mt-1 text-xs text-red-400">{errors.terms}</p>
+                )}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy || !formValid}
+              className="auth-btn-primary auth-btn-shimmer relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-3.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> …
+                </>
+              ) : mode === "login" ? (
+                <>
+                  <LogIn className="h-4 w-4" /> Đăng nhập
+                </>
+              ) : mode === "register" ? (
+                <>
+                  <UserPlus className="h-4 w-4" /> Tạo tài khoản
+                </>
+              ) : (
+                <>
+                  <KeyRound className="h-4 w-4" /> Đặt lại mật khẩu
+                </>
+              )}
+            </button>
+          </form>
+        </GlassCard>
 
         {err && (
-          <p className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-center text-sm text-red-300">
+          <p className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-center text-sm text-red-300 backdrop-blur-md">
             {err}
           </p>
         )}
         {msg && (
-          <p className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-300">
+          <p className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-300 backdrop-blur-md">
             {msg}
           </p>
         )}
 
-        <p className="mt-6 text-center text-xs text-zinc-600">
-          Không dùng đăng nhập mạng xã hội · Mật khẩu được băm bcrypt
-        </p>
-        <div className="mt-3 text-center">
-          <Link href="/cai-dat" className="text-sm text-red-400 hover:underline">
-            ← Về Cài đặt
+        <div className="mt-6 text-center">
+          <Link href="/cai-dat" className="text-sm text-rose-400/90 hover:text-rose-300 hover:underline">
+            ← Cài đặt
           </Link>
         </div>
       </div>
+
+      <style jsx global>{`
+        .auth-orb {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+          opacity: 0.55;
+          will-change: transform;
+          animation: auth-float 18s ease-in-out infinite;
+        }
+        .auth-orb-1 {
+          width: 420px;
+          height: 420px;
+          top: -8%;
+          left: -10%;
+          background: radial-gradient(circle, #f43f5e 0%, transparent 70%);
+        }
+        .auth-orb-2 {
+          width: 360px;
+          height: 360px;
+          top: 20%;
+          right: -12%;
+          background: radial-gradient(circle, #a855f7 0%, transparent 70%);
+          animation-delay: -6s;
+          animation-duration: 22s;
+        }
+        .auth-orb-3 {
+          width: 300px;
+          height: 300px;
+          bottom: 5%;
+          left: 30%;
+          background: radial-gradient(circle, #fb923c 0%, transparent 70%);
+          animation-delay: -12s;
+          animation-duration: 20s;
+        }
+        @keyframes auth-float {
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          33% {
+            transform: translate3d(4%, 6%, 0) scale(1.05);
+          }
+          66% {
+            transform: translate3d(-5%, 3%, 0) scale(0.96);
+          }
+        }
+        .auth-glass {
+          background: rgba(15, 23, 42, 0.55);
+          backdrop-filter: blur(20px) saturate(1.4);
+          -webkit-backdrop-filter: blur(20px) saturate(1.4);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow:
+            0 4px 24px rgba(0, 0, 0, 0.35),
+            0 24px 64px rgba(0, 0, 0, 0.45),
+            inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .auth-glass-border {
+          border-radius: inherit;
+          padding: 1px;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.35) 0%,
+            rgba(255, 255, 255, 0.05) 40%,
+            transparent 60%,
+            rgba(244, 63, 94, 0.25) 100%
+          );
+          -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          opacity: 0.85;
+        }
+        .auth-btn-primary {
+          background: linear-gradient(135deg, #e11d48, #f43f5e 40%, #fb7185);
+          box-shadow: 0 8px 28px rgba(244, 63, 94, 0.35);
+          transition:
+            transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.25s ease,
+            filter 0.2s ease;
+        }
+        .auth-btn-primary:hover:not(:disabled) {
+          filter: brightness(1.08);
+          box-shadow: 0 10px 36px rgba(244, 63, 94, 0.5);
+        }
+        .auth-btn-primary:active:not(:disabled) {
+          transform: scale(0.96);
+        }
+        .auth-btn-shimmer::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            105deg,
+            transparent 40%,
+            rgba(255, 255, 255, 0.25) 50%,
+            transparent 60%
+          );
+          transform: translateX(-100%);
+          transition: none;
+        }
+        .auth-btn-shimmer:hover:not(:disabled)::after {
+          animation: auth-shimmer 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes auth-shimmer {
+          to {
+            transform: translateX(100%);
+          }
+        }
+        .auth-enter {
+          animation: auth-rise 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
+        }
+        @keyframes auth-rise {
+          from {
+            opacity: 0;
+            transform: translate3d(0, 20px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
+        }
+        .auth-stagger-1 {
+          animation: auth-rise 0.55s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both;
+        }
+        .auth-stagger-2 {
+          animation: auth-rise 0.55s cubic-bezier(0.4, 0, 0.2, 1) 0.12s both;
+        }
+        .auth-stagger-3 {
+          animation: auth-rise 0.55s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .auth-orb,
+          .auth-enter,
+          .auth-stagger-1,
+          .auth-stagger-2,
+          .auth-stagger-3 {
+            animation: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

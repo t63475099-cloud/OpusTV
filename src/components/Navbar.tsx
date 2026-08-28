@@ -67,7 +67,7 @@ export default function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out",
+        "fixed top-0 left-0 right-0 z-50 overflow-visible transition-all duration-500 ease-out",
         scrolled || menuOpen
           ? "glass-nav border-b border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
           : "glass-nav border-b border-transparent"
@@ -106,7 +106,7 @@ export default function Navbar() {
         </Link>
 
         {/* Search giữa — PC luôn hiện; mobile hiện khi không mở drawer (gọn) */}
-        <div className="flex-1 min-w-0 flex justify-center px-1 sm:px-4">
+        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-1 sm:px-4 overflow-visible">
           <div className="w-full max-w-[640px] hidden sm:block">
             <SearchBox variant="desktop" />
           </div>

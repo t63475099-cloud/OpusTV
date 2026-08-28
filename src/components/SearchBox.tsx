@@ -217,7 +217,7 @@ export default function SearchBox({ variant = "desktop", onNavigate }: SearchBox
   const isMobile = variant === "mobile";
 
   return (
-    <div ref={wrapRef} className={`relative ${isMobile ? "w-full" : "flex-1 max-w-xl"}`}>
+    <div ref={wrapRef} className={`relative isolate z-[90] ${isMobile ? "w-full" : "flex-1 max-w-xl"}`}>
       <form onSubmit={onSubmit} className="flex w-full">
         <div
           className={`flex w-full items-center overflow-hidden border transition-all duration-300 ${
@@ -295,7 +295,7 @@ export default function SearchBox({ variant = "desktop", onNavigate }: SearchBox
 
       {open && (items.length > 0 || loading || query.trim().length >= 2 || (query.trim().length < 2 && history.length > 0)) && (
         <div
-          className={`absolute left-0 right-0 mt-2 z-[60] rounded-2xl border border-white/10 glass-dropdown shadow-2xl shadow-black/50 overflow-hidden animate-scale-in ${
+          className={`absolute left-0 right-0 top-full mt-2 z-[100] rounded-2xl border border-white/10 glass-dropdown shadow-2xl shadow-black/60 overflow-hidden overflow-y-auto max-h-[min(70vh,420px)] animate-scale-in ${
             isMobile ? "max-h-[60vh]" : "max-h-[70vh]"
           }`}
         >

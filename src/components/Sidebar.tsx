@@ -1,4 +1,4 @@
-"use client";
+use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,7 +33,7 @@ export default function Sidebar() {
   const path = usePathname();
 
   return (
-    <aside
+    <aside data-sidebar="1"
       className="hidden lg:flex flex-col w-[72px] xl:w-[220px] shrink-0 sticky top-14 h-[calc(100dvh-3.5rem)] overflow-y-auto scrollbar-hide py-3 px-2 border-r border-[#272727] glass-sidebar"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >

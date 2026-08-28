@@ -178,6 +178,21 @@ export const useAccountStore = create<AccountState>()(
           /* ignore */
         }
       },
+
+      resetPassword: async (username, recoveryPin, newPassword) => {
+        try {
+          const res = await fetch("/api/auth/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, recoveryPin, newPassword }),
+          });
+          const data = await res.json();
+          if (!data.ok) return { ok: false, error: data.error || "Không đặt lại được" };
+          return { ok: true, message: data.message };
+        } catch {
+          return { ok: false, error: "Không kết nối được máy chủ" };
+        }
+      },
     }),
     { name: "opusfilm-account-session" }
   )

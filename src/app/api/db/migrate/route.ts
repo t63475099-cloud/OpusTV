@@ -81,6 +81,10 @@ const SQL_STATEMENTS = [
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS video_social_slug_uidx ON video_social (slug)`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_hash TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires TIMESTAMPTZ`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_last_sent TIMESTAMPTZ`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_pin_hash TEXT`,
 ];
 

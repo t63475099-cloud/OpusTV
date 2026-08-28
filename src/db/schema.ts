@@ -21,6 +21,7 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     lastLogin: timestamp("last_login", { withTimezone: true }),
     phone: text("phone"),
+    recoveryPinHash: text("recovery_pin_hash"),
     otpHash: text("otp_hash"),
     otpExpires: timestamp("otp_expires", { withTimezone: true }),
     otpLastSent: timestamp("otp_last_sent", { withTimezone: true }),

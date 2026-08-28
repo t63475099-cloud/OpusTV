@@ -1,4 +1,4 @@
-"use client";
+use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
@@ -67,9 +67,20 @@ export default function Player({
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const fsPlaceholderRef = useRef<HTMLDivElement | null>(null);
+  const fsParentRef = useRef<HTMLElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.setAttribute("playsinline", "true");
+    v.setAttribute("webkit-playsinline", "true");
+    v.setAttribute("x-webkit-airplay", "allow");
+  }, []);
 
   const [showNext, setShowNext] = useState(false);
   const [qualities, setQualities] = useState<QualityOption[]>([
@@ -532,23 +543,44 @@ export default function Player({
     el.classList.remove("player-fs-css", "player-fs-force-land");
     document.body.classList.remove("player-fs-lock");
     document.documentElement.classList.remove("player-fs-html-lock");
+    document.documentElement.classList.remove("opus-hide-chrome");
     el.style.removeProperty("--fs-w");
     el.style.removeProperty("--fs-h");
     el.style.removeProperty("--fs-top");
     el.style.removeProperty("--fs-left");
+    // Đưa player về chỗ cũ
+    const ph = fsPlaceholderRef.current;
+    if (ph && ph.parentNode) {
+      ph.parentNode.insertBefore(el, ph);
+      ph.remove();
+      fsPlaceholderRef.current = null;
+      fsParentRef.current = null;
+    }
     setIsFs(false);
   };
 
   const enterCssFs = () => {
     const el = wrapRef.current;
     if (!el) return;
-    // YouTube-style: full viewport, không xoay cưỡng bức — user tự xoay máy
+    // Portal lên body — tránh stacking/transform của layout (navbar đè, iOS fixed bug)
+    if (el.parentElement !== document.body) {
+      const ph = document.createElement("div");
+      ph.setAttribute("data-player-fs-ph", "1");
+      ph.style.width = "100%";
+      ph.style.aspectRatio = "16 / 9";
+      ph.style.background = "#000";
+      fsParentRef.current = el.parentElement as HTMLElement;
+      el.parentNode?.insertBefore(ph, el);
+      fsPlaceholderRef.current = ph;
+      document.body.appendChild(el);
+    }
     el.classList.remove("player-fs-force-land");
     el.classList.add("player-fs-css");
     document.body.classList.add("player-fs-lock");
     document.documentElement.classList.add("player-fs-html-lock");
+    document.documentElement.classList.add("opus-hide-chrome");
     setIsFs(true);
-    requestAnimationFrame(() => {
+    const apply = () => {
       const vv = window.visualViewport;
       const w = Math.round(vv?.width ?? window.innerWidth);
       const h = Math.round(vv?.height ?? window.innerHeight);
@@ -556,7 +588,11 @@ export default function Player({
       el.style.setProperty("--fs-h", `${h}px`);
       el.style.setProperty("--fs-top", `${Math.round(vv?.offsetTop ?? 0)}px`);
       el.style.setProperty("--fs-left", `${Math.round(vv?.offsetLeft ?? 0)}px`);
-    });
+    };
+    apply();
+    requestAnimationFrame(apply);
+    setTimeout(apply, 50);
+    setTimeout(apply, 300);
   };
 
   const lockLandscape = async () => {
@@ -628,10 +664,21 @@ export default function Player({
     const mobile = isMobileDevice();
     const ios = isIOSDevice();
 
-    // —— iOS: chỉ CSS full (giống YouTube — giữ nút tua / chất lượng) ——
+    // —— iOS Safari: ưu tiên native video fullscreen (che UI Safari thật) ——
     if (ios) {
+      try {
+        if (video && typeof video.webkitEnterFullscreen === "function") {
+          // Cần playsInline + user gesture; native FS full landscape khi xoay
+          video.webkitEnterFullscreen();
+          setIsFs(true);
+          showControls();
+          return;
+        }
+      } catch (e) {
+        console.warn("webkitEnterFullscreen failed", e);
+      }
+      // Fallback: CSS portal full viewport
       enterCssFs();
-      // orientation.lock hầu như không hoạt động trên Safari — bỏ qua
       showControls();
       return;
     }
@@ -915,3 +962,4 @@ export default function Player({
     </div>
   );
 }
+

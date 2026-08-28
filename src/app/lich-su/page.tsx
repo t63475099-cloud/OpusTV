@@ -15,14 +15,14 @@ export default function HistoryPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen pt-20 px-4 max-w-5xl mx-auto">
+      <div className="min-h-screen app-content-offset px-4 max-w-5xl mx-auto">
         <div className="h-8 w-48 skeleton rounded mb-6" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-16 px-4 md:px-8 max-w-5xl mx-auto animate-fade-up">
+    <div className="min-h-screen app-content-offset pb-16 px-4 md:px-8 max-w-5xl mx-auto animate-fade-up">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">Lịch sử xem</h1>
         {history.length > 0 && (

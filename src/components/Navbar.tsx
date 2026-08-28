@@ -24,7 +24,6 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname() || "/";
 
-  /** Trang form / cài đặt: không chip, không search (tránh đè nội dung mobile) */
   const isMinimalChrome =
     pathname.startsWith("/cai-dat") || pathname.startsWith("/tai-khoan");
 
@@ -33,8 +32,8 @@ export default function Navbar() {
     pathname.startsWith("/nhac") ||
     pathname.startsWith("/phim/");
 
-  const showDesktopSearch = !isMinimalChrome;
-  const showMobileDrawerSearch = !isMinimalChrome;
+  /** Search luôn ngoài trên mobile (trừ trang form) */
+  const showSearch = !isMinimalChrome;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -52,6 +51,17 @@ export default function Navbar() {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  /** Chiều cao header → content không bị đè */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.navChips = hideChips ? "0" : "1";
+    root.dataset.navMinimal = isMinimalChrome ? "1" : "0";
+    return () => {
+      root.dataset.navChips = "0";
+      root.dataset.navMinimal = "0";
+    };
+  }, [hideChips, isMinimalChrome]);
 
   const mainNav = NAV_CATEGORIES.filter((i) => i.href !== "/cai-dat");
 
@@ -79,8 +89,7 @@ export default function Navbar() {
         scrolled || menuOpen
           ? "glass-nav border-b border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
           : "glass-nav border-b border-transparent",
-        /* Search dropdown cần overflow visible trên desktop */
-        showDesktopSearch ? "overflow-visible" : "overflow-hidden"
+        "overflow-visible"
       )}
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
@@ -88,11 +97,11 @@ export default function Navbar() {
         paddingRight: "env(safe-area-inset-right, 0px)",
       }}
     >
-      <div className="flex items-center gap-2 h-14 px-3 sm:px-4">
-        {/* Menu mobile */}
+      {/* Hàng 1: logo + search ngoài (mobile & desktop) */}
+      <div className="flex items-center gap-1.5 sm:gap-2 h-12 sm:h-14 px-2.5 sm:px-4">
         <button
           type="button"
-          className="lg:hidden p-2 -ml-1 rounded-full text-zinc-200 hover:bg-white/10 shrink-0"
+          className="lg:hidden p-2 -ml-0.5 rounded-full text-zinc-200 hover:bg-white/10 shrink-0"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
         >
@@ -101,33 +110,30 @@ export default function Navbar() {
 
         <Link
           href="/"
-          className="flex items-center gap-1.5 shrink-0 min-w-0"
+          className="flex items-center gap-1.5 shrink-0"
           onClick={() => setMenuOpen(false)}
         >
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-red-600/40 ring-1 ring-white/20">
             <PlayCircle className="w-5 h-5 text-white fill-white/30" />
           </div>
-          <span className="text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap">
+          <span className="hidden xs:inline text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap min-[380px]:inline">
             Opus<span className="font-semibold">Film</span>
           </span>
         </Link>
 
-        {/* Search chỉ desktop/tablet ngang — ẩn hẳn trên trang tài khoản & cài đặt */}
-        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-2 overflow-visible">
-          {showDesktopSearch && (
-            <div className="w-full max-w-[640px] hidden sm:block">
+        {/* Search ngoài — mobile + desktop */}
+        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-1 overflow-visible">
+          {showSearch && (
+            <div className="w-full max-w-[640px]">
               <SearchBox variant="desktop" />
             </div>
           )}
         </div>
-
-        {/* Spacer phải — không còn icon Cài đặt góc phải */}
-        <div className="w-10 shrink-0 lg:w-0" aria-hidden />
       </div>
 
-      {/* Chip thể loại — mobile only, KHÔNG hiện trên /tai-khoan /cai-dat */}
+      {/* Hàng 2: chip — chỉ mobile, không đè form */}
       {!hideChips && (
-        <div className="flex lg:hidden items-center gap-2 px-3 pb-2.5 overflow-x-auto scrollbar-hide">
+        <div className="flex lg:hidden items-center gap-2 px-3 pb-2 overflow-x-auto scrollbar-hide h-10">
           <Link
             href="/"
             className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-white to-zinc-100 text-black text-sm font-semibold shadow-sm"
@@ -138,7 +144,7 @@ export default function Navbar() {
             <Link
               key={item.href}
               href={item.href}
-              className="shrink-0 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm transition duration-300 backdrop-blur-md border border-white/5"
+              className="shrink-0 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm transition backdrop-blur-md border border-white/5"
             >
               {item.name}
             </Link>
@@ -146,17 +152,11 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Drawer mobile */}
       {menuOpen && (
         <div
-          className="lg:hidden border-t border-white/10 glass-strong px-3 py-3 space-y-3 max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain"
+          className="lg:hidden border-t border-white/10 glass-strong px-3 py-3 space-y-1 max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain"
           style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
         >
-          {showMobileDrawerSearch && (
-            <div className="sm:hidden">
-              <SearchBox variant="mobile" onNavigate={() => setMenuOpen(false)} />
-            </div>
-          )}
           <nav className="space-y-0.5" aria-label="Menu chính">
             {drawerLinks.map((item) => (
               <Link

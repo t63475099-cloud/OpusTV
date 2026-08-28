@@ -100,7 +100,7 @@ export default async function HomePage() {
   ).slice(0, 12);
 
   return (
-    <div className="min-h-screen pb-16 pt-14">
+    <div className="min-h-screen pb-16 app-content-offset">
       <BannerSlider movies={bannerMovies} />
       <div className="relative z-10 pt-2 space-y-1">
         <ContinueWatching />

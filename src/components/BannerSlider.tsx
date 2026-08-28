@@ -38,11 +38,11 @@ export default function BannerSlider({ movies }: BannerSliderProps) {
 
   return (
     <section
-      className="relative w-full max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-2"
+      className="relative w-full px-3 sm:px-4 lg:px-6 pt-1 sm:pt-2"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="relative w-full aspect-[21/9] min-h-[180px] max-h-[360px] overflow-hidden rounded-2xl bg-[#272727]">
+      <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] min-h-[200px] sm:min-h-[220px] max-h-[42vh] sm:max-h-[380px] lg:max-h-[420px] overflow-hidden rounded-xl sm:rounded-2xl bg-[#272727]">
         <Image
           key={movie.slug}
           src={bg}

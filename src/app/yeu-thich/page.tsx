@@ -14,11 +14,11 @@ export default function FavoritesPage() {
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <div className="min-h-screen pt-20 px-4" />;
+    return <div className="min-h-screen app-content-offset px-4" />;
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-16 px-4 md:px-8 max-w-6xl mx-auto animate-fade-up">
+    <div className="min-h-screen app-content-offset pb-16 px-4 md:px-8 max-w-6xl mx-auto animate-fade-up">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Heart className="w-6 h-6 text-red-500 fill-red-500" /> Yêu thích

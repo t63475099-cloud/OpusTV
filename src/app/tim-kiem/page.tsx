@@ -29,7 +29,7 @@ export default async function SearchPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-16 px-4 md:px-12 max-w-[1600px] mx-auto">
+    <div className="min-h-screen app-content-offset pb-16 px-4 md:px-12 max-w-[1600px] mx-auto">
       <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
         {keyword ? `Kết quả: “${keyword}”` : "Tìm kiếm phim"}
       </h1>

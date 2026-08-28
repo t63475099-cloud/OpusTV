@@ -21,7 +21,7 @@ export default async function CategoryPage({ params }: Props) {
   const title = data?.data?.titlePage || slug.replace(/-/g, " ");
 
   return (
-    <div className="min-h-screen pt-[6.75rem] lg:pt-20 pb-16 px-3 sm:px-4 md:px-8">
+    <div className="min-h-screen pt-[6.75rem] lg:app-content-offset pb-16 px-3 sm:px-4 md:px-8">
       <h1 className="text-xl md:text-2xl font-bold text-white mb-5 capitalize">{title}</h1>
       {items.length === 0 ? (
         <p className="text-zinc-500">Không có phim nào.</p>

@@ -563,3 +563,32 @@ body {
   background: linear-gradient(135deg, #f43f5e, #fb923c);
   box-shadow: 0 8px 24px rgba(244, 63, 94, 0.35);
 }
+
+
+/* Header offset — tránh chip/search đè banner (mobile + safe area) */
+:root {
+  --nav-h: 3rem; /* h-12 mobile */
+  --nav-chips-h: 2.5rem;
+  --nav-safe: env(safe-area-inset-top, 0px);
+}
+@media (min-width: 640px) {
+  :root {
+    --nav-h: 3.5rem; /* h-14 */
+  }
+}
+/* PC sidebar layout: chỉ 1 hàng header */
+@media (min-width: 1024px) {
+  :root {
+    --nav-chips-h: 0px;
+  }
+}
+
+.app-content-offset {
+  padding-top: calc(var(--nav-h) + var(--nav-safe) + 0.25rem);
+}
+html[data-nav-chips="1"] .app-content-offset {
+  padding-top: calc(var(--nav-h) + var(--nav-chips-h) + var(--nav-safe) + 0.25rem);
+}
+html[data-nav-minimal="1"] .app-content-offset {
+  padding-top: calc(var(--nav-h) + var(--nav-safe) + 0.25rem);
+}

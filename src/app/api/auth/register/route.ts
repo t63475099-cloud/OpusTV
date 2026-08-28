@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (password.length < 6) {
-      return NextResponse.json({ ok: false, error: "Mật khẩu tối thiểu 6 ký tự" }, { status: 400 });
+    if (password.length < 8) {
+      return NextResponse.json({ ok: false, error: "Mật khẩu tối thiểu 8 ký tự" }, { status: 400 });
     }
     if (!/^\d{4,8}$/.test(recoveryPin)) {
       return NextResponse.json(

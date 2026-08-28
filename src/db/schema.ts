@@ -20,7 +20,10 @@ export const users = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     lastLogin: timestamp("last_login", { withTimezone: true }),
-    recoveryPinHash: text("recovery_pin_hash"),
+    phone: text("phone"),
+    otpHash: text("otp_hash"),
+    otpExpires: timestamp("otp_expires", { withTimezone: true }),
+    otpLastSent: timestamp("otp_last_sent", { withTimezone: true }),
   },
   (t) => [uniqueIndex("users_username_uidx").on(t.username)]
 );

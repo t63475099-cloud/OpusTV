@@ -22,11 +22,19 @@ import SearchBox from "./SearchBox";
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
+
+  /** Trang form / cài đặt: không chip, không search (tránh đè nội dung mobile) */
+  const isMinimalChrome =
+    pathname.startsWith("/cai-dat") || pathname.startsWith("/tai-khoan");
+
   const hideChips =
-    pathname?.startsWith("/cai-dat") ||
-    pathname?.startsWith("/nhac") ||
-    pathname?.startsWith("/phim/");
+    isMinimalChrome ||
+    pathname.startsWith("/nhac") ||
+    pathname.startsWith("/phim/");
+
+  const showDesktopSearch = !isMinimalChrome;
+  const showMobileDrawerSearch = !isMinimalChrome;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -67,10 +75,12 @@ export default function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 overflow-visible transition-all duration-500 ease-out",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
         scrolled || menuOpen
           ? "glass-nav border-b border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
-          : "glass-nav border-b border-transparent"
+          : "glass-nav border-b border-transparent",
+        /* Search dropdown cần overflow visible trên desktop */
+        showDesktopSearch ? "overflow-visible" : "overflow-hidden"
       )}
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
@@ -78,20 +88,17 @@ export default function Navbar() {
         paddingRight: "env(safe-area-inset-right, 0px)",
       }}
     >
-      {/* Hàng chính: Menu | Logo | Search — không icon phải trên PC */}
-      <div className="flex items-center gap-2 sm:gap-3 h-14 px-2 sm:px-4 max-w-[1920px] mx-auto w-full">
-        {/* Mobile menu button */}
+      <div className="flex items-center gap-2 h-14 px-3 sm:px-4">
+        {/* Menu mobile */}
         <button
           type="button"
-          className="p-2 rounded-full hover:bg-white/10 text-white lg:hidden shrink-0"
+          className="lg:hidden p-2 -ml-1 rounded-full text-zinc-200 hover:bg-white/10 shrink-0"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
-          aria-expanded={menuOpen}
         >
           {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
 
-        {/* Logo OpusFilm — mọi thiết bị */}
         <Link
           href="/"
           className="flex items-center gap-1.5 shrink-0 min-w-0"
@@ -105,27 +112,20 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Search giữa — PC luôn hiện; mobile hiện khi không mở drawer (gọn) */}
-        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-1 sm:px-4 overflow-visible">
-          <div className="w-full max-w-[640px] hidden sm:block">
-            <SearchBox variant="desktop" />
-          </div>
+        {/* Search chỉ desktop/tablet ngang — ẩn hẳn trên trang tài khoản & cài đặt */}
+        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-2 overflow-visible">
+          {showDesktopSearch && (
+            <div className="w-full max-w-[640px] hidden sm:block">
+              <SearchBox variant="desktop" />
+            </div>
+          )}
         </div>
 
-        {/* Chỉ Cài đặt — tài khoản nằm trong Cài đặt */}
-        <div className="flex items-center gap-1 shrink-0">
-          <Link
-            href="/cai-dat"
-            className="p-2.5 rounded-full text-zinc-200 hover:text-white hover:bg-white/10 transition duration-300 hover:scale-105 active:scale-95"
-            title="Cài đặt"
-            aria-label="Cài đặt"
-          >
-            <Settings className="w-5 h-5" />
-          </Link>
-        </div>
+        {/* Spacer phải — không còn icon Cài đặt góc phải */}
+        <div className="w-10 shrink-0 lg:w-0" aria-hidden />
       </div>
 
-      {/* Chip thể loại — chỉ mobile/tablet, không chồng logo */}
+      {/* Chip thể loại — mobile only, KHÔNG hiện trên /tai-khoan /cai-dat */}
       {!hideChips && (
         <div className="flex lg:hidden items-center gap-2 px-3 pb-2.5 overflow-x-auto scrollbar-hide">
           <Link
@@ -146,15 +146,17 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Drawer mobile / tablet */}
+      {/* Drawer mobile */}
       {menuOpen && (
         <div
           className="lg:hidden border-t border-white/10 glass-strong px-3 py-3 space-y-3 max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain"
           style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
         >
-          <div className="sm:hidden">
-            <SearchBox variant="mobile" onNavigate={() => setMenuOpen(false)} />
-          </div>
+          {showMobileDrawerSearch && (
+            <div className="sm:hidden">
+              <SearchBox variant="mobile" onNavigate={() => setMenuOpen(false)} />
+            </div>
+          )}
           <nav className="space-y-0.5" aria-label="Menu chính">
             {drawerLinks.map((item) => (
               <Link
@@ -164,7 +166,7 @@ export default function Navbar() {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 active:scale-[0.98]",
                   pathname === item.href ||
-                    (item.href !== "/" && pathname?.startsWith(item.href.split("?")[0]))
+                    (item.href !== "/" && pathname.startsWith(item.href.split("?")[0]))
                     ? "bg-[#272727] text-white font-medium"
                     : "text-zinc-200 hover:bg-white/10"
                 )}

@@ -1,4 +1,4 @@
-use client";
+"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
@@ -962,4 +962,3 @@ export default function Player({
     </div>
   );
 }
-

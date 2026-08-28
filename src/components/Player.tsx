@@ -73,7 +73,6 @@ export default function Player({
   const menuRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -100,6 +99,7 @@ export default function Player({
   const [seeking, setSeeking] = useState(false);
   const [seekFlash, setSeekFlash] = useState<"left" | "right" | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1);
+
   const lastTap = useRef<{ t: number; x: number }>({ t: 0, x: 0 });
 
   const addOrUpdate = useHistoryStore((s) => s.addOrUpdate);
@@ -137,14 +137,13 @@ export default function Player({
       setControlsVisible(false);
       setMenuOpen(false);
     }, hideControlsMs);
-  }, []);
+  }, [alwaysShowControls, hideControlsMs]);
 
   const showControls = useCallback(() => {
     setControlsVisible(true);
     scheduleHide();
   }, [scheduleHide]);
 
-  // HLS setup
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !m3u8) return;
@@ -196,7 +195,7 @@ export default function Player({
           setSupportsLevels(unique.length > 1);
 
           if (defaultQuality !== "auto" && unique.length > 1) {
-            const targetH = parseInt(defaultQuality, 10);
+            const targetH = parseInt(String(defaultQuality), 10);
             const match = unique.find(
               (o) => o.level >= 0 && o.height && Math.abs((o.height || 0) - targetH) < 80
             );
@@ -249,13 +248,12 @@ export default function Player({
         hlsRef.current = null;
       }
     };
-  }, [m3u8, currentEpisode.slug]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m3u8, currentEpisode.slug]);
 
-  // Video events
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
     const onPlay = () => setPlaying(true);
     const onPause = () => {
       setPlaying(false);
@@ -266,14 +264,12 @@ export default function Player({
     };
     const onMeta = () => setDuration(video.duration || 0);
     const onVol = () => setMuted(video.muted || video.volume === 0);
-
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
     video.addEventListener("timeupdate", onTime);
     video.addEventListener("loadedmetadata", onMeta);
     video.addEventListener("durationchange", onMeta);
     video.addEventListener("volumechange", onVol);
-
     return () => {
       video.removeEventListener("play", onPlay);
       video.removeEventListener("pause", onPause);
@@ -284,23 +280,30 @@ export default function Player({
     };
   }, [seeking, saveProgress]);
 
-  // Fullscreen / iOS webkit end
   useEffect(() => {
     const syncFs = () => {
-      const v = videoRef.current as any;
+      const v = videoRef.current as HTMLVideoElement & {
+        webkitDisplayingFullscreen?: boolean;
+        webkitPresentationMode?: string;
+      };
       const nativeFs = !!(
         document.fullscreenElement ||
-        (document as any).webkitFullscreenElement
+        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement
       );
-      const iosFs = !!(v && (v.webkitDisplayingFullscreen || v.webkitPresentationMode === "fullscreen"));
+      const iosFs = !!(
+        v &&
+        (v.webkitDisplayingFullscreen || v.webkitPresentationMode === "fullscreen")
+      );
       const cssFs = !!wrapRef.current?.classList.contains("player-fs-css");
       const on = nativeFs || iosFs || cssFs;
       setIsFs(on);
       if (!on) {
         try {
-          const o = screen.orientation as any;
+          const o = screen.orientation as ScreenOrientation & { unlock?: () => void };
           if (o?.unlock) o.unlock();
-        } catch { /* */ }
+        } catch {
+          /* */
+        }
       }
     };
     document.addEventListener("fullscreenchange", syncFs);
@@ -325,18 +328,15 @@ export default function Player({
       if (e.key === "Escape") {
         const el = wrapRef.current;
         if (el?.classList.contains("player-fs-css")) {
-          el.classList.remove("player-fs-css", "player-fs-force-land");
-          document.body.classList.remove("player-fs-lock");
-          document.documentElement.classList.remove("player-fs-html-lock");
-          setIsFs(false);
+          exitCssFs();
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Click outside quality menu
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -347,7 +347,6 @@ export default function Player({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // Auto-hide when playing
   useEffect(() => {
     if (playing && controlsVisible && !menuOpen) {
       scheduleHide();
@@ -368,7 +367,7 @@ export default function Player({
   const seekBy = (delta: number) => {
     const v = videoRef.current;
     if (!v) return;
-    const next = Math.max(0, Math.min((v.duration || 0), v.currentTime + delta));
+    const next = Math.max(0, Math.min(v.duration || 0, v.currentTime + delta));
     v.currentTime = next;
     setCurrentTime(next);
     showControls();
@@ -390,7 +389,6 @@ export default function Player({
     showControls();
   };
 
-
   const handleEnded = () => {
     setPlaying(false);
     setShowNext(true);
@@ -401,7 +399,6 @@ export default function Player({
   };
 
   const onStageClick = (e: React.MouseEvent) => {
-    // avoid when clicking controls
     const target = e.target as HTMLElement;
     if (target.closest("button") || target.closest("input") || target.closest("[data-controls]")) {
       return;
@@ -426,26 +423,21 @@ export default function Player({
       lastTap.current = { t: 0, x: 0 };
       return;
     }
-    // single tap: toggle controls or play
     if (controlsVisible) togglePlay();
     else showControls();
   };
 
   const selectQuality = (opt: QualityOption) => {
-    const hls = hlsRef.current as any;
+    const hls = hlsRef.current;
     if (!hls) return;
     try {
-      if (opt.level === -1) {
-        hls.currentLevel = -1;
-      } else {
-        hls.currentLevel = opt.level;
-      }
+      hls.currentLevel = opt.level;
       setCurrentLevel(opt.level);
       setActiveLabel(opt.label);
       setMenuOpen(false);
       showControls();
     } catch {
-      /* ignore */
+      /* */
     }
   };
 
@@ -461,7 +453,10 @@ export default function Player({
   };
 
   const togglePiP = async () => {
-    const v = videoRef.current as any;
+    const v = videoRef.current as HTMLVideoElement & {
+      webkitSetPresentationMode?: (m: string) => void;
+      webkitPresentationMode?: string;
+    };
     if (!v) return;
     try {
       if (document.pictureInPictureElement) {
@@ -469,18 +464,16 @@ export default function Player({
       } else if (v.requestPictureInPicture) {
         await v.requestPictureInPicture();
       } else if (v.webkitSetPresentationMode) {
-        const mode = v.webkitPresentationMode === "picture-in-picture" ? "inline" : "picture-in-picture";
+        const mode =
+          v.webkitPresentationMode === "picture-in-picture" ? "inline" : "picture-in-picture";
         v.webkitSetPresentationMode(mode);
       }
     } catch {
-      /* not supported */
+      /* */
     }
     showControls();
   };
 
-
-
-  // Đồng bộ kích thước fullscreen với visualViewport (YouTube-style, mọi mobile)
   useEffect(() => {
     if (!isFs) return;
     const applyVv = () => {
@@ -548,7 +541,6 @@ export default function Player({
     el.style.removeProperty("--fs-h");
     el.style.removeProperty("--fs-top");
     el.style.removeProperty("--fs-left");
-    // Đưa player về chỗ cũ
     const ph = fsPlaceholderRef.current;
     if (ph && ph.parentNode) {
       ph.parentNode.insertBefore(el, ph);
@@ -562,7 +554,6 @@ export default function Player({
   const enterCssFs = () => {
     const el = wrapRef.current;
     if (!el) return;
-    // Portal lên body — tránh stacking/transform của layout (navbar đè, iOS fixed bug)
     if (el.parentElement !== document.body) {
       const ph = document.createElement("div");
       ph.setAttribute("data-player-fs-ph", "1");
@@ -605,7 +596,7 @@ export default function Player({
         return true;
       }
     } catch {
-      /* blocked on iOS / many browsers */
+      /* */
     }
     return false;
   };
@@ -615,45 +606,45 @@ export default function Player({
       const o = screen.orientation as ScreenOrientation & { unlock?: () => void };
       if (o && typeof o.unlock === "function") o.unlock();
     } catch {
-      /* ignore */
+      /* */
     }
   };
 
-  /**
-   * Fullscreen kiểu YouTube Web:
-   * - iPhone/iPad: CSS fixed full visualViewport (giữ control tùy chỉnh, không webkitEnterFullscreen)
-   * - Android: Fullscreen API trên container + fallback CSS
-   * - PC: Fullscreen API
-   */
   const toggleFs = async () => {
     const el = wrapRef.current;
-    const video = videoRef.current as any;
+    const video = videoRef.current as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+      webkitExitFullscreen?: () => void;
+      webkitDisplayingFullscreen?: boolean;
+    };
     if (!el || !video) return;
 
     const inNative = !!(
       document.fullscreenElement ||
-      (document as any).webkitFullscreenElement
+      (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement
     );
     const inCss = el.classList.contains("player-fs-css");
-    const inIosNative = !!(video.webkitDisplayingFullscreen);
+    const inIosNative = !!video.webkitDisplayingFullscreen;
 
-    // —— Thoát ——
     if (inNative || inCss || inIosNative) {
       try {
         if (document.fullscreenElement && document.exitFullscreen) {
           await document.exitFullscreen();
-        } else if ((document as any).webkitFullscreenElement && (document as any).webkitExitFullscreen) {
-          (document as any).webkitExitFullscreen();
+        } else if (
+          (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement &&
+          (document as Document & { webkitExitFullscreen?: () => void }).webkitExitFullscreen
+        ) {
+          (document as Document & { webkitExitFullscreen?: () => void }).webkitExitFullscreen!();
         }
       } catch {
-        /* ignore */
+        /* */
       }
       try {
         if (inIosNative && typeof video.webkitExitFullscreen === "function") {
           video.webkitExitFullscreen();
         }
       } catch {
-        /* ignore */
+        /* */
       }
       exitCssFs();
       await unlockOrientation();
@@ -664,11 +655,9 @@ export default function Player({
     const mobile = isMobileDevice();
     const ios = isIOSDevice();
 
-    // —— iOS Safari: ưu tiên native video fullscreen (che UI Safari thật) ——
     if (ios) {
       try {
-        if (video && typeof video.webkitEnterFullscreen === "function") {
-          // Cần playsInline + user gesture; native FS full landscape khi xoay
+        if (typeof video.webkitEnterFullscreen === "function") {
           video.webkitEnterFullscreen();
           setIsFs(true);
           showControls();
@@ -677,32 +666,30 @@ export default function Player({
       } catch (e) {
         console.warn("webkitEnterFullscreen failed", e);
       }
-      // Fallback: CSS portal full viewport
       enterCssFs();
       showControls();
       return;
     }
 
-    // —— Android / mobile khác: thử Fullscreen API trước ——
     if (mobile) {
       try {
         if (typeof el.requestFullscreen === "function") {
           await el.requestFullscreen({ navigationUI: "hide" } as FullscreenOptions);
           setIsFs(true);
-          // Gợi ý ngang nếu trình duyệt cho phép (không bắt buộc)
           void lockLandscape();
           showControls();
           return;
         }
-        if (typeof (el as any).webkitRequestFullscreen === "function") {
-          await (el as any).webkitRequestFullscreen();
+        const wk = el as HTMLElement & { webkitRequestFullscreen?: () => void };
+        if (typeof wk.webkitRequestFullscreen === "function") {
+          wk.webkitRequestFullscreen();
           setIsFs(true);
           void lockLandscape();
           showControls();
           return;
         }
       } catch {
-        /* fallback CSS */
+        /* */
       }
       enterCssFs();
       void lockLandscape();
@@ -710,7 +697,6 @@ export default function Player({
       return;
     }
 
-    // —— Desktop ——
     try {
       if (typeof el.requestFullscreen === "function") {
         await el.requestFullscreen();
@@ -718,14 +704,15 @@ export default function Player({
         showControls();
         return;
       }
-      if (typeof (el as any).webkitRequestFullscreen === "function") {
-        await (el as any).webkitRequestFullscreen();
+      const wk = el as HTMLElement & { webkitRequestFullscreen?: () => void };
+      if (typeof wk.webkitRequestFullscreen === "function") {
+        wk.webkitRequestFullscreen();
         setIsFs(true);
         showControls();
         return;
       }
     } catch {
-      /* fall through */
+      /* */
     }
     enterCssFs();
     showControls();
@@ -745,7 +732,9 @@ export default function Player({
         playsInline
         controls={false}
         controlsList="nodownload noplaybackrate noremoteplayback"
-        className={`player-video absolute inset-0 w-full h-full bg-black ${fillMode === "cover" ? "player-fill-cover object-cover" : "player-fill-contain object-contain"}`}
+        className={`player-video absolute inset-0 w-full h-full bg-black ${
+          fillMode === "cover" ? "player-fill-cover object-cover" : "player-fill-contain object-contain"
+        }`}
         onEnded={handleEnded}
         onClick={onStageClick}
       />
@@ -763,7 +752,6 @@ export default function Player({
         </div>
       )}
 
-      {/* Center play when paused & controls hidden briefly */}
       {!playing && controlsVisible && centerPlayButton && (
         <button
           type="button"
@@ -776,7 +764,6 @@ export default function Player({
         </button>
       )}
 
-      {/* Quality top-right */}
       {supportsLevels && controlsVisible && (
         <div ref={menuRef} data-controls className="player-quality-pos absolute z-20">
           <button
@@ -822,7 +809,6 @@ export default function Player({
         </div>
       )}
 
-      {/* Bottom controls — hidden until interaction */}
       <div
         data-controls
         className={`absolute inset-x-0 bottom-0 z-20 transition-opacity duration-300 ${
@@ -830,12 +816,11 @@ export default function Player({
         }`}
       >
         <div className="player-controls-bar glass-player-bar bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-12 px-3 sm:px-4">
-          {/* Progress / time bar */}
           <div className="flex items-center gap-2 mb-2">
             {showTimeCode && (
-            <span className="text-[11px] text-zinc-300 tabular-nums w-10 text-right shrink-0">
-              {formatTime(currentTime)}
-            </span>
+              <span className="text-[11px] text-zinc-300 tabular-nums w-10 text-right shrink-0">
+                {formatTime(currentTime)}
+              </span>
             )}
             <input
               type="range"
@@ -855,13 +840,12 @@ export default function Player({
               aria-label="Thanh thời gian"
             />
             {showTimeCode && (
-            <span className="text-[11px] text-zinc-300 tabular-nums w-10 shrink-0">
-              {formatTime(duration)}
-            </span>
+              <span className="text-[11px] text-zinc-300 tabular-nums w-10 shrink-0">
+                {formatTime(duration)}
+              </span>
             )}
           </div>
 
-          {/* Buttons: Rewind | Pause | Forward */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1 sm:gap-2">
               <button
@@ -876,7 +860,6 @@ export default function Player({
                   {seekSeconds}
                 </span>
               </button>
-
               <button
                 type="button"
                 onClick={togglePlay}
@@ -889,7 +872,6 @@ export default function Player({
                   <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-0.5" />
                 )}
               </button>
-
               <button
                 type="button"
                 onClick={() => seekBy(seekSeconds)}
@@ -944,10 +926,14 @@ export default function Player({
       </div>
 
       {showNext && nextEpisode && (
-        <div data-controls className="absolute bottom-20 right-4 bg-black/90 backdrop-blur rounded-lg p-4 max-w-xs z-30">
-          <p className="text-sm text-zinc-400 mb-1">Tập tiếp theo sau 5s</p>
+        <div
+          data-controls
+          className="absolute bottom-20 right-4 bg-black/90 backdrop-blur rounded-lg p-4 max-w-xs z-30"
+        >
+          <p className="text-sm text-zinc-400 mb-1">Tập tiếp theo</p>
           <p className="text-white font-medium mb-3">{nextEpisode.name}</p>
           <button
+            type="button"
             onClick={() => {
               onNextEpisode?.();
               setShowNext(false);

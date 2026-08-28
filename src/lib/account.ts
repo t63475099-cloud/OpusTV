@@ -18,8 +18,9 @@ interface AccountState {
   collectLocal: () => SyncPayload;
   applyRemote: (data: SyncPayload) => void;
   login: (username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (username: string, password: string, recoveryPin?: string) => Promise<{ ok: boolean; error?: string; hint?: string }>;
-  resetPassword: (username: string, recoveryPin: string, newPassword: string) => Promise<{ ok: boolean; error?: string; message?: string }>;
+  register: (username: string, password: string, phone: string) => Promise<{ ok: boolean; error?: string }>;
+  resetPassword: (username: string, phone: string, otp: string, newPassword: string) => Promise<{ ok: boolean; error?: string; message?: string }>;
+  sendOtp: (username: string, phone: string) => Promise<{ ok: boolean; error?: string; retryAfter?: number; message?: string; otp?: string }>;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
   refreshMe: () => Promise<void>;
 }
@@ -87,12 +88,12 @@ export const useAccountStore = create<AccountState>()(
         }
       },
 
-      register: async (username, password, recoveryPin?: string) => {
+      register: async (username, password, phone: string) => {
         try {
           const res = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password, recoveryPin }),
+            body: JSON.stringify({ username, password, phone }),
           });
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Đăng ký thất bại" };
@@ -107,7 +108,7 @@ export const useAccountStore = create<AccountState>()(
           useSettingsStore.setState((s) => ({
             profile: { ...s.profile, name: data.username, loggedIn: true },
           }));
-          return { ok: true, hint: data.hint };
+          return { ok: true };
         } catch {
           return { ok: false, error: "Không kết nối được máy chủ" };
         }
@@ -179,16 +180,41 @@ export const useAccountStore = create<AccountState>()(
         }
       },
 
-      resetPassword: async (username, recoveryPin, newPassword) => {
+      resetPassword: async (username, phone, otp, newPassword) => {
         try {
           const res = await fetch("/api/auth/reset-password", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, recoveryPin, newPassword }),
+            body: JSON.stringify({ username, phone, otp, newPassword }),
           });
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Không đặt lại được" };
           return { ok: true, message: data.message };
+        } catch {
+          return { ok: false, error: "Không kết nối được máy chủ" };
+        }
+      },
+
+      sendOtp: async (username, phone) => {
+        try {
+          const res = await fetch("/api/auth/send-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, phone }),
+          });
+          const data = await res.json();
+          if (!data.ok)
+            return {
+              ok: false,
+              error: data.error || "Không gửi OTP",
+              retryAfter: data.retryAfter,
+            };
+          return {
+            ok: true,
+            message: data.message,
+            retryAfter: data.retryAfter || 60,
+            otp: data.otp,
+          };
         } catch {
           return { ok: false, error: "Không kết nối được máy chủ" };
         }

@@ -173,6 +173,28 @@ export default function AccountPage() {
   const [pinMsg, setPinMsg] = useState("");
   const [editName, setEditName] = useState("");
 
+  const currentDisplayName = profile.name || username || "";
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const r = localStorage.getItem("opusfilm-remember");
+      if (r) {
+        setUser(r);
+        setRemember(true);
+      }
+    } catch {
+      /* */
+    }
+  }, []);
+
+  // Đồng bộ giá trị input chỉnh sửa tên khi profile thay đổi
+  useEffect(() => {
+    if (currentDisplayName) {
+      setEditName(currentDisplayName);
+    }
+  }, [currentDisplayName]);
+
   /** Cắt ảnh vuông giữa + nén JPEG để đồng bộ thiết bị */
   const processAvatarFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -206,19 +228,6 @@ export default function AccountPage() {
   };
 
   const strength = useMemo(() => passwordStrength(pass), [pass]);
-
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const r = localStorage.getItem("opusfilm-remember");
-      if (r) {
-        setUser(r);
-        setRemember(true);
-      }
-    } catch {
-      /* */
-    }
-  }, []);
 
   useEffect(() => {
     const next: FieldErrors = {};
@@ -361,9 +370,10 @@ export default function AccountPage() {
                 aria-label="Đổi ảnh đại diện"
               >
                 <UserAvatar
-                  profile={{ ...profile, name }}
+                  profile={{ ...profile, name, verified: true }}
                   size={96}
                   ring
+                  showBadge
                 />
                 <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition">
                   <Camera className="w-7 h-7 text-white" />
@@ -427,20 +437,24 @@ export default function AccountPage() {
                 <label className="text-xs text-zinc-500 mb-1.5 block">Tên hiển thị</label>
                 <div className="flex gap-2">
                   <input
-                    value={editName || name}
+                    value={editName}
                     onChange={(e) => setEditName(e.target.value.slice(0, 40))}
+                    placeholder="Nhập tên hiển thị"
                     className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-rose-500"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      const n = (editName || name).trim();
-                      if (n.length < 2) return;
+                      const n = editName.trim();
+                      if (n.length < 2) {
+                        setErr("Tên tối thiểu 2 ký tự");
+                        return;
+                      }
                       updateProfile({ name: n });
                       void syncNow();
                       setMsg("Đã lưu tên");
                     }}
-                    className="rounded-xl bg-white text-black px-4 text-sm font-semibold"
+                    className="rounded-xl bg-white text-black px-4 text-sm font-semibold hover:bg-zinc-200 transition"
                   >
                     Lưu
                   </button>
@@ -508,7 +522,7 @@ export default function AccountPage() {
                     }
                     setBusy(false);
                   }}
-                  className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white"
+                  className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 transition"
                 >
                   Lưu PIN
                 </button>

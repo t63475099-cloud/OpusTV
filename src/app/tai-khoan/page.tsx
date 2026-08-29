@@ -339,23 +339,21 @@ export default function AccountPage() {
   if (username) {
     const name = profile.name || username;
     return (
-      <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
+      <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-20">
         <AuroraBg />
-        <div className={`relative z-10 mx-auto max-w-lg ${mounted ? "auth-enter" : "opacity-0"}`}>
-          {/* Cover kiểu mạng xã hội */}
-          <div className="relative h-36 sm:h-44 w-full overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-600 via-red-700 to-orange-600 opacity-90" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.25),_transparent_55%)]" />
+        <div className={`relative z-10 mx-auto max-w-lg px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>
+          {/* Nút quay lại cài đặt */}
+          <div className="mb-6">
             <Link
               href="/cai-dat"
-              className="absolute left-3 top-3 z-10 rounded-full bg-black/40 px-3 py-1.5 text-xs text-white backdrop-blur"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur hover:bg-white/15 transition"
             >
               ← Cài đặt
             </Link>
           </div>
 
-          <div className="relative px-4 -mt-14 sm:-mt-16">
-            <div className="flex items-end gap-3">
+          <div className="relative">
+            <div className="flex items-center gap-4">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
@@ -382,7 +380,7 @@ export default function AccountPage() {
                   e.target.value = "";
                 }}
               />
-              <div className="flex-1 min-w-0 pb-1">
+              <div className="flex-1 min-w-0">
                 <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-1.5 truncate">
                   <span className="truncate">{name}</span>
                   <BadgeCheck className="w-5 h-5 shrink-0 text-[#1d9bf0] fill-[#1d9bf0]" />
@@ -391,11 +389,11 @@ export default function AccountPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 transition"
               >
                 Đổi ảnh
               </button>
@@ -410,7 +408,7 @@ export default function AccountPage() {
                   if (!r.ok) setErr(r.error || "Lỗi");
                   else setMsg("Đã đồng bộ các thiết bị");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 transition"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Đồng bộ
@@ -418,7 +416,7 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => logout()}
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition"
               >
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>

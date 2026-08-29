@@ -147,6 +147,8 @@ export const videoSocial = pgTable(
           likes: number;
           likedBy: string[];
           createdAt: number;
+          avatar?: string | null;
+          verified?: boolean;
         }[]
       >()
       .default([])

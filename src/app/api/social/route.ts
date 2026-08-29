@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     if (action === "like") {
       const r = await toggleLike(slug, username);
-      return NextResponse.json({ ok: true, ...r });
+      return NextResponse.json({ ...r });
     }
 
     if (action === "comment") {
@@ -116,13 +116,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Nội dung trống" }, { status: 400 });
       }
       const r = await editComment(commentId, username, newText);
-      return NextResponse.json({ ok: true, ...r });
+      return NextResponse.json({ ...r });
     }
 
     if (action === "like_comment") {
       const commentId = String(body.commentId || "");
       const r = await toggleCommentLike(slug, commentId, username);
-      return NextResponse.json({ ok: true, ...r });
+      return NextResponse.json({ ...r });
     }
 
     return NextResponse.json({ error: "unknown action" }, { status: 400 });

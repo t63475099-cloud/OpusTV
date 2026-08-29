@@ -193,11 +193,11 @@ export default function AccountPage() {
     }
   }, [currentDisplayName]);
 
-  /** Cắt ảnh vuông giữa + nén JPEG để đồng bộ thiết bị */
+  /** Cắt ảnh vuông giữa + nén JPEG chuẩn 128px siêu nhẹ để đồng bộ qua mạng */
   const processAvatarFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
-    if (file.size > 4 * 1024 * 1024) {
-      setErr("Ảnh tối đa 4MB");
+    if (file.size > 8 * 1024 * 1024) {
+      setErr("Ảnh tối đa 8MB");
       return;
     }
     const reader = new FileReader();
@@ -205,7 +205,7 @@ export default function AccountPage() {
       const src = reader.result as string;
       const img = new Image();
       img.onload = () => {
-        const size = 256;
+        const size = 128;
         const canvas = document.createElement("canvas");
         canvas.width = size;
         canvas.height = size;
@@ -215,10 +215,10 @@ export default function AccountPage() {
         const sx = (img.width - side) / 2;
         const sy = (img.height - side) / 2;
         ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
         setAvatar(dataUrl, "50% 50%");
         void useAccountStore.getState().syncNow();
-        setMsg("Đã cập nhật ảnh đại diện");
+        setMsg("Đã cập nhật và đồng bộ ảnh đại diện");
       };
       img.src = src;
     };
@@ -310,6 +310,7 @@ export default function AccountPage() {
       else {
         setMsg("Đăng nhập thành công.");
         setPass("");
+        void syncNow();
       }
       return;
     }

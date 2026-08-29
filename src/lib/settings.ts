@@ -8,6 +8,8 @@ export interface UserProfile {
   email?: string;
   avatar?: string;
   avatarPosition?: string;
+  /** Tài khoản đã xác thực (tích xanh) */
+  verified?: boolean;
   loggedIn: boolean;
 }
 
@@ -187,6 +189,7 @@ const defaultProfile: UserProfile = {
   email: "",
   avatar: undefined,
   avatarPosition: "50% 50%",
+  verified: false,
   loggedIn: false,
 };
 
@@ -350,6 +353,7 @@ export const useSettingsStore = create<SettingsState>()(
             name: n,
             email: email?.trim() || s.profile.email,
             loggedIn: true,
+            verified: true,
             avatar: s.profile.avatar || `preset:${(n.charCodeAt(0) % 6) + 1}`,
           },
         }));

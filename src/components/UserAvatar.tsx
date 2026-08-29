@@ -7,8 +7,15 @@ import {
 } from "@/lib/settings";
 import { User, BadgeCheck } from "lucide-react";
 
+interface AvatarProfileData {
+  name: string;
+  avatar?: string;
+  avatarPosition?: string;
+  verified?: boolean;
+}
+
 interface Props {
-  profile: Pick<UserProfile, "name" | "avatar" | "avatarPosition" | "verified">;
+  profile: AvatarProfileData;
   size?: number;
   className?: string;
   ring?: boolean;
@@ -68,7 +75,7 @@ export default function UserAvatar({
     );
   }
 
-  if (!showBadge || !profile.verified) return body;
+  if (!showBadge) return body;
 
   const badge = Math.max(14, Math.round(size * 0.28));
   return (

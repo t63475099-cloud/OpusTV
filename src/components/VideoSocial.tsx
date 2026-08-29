@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Heart, MessageCircle, Reply, Send, Loader2, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Reply, Send, Loader2, BadgeCheck, Pencil, Check, X } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
 import { CommentAvatar } from "@/components/UserAvatar";
@@ -39,6 +39,8 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   const [text, setText] = useState("");
   const [guestName, setGuestName] = useState("");
   const [replyTo, setReplyTo] = useState<CommentItem | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [err, setErr] = useState("");
@@ -124,9 +126,29 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
       verified: Boolean(accountName),
     });
     if (data?.comment) {
-      setComments((prev) => [...prev, data.comment]);
+      // Gán avatar máy nếu là chủ tài khoản để hiển thị tức thì
+      const newComment = {
+        ...data.comment,
+        avatar: data.comment.avatar || (accountName ? profile.avatar : null),
+      };
+      setComments((prev) => [...prev, newComment]);
       setText("");
       setReplyTo(null);
+    }
+  };
+
+  const onSaveEdit = async (commentId: string) => {
+    if (!editText.trim()) return;
+    const res = await post("edit_comment", {
+      commentId,
+      text: editText.trim(),
+    });
+    if (res?.ok) {
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, text: editText.trim() } : c))
+      );
+      setEditingId(null);
+      setEditText("");
     }
   };
 
@@ -143,52 +165,106 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     }
   };
 
-  const renderComment = (c: CommentItem, nested = false) => (
-    <div key={c.id} className={nested ? "mt-3 ml-2 pl-3 border-l border-white/10" : "flex gap-2.5"}>
-      {!nested && (
-        <CommentAvatar
-          username={c.username}
-          avatar={c.avatar}
-          size={36}
-          verified={c.verified}
-        />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="text-zinc-300 flex items-center gap-1 flex-wrap">
-          {nested && (
-            <span className="mr-1.5 inline-block align-middle">
-              <CommentAvatar username={c.username} avatar={c.avatar} size={24} verified={c.verified} />
-            </span>
+  const renderComment = (c: CommentItem, nested = false) => {
+    // Nếu là bình luận của tài khoản hiện tại, ưu tiên dùng ảnh từ profile local
+    const commentAvatar =
+      c.username.toLowerCase() === (accountName || "").toLowerCase()
+        ? profile.avatar || c.avatar
+        : c.avatar;
+
+    const isAuthor =
+      displayName && c.username.toLowerCase() === displayName.toLowerCase();
+
+    return (
+      <div key={c.id} className={nested ? "mt-3 ml-2 pl-3 border-l border-white/10" : "flex gap-2.5"}>
+        {!nested && (
+          <CommentAvatar
+            username={c.username}
+            avatar={commentAvatar}
+            size={36}
+            verified={c.verified}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {nested && (
+              <span className="mr-1 inline-block align-middle">
+                <CommentAvatar username={c.username} avatar={commentAvatar} size={24} verified={c.verified} />
+              </span>
+            )}
+            <span className="font-semibold text-white">{c.username}</span>
+            {c.verified && (
+              <BadgeCheck className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0]" aria-label="Đã xác thực" />
+            )}
+            <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
+          </div>
+
+          {editingId === c.id ? (
+            <div className="mt-2 flex gap-2 items-center">
+              <input
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/20 text-sm text-white outline-none focus:border-red-500"
+                maxLength={500}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => onSaveEdit(c.id)}
+                disabled={posting}
+                className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
+                title="Lưu"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingId(null)}
+                className="p-1.5 rounded-lg bg-white/10 text-zinc-300 hover:bg-white/20"
+                title="Hủy"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <p className="text-zinc-200 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
           )}
-          <span className="font-semibold text-white">{c.username}</span>
-          {c.verified && (
-            <BadgeCheck className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0]" aria-label="Đã xác thực" />
-          )}
-          <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
-        </p>
-        <p className="text-zinc-200 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
-        <div className="flex gap-3 mt-1.5 text-xs text-zinc-500">
-          <button
-            type="button"
-            onClick={() => onLikeComment(c.id)}
-            className="hover:text-red-400 inline-flex items-center gap-1"
-          >
-            <Heart className="w-3 h-3" /> {c.likes || ""}
-          </button>
-          {!nested && (
+
+          <div className="flex gap-3 mt-1.5 text-xs text-zinc-500">
             <button
               type="button"
-              onClick={() => setReplyTo(c)}
-              className="hover:text-white inline-flex items-center gap-1"
+              onClick={() => onLikeComment(c.id)}
+              className="hover:text-red-400 inline-flex items-center gap-1"
             >
-              <Reply className="w-3 h-3" /> Trả lời
+              <Heart className="w-3 h-3" /> {c.likes || ""}
             </button>
-          )}
+            {!nested && (
+              <button
+                type="button"
+                onClick={() => setReplyTo(c)}
+                className="hover:text-white inline-flex items-center gap-1"
+              >
+                <Reply className="w-3 h-3" /> Trả lời
+              </button>
+            )}
+            {isAuthor && editingId !== c.id && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingId(c.id);
+                  setEditText(c.text);
+                }}
+                className="hover:text-white inline-flex items-center gap-1"
+              >
+                <Pencil className="w-3 h-3" /> Sửa
+              </button>
+            )}
+          </div>
+          {!nested && repliesOf(c.id).map((r) => renderComment(r, true))}
         </div>
-        {!nested && repliesOf(c.id).map((r) => renderComment(r, true))}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">

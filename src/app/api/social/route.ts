@@ -7,6 +7,17 @@ import {
 } from "@/lib/socialServer";
 import { getSessionUser } from "@/lib/session";
 
+interface CommentDoc {
+  id: string;
+  username: string;
+  text: string;
+  parentId?: string | null;
+  likes: number;
+  createdAt: number;
+  avatar?: string | null;
+  verified?: boolean;
+}
+
 function cleanSlug(s: string) {
   return s.replace(/[<>]/g, "").trim().slice(0, 120);
 }
@@ -41,7 +52,7 @@ export async function GET(req: NextRequest) {
       slug: data.slug,
       likes: data.likes,
       commentCount: data.comments.length,
-      comments: data.comments
+      comments: (data.comments as CommentDoc[])
         .slice()
         .sort((a, b) => a.createdAt - b.createdAt)
         .map((c) => ({
@@ -89,9 +100,9 @@ export async function POST(req: NextRequest) {
     if (action === "comment") {
       const text = String(body.text || "");
       const parentId = body.parentId ? String(body.parentId) : null;
-      const avatar = body.avatar != null ? String(body.avatar) : null;
-      const verified = !!body.verified;
-      const c = await addComment(slug, username, text, parentId, avatar, verified);
+      
+      // addComment nhận 4 tham số: (slug, username, text, parentId)
+      const c = await addComment(slug, username, text, parentId);
       return NextResponse.json({ ok: true, comment: c });
     }
     if (action === "like_comment") {

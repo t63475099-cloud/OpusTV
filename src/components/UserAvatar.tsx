@@ -5,13 +5,15 @@ import {
   presetGradient,
   type UserProfile,
 } from "@/lib/settings";
-import { User } from "lucide-react";
+import { User, BadgeCheck } from "lucide-react";
 
 interface Props {
-  profile: Pick<UserProfile, "name" | "avatar" | "avatarPosition">;
+  profile: Pick<UserProfile, "name" | "avatar" | "avatarPosition" | "verified">;
   size?: number;
   className?: string;
   ring?: boolean;
+  /** Hiện tích xanh */
+  showBadge?: boolean;
 }
 
 export default function UserAvatar({
@@ -19,6 +21,7 @@ export default function UserAvatar({
   size = 40,
   className = "",
   ring = false,
+  showBadge = false,
 }: Props) {
   const style = {
     width: size,
@@ -30,8 +33,10 @@ export default function UserAvatar({
     ? "ring-2 ring-red-500/60 ring-offset-2 ring-offset-[#0a0a0a]"
     : "";
 
+  let body: React.ReactNode;
+
   if (profile.avatar && !isPresetAvatar(profile.avatar)) {
-    return (
+    body = (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={profile.avatar}
@@ -40,11 +45,9 @@ export default function UserAvatar({
         style={style}
       />
     );
-  }
-
-  if (isPresetAvatar(profile.avatar)) {
+  } else if (isPresetAvatar(profile.avatar)) {
     const letter = (profile.name || "?").charAt(0).toUpperCase();
-    return (
+    body = (
       <div
         className={`rounded-full bg-gradient-to-br ${presetGradient(
           profile.avatar
@@ -54,14 +57,56 @@ export default function UserAvatar({
         {letter}
       </div>
     );
+  } else {
+    body = (
+      <div
+        className={`rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 ${ringCls} ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <User style={{ width: size * 0.45, height: size * 0.45 }} />
+      </div>
+    );
   }
 
+  if (!showBadge || !profile.verified) return body;
+
+  const badge = Math.max(14, Math.round(size * 0.28));
   return (
-    <div
-      className={`rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 ${ringCls} ${className}`}
-      style={{ width: size, height: size }}
-    >
-      <User style={{ width: size * 0.45, height: size * 0.45 }} />
-    </div>
+    <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
+      {body}
+      <span
+        className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-[#0a0a0a] text-[#1d9bf0]"
+        style={{ width: badge + 2, height: badge + 2 }}
+        title="Đã xác thực"
+      >
+        <BadgeCheck className="fill-[#1d9bf0] text-white" style={{ width: badge, height: badge }} />
+      </span>
+    </span>
+  );
+}
+
+/** Avatar chỉ từ username (bình luận) — có ảnh hoặc chữ cái */
+export function CommentAvatar({
+  username,
+  avatar,
+  size = 32,
+  verified,
+}: {
+  username: string;
+  avatar?: string | null;
+  size?: number;
+  verified?: boolean;
+}) {
+  return (
+    <UserAvatar
+      profile={{
+        name: username,
+        avatar: avatar || undefined,
+        avatarPosition: "50% 50%",
+        verified: !!verified,
+      }}
+      size={size}
+      showBadge={!!verified}
+    />
   );
 }

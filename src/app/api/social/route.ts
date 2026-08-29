@@ -100,8 +100,6 @@ export async function POST(req: NextRequest) {
     if (action === "comment") {
       const text = String(body.text || "");
       const parentId = body.parentId ? String(body.parentId) : null;
-      
-      // addComment nhận 4 tham số: (slug, username, text, parentId)
       const c = await addComment(slug, username, text, parentId);
       return NextResponse.json({ ok: true, comment: c });
     }

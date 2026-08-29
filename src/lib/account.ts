@@ -105,7 +105,15 @@ export const useAccountStore = create<AccountState>()(
           });
           set({ lastSyncAt: Date.now() });
           useSettingsStore.setState((s) => ({
-            profile: { ...s.profile, name: data.username, loggedIn: true },
+            profile: {
+              ...s.profile,
+              name: data.username,
+              loggedIn: true,
+              verified: true,
+              avatar:
+                s.profile.avatar ||
+                `preset:${(String(data.username).charCodeAt(0) % 6) + 1}`,
+            },
           }));
           return { ok: true };
         } catch {
@@ -139,7 +147,15 @@ export const useAccountStore = create<AccountState>()(
           });
           set({ lastSyncAt: Date.now() });
           useSettingsStore.setState((s) => ({
-            profile: { ...s.profile, name: data.username, loggedIn: true },
+            profile: {
+              ...s.profile,
+              name: s.profile.name || data.username,
+              loggedIn: true,
+              verified: true,
+              avatar:
+                s.profile.avatar ||
+                `preset:${(String(data.username).charCodeAt(0) % 6) + 1}`,
+            },
           }));
           return { ok: true };
         } catch {

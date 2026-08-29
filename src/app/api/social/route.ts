@@ -3,6 +3,7 @@ import {
   getSocial,
   toggleLike,
   addComment,
+  editComment,
   toggleCommentLike,
 } from "@/lib/socialServer";
 import { getSessionUser } from "@/lib/session";
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
   try {
     if (!process.env.DATABASE_URL) {
       return NextResponse.json(
-        { error: "DATABASE_URL chưa cấu hình — bình luận cần Neon PostgreSQL" },
+        { error: "DATABASE_URL chưa cấu hình" },
         { status: 503 }
       );
     }
@@ -97,17 +98,33 @@ export async function POST(req: NextRequest) {
       const r = await toggleLike(slug, username);
       return NextResponse.json({ ok: true, ...r });
     }
+
     if (action === "comment") {
       const text = String(body.text || "");
       const parentId = body.parentId ? String(body.parentId) : null;
-      const c = await addComment(slug, username, text, parentId);
+      const avatar = body.avatar ? String(body.avatar) : null;
+      const verified = Boolean(body.verified);
+
+      const c = await addComment(slug, username, text, parentId, avatar, verified);
       return NextResponse.json({ ok: true, comment: c });
     }
+
+    if (action === "edit_comment") {
+      const commentId = String(body.commentId || "");
+      const newText = String(body.text || "").trim();
+      if (!newText) {
+        return NextResponse.json({ error: "Nội dung trống" }, { status: 400 });
+      }
+      const r = await editComment(commentId, username, newText);
+      return NextResponse.json({ ok: true, ...r });
+    }
+
     if (action === "like_comment") {
       const commentId = String(body.commentId || "");
       const r = await toggleCommentLike(slug, commentId, username);
       return NextResponse.json({ ok: true, ...r });
     }
+
     return NextResponse.json({ error: "unknown action" }, { status: 400 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Lỗi";

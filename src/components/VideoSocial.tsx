@@ -80,7 +80,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
           slug,
           username: displayName || undefined,
           avatar: accountName ? profile.avatar || null : null,
-          verified: accountName ? !!profile.verified : false,
+          verified: Boolean(accountName),
           ...extra,
         }),
       });
@@ -225,7 +225,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
             username={displayName || "?"}
             avatar={accountName ? profile.avatar : null}
             size={36}
-            verified={!!accountName && !!profile.verified}
+            verified={Boolean(accountName)}
           />
         </div>
         <div className="flex-1">

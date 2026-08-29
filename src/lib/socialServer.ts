@@ -11,6 +11,9 @@ export interface CommentDoc {
   likes: number;
   likedBy: string[];
   createdAt: number;
+  /** data URL / preset / URL — đồng bộ avatar người bình luận */
+  avatar?: string | null;
+  verified?: boolean;
 }
 
 export interface VideoSocialDoc {
@@ -84,7 +87,9 @@ export async function addComment(
   slug: string,
   username: string,
   text: string,
-  parentId: string | null
+  parentId: string | null,
+  avatar?: string | null,
+  verified?: boolean
 ) {
   const clean = text.replace(/[<>]/g, "").trim().slice(0, 500);
   if (clean.length < 1) throw new Error("Nội dung trống");
@@ -96,6 +101,13 @@ export async function addComment(
     if (!parent) throw new Error("Bình luận gốc không tồn tại");
     if (parent.parentId) throw new Error("Chỉ trả lời bình luận gốc");
   }
+  // Giới hạn avatar base64 để tránh phình JSON
+  let av: string | null = null;
+  if (avatar && typeof avatar === "string") {
+    if (avatar.startsWith("preset:")) av = avatar.slice(0, 20);
+    else if (avatar.startsWith("data:image") && avatar.length < 120_000) av = avatar;
+    else if (avatar.startsWith("http") && avatar.length < 500) av = avatar;
+  }
   const c: CommentDoc = {
     id: randomBytes(8).toString("hex"),
     username: u,
@@ -104,6 +116,8 @@ export async function addComment(
     likes: 0,
     likedBy: [],
     createdAt: Date.now(),
+    avatar: av,
+    verified: !!verified,
   };
   doc.comments.push(c);
   if (doc.comments.length > 500) doc.comments = doc.comments.slice(-500);

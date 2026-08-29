@@ -14,11 +14,10 @@ import {
   Check,
   X,
   Loader2,
-  BadgeCheck,
   Camera,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
-import { useSettingsStore, AVATAR_PRESETS } from "@/lib/settings";
+import { useSettingsStore } from "@/lib/settings";
 import UserAvatar from "@/components/UserAvatar";
 
 type Mode = "login" | "register" | "recover";
@@ -188,7 +187,6 @@ export default function AccountPage() {
     }
   }, []);
 
-  // Đồng bộ giá trị input chỉnh sửa tên khi profile thay đổi
   useEffect(() => {
     if (currentDisplayName) {
       setEditName(currentDisplayName);
@@ -351,7 +349,6 @@ export default function AccountPage() {
       <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-20">
         <AuroraBg />
         <div className={`relative z-10 mx-auto max-w-lg px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>
-          {/* Nút quay lại cài đặt */}
           <div className="mb-6">
             <Link
               href="/cai-dat"
@@ -391,9 +388,8 @@ export default function AccountPage() {
                 }}
               />
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-1.5 truncate">
-                  <span className="truncate">{name}</span>
-                  <BadgeCheck className="w-5 h-5 shrink-0 text-[#1d9bf0] fill-[#1d9bf0]" />
+                <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
+                  {name}
                 </h1>
                 <p className="text-sm text-zinc-400">@{username}</p>
               </div>
@@ -458,25 +454,6 @@ export default function AccountPage() {
                   >
                     Lưu
                   </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-zinc-500 mb-2">Màu avatar nhanh</p>
-                <div className="flex flex-wrap gap-2">
-                  {AVATAR_PRESETS.map((pr) => (
-                    <button
-                      key={pr.id}
-                      type="button"
-                      onClick={() => {
-                        setAvatar(pr.id);
-                        void syncNow();
-                      }}
-                      className={`w-9 h-9 rounded-full bg-gradient-to-br ${pr.gradient} ring-2 ${
-                        profile.avatar === pr.id ? "ring-white" : "ring-transparent"
-                      }`}
-                    />
-                  ))}
                 </div>
               </div>
 

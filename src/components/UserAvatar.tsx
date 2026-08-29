@@ -3,13 +3,12 @@
 import {
   isPresetAvatar,
   presetGradient,
-  type UserProfile,
 } from "@/lib/settings";
-import { User, BadgeCheck } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 
 interface AvatarProfileData {
   name: string;
-  avatar?: string;
+  avatar?: string | null;
   avatarPosition?: string;
   verified?: boolean;
 }
@@ -19,8 +18,25 @@ interface Props {
   size?: number;
   className?: string;
   ring?: boolean;
-  /** Hiện tích xanh */
   showBadge?: boolean;
+}
+
+const GRADIENTS = [
+  "from-rose-500 to-red-600",
+  "from-violet-500 to-purple-600",
+  "from-blue-500 to-cyan-600",
+  "from-amber-500 to-orange-600",
+  "from-emerald-500 to-teal-600",
+  "from-pink-500 to-rose-600",
+  "from-indigo-500 to-blue-600",
+];
+
+function getGradientByName(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
 }
 
 export default function UserAvatar({
@@ -48,29 +64,31 @@ export default function UserAvatar({
       <img
         src={profile.avatar}
         alt={profile.name || "Avatar"}
-        className={`rounded-full object-cover bg-zinc-800 ${ringCls} ${className}`}
+        className={`rounded-full object-cover bg-zinc-800 shrink-0 ${ringCls} ${className}`}
         style={style}
       />
     );
-  } else if (isPresetAvatar(profile.avatar)) {
+  } else if (profile.avatar && isPresetAvatar(profile.avatar)) {
     const letter = (profile.name || "?").charAt(0).toUpperCase();
     body = (
       <div
         className={`rounded-full bg-gradient-to-br ${presetGradient(
           profile.avatar
-        )} flex items-center justify-center text-white font-bold select-none ${ringCls} ${className}`}
+        )} flex items-center justify-center text-white font-bold select-none shrink-0 ${ringCls} ${className}`}
         style={{ width: size, height: size, fontSize: size * 0.4 }}
       >
         {letter}
       </div>
     );
   } else {
+    const letter = (profile.name || "?").charAt(0).toUpperCase();
+    const bgGrad = getGradientByName(profile.name || "User");
     body = (
       <div
-        className={`rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 ${ringCls} ${className}`}
-        style={{ width: size, height: size }}
+        className={`rounded-full bg-gradient-to-br ${bgGrad} flex items-center justify-center text-white font-bold select-none shrink-0 shadow-md ${ringCls} ${className}`}
+        style={{ width: size, height: size, fontSize: size * 0.4 }}
       >
-        <User style={{ width: size * 0.45, height: size * 0.45 }} />
+        {letter}
       </div>
     );
   }
@@ -92,7 +110,7 @@ export default function UserAvatar({
   );
 }
 
-/** Avatar chỉ từ username (bình luận) — có ảnh hoặc chữ cái */
+/** Avatar cho bình luận */
 export function CommentAvatar({
   username,
   avatar,

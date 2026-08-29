@@ -120,6 +120,8 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     const data = await post("comment", {
       text: text.trim(),
       parentId: replyTo?.id || null,
+      avatar: accountName ? profile.avatar || null : null,
+      verified: Boolean(accountName),
     });
     if (data?.comment) {
       setComments((prev) => [...prev, data.comment]);

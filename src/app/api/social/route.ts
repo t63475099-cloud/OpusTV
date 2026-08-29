@@ -51,6 +51,8 @@ export async function GET(req: NextRequest) {
           parentId: c.parentId,
           likes: c.likes,
           createdAt: c.createdAt,
+          avatar: c.avatar || null,
+          verified: !!c.verified,
         })),
     });
   } catch (e) {
@@ -87,7 +89,9 @@ export async function POST(req: NextRequest) {
     if (action === "comment") {
       const text = String(body.text || "");
       const parentId = body.parentId ? String(body.parentId) : null;
-      const c = await addComment(slug, username, text, parentId);
+      const avatar = body.avatar != null ? String(body.avatar) : null;
+      const verified = !!body.verified;
+      const c = await addComment(slug, username, text, parentId, avatar, verified);
       return NextResponse.json({ ok: true, comment: c });
     }
     if (action === "like_comment") {

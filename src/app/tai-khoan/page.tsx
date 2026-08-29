@@ -313,7 +313,6 @@ export default function AccountPage() {
     else {
       updateProfile({
         name: displayName.trim().slice(0, 40),
-        verified: true,
       });
       void syncNow();
       setMsg("Tạo tài khoản thành công.");
@@ -364,7 +363,7 @@ export default function AccountPage() {
                 aria-label="Đổi ảnh đại diện"
               >
                 <UserAvatar
-                  profile={{ ...profile, name, verified: true }}
+                  profile={{ ...profile, name }}
                   size={96}
                   ring
                   showBadge

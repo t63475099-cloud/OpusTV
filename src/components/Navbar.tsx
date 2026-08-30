@@ -1,56 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Film, Menu, X, Search, Clock, Heart } from "lucide-react";
 import SearchBox from "./SearchBox";
 import UserAvatar from "./UserAvatar";
 import StreakBadge from "./StreakBadge";
-import { useAccountStore } from "@/lib/account";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  const [localProfile, setLocalProfile] = useState<any>(null);
 
-  // Lấy dữ liệu profile trực tiếp từ Store tài khoản
-  const storeProfile = useAccountStore((state: any) => state?.profile || state?.user || null);
-
-  useEffect(() => {
-    const syncProfile = () => {
-      try {
-        const stored =
-          localStorage.getItem("opustv_account") ||
-          localStorage.getItem("opustv_user") ||
-          localStorage.getItem("user_profile") ||
-          localStorage.getItem("profile");
-        if (stored) {
-          setLocalProfile(JSON.parse(stored));
-        }
-      } catch {
-        setLocalProfile(null);
-      }
-    };
-
-    syncProfile();
-    window.addEventListener("storage", syncProfile);
-    window.addEventListener("user-updated", syncProfile);
-    window.addEventListener("account-updated", syncProfile);
-    return () => {
-      window.removeEventListener("storage", syncProfile);
-      window.removeEventListener("user-updated", syncProfile);
-      window.removeEventListener("account-updated", syncProfile);
-    };
-  }, []);
-
-  // Ẩn toàn bộ Navbar trên cùng khi người dùng vào trang Cài đặt (/cai-dat)
+  // Ẩn thanh menu trên cùng khi người dùng ở trang /cai-dat
   if (pathname === "/cai-dat" || pathname?.startsWith("/cai-dat/")) {
     return null;
   }
-
-  const activeProfile = storeProfile || localProfile;
 
   const navLinks = [
     { label: "Trang chủ", href: "/" },
@@ -116,8 +82,8 @@ export default function Navbar() {
           {/* Daily Streak Badge */}
           <StreakBadge />
 
-          {/* User Account Avatar (Tự động hiển thị đúng ảnh & khung viền) */}
-          <UserAvatar profile={activeProfile} />
+          {/* Avatar hiển thị ở góc menu trang chủ */}
+          <UserAvatar size={36} />
 
           {/* Mobile Menu Toggle */}
           <button
@@ -149,7 +115,7 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-4 pt-2 pb-6 space-y-2 animate-in slide-in-from-top-4">
           <div className="space-y-1">

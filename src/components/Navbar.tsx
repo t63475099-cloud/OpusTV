@@ -1,181 +1,152 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import React, { useState } from "react";
 import Link from "next/link";
-import {
-  Menu,
-  X,
-  PlayCircle,
-  History,
-  Heart,
-  Settings,
-  Home,
-  Flame,
-  Clapperboard,
-  Music2,
-} from "lucide-react";
-import { NAV_CATEGORIES } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
+import { Film, Menu, X, Search, Music, Clock, Heart, Sliders } from "lucide-react";
 import SearchBox from "./SearchBox";
+import UserAvatar from "./UserAvatar";
+import StreakBadge from "./StreakBadge";
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const pathname = usePathname() || "/";
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
-  const isMinimalChrome =
-    pathname.startsWith("/cai-dat") || pathname.startsWith("/tai-khoan");
-
-  const hideChips =
-    isMinimalChrome ||
-    pathname.startsWith("/nhac") ||
-    pathname.startsWith("/phim/");
-
-  /** Search luôn ngoài trên mobile (trừ trang form) */
-  const showSearch = !isMinimalChrome;
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  /** Chiều cao header → content không bị đè */
-  useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.navChips = hideChips ? "0" : "1";
-    root.dataset.navMinimal = isMinimalChrome ? "1" : "0";
-    return () => {
-      root.dataset.navChips = "0";
-      root.dataset.navMinimal = "0";
-    };
-  }, [hideChips, isMinimalChrome]);
-
-  const mainNav = NAV_CATEGORIES.filter((i) => i.href !== "/cai-dat");
-
-  const drawerLinks = [
-    { href: "/", name: "Trang chủ", icon: Home },
-    { href: "/nhac", name: "Opus Music", icon: Music2 },
-    { href: "/danh-sach/phim-moi-cap-nhat", name: "Mới cập nhật", icon: Flame },
-    { href: "/yeu-thich", name: "Yêu thích", icon: Heart },
-    { href: "/lich-su", name: "Lịch sử xem", icon: History },
-    ...mainNav
-      .filter(
-        (i) =>
-          !["/", "/nhac", "/yeu-thich", "/lich-su"].includes(i.href) &&
-          i.href !== "/danh-sach/phim-moi-cap-nhat"
-      )
-      .slice(0, 8)
-      .map((i) => ({ href: i.href, name: i.name, icon: Clapperboard })),
-    { href: "/cai-dat", name: "Cài đặt", icon: Settings },
+  const navLinks = [
+    { label: "Trang chủ", href: "/" },
+    { label: "Phim lẻ", href: "/danh-sach/phim-le" },
+    { label: "Phim bộ", href: "/danh-sach/phim-bo" },
+    { label: "Hoạt hình", href: "/danh-sach/hoat-hinh" },
+    { label: "TV Shows", href: "/danh-sach/tv-shows" },
+    { label: "Nhạc", href: "/nhac" },
   ];
 
   return (
-    <header
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
-        scrolled || menuOpen
-          ? "glass-nav border-b border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
-          : "glass-nav border-b border-transparent",
-        "overflow-visible"
-      )}
-      style={{
-        paddingTop: "env(safe-area-inset-top, 0px)",
-        paddingLeft: "env(safe-area-inset-left, 0px)",
-        paddingRight: "env(safe-area-inset-right, 0px)",
-      }}
-    >
-      {/* Hàng 1: logo + search ngoài (mobile & desktop) */}
-      <div className="flex items-center gap-1.5 sm:gap-2 h-12 sm:h-14 px-2.5 sm:px-4">
-        <button
-          type="button"
-          className="lg:hidden p-2 -ml-0.5 rounded-full text-zinc-200 hover:bg-white/10 shrink-0"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
-        >
-          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 shrink-0"
-          onClick={() => setMenuOpen(false)}
-        >
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-red-600/40 ring-1 ring-white/20">
-            <PlayCircle className="w-5 h-5 text-white fill-white/30" />
-          </div>
-          <span className="hidden xs:inline text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap min-[380px]:inline">
-            Opus<span className="font-semibold">Film</span>
-          </span>
-        </Link>
-
-        {/* Search ngoài — mobile + desktop */}
-        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-1 overflow-visible">
-          {showSearch && (
-            <div className="w-full max-w-[640px]">
-              <SearchBox variant="desktop" />
+    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-neutral-950/80 border-b border-white/10 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        {/* Logo & Main Nav */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 via-red-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-red-500/20 group-hover:scale-105 transition-transform">
+              <Film className="w-5 h-5" />
             </div>
-          )}
+            <span className="font-bold text-xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-neutral-200 to-neutral-400">
+              Opus<span className="text-red-500">TV</span>
+            </span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    isActive
+                      ? "text-white bg-white/10 shadow-sm"
+                      : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Search & Actions */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Desktop Search */}
+          <div className="hidden lg:block w-64">
+            <SearchBox />
+          </div>
+
+          {/* Mobile Search Button */}
+          <button
+            type="button"
+            onClick={() => setShowSearchModal(true)}
+            className="lg:hidden p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+            aria-label="Tìm kiếm"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+
+          {/* Daily Watch Streak Badge */}
+          <StreakBadge />
+
+          {/* User Account */}
+          <UserAvatar />
+
+          {/* Mobile Menu Toggle */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+            aria-label="Mở menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </div>
 
-      {/* Hàng 2: chip — chỉ mobile, không đè form */}
-      {!hideChips && (
-        <div className="flex lg:hidden items-center gap-2 px-3 pb-2 overflow-x-auto scrollbar-hide h-10">
-          <Link
-            href="/"
-            className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-white to-zinc-100 text-black text-sm font-semibold shadow-sm"
-          >
-            Tất cả
-          </Link>
-          {mainNav.slice(0, 8).map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="shrink-0 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm transition backdrop-blur-md border border-white/5"
+      {/* Mobile Search Bar Popup */}
+      {showSearchModal && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md p-4 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <span className="font-semibold text-white">Tìm kiếm</span>
+            <button
+              onClick={() => setShowSearchModal(false)}
+              className="p-2 text-neutral-400 hover:text-white rounded-lg"
             >
-              {item.name}
-            </Link>
-          ))}
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <SearchBox autoFocus onClose={() => setShowSearchModal(false)} />
         </div>
       )}
 
-      {menuOpen && (
-        <div
-          className="lg:hidden border-t border-white/10 glass-strong px-3 py-3 space-y-1 max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain"
-          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
-        >
-          <nav className="space-y-0.5" aria-label="Menu chính">
-            {drawerLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 active:scale-[0.98]",
-                  pathname === item.href ||
-                    (item.href !== "/" && pathname.startsWith(item.href.split("?")[0]))
-                    ? "bg-[#272727] text-white font-medium"
-                    : "text-zinc-200 hover:bg-white/10"
-                )}
-              >
-                <item.icon className="w-5 h-5 text-zinc-400 shrink-0" />
-                <span className="truncate">{item.name}</span>
-              </Link>
-            ))}
-          </nav>
+      {/* Mobile Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-4 pt-2 pb-6 space-y-2 animate-in slide-in-from-top-4">
+          <div className="space-y-1">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-lg text-base font-medium ${
+                    isActive
+                      ? "text-white bg-white/10"
+                      : "text-neutral-300 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="pt-4 border-t border-neutral-800 grid grid-cols-2 gap-2 text-sm text-neutral-400">
+            <Link
+              href="/lich-su"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 hover:text-white"
+            >
+              <Clock className="w-4 h-4" /> Lịch sử xem
+            </Link>
+            <Link
+              href="/yeu-thich"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 hover:text-white"
+            >
+              <Heart className="w-4 h-4" /> Yêu thích
+            </Link>
+          </div>
         </div>
       )}
     </header>

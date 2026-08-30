@@ -13,7 +13,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // 1. Tự động ẩn toàn bộ thanh menu trên cùng khi ở trang Cài đặt (/cai-dat)
+  // Tự động ẩn thanh menu trên cùng khi người dùng ở trang Cài đặt (/cai-dat)
   if (pathname === "/cai-dat" || pathname?.startsWith("/cai-dat/")) {
     return null;
   }
@@ -30,7 +30,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-neutral-950/80 border-b border-white/10 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Logo & Main Navigation */}
+        {/* Logo & Menu chính */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 via-red-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-red-500/20 group-hover:scale-105 transition-transform">
@@ -41,7 +41,7 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Menu Desktop */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -62,14 +62,14 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Right Actions */}
+        {/* Khối chức năng bên phải */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {/* Desktop Search */}
+          {/* Ô tìm kiếm desktop */}
           <div className="hidden lg:block w-64">
             <SearchBox />
           </div>
 
-          {/* Mobile Search Button */}
+          {/* Nút tìm kiếm mobile */}
           <button
             type="button"
             onClick={() => setShowSearchModal(true)}
@@ -79,13 +79,13 @@ export default function Navbar() {
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Chuỗi xem mỗi ngày (Daily Watch Streak) */}
+          {/* Chuỗi xem mỗi ngày (Daily Watch Streak 🔥) */}
           <StreakBadge />
 
-          {/* Avatar hiển thị chuẩn xác cả ảnh và khung viền đã chọn */}
+          {/* Avatar hiển thị tự động trên thanh menu */}
           <UserAvatar size={36} />
 
-          {/* Mobile Menu Toggle */}
+          {/* Nút mở Menu Mobile */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -97,11 +97,11 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Search Modal */}
+      {/* Modal tìm kiếm mobile */}
       {showSearchModal && (
         <div className="lg:hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <span className="font-semibold text-white text-base">Tìm kiếm</span>
+            <span className="font-semibold text-white text-base">Tìm kiếm phim</span>
             <button
               onClick={() => setShowSearchModal(false)}
               className="p-2 text-neutral-400 hover:text-white rounded-lg"
@@ -115,7 +115,7 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Mobile Drawer */}
+      {/* Menu rút gọn mobile */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-4 pt-2 pb-6 space-y-2 animate-in slide-in-from-top-4">
           <div className="space-y-1">

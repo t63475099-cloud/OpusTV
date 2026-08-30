@@ -22,7 +22,7 @@ export default function UserAvatar({
   const [mounted, setMounted] = useState(false);
   const [localData, setLocalData] = useState<any>(null);
 
-  // Lấy dữ liệu từ useAccountStore
+  // Lấy dữ liệu profile trực tiếp từ Zustand store
   const storeData = useAccountStore((state: any) => {
     if (!state) return null;
     return state.account || state.profile || state.user || state;
@@ -30,10 +30,11 @@ export default function UserAvatar({
 
   useEffect(() => {
     setMounted(true);
-    const readStorage = () => {
+    const syncData = () => {
       try {
         const stored =
           localStorage.getItem("opustv_account") ||
+          localStorage.getItem("opustv_profile") ||
           localStorage.getItem("opustv_user") ||
           localStorage.getItem("user_profile") ||
           localStorage.getItem("profile");
@@ -45,21 +46,21 @@ export default function UserAvatar({
       }
     };
 
-    readStorage();
-    window.addEventListener("storage", readStorage);
-    window.addEventListener("user-updated", readStorage);
-    window.addEventListener("account-updated", readStorage);
-    window.addEventListener("profile-updated", readStorage);
+    syncData();
+    window.addEventListener("storage", syncData);
+    window.addEventListener("user-updated", syncData);
+    window.addEventListener("account-updated", syncData);
+    window.addEventListener("profile-updated", syncData);
 
     return () => {
-      window.removeEventListener("storage", readStorage);
-      window.removeEventListener("user-updated", readStorage);
-      window.removeEventListener("account-updated", readStorage);
-      window.removeEventListener("profile-updated", readStorage);
+      window.removeEventListener("storage", syncData);
+      window.removeEventListener("user-updated", syncData);
+      window.removeEventListener("account-updated", syncData);
+      window.removeEventListener("profile-updated", syncData);
     };
   }, []);
 
-  // Ưu tiên: prop truyền vào > Store Zustand > LocalStorage
+  // Ưu tiên: prop truyền vào > Store > LocalStorage
   const user = propProfile || storeData || localData;
 
   const avatarUrl =
@@ -105,7 +106,6 @@ export default function UserAvatar({
             className="w-full h-full object-cover select-none"
             loading="eager"
             onError={(e) => {
-              // Dự phòng khi link ảnh bị lỗi
               (e.target as HTMLElement).style.display = "none";
             }}
           />

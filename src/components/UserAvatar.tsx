@@ -94,3 +94,24 @@ export default function UserAvatar({
     </div>
   );
 }
+
+// Thêm named export này để tương thích với VideoSocial.tsx
+export function CommentAvatar({
+  username,
+  avatar,
+  size = 36,
+  verified = false,
+}: {
+  username: string;
+  avatar?: string | null;
+  size?: number;
+  verified?: boolean;
+}) {
+  return (
+    <UserAvatar
+      profile={{ name: username, avatar, verified }}
+      size={size}
+      showBadge={verified}
+    />
+  );
+}

@@ -383,13 +383,14 @@ function SettingsInner() {
           </div>
         )}
 
-        />
+        {section === "player" && (
+          <>
             <Toggle label="Tự phát khi mở tập" checked={settings.autoPlayStart} onChange={(v) => set({ autoPlayStart: v })} />
             <Toggle label="Chạm đôi để tua" checked={settings.doubleTapSeek !== false} onChange={(v) => set({ doubleTapSeek: v })} />
             <ChipGroup
               label="Thời gian tua"
               value={settings.seekSeconds ?? 10}
-              options={[1, 5, 10, 20, 30].map((n) => ({ value: n as 1|5|10|20|30, label: `${n}s` }))}
+              options={[1, 5, 10, 20, 30].map((n) => ({ value: n as 1 | 5 | 10 | 20 | 30, label: `${n}s` }))}
               onChange={(v) => set({ seekSeconds: v })}
             />
             <ChipGroup
@@ -412,11 +413,6 @@ function SettingsInner() {
               ]}
               onChange={(v) => set({ fillMode: v })}
             />
-          </>
-        )}
-
-        {section === "player" && (
-          <>
             <Toggle label="Luôn hiện điều khiển" checked={!!settings.alwaysShowControls} onChange={(v) => set({ alwaysShowControls: v })} />
             <Toggle label="Nút Play giữa" checked={settings.centerPlayButton !== false} onChange={(v) => set({ centerPlayButton: v })} />
             <Toggle label="Hiện mã thời gian" checked={settings.showTimeCode !== false} onChange={(v) => set({ showTimeCode: v })} />

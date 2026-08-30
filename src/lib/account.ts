@@ -10,6 +10,7 @@ interface AccountState {
   logout: () => void;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
   resetPassword: (username: string, pin: string, newPass: string) => Promise<{ ok: boolean; error?: string }>;
+  refreshMe: () => Promise<void>;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -30,10 +31,7 @@ export const useAccountStore = create<AccountState>()(
             return { ok: false, error: data.error || "Đăng nhập thất bại" };
           }
           set({ username: data.username || username, lastSyncAt: Date.now() });
-
-          // Sau khi đăng nhập thành công, tự động gọi syncNow để kéo thông tin mới nhất từ server (bao gồm avatar)
           await get().syncNow();
-
           return { ok: true };
         } catch (e: any) {
           return { ok: false, error: e?.message || "Lỗi mạng" };
@@ -83,7 +81,6 @@ export const useAccountStore = create<AccountState>()(
             return { ok: false, error: data.error || "Đồng bộ thất bại" };
           }
 
-          // Nếu server trả về avatar đã đồng bộ, cập nhật ngay vào thiết bị này
           if (data.user?.avatar) {
             useSettingsStore.getState().setAvatar(data.user.avatar);
           }
@@ -93,6 +90,10 @@ export const useAccountStore = create<AccountState>()(
         } catch (e: any) {
           return { ok: false, error: e?.message || "Lỗi đồng bộ" };
         }
+      },
+
+      refreshMe: async () => {
+        await get().syncNow();
       },
 
       resetPassword: async (username: string, pin: string, newPass: string) => {

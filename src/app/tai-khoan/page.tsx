@@ -14,7 +14,6 @@ import {
   Check,
   X,
   Loader2,
-  BadgeCheck,
   Camera,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
@@ -343,19 +342,14 @@ export default function AccountPage() {
       <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
         <AuroraBg />
         <div className={`relative z-10 mx-auto max-w-lg ${mounted ? "auth-enter" : "opacity-0"}`}>
-          {/* Cover kiểu mạng xã hội */}
-          <div className="relative h-36 sm:h-44 w-full overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-600 via-red-700 to-orange-600 opacity-90" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.25),_transparent_55%)]" />
+          <div className="relative px-4 pt-4">
             <Link
               href="/cai-dat"
-              className="absolute left-3 top-3 z-10 rounded-full bg-black/40 px-3 py-1.5 text-xs text-white backdrop-blur"
+              className="mb-4 inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white hover:bg-white/10"
             >
               ← Cài đặt
             </Link>
-          </div>
 
-          <div className="relative px-4 -mt-14 sm:-mt-16">
             <div className="flex items-end gap-3">
               <button
                 type="button"
@@ -364,10 +358,9 @@ export default function AccountPage() {
                 aria-label="Đổi ảnh đại diện"
               >
                 <UserAvatar
-                  profile={{ ...profile, name, verified: true }}
+                  profile={{ ...profile, name }}
                   size={96}
-                  ring
-                  showBadge
+                  showBadge={!!profile.verified}
                 />
                 <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition">
                   <Camera className="w-7 h-7 text-white" />
@@ -385,9 +378,8 @@ export default function AccountPage() {
                 }}
               />
               <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-1.5 truncate">
-                  <span className="truncate">{name}</span>
-                  <BadgeCheck className="w-5 h-5 shrink-0 text-[#1d9bf0] fill-[#1d9bf0]" />
+                <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
+                  {name}
                 </h1>
                 <p className="text-sm text-zinc-400">@{username}</p>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense, type ReactNode } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -41,7 +41,6 @@ import {
 type Section =
   | "root"
   | "account"
-  | "avatar"
   | "playback"
   | "player"
   | "display"
@@ -239,7 +238,6 @@ function SettingsInner() {
   const titleMap: Record<Section, string> = {
     root: "Cài đặt",
     account: "Tài khoản",
-    avatar: "Avatar",
     playback: "Phát video",
     player: "Giao diện player",
     display: "Giao diện",
@@ -255,9 +253,9 @@ function SettingsInner() {
   };
 
   return (
-    <div className="min-h-screen pt-[6.5rem] lg:pt-16 pb-24 max-w-xl mx-auto animate-fade-up">
-      {/* Header như YouTube */}
-      <div className="sticky top-14 lg:top-16 z-30 flex items-center gap-3 px-3 py-3 glass-nav border-b border-white/10">
+    <div className="min-h-screen pt-[6.5rem] lg:pt-16 pb-24 max-w-xl mx-auto">
+      {/* Header */}
+      <div className="sticky top-14 lg:top-16 z-30 flex items-center gap-3 px-3 py-3 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-white/10">
         {section !== "root" ? (
           <button
             type="button"
@@ -281,18 +279,19 @@ function SettingsInner() {
             <p className="px-4 pt-4 pb-2 text-xs font-semibold text-[#aaa] uppercase tracking-wide">
               Tài khoản
             </p>
-            <RowLink
-              icon={<User className="w-5 h-5" />}
-              label="Tài khoản"
-              desc={profile.loggedIn ? profile.name : "Đăng nhập"}
-              onClick={() => go("account")}
-            />
-            <RowLink
-              icon={<Camera className="w-5 h-5" />}
-              label="Avatar"
-              desc="Ảnh đại diện & căn chỉnh"
-              onClick={() => go("avatar")}
-            />
+            <Link
+              href="/tai-khoan"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition border-b border-white/5"
+            >
+              <span className="text-zinc-400"><User className="w-5 h-5" /></span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm text-white">Tài khoản</span>
+                <span className="block text-xs text-[#aaa] truncate">
+                  {profile.loggedIn ? profile.name : "Đăng nhập"}
+                </span>
+              </span>
+              <span className="text-zinc-500 text-sm">→</span>
+            </Link>
 
             <p className="px-4 pt-5 pb-2 text-xs font-semibold text-[#aaa] uppercase tracking-wide">
               Phát & giao diện
@@ -372,155 +371,27 @@ function SettingsInner() {
         )}
 
         {section === "account" && (
-          <>
-
+          <div className="px-4 py-6">
             <Link
               href="/tai-khoan"
-              className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-red-600/20 via-rose-600/10 to-orange-500/10 px-4 py-3.5 text-sm text-white backdrop-blur-md hover:border-red-500/40 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-red-600/25 via-rose-600/15 to-transparent px-4 py-4 text-white transition hover:border-red-500/40 active:scale-[0.99]"
             >
-              <span>
-                <span className="font-semibold block">Đăng nhập / Đăng ký</span>
+              <span className="font-semibold">
+                {profile.loggedIn ? "Hồ sơ của bạn" : "Đăng nhập / Đăng ký"}
               </span>
-              <span className="text-red-400 text-xs font-medium shrink-0">Mở →</span>
+              <span className="text-sm text-red-300">Mở →</span>
             </Link>
-
-          <div className="px-4 py-4 space-y-4">
-            {profile.loggedIn ? (
-              <>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#212121]">
-                  <UserAvatar profile={profile} size={52} ring />
-                  <div className="min-w-0">
-                    <p className="text-white font-medium truncate">{profile.name}</p>
-                    {profile.email && (
-                      <p className="text-sm text-[#aaa] truncate">{profile.email}</p>
-                    )}
-                  </div>
-                </div>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-[#212121] rounded-xl px-4 py-3 text-white text-sm outline-none border border-transparent focus:border-[#3ea6ff]"
-                  placeholder="Tên hiển thị"
-                />
-                <button
-                  type="button"
-                  onClick={() => updateProfile({ name: name.trim().slice(0, 40) })}
-                  className="px-4 py-2 rounded-full bg-[#272727] text-sm text-white"
-                >
-                  Lưu tên
-                </button>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="flex items-center gap-2 text-red-400 text-sm"
-                >
-                  <LogOut className="w-4 h-4" /> Đăng xuất
-                </button>
-              </>
-            ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  login(name, email);
-                }}
-                className="space-y-3"
-              >
-                
-                <Link
-                  href="/tai-khoan"
-                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-red-600 to-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-600/30 hover:brightness-110 transition duration-300"
-                >
-                  Đăng nhập / Đăng ký tài khoản thật
-                </Link>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Tên *"
-                  required
-                  className="w-full bg-[#212121] rounded-xl px-4 py-3 text-white text-sm outline-none"
-                />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email (tuỳ chọn)"
-                  className="w-full bg-[#212121] rounded-xl px-4 py-3 text-white text-sm outline-none"
-                />
-                <button
-                  type="submit"
-                  className="w-full py-3 rounded-full bg-white text-black font-semibold text-sm flex items-center justify-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" /> Đăng nhập nhanh
-                </button>
-              </form>
-            )}
-          </div>
-          </>
-        )}
-
-        {section === "avatar" && (
-          <div className="px-4 py-4 space-y-4">
-            {!profile.loggedIn ? (
-              <p className="text-sm text-[#aaa]">Đăng nhập để chỉnh avatar.</p>
-            ) : (
-              <>
-                <div className="flex justify-center">
-                  <UserAvatar profile={profile} size={96} ring />
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    className="px-4 py-2 rounded-full bg-white text-black text-sm font-medium"
-                  >
-                    Tải ảnh
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAvatarPosition("50% 35%")}
-                    className="px-4 py-2 rounded-full bg-[#272727] text-white text-sm inline-flex items-center gap-1"
-                  >
-                    <Crosshair className="w-3.5 h-3.5" /> Tự căn
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file || !file.type.startsWith("image/")) return;
-                    if (file.size > 2 * 1024 * 1024) {
-                      alert("Ảnh tối đa 2MB");
-                      return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = () => setAvatar(reader.result as string, "50% 50%");
-                    reader.readAsDataURL(file);
-                    e.target.value = "";
-                  }} />
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {AVATAR_PRESETS.map((pr) => (
-                    <button
-                      key={pr.id}
-                      type="button"
-                      onClick={() => setAvatar(pr.id)}
-                      className={`w-10 h-10 rounded-full bg-gradient-to-br ${pr.gradient} ring-2 ${
-                        profile.avatar === pr.id ? "ring-white" : "ring-transparent"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
           </div>
         )}
 
         {section === "playback" && (
           <>
-            <Toggle label="Tự phát tập tiếp theo" checked={settings.autoPlayNext} onChange={(v) => set({ autoPlayNext: v })} />
             <Toggle label="Tự phát khi mở tập" checked={settings.autoPlayStart} onChange={(v) => set({ autoPlayStart: v })} />
             <Toggle label="Chạm đôi để tua" checked={settings.doubleTapSeek !== false} onChange={(v) => set({ doubleTapSeek: v })} />
             <ChipGroup
               label="Thời gian tua"
               value={settings.seekSeconds ?? 10}
-              options={[1, 5, 10, 20, 30].map((n) => ({ value: n as 1|5|10|20|30, label: `${n}s` }))}
+              options={[1, 5, 10, 20, 30].map((n) => ({ value: n as 1 | 5 | 10 | 20 | 30, label: `${n}s` }))}
               onChange={(v) => set({ seekSeconds: v })}
             />
             <ChipGroup

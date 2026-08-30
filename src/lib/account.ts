@@ -1,26 +1,15 @@
-"use client";
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { SyncPayload } from "./userData";
-import { mergePayload } from "./userData";
-import { useHistoryStore } from "./history";
-import { useFavoritesStore } from "./favorites";
-import { useMusicHistoryStore } from "./musicHistory";
 import { useSettingsStore } from "./settings";
 
 interface AccountState {
   username: string | null;
-  storage: "neon" | null;
   lastSyncAt: number | null;
-  setSession: (username: string) => void;
-  logout: () => Promise<void>;
-  collectLocal: () => SyncPayload;
-  applyRemote: (data: SyncPayload) => void;
-  login: (username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (username: string, password: string, recoveryPin: string) => Promise<{ ok: boolean; error?: string }>;
-  resetPassword: (username: string, recoveryPin: string, newPassword: string) => Promise<{ ok: boolean; error?: string; message?: string }>;
+  login: (username: string, pass: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (username: string, pass: string, pin: string) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => void;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
+  resetPassword: (username: string, pin: string, newPass: string) => Promise<{ ok: boolean; error?: string }>;
   refreshMe: () => Promise<void>;
 }
 
@@ -28,173 +17,104 @@ export const useAccountStore = create<AccountState>()(
   persist(
     (set, get) => ({
       username: null,
-      storage: null,
       lastSyncAt: null,
 
-      setSession: (username) => set({ username, storage: "neon" }),
+      login: async (username: string, pass: string) => {
+        try {
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password: pass }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            return { ok: false, error: data.error || "Đăng nhập thất bại" };
+          }
+          set({ username: data.username || username, lastSyncAt: Date.now() });
+          await get().syncNow();
+          return { ok: true };
+        } catch (e: any) {
+          return { ok: false, error: e?.message || "Lỗi mạng" };
+        }
+      },
+
+      register: async (username: string, pass: string, pin: string) => {
+        try {
+          const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password: pass, recoveryPin: pin }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            return { ok: false, error: data.error || "Đăng ký thất bại" };
+          }
+          set({ username: data.username || username, lastSyncAt: Date.now() });
+          return { ok: true };
+        } catch (e: any) {
+          return { ok: false, error: e?.message || "Lỗi mạng" };
+        }
+      },
 
       logout: async () => {
         try {
           await fetch("/api/auth/logout", { method: "POST" });
         } catch {
-          /* ignore */
+          // bỏ qua lỗi mạng khi logout
         }
-        set({ username: null, storage: null, lastSyncAt: null });
-        useSettingsStore.setState((s) => ({
-          profile: { ...s.profile, loggedIn: false },
-        }));
-      },
-
-      collectLocal: () => {
-        const history = useHistoryStore.getState().history;
-        const favorites = useFavoritesStore.getState().favorites;
-        const musicWatched = useMusicHistoryStore.getState().watched;
-        const settings = useSettingsStore.getState().settings;
-        const profile = useSettingsStore.getState().profile;
-        return {
-          history,
-          favorites,
-          musicWatched,
-          settings,
-          profile,
-          updatedAt: Date.now(),
-        };
-      },
-
-      applyRemote: (data) => {
-        if (Array.isArray(data.history)) {
-          useHistoryStore.setState({ history: data.history as never[] });
-        }
-        if (Array.isArray(data.favorites)) {
-          useFavoritesStore.setState({ favorites: data.favorites as never[] });
-        }
-        if (Array.isArray(data.musicWatched)) {
-          useMusicHistoryStore.getState().replaceAll(data.musicWatched as never[]);
-        }
-        if (data.settings && typeof data.settings === "object") {
-          useSettingsStore.setState((s) => ({
-            settings: { ...s.settings, ...(data.settings as object) },
-          }));
-        }
-        if (data.profile && typeof data.profile === "object") {
-          useSettingsStore.setState((s) => ({
-            profile: {
-              ...s.profile,
-              ...(data.profile as object),
-              loggedIn: true,
-            },
-          }));
-        }
-      },
-
-      register: async (username, password, recoveryPin: string) => {
-        try {
-          const res = await fetch("/api/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password, recoveryPin }),
-          });
-          const data = await res.json();
-          if (!data.ok) return { ok: false, error: data.error || "Đăng ký thất bại" };
-          get().setSession(data.username);
-          // Đẩy dữ liệu local lên Neon (merge)
-          await fetch("/api/auth/sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data: get().collectLocal() }),
-          });
-          set({ lastSyncAt: Date.now() });
-          useSettingsStore.setState((s) => ({
-            profile: { ...s.profile, name: data.username, loggedIn: true },
-          }));
-          return { ok: true };
-        } catch {
-          return { ok: false, error: "Không kết nối được máy chủ" };
-        }
-      },
-
-      login: async (username, password) => {
-        try {
-          const res = await fetch("/api/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
-          });
-          const data = await res.json();
-          if (!data.ok) return { ok: false, error: data.error || "Đăng nhập thất bại" };
-          get().setSession(data.username);
-          const local = get().collectLocal();
-          const remote = (data.data || {
-            history: [],
-            favorites: [],
-            musicWatched: [],
-            updatedAt: 0,
-          }) as SyncPayload;
-          const merged = mergePayload(local, remote);
-          get().applyRemote(merged);
-          await fetch("/api/auth/sync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data: merged }),
-          });
-          set({ lastSyncAt: Date.now() });
-          useSettingsStore.setState((s) => ({
-            profile: { ...s.profile, name: data.username, loggedIn: true },
-          }));
-          return { ok: true };
-        } catch {
-          return { ok: false, error: "Không kết nối được máy chủ" };
-        }
+        set({ username: null, lastSyncAt: null });
       },
 
       syncNow: async () => {
-        if (!get().username) return { ok: false, error: "Chưa đăng nhập" };
         try {
+          const currentAvatar = useSettingsStore.getState().profile.avatar;
+
           const res = await fetch("/api/auth/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data: get().collectLocal() }),
+            body: JSON.stringify({
+              avatar: currentAvatar || null,
+            }),
           });
           const data = await res.json();
-          if (!data.ok) return { ok: false, error: data.error || "Đồng bộ lỗi" };
-          if (data.data) get().applyRemote(data.data);
+          if (!res.ok || !data.ok) {
+            return { ok: false, error: data.error || "Đồng bộ thất bại" };
+          }
+
+          if (data.user?.avatar) {
+            useSettingsStore.getState().setAvatar(data.user.avatar);
+          }
+
           set({ lastSyncAt: Date.now() });
           return { ok: true };
-        } catch {
-          return { ok: false, error: "Mạng lỗi" };
+        } catch (e: any) {
+          return { ok: false, error: e?.message || "Lỗi đồng bộ" };
         }
       },
 
       refreshMe: async () => {
-        try {
-          const res = await fetch("/api/auth/me");
-          const data = await res.json();
-          if (data.ok && data.user?.username) {
-            set({ username: data.user.username, storage: "neon" });
-          } else {
-            set({ username: null, storage: null });
-          }
-        } catch {
-          /* ignore */
-        }
+        await get().syncNow();
       },
 
-      resetPassword: async (username, recoveryPin, newPassword) => {
+      resetPassword: async (username: string, pin: string, newPass: string) => {
         try {
           const res = await fetch("/api/auth/reset-password", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, recoveryPin, newPassword }),
+            body: JSON.stringify({ username, recoveryPin: pin, newPassword: newPass }),
           });
           const data = await res.json();
-          if (!data.ok) return { ok: false, error: data.error || "Không đặt lại được" };
-          return { ok: true, message: data.message };
-        } catch {
-          return { ok: false, error: "Không kết nối được máy chủ" };
+          if (!res.ok || !data.ok) {
+            return { ok: false, error: data.error || "Khôi phục thất bại" };
+          }
+          return { ok: true };
+        } catch (e: any) {
+          return { ok: false, error: e?.message || "Lỗi mạng" };
         }
       },
-
     }),
-    { name: "opusfilm-account-session" }
+    {
+      name: "opusfilm-account-storage",
+    }
   )
 );

@@ -14,11 +14,18 @@ import {
   Check,
   X,
   Loader2,
+<<<<<<< HEAD
   BadgeCheck,
   Camera,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore, AVATAR_PRESETS, AVATAR_FRAMES } from "@/lib/settings";
+=======
+  Camera,
+} from "lucide-react";
+import { useAccountStore } from "@/lib/account";
+import { useSettingsStore } from "@/lib/settings";
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
 import UserAvatar from "@/components/UserAvatar";
 
 type Mode = "login" | "register" | "recover";
@@ -172,6 +179,7 @@ export default function AccountPage() {
   const [newPin, setNewPin] = useState("");
   const [pinMsg, setPinMsg] = useState("");
   const [editName, setEditName] = useState("");
+<<<<<<< HEAD
 
   /** Cắt ảnh vuông giữa + nén JPEG để đồng bộ thiết bị */
   const processAvatarFile = (file: File) => {
@@ -204,8 +212,10 @@ export default function AccountPage() {
     };
     reader.readAsDataURL(file);
   };
+=======
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
 
-  const strength = useMemo(() => passwordStrength(pass), [pass]);
+  const currentDisplayName = profile.name || username || "";
 
   useEffect(() => {
     setMounted(true);
@@ -219,6 +229,46 @@ export default function AccountPage() {
       /* */
     }
   }, []);
+
+  useEffect(() => {
+    if (currentDisplayName) {
+      setEditName(currentDisplayName);
+    }
+  }, [currentDisplayName]);
+
+  /** Cắt ảnh vuông giữa + nén JPEG chuẩn 128px siêu nhẹ để đồng bộ qua mạng */
+  const processAvatarFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 8 * 1024 * 1024) {
+      setErr("Ảnh tối đa 8MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const size = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+        setAvatar(dataUrl, "50% 50%");
+        void useAccountStore.getState().syncNow();
+        setMsg("Đã cập nhật và đồng bộ ảnh đại diện");
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const strength = useMemo(() => passwordStrength(pass), [pass]);
 
   useEffect(() => {
     const next: FieldErrors = {};
@@ -281,7 +331,7 @@ export default function AccountPage() {
       setBusy(false);
       if (!res.ok) setErr(res.error || "Thất bại");
       else {
-        setMsg(res.message || "Đã đặt lại mật khẩu.");
+        setMsg("Đã đặt lại mật khẩu.");
         setPass("");
         setPass2("");
         setPin("");
@@ -303,6 +353,7 @@ export default function AccountPage() {
       else {
         setMsg("Đăng nhập thành công.");
         setPass("");
+        void syncNow();
       }
       return;
     }
@@ -313,7 +364,10 @@ export default function AccountPage() {
     else {
       updateProfile({
         name: displayName.trim().slice(0, 40),
+<<<<<<< HEAD
         verified: true,
+=======
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
       });
       void syncNow();
       setMsg("Tạo tài khoản thành công.");
@@ -340,6 +394,7 @@ export default function AccountPage() {
   if (username) {
     const name = profile.name || username;
     return (
+<<<<<<< HEAD
       <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
         <AuroraBg />
         <div className={`relative z-10 mx-auto max-w-lg ${mounted ? "auth-enter" : "opacity-0"}`}>
@@ -350,13 +405,27 @@ export default function AccountPage() {
             <Link
               href="/cai-dat"
               className="absolute left-3 top-3 z-10 rounded-full bg-black/40 px-3 py-1.5 text-xs text-white backdrop-blur"
+=======
+      <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-20">
+        <AuroraBg />
+        <div className={`relative z-10 mx-auto max-w-lg px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>
+          <div className="mb-6">
+            <Link
+              href="/cai-dat"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur hover:bg-white/15 transition"
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
             >
               ← Cài đặt
             </Link>
           </div>
 
+<<<<<<< HEAD
           <div className="relative px-4 -mt-14 sm:-mt-16">
             <div className="flex items-end gap-3">
+=======
+          <div className="relative">
+            <div className="flex items-center gap-4">
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
@@ -384,20 +453,34 @@ export default function AccountPage() {
                   e.target.value = "";
                 }}
               />
+<<<<<<< HEAD
               <div className="flex-1 min-w-0 pb-1">
                 <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-1.5 truncate">
                   <span className="truncate">{name}</span>
                   <BadgeCheck className="w-5 h-5 shrink-0 text-[#1d9bf0] fill-[#1d9bf0]" />
+=======
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
+                  {name}
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
                 </h1>
                 <p className="text-sm text-zinc-400">@{username}</p>
               </div>
             </div>
 
+<<<<<<< HEAD
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
                 className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+=======
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 transition"
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
               >
                 Đổi ảnh
               </button>
@@ -412,7 +495,11 @@ export default function AccountPage() {
                   if (!r.ok) setErr(r.error || "Lỗi");
                   else setMsg("Đã đồng bộ các thiết bị");
                 }}
+<<<<<<< HEAD
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+=======
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 transition"
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Đồng bộ
@@ -420,7 +507,11 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => logout()}
+<<<<<<< HEAD
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10"
+=======
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition"
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
               >
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
@@ -431,26 +522,45 @@ export default function AccountPage() {
                 <label className="text-xs text-zinc-500 mb-1.5 block">Tên hiển thị</label>
                 <div className="flex gap-2">
                   <input
+<<<<<<< HEAD
                     value={editName || name}
                     onChange={(e) => setEditName(e.target.value.slice(0, 40))}
+=======
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value.slice(0, 40))}
+                    placeholder="Nhập tên hiển thị"
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
                     className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-rose-500"
                   />
                   <button
                     type="button"
                     onClick={() => {
+<<<<<<< HEAD
                       const n = (editName || name).trim();
                       if (n.length < 2) return;
+=======
+                      const n = editName.trim();
+                      if (n.length < 2) {
+                        setErr("Tên tối thiểu 2 ký tự");
+                        return;
+                      }
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
                       updateProfile({ name: n });
                       void syncNow();
                       setMsg("Đã lưu tên");
                     }}
+<<<<<<< HEAD
                     className="rounded-xl bg-white text-black px-4 text-sm font-semibold"
+=======
+                    className="rounded-xl bg-white text-black px-4 text-sm font-semibold hover:bg-zinc-200 transition"
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
                   >
                     Lưu
                   </button>
                 </div>
               </div>
 
+<<<<<<< HEAD
               <div>
                 <p className="text-xs text-zinc-500 mb-2">Kho avatar</p>
                 <div className="grid grid-cols-8 gap-2">
@@ -513,6 +623,8 @@ export default function AccountPage() {
                 </div>
               </div>
 
+=======
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
               <div className="border-t border-white/10 pt-4">
                 <FloatingField
                   id="newpin"
@@ -555,7 +667,11 @@ export default function AccountPage() {
                     }
                     setBusy(false);
                   }}
+<<<<<<< HEAD
                   className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white"
+=======
+                  className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 transition"
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
                 >
                   Lưu PIN
                 </button>

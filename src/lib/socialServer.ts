@@ -1,16 +1,20 @@
+<<<<<<< HEAD
 import { randomBytes } from "crypto";
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+=======
+import { neon } from "@neondatabase/serverless";
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
 
-export interface CommentDoc {
+interface CommentItem {
   id: string;
   username: string;
   text: string;
   parentId: string | null;
   likes: number;
-  likedBy: string[];
   createdAt: number;
   avatar?: string | null;
   verified?: boolean;
+<<<<<<< HEAD
 }
 
 export interface VideoSocialDoc {
@@ -108,14 +112,29 @@ async function save(doc: VideoSocialDoc) {
       comments = ${comments},
       updated_at = NOW()
   `;
+=======
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
 }
 
 export async function getSocial(slug: string) {
-  const s = slug.trim().slice(0, 120);
-  if (!s) return { slug: "", likes: 0, likedBy: [] as string[], comments: [] as CommentDoc[] };
-  if (!process.env.DATABASE_URL) {
-    return { slug: s, likes: 0, likedBy: [], comments: [] };
+  if (!process.env.DATABASE_URL) return { slug, likes: 0, comments: [] };
+  const sql = neon(process.env.DATABASE_URL);
+  
+  try {
+    const rows = await sql`
+      SELECT id, username, text, parent_id as "parentId", likes, created_at as "createdAt", avatar, verified
+      FROM comments WHERE slug = ${slug} ORDER BY created_at ASC
+    `;
+    const likesRow = await sql`SELECT count FROM movie_likes WHERE slug = ${slug} LIMIT 1`;
+    return {
+      slug,
+      likes: likesRow[0]?.count || 0,
+      comments: rows as CommentItem[],
+    };
+  } catch {
+    return { slug, likes: 0, comments: [] };
   }
+<<<<<<< HEAD
   try {
     return await load(s);
   } catch (e) {
@@ -123,27 +142,42 @@ export async function getSocial(slug: string) {
     ensured = false;
     throw e;
   }
+=======
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
 }
 
 export async function toggleLike(slug: string, username: string) {
-  const doc = await load(slug.trim().slice(0, 120));
-  const u = username.trim().toLowerCase().slice(0, 32) || "khach";
-  const i = doc.likedBy.indexOf(u);
-  if (i >= 0) {
-    doc.likedBy.splice(i, 1);
-    doc.likes = Math.max(0, doc.likes - 1);
-  } else {
-    doc.likedBy.push(u);
-    doc.likes += 1;
+  if (!process.env.DATABASE_URL) return { likes: 1, liked: true };
+  const sql = neon(process.env.DATABASE_URL);
+  try {
+    const existing = await sql`
+      SELECT * FROM movie_likes_users WHERE slug = ${slug} AND username = ${username} LIMIT 1
+    `;
+    let liked = false;
+    if (existing.length > 0) {
+      await sql`DELETE FROM movie_likes_users WHERE slug = ${slug} AND username = ${username}`;
+      await sql`UPDATE movie_likes SET count = GREATEST(count - 1, 0) WHERE slug = ${slug}`;
+      liked = false;
+    } else {
+      await sql`INSERT INTO movie_likes_users (slug, username) VALUES (${slug}, ${username}) ON CONFLICT DO NOTHING`;
+      await sql`
+        INSERT INTO movie_likes (slug, count) VALUES (${slug}, 1)
+        ON CONFLICT (slug) DO UPDATE SET count = movie_likes.count + 1
+      `;
+      liked = true;
+    }
+    const countRow = await sql`SELECT count FROM movie_likes WHERE slug = ${slug} LIMIT 1`;
+    return { likes: countRow[0]?.count || 0, liked };
+  } catch {
+    return { likes: 1, liked: true };
   }
-  await save(doc);
-  return { likes: doc.likes, liked: doc.likedBy.includes(u) };
 }
 
 export async function addComment(
   slug: string,
   username: string,
   text: string,
+<<<<<<< HEAD
   parentId: string | null,
   avatar?: string | null,
   verified?: boolean
@@ -174,14 +208,54 @@ export async function addComment(
     createdAt: Date.now(),
     avatar: av,
     verified: !!verified,
+=======
+  parentId?: string | null,
+  avatar?: string | null,
+  verified?: boolean
+) {
+  if (!process.env.DATABASE_URL) return null;
+  const sql = neon(process.env.DATABASE_URL);
+  const id = "c_" + Math.random().toString(36).substring(2, 9);
+  const now = Date.now();
+  
+  await sql`
+    INSERT INTO comments (id, slug, username, text, parent_id, likes, created_at, avatar, verified)
+    VALUES (${id}, ${slug}, ${username}, ${text}, ${parentId || null}, 0, ${now}, ${avatar || null}, ${Boolean(verified)})
+  `;
+
+  return {
+    id,
+    username,
+    text,
+    parentId: parentId || null,
+    likes: 0,
+    createdAt: now,
+    avatar: avatar || null,
+    verified: Boolean(verified),
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
   };
-  doc.comments.push(c);
-  if (doc.comments.length > 500) doc.comments = doc.comments.slice(-500);
-  await save(doc);
-  return c;
+}
+
+export async function editComment(commentId: string, username: string, newText: string) {
+  if (!process.env.DATABASE_URL) return { ok: false };
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`
+    UPDATE comments SET text = ${newText} WHERE id = ${commentId} AND username = ${username}
+  `;
+  return { ok: true };
+}
+
+export async function deleteComment(commentId: string, username: string) {
+  if (!process.env.DATABASE_URL) return { ok: false };
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`
+    DELETE FROM comments WHERE id = ${commentId} AND username = ${username}
+  `;
+  return { ok: true };
 }
 
 export async function toggleCommentLike(slug: string, commentId: string, username: string) {
+<<<<<<< HEAD
   const doc = await load(slug.trim().slice(0, 120));
   const u = username.trim().toLowerCase().slice(0, 32) || "khach";
   const c = doc.comments.find((x) => x.id === commentId);
@@ -197,6 +271,13 @@ export async function toggleCommentLike(slug: string, commentId: string, usernam
   }
   await save(doc);
   return { likes: c.likes, liked: c.likedBy.includes(u) };
+=======
+  if (!process.env.DATABASE_URL) return { likes: 1 };
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`UPDATE comments SET likes = likes + 1 WHERE id = ${commentId}`;
+  const row = await sql`SELECT likes FROM comments WHERE id = ${commentId} LIMIT 1`;
+  return { likes: row[0]?.likes || 1 };
+>>>>>>> bfc4389b26b054ca295033c265ef42066122495a
 }
 
 export async function editComment(

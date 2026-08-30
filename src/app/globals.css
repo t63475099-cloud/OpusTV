@@ -290,14 +290,24 @@ body.player-fs-lock {
   max-width: none !important;
   max-height: none !important;
   aspect-ratio: auto !important;
-  z-index: 2147483000 !important;
+  z-index: 2147483646 !important;
   border-radius: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
   background: #000 !important;
   overflow: hidden !important;
   box-sizing: border-box !important;
-  /* không padding safe-area lên shell — video full; controls tự pad */
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+}
+
+/* Ẩn navbar / sidebar khi fullscreen CSS */
+html.opus-hide-chrome header,
+html.opus-hide-chrome [data-sidebar],
+html.opus-hide-chrome aside {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
 }
 
 .player-fs-css .player-video {

@@ -1,120 +1,115 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  getSocial,
-  toggleLike,
-  addComment,
-  editComment,
-  deleteComment,
-  toggleCommentLike,
-} from "@/lib/socialServer";
-import { getSessionUser } from "@/lib/session";
+import { neon } from "@neondatabase/serverless";
 
-function cleanSlug(s: string) {
-  return s.replace(/[<>]/g, "").trim().slice(0, 120);
+interface CommentItem {
+  id: string;
+  username: string;
+  text: string;
+  parentId: string | null;
+  likes: number;
+  createdAt: number;
+  avatar?: string | null;
+  verified?: boolean;
 }
 
-async function resolveUser(_req: NextRequest, body?: { username?: string }) {
+export async function getSocial(slug: string) {
+  if (!process.env.DATABASE_URL) return { slug, likes: 0, comments: [] };
+  const sql = neon(process.env.DATABASE_URL);
+  
   try {
-    const session = await getSessionUser();
-    if (session?.username) return session.username;
+    const rows = await sql`
+      SELECT id, username, text, parent_id as "parentId", likes, created_at as "createdAt", avatar, verified
+      FROM comments WHERE slug = ${slug} ORDER BY created_at ASC
+    `;
+    const likesRow = await sql`SELECT count FROM movie_likes WHERE slug = ${slug} LIMIT 1`;
+    return {
+      slug,
+      likes: likesRow[0]?.count || 0,
+      comments: rows as CommentItem[],
+    };
   } catch {
-    /* no db */
-  }
-  const guest = (body?.username || "").trim().toLowerCase().slice(0, 32);
-  if (guest && /^[a-z0-9._]{2,32}$/.test(guest)) return guest;
-  return null;
-}
-
-export async function GET(req: NextRequest) {
-  try {
-    const slug = cleanSlug(req.nextUrl.searchParams.get("slug") || "");
-    if (!slug) return NextResponse.json({ error: "missing slug" }, { status: 400 });
-    if (!process.env.DATABASE_URL) {
-      return NextResponse.json({
-        slug,
-        likes: 0,
-        commentCount: 0,
-        comments: [],
-        warning: "DATABASE_URL chưa cấu hình",
-      });
-    }
-    const data = await getSocial(slug);
-    return NextResponse.json({
-      slug: data.slug,
-      likes: data.likes,
-      commentCount: data.comments.length,
-      comments: data.comments
-        .slice()
-        .sort((a, b) => a.createdAt - b.createdAt)
-        .map((c) => ({
-          id: c.id,
-          username: c.username,
-          text: c.text,
-          parentId: c.parentId,
-          likes: c.likes,
-          createdAt: c.createdAt,
-          avatar: c.avatar || null,
-          verified: !!c.verified,
-        })),
-    });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    return { slug, likes: 0, comments: [] };
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function toggleLike(slug: string, username: string) {
+  if (!process.env.DATABASE_URL) return { likes: 1, liked: true };
+  const sql = neon(process.env.DATABASE_URL);
   try {
-    if (!process.env.DATABASE_URL) {
-      return NextResponse.json(
-        { error: "DATABASE_URL chưa cấu hình — bình luận cần Neon PostgreSQL" },
-        { status: 503 }
-      );
+    const existing = await sql`
+      SELECT * FROM movie_likes_users WHERE slug = ${slug} AND username = ${username} LIMIT 1
+    `;
+    let liked = false;
+    if (existing.length > 0) {
+      await sql`DELETE FROM movie_likes_users WHERE slug = ${slug} AND username = ${username}`;
+      await sql`UPDATE movie_likes SET count = GREATEST(count - 1, 0) WHERE slug = ${slug}`;
+      liked = false;
+    } else {
+      await sql`INSERT INTO movie_likes_users (slug, username) VALUES (${slug}, ${username}) ON CONFLICT DO NOTHING`;
+      await sql`
+        INSERT INTO movie_likes (slug, count) VALUES (${slug}, 1)
+        ON CONFLICT (slug) DO UPDATE SET count = movie_likes.count + 1
+      `;
+      liked = true;
     }
-    const body = await req.json();
-    const action = String(body.action || "");
-    const slug = cleanSlug(body.slug || "");
-    if (!slug) return NextResponse.json({ error: "missing slug" }, { status: 400 });
-
-    const username = await resolveUser(req, body);
-    if (!username) {
-      return NextResponse.json(
-        { error: "Cần đăng nhập hoặc nhập tên hiển thị (a-z, 0-9)" },
-        { status: 401 }
-      );
-    }
-
-    if (action === "like") {
-      const r = await toggleLike(slug, username);
-      return NextResponse.json({ ok: true, ...r });
-    }
-    if (action === "comment") {
-      const text = String(body.text || "");
-      const parentId = body.parentId ? String(body.parentId) : null;
-      const avatar = body.avatar != null ? String(body.avatar) : null;
-      const verified = !!body.verified;
-      const c = await addComment(slug, username, text, parentId, avatar, verified);
-      return NextResponse.json({ ok: true, comment: c });
-    }
-    if (action === "edit_comment") {
-      const commentId = String(body.commentId || "");
-      const text = String(body.text || "");
-      const c = await editComment(slug, commentId, username, text);
-      return NextResponse.json({ ok: true, comment: c });
-    }
-    if (action === "delete_comment") {
-      const commentId = String(body.commentId || "");
-      const r = await deleteComment(slug, commentId, username);
-      return NextResponse.json({ ok: true, ...r });
-    }
-    if (action === "like_comment") {
-      const commentId = String(body.commentId || "");
-      const r = await toggleCommentLike(slug, commentId, username);
-      return NextResponse.json({ ok: true, ...r });
-    }
-    return NextResponse.json({ error: "unknown action" }, { status: 400 });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    const countRow = await sql`SELECT count FROM movie_likes WHERE slug = ${slug} LIMIT 1`;
+    return { likes: countRow[0]?.count || 0, liked };
+  } catch {
+    return { likes: 1, liked: true };
   }
+}
+
+export async function addComment(
+  slug: string,
+  username: string,
+  text: string,
+  parentId?: string | null,
+  avatar?: string | null,
+  verified?: boolean
+) {
+  if (!process.env.DATABASE_URL) return null;
+  const sql = neon(process.env.DATABASE_URL);
+  const id = "c_" + Math.random().toString(36).substring(2, 9);
+  const now = Date.now();
+  
+  await sql`
+    INSERT INTO comments (id, slug, username, text, parent_id, likes, created_at, avatar, verified)
+    VALUES (${id}, ${slug}, ${username}, ${text}, ${parentId || null}, 0, ${now}, ${avatar || null}, ${Boolean(verified)})
+  `;
+
+  return {
+    id,
+    username,
+    text,
+    parentId: parentId || null,
+    likes: 0,
+    createdAt: now,
+    avatar: avatar || null,
+    verified: Boolean(verified),
+  };
+}
+
+export async function editComment(commentId: string, username: string, newText: string) {
+  if (!process.env.DATABASE_URL) return { ok: false };
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`
+    UPDATE comments SET text = ${newText} WHERE id = ${commentId} AND username = ${username}
+  `;
+  return { ok: true };
+}
+
+export async function deleteComment(commentId: string, username: string) {
+  if (!process.env.DATABASE_URL) return { ok: false };
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`
+    DELETE FROM comments WHERE id = ${commentId} AND username = ${username}
+  `;
+  return { ok: true };
+}
+
+export async function toggleCommentLike(slug: string, commentId: string, username: string) {
+  if (!process.env.DATABASE_URL) return { likes: 1 };
+  const sql = neon(process.env.DATABASE_URL);
+  await sql`UPDATE comments SET likes = likes + 1 WHERE id = ${commentId}`;
+  const row = await sql`SELECT likes FROM comments WHERE id = ${commentId} LIMIT 1`;
+  return { likes: row[0]?.likes || 1 };
 }

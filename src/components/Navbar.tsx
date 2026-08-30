@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Film, Menu, X, Search, Music, Clock, Heart, Sliders } from "lucide-react";
+import { Film, Menu, X, Search, Clock, Heart } from "lucide-react";
 import SearchBox from "./SearchBox";
 import UserAvatar from "./UserAvatar";
 import StreakBadge from "./StreakBadge";
@@ -12,6 +12,33 @@ export default function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    const updateProfile = () => {
+      try {
+        const stored =
+          localStorage.getItem("opustv_user") ||
+          localStorage.getItem("user_profile") ||
+          localStorage.getItem("profile");
+        if (stored) {
+          setProfile(JSON.parse(stored));
+        } else {
+          setProfile(null);
+        }
+      } catch {
+        setProfile(null);
+      }
+    };
+
+    updateProfile();
+    window.addEventListener("storage", updateProfile);
+    window.addEventListener("user-updated", updateProfile);
+    return () => {
+      window.removeEventListener("storage", updateProfile);
+      window.removeEventListener("user-updated", updateProfile);
+    };
+  }, []);
 
   const navLinks = [
     { label: "Trang chủ", href: "/" },
@@ -78,7 +105,7 @@ export default function Navbar() {
           <StreakBadge />
 
           {/* User Account */}
-          <UserAvatar />
+          <UserAvatar profile={profile} />
 
           {/* Mobile Menu Toggle */}
           <button
@@ -92,7 +119,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Search Bar Popup */}
+      {/* Mobile Search Modal */}
       {showSearchModal && (
         <div className="lg:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
@@ -104,11 +131,11 @@ export default function Navbar() {
               <X className="w-6 h-6" />
             </button>
           </div>
-          <SearchBox autoFocus onClose={() => setShowSearchModal(false)} />
+          <SearchBox onClose={() => setShowSearchModal(false)} />
         </div>
       )}
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-4 pt-2 pb-6 space-y-2 animate-in slide-in-from-top-4">
           <div className="space-y-1">

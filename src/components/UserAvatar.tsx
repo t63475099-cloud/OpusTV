@@ -14,42 +14,71 @@ interface UserAvatarProps {
 }
 
 export default function UserAvatar({
-  profile = null,
+  profile: propProfile = null,
   size = 36,
   className = "",
   showBadge = false,
 }: UserAvatarProps) {
-  const storeProfile = useAccountStore((state: any) => state?.profile || state?.user || null);
-  const [mountedProfile, setMountedProfile] = useState<any>(profile);
+  const [mounted, setMounted] = useState(false);
+  const [localData, setLocalData] = useState<any>(null);
+
+  // Lấy dữ liệu từ useAccountStore
+  const storeData = useAccountStore((state: any) => {
+    if (!state) return null;
+    return state.account || state.profile || state.user || state;
+  });
 
   useEffect(() => {
-    if (profile) {
-      setMountedProfile(profile);
-      return;
-    }
-
-    try {
-      const stored =
-        localStorage.getItem("opustv_account") ||
-        localStorage.getItem("opustv_user") ||
-        localStorage.getItem("user_profile") ||
-        localStorage.getItem("profile");
-      if (stored) {
-        setMountedProfile(JSON.parse(stored));
-      } else {
-        setMountedProfile(storeProfile);
+    setMounted(true);
+    const readStorage = () => {
+      try {
+        const stored =
+          localStorage.getItem("opustv_account") ||
+          localStorage.getItem("opustv_user") ||
+          localStorage.getItem("user_profile") ||
+          localStorage.getItem("profile");
+        if (stored) {
+          setLocalData(JSON.parse(stored));
+        }
+      } catch {
+        setLocalData(null);
       }
-    } catch {
-      setMountedProfile(storeProfile);
-    }
-  }, [profile, storeProfile]);
+    };
 
-  const activeUser = profile || mountedProfile || storeProfile;
-  const avatarUrl = activeUser?.avatar || activeUser?.avatarUrl || activeUser?.photoURL || activeUser?.image || null;
-  const frameId = activeUser?.avatarFrame || activeUser?.frameId || null;
+    readStorage();
+    window.addEventListener("storage", readStorage);
+    window.addEventListener("user-updated", readStorage);
+    window.addEventListener("account-updated", readStorage);
+    window.addEventListener("profile-updated", readStorage);
+
+    return () => {
+      window.removeEventListener("storage", readStorage);
+      window.removeEventListener("user-updated", readStorage);
+      window.removeEventListener("account-updated", readStorage);
+      window.removeEventListener("profile-updated", readStorage);
+    };
+  }, []);
+
+  // Ưu tiên: prop truyền vào > Store Zustand > LocalStorage
+  const user = propProfile || storeData || localData;
+
+  const avatarUrl =
+    user?.avatar ||
+    user?.avatarUrl ||
+    user?.photoURL ||
+    user?.image ||
+    null;
+
+  const frameId =
+    user?.avatarFrame ||
+    user?.frameId ||
+    user?.frame ||
+    null;
 
   const frame = frameId ? getAvatarFrame(frameId) : null;
-  const hasFrame = Boolean(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
+  const hasFrame = Boolean(
+    frame && frame.css && frame.css !== "none" && frame.id !== "frame:none"
+  );
   const pad = hasFrame ? Math.max(3, Math.round(size * 0.06)) : 0;
   const inner = Math.max(0, size - pad * 2);
 
@@ -63,26 +92,30 @@ export default function UserAvatar({
         background: hasFrame ? frame?.css : undefined,
         padding: pad,
       }}
-      title={activeUser?.name || activeUser?.username || "Tài khoản"}
+      title={user?.name || user?.username || "Tài khoản của bạn"}
     >
       <div
-        className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-neutral-800 border border-white/10 text-neutral-300"
+        className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-neutral-800 border border-white/10 text-neutral-300 relative shadow-inner"
         style={{ width: inner, height: inner }}
       >
-        {avatarUrl ? (
+        {mounted && avatarUrl ? (
           <img
             src={avatarUrl}
-            alt={activeUser?.name || "Avatar"}
-            className="w-full h-full object-cover"
-            loading="lazy"
+            alt={user?.name || "Avatar"}
+            className="w-full h-full object-cover select-none"
+            loading="eager"
+            onError={(e) => {
+              // Dự phòng khi link ảnh bị lỗi
+              (e.target as HTMLElement).style.display = "none";
+            }}
           />
         ) : (
           <User className="w-1/2 h-1/2 text-neutral-400" />
         )}
       </div>
 
-      {showBadge && activeUser?.badge && (
-        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-neutral-950" />
+      {showBadge && user?.badge && (
+        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-neutral-950 shadow-sm" />
       )}
     </Link>
   );
@@ -113,10 +146,13 @@ export function CommentAvatar({
 }: CommentAvatarProps) {
   const actualAvatar = avatar ?? profile?.avatar ?? profile?.avatarUrl ?? null;
   const actualName = name ?? profile?.name ?? profile?.username ?? "User";
-  const actualFrameId = avatarFrame ?? frameId ?? profile?.avatarFrame ?? profile?.frameId ?? null;
+  const actualFrameId =
+    avatarFrame ?? frameId ?? profile?.avatarFrame ?? profile?.frameId ?? null;
 
   const frame = actualFrameId ? getAvatarFrame(actualFrameId) : null;
-  const hasFrame = Boolean(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
+  const hasFrame = Boolean(
+    frame && frame.css && frame.css !== "none" && frame.id !== "frame:none"
+  );
   const pad = hasFrame ? Math.max(2, Math.round(size * 0.06)) : 0;
   const inner = Math.max(0, size - pad * 2);
 

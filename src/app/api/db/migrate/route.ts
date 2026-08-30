@@ -81,6 +81,22 @@ const SQL_STATEMENTS = [
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS video_social_slug_uidx ON video_social (slug)`,
+
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS verified INTEGER NOT NULL DEFAULT 0`,
+  `CREATE TABLE IF NOT EXISTS verification_requests (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    field TEXT NOT NULL,
+    social_link TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    note TEXT DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS verification_requests_user_id_idx ON verification_requests (user_id)`,
+  `CREATE INDEX IF NOT EXISTS verification_requests_status_idx ON verification_requests (status)`,
+
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_hash TEXT`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires TIMESTAMPTZ`,

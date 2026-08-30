@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         watchedAt: m.playedAt?.getTime?.() || Date.now(),
       })),
       settings: settingsRow?.payload || {},
-      profile: { name: user.username, loggedIn: true },
+      profile: { name: user.username, loggedIn: true, verified: !!(user as { verified?: number }).verified },
       updatedAt: Date.now(),
     };
 

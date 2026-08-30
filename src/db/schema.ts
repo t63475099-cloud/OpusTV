@@ -21,8 +21,31 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     lastLogin: timestamp("last_login", { withTimezone: true }),
     recoveryPinHash: text("recovery_pin_hash"),
+    verified: integer("verified").default(0).notNull(),
   },
   (t) => [uniqueIndex("users_username_uidx").on(t.username)]
+);
+
+/** Yêu cầu xác minh tích xanh */
+export const verificationRequests = pgTable(
+  "verification_requests",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    fullName: text("full_name").notNull(),
+    field: text("field").notNull(),
+    socialLink: text("social_link").notNull().default(""),
+    status: text("status").notNull().default("pending"),
+    note: text("note").default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("verification_requests_user_id_idx").on(t.userId),
+    index("verification_requests_status_idx").on(t.status),
+  ]
 );
 
 /** Session đăng nhập — lưu hash token, không lưu plain text */

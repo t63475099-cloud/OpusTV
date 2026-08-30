@@ -19,6 +19,7 @@ import {
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";
 import UserAvatar from "@/components/UserAvatar";
+import VerifyRequestModal from "@/components/VerifyRequestModal";
 
 type Mode = "login" | "register" | "recover";
 type FieldErrors = {
@@ -169,9 +170,26 @@ export default function AccountPage() {
   const [newPin, setNewPin] = useState("");
   const [pinMsg, setPinMsg] = useState("");
   const [editName, setEditName] = useState("");
+  const [verifyOpen, setVerifyOpen] = useState(false);
   useEffect(() => {
     if (username) setEditName(profile.name ?? "");
   }, [username, profile.name]);
+
+  useEffect(() => {
+    if (!username) return;
+    let c = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/verify");
+        const data = await res.json();
+        if (c || !data.ok) return;
+        if (typeof data.verified === "boolean") {
+          updateProfile({ verified: data.verified });
+        }
+      } catch { /* */ }
+    })();
+    return () => { c = true; };
+  }, [username, updateProfile]);
 
   /** Cắt ảnh vuông giữa + nén JPEG để đồng bộ thiết bị */
   const processAvatarFile = (file: File) => {
@@ -407,7 +425,26 @@ export default function AccountPage() {
               <button type="button" onClick={() => logout()} className="lg-btn lg-btn-danger">
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
+              {!profile.verified ? (
+                <button
+                  type="button"
+                  onClick={() => setVerifyOpen(true)}
+                  className="lg-btn lg-shimmer"
+                >
+                  Yêu cầu xác minh
+                </button>
+              ) : (
+                <span className="lg-btn text-sky-400 pointer-events-none">
+                  Đã xác minh
+                </span>
+              )}
             </div>
+            <VerifyRequestModal
+              open={verifyOpen}
+              onClose={() => setVerifyOpen(false)}
+              verified={!!profile.verified}
+              onVerifiedChange={(v) => updateProfile({ verified: v })}
+            />
 
             <GlassCard className="lg-enter-delay-4 mt-6 rounded-3xl p-5 space-y-5">
               <div>

@@ -109,7 +109,7 @@ export const useAccountStore = create<AccountState>()(
               ...s.profile,
               name: (s.profile.name && s.profile.name.trim()) || data.username,
               loggedIn: true,
-              verified: !!s.profile.verified,
+              verified: !!(data.data?.profile?.verified ?? s.profile.verified),
               avatar: s.profile.avatar || undefined,
             },
           }));
@@ -149,7 +149,7 @@ export const useAccountStore = create<AccountState>()(
               ...s.profile,
               name: (s.profile.name && s.profile.name.trim()) || data.username,
               loggedIn: true,
-              verified: !!s.profile.verified,
+              verified: !!(data.data?.profile?.verified ?? s.profile.verified),
               avatar: s.profile.avatar || undefined,
             },
           }));

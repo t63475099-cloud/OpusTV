@@ -356,8 +356,8 @@ export const useSettingsStore = create<SettingsState>()(
             name: n,
             email: email?.trim() || s.profile.email,
             loggedIn: true,
-            verified: true,
-            avatar: s.profile.avatar || `preset:${(n.charCodeAt(0) % 6) + 1}`,
+            verified: !!s.profile.verified,
+            avatar: s.profile.avatar || undefined,
           },
         }));
       },

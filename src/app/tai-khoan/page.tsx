@@ -101,7 +101,7 @@ export default function TaiKhoanPage() {
           <ArrowLeft className="w-4 h-4" /> Cài đặt
         </Link>
 
-        {/* Header Profile Kính Lỏng (Đã căn chỉnh cân đối) */}
+        {/* Header Profile Kính Lỏng */}
         <div className="auth-glass p-6 sm:p-8 rounded-3xl relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10 text-center sm:text-left">
             <div className="shrink-0">
@@ -116,7 +116,9 @@ export default function TaiKhoanPage() {
               <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                 <h1 className="text-2xl font-bold text-white tracking-tight truncate">{displayName || username}</h1>
                 {isVerified && (
-                  <BadgeCheck className="w-6 h-6 text-[#1d9bf0] fill-[#1d9bf0] shrink-0" title="Đã xác thực" />
+                  <span title="Đã xác thực" className="inline-flex items-center shrink-0">
+                    <BadgeCheck className="w-6 h-6 text-[#1d9bf0] fill-[#1d9bf0]" />
+                  </span>
                 )}
               </div>
               <p className="text-sm text-zinc-400 font-mono">@{username}</p>

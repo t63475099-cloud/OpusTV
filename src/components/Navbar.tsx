@@ -7,38 +7,50 @@ import { Film, Menu, X, Search, Clock, Heart } from "lucide-react";
 import SearchBox from "./SearchBox";
 import UserAvatar from "./UserAvatar";
 import StreakBadge from "./StreakBadge";
+import { useAccountStore } from "@/lib/account";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
+  const [localProfile, setLocalProfile] = useState<any>(null);
+
+  // Lấy dữ liệu profile trực tiếp từ Store tài khoản
+  const storeProfile = useAccountStore((state: any) => state?.profile || state?.user || null);
 
   useEffect(() => {
-    const updateProfile = () => {
+    const syncProfile = () => {
       try {
         const stored =
+          localStorage.getItem("opustv_account") ||
           localStorage.getItem("opustv_user") ||
           localStorage.getItem("user_profile") ||
           localStorage.getItem("profile");
         if (stored) {
-          setProfile(JSON.parse(stored));
-        } else {
-          setProfile(null);
+          setLocalProfile(JSON.parse(stored));
         }
       } catch {
-        setProfile(null);
+        setLocalProfile(null);
       }
     };
 
-    updateProfile();
-    window.addEventListener("storage", updateProfile);
-    window.addEventListener("user-updated", updateProfile);
+    syncProfile();
+    window.addEventListener("storage", syncProfile);
+    window.addEventListener("user-updated", syncProfile);
+    window.addEventListener("account-updated", syncProfile);
     return () => {
-      window.removeEventListener("storage", updateProfile);
-      window.removeEventListener("user-updated", updateProfile);
+      window.removeEventListener("storage", syncProfile);
+      window.removeEventListener("user-updated", syncProfile);
+      window.removeEventListener("account-updated", syncProfile);
     };
   }, []);
+
+  // Ẩn toàn bộ Navbar trên cùng khi người dùng vào trang Cài đặt (/cai-dat)
+  if (pathname === "/cai-dat" || pathname?.startsWith("/cai-dat/")) {
+    return null;
+  }
+
+  const activeProfile = storeProfile || localProfile;
 
   const navLinks = [
     { label: "Trang chủ", href: "/" },
@@ -101,11 +113,11 @@ export default function Navbar() {
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Streak Badge */}
+          {/* Daily Streak Badge */}
           <StreakBadge />
 
-          {/* User Account */}
-          <UserAvatar profile={profile} />
+          {/* User Account Avatar (Tự động hiển thị đúng ảnh & khung viền) */}
+          <UserAvatar profile={activeProfile} />
 
           {/* Mobile Menu Toggle */}
           <button

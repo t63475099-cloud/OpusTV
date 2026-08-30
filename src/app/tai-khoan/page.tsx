@@ -62,19 +62,17 @@ function validatePassword(pw: string): string | undefined {
 
 function AuroraBg() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <div className="absolute inset-0 bg-[#05050a]" />
-      <div className="auth-orb auth-orb-1" />
-      <div className="auth-orb auth-orb-2" />
-      <div className="auth-orb auth-orb-3" />
+    <div className="lg-orbs" aria-hidden>
+      <span />
+      <span />
+      <span />
     </div>
   );
 }
 
 function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`auth-glass relative ${className}`}>
-      <div className="auth-glass-border pointer-events-none absolute inset-0 rounded-[inherit]" />
+    <div className={`lg-card lg-border-spin relative overflow-hidden ${className}`}>
       {children}
     </div>
   );
@@ -343,22 +341,19 @@ export default function AccountPage() {
     const name = profile.name != null ? profile.name.trim() : "";
     const showName = name || username;
     return (
-      <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
+      <div className="lg-page relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
         <AuroraBg />
-        <div className={`relative z-10 mx-auto max-w-lg ${mounted ? "auth-enter" : "opacity-0"}`}>
-          <div className="relative px-4 pt-4">
-            <Link
-              href="/cai-dat"
-              className="mb-4 inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white hover:bg-white/10"
-            >
+        <div className={`relative z-10 mx-auto max-w-lg px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
+          <div className="relative pt-4">
+            <Link href="/cai-dat" className="lg-btn lg-enter-delay-1 mb-5 text-xs">
               ← Cài đặt
             </Link>
 
-            <div className="flex items-end gap-3">
+            <div className="lg-enter-delay-2 flex items-end gap-4">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="relative group shrink-0"
+                className="relative group shrink-0 lg-avatar-ring"
                 aria-label="Đổi ảnh đại diện"
               >
                 <UserAvatar
@@ -366,7 +361,7 @@ export default function AccountPage() {
                   size={96}
                   showBadge={!!profile.verified}
                 />
-                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition">
+                <span className="absolute inset-[3px] flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition">
                   <Camera className="w-7 h-7 text-white" />
                 </span>
               </button>
@@ -382,19 +377,15 @@ export default function AccountPage() {
                 }}
               />
               <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-white break-words">
+                <h1 className="text-xl sm:text-2xl font-bold text-white break-words tracking-tight">
                   {showName}
                 </h1>
                 <p className="text-sm text-zinc-400">@{username}</p>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 whitespace-nowrap"
-              >
+            <div className="lg-enter-delay-3 mt-5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => fileRef.current?.click()} className="lg-btn lg-shimmer">
                 Đổi ảnh
               </button>
               <button
@@ -406,32 +397,28 @@ export default function AccountPage() {
                   const r = await syncNow();
                   setBusy(false);
                   if (!r.ok) setErr(r.error || "Lỗi");
-                  else setMsg("Đã đồng bộ các thiết bị");
+                  else setMsg("Đã đồng bộ");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 whitespace-nowrap"
+                className="lg-btn lg-shimmer"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Đồng bộ
               </button>
-              <button
-                type="button"
-                onClick={() => logout()}
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 whitespace-nowrap"
-              >
+              <button type="button" onClick={() => logout()} className="lg-btn lg-btn-danger">
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
             </div>
 
-            <GlassCard className="mt-5 rounded-3xl p-5 space-y-4">
+            <GlassCard className="lg-enter-delay-4 mt-6 rounded-3xl p-5 space-y-5">
               <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block">Tên hiển thị</label>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Tên hiển thị</label>
                 <div className="flex gap-2">
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value.slice(0, 64))}
                     placeholder="Nhập tên hiển thị"
                     maxLength={64}
-                    className="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-rose-500"
+                    className="lg-input flex-1 min-w-0"
                   />
                   <button
                     type="button"
@@ -442,7 +429,7 @@ export default function AccountPage() {
                       void syncNow();
                       setMsg(n ? "Đã lưu" : "Đã xóa tên hiển thị");
                     }}
-                    className="shrink-0 rounded-xl bg-white text-black px-4 text-sm font-semibold"
+                    className="lg-btn lg-btn-primary shrink-0 px-5"
                   >
                     Lưu
                   </button>
@@ -564,7 +551,7 @@ export default function AccountPage() {
   return (
     <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
       <AuroraBg />
-      <div className={`relative z-10 mx-auto w-full max-w-[420px] ${mounted ? "auth-enter" : "opacity-0"}`}>
+      <div className={`relative z-10 mx-auto w-full max-w-[420px] px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-[0_8px_32px_rgba(244,63,94,0.45)] ring-1 ring-white/25">
             <Shield className="h-7 w-7 text-white" />
@@ -594,7 +581,7 @@ export default function AccountPage() {
           ))}
         </div>
 
-        <GlassCard className="rounded-3xl p-5 sm:p-7">
+        <GlassCard className="rounded-3xl p-5 sm:p-7 lg-shimmer">
           <form onSubmit={onSubmit} noValidate>
             {mode === "register" && (
               <FloatingField

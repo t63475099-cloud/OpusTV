@@ -444,8 +444,9 @@ export default function AccountPage() {
               </div>
 
               <div>
-                <p className="text-xs text-zinc-500 mb-2">Khung viền</p>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                <p className="text-xs text-zinc-500 mb-2">Khung viền ({AVATAR_FRAMES.length - 1})</p>
+                <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-2 scrollbar-hide">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                   {AVATAR_FRAMES.map((fr) => {
                     const active = (profile.avatarFrame || "frame:none") === fr.id;
                     return (
@@ -485,6 +486,7 @@ export default function AccountPage() {
                       </button>
                     );
                   })}
+                </div>
                 </div>
               </div>
 

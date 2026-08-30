@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="g-lq34" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#C4B5FD">
+        <animate attributeName="stop-color" values="#C4B5FD;#8B5CF6;#C4B5FD" dur="3s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#5B21B6"/>
+    </linearGradient>
+    <filter id="f-lq34" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- outer rotating dashes -->
+  <g>
+    <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="16s" repeatCount="indefinite"/>
+    <rect x="12" y="12" width="176" height="176" rx="36" stroke="url(#g-lq34)" stroke-width="5" stroke-dasharray="14 8" fill="none" filter="url(#f-lq34)" opacity="0.95"/>
+  </g>
+  <rect x="22" y="22" width="156" height="156" rx="30" stroke="#8B5CF6" stroke-width="2.5" fill="none" opacity="0.85"/>
+  <rect x="30" y="30" width="140" height="140" rx="26" stroke="#C4B5FD" stroke-width="1.2" fill="none" opacity="0.5"/>
+  <!-- swords / spikes -->
+  <path d="M100 2 L106 16 L100 12 L94 16 Z" fill="#C4B5FD"/>
+  <path d="M2 100 L16 106 L12 100 L16 94 Z" fill="#C4B5FD"/>
+  <path d="M198 100 L184 106 L188 100 L184 94 Z" fill="#C4B5FD"/>
+  <path d="M100 198 L106 184 L100 188 L94 184 Z" fill="#C4B5FD"/>
+  <path d="M36 36 L50 50 M164 36 L150 50 M36 164 L50 150 M164 164 L150 150" stroke="#8B5CF6" stroke-width="3" stroke-linecap="round"/>
+</svg>

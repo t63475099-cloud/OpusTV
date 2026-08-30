@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Heart, MessageCircle, Reply, Send, Loader2, Pencil, Check, X } from "lucide-react";
+import { Heart, MessageCircle, Reply, Send, Loader2, BadgeCheck } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
 import { CommentAvatar } from "@/components/UserAvatar";
@@ -39,14 +39,11 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   const [text, setText] = useState("");
   const [guestName, setGuestName] = useState("");
   const [replyTo, setReplyTo] = useState<CommentItem | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [err, setErr] = useState("");
 
-  // Giữ nguyên chữ hoa/thường, ưu tiên Tên hiển thị (profile.name)
-  const currentDisplayName = (profile.name || accountName || guestName).trim();
+  const displayName = accountName || guestName.trim().toLowerCase();
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -81,9 +78,9 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
         body: JSON.stringify({
           action,
           slug,
-          username: currentDisplayName || undefined,
+          username: displayName || undefined,
           avatar: accountName ? profile.avatar || null : null,
-          verified: false,
+          verified: accountName ? !!profile.verified : false,
           ...extra,
         }),
       });
@@ -102,7 +99,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   };
 
   const onLike = async () => {
-    if (!currentDisplayName) {
+    if (!displayName) {
       setErr("Đăng nhập để thích");
       return;
     }
@@ -115,7 +112,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
 
   const onComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentDisplayName) {
+    if (!displayName) {
       setErr("Đăng nhập hoặc nhập tên để bình luận");
       return;
     }
@@ -123,36 +120,16 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     const data = await post("comment", {
       text: text.trim(),
       parentId: replyTo?.id || null,
-      avatar: accountName ? profile.avatar || null : null,
     });
     if (data?.comment) {
-      const newComment = {
-        ...data.comment,
-        avatar: data.comment.avatar || (accountName ? profile.avatar : null),
-      };
-      setComments((prev) => [...prev, newComment]);
+      setComments((prev) => [...prev, data.comment]);
       setText("");
       setReplyTo(null);
     }
   };
 
-  const onSaveEdit = async (commentId: string) => {
-    if (!editText.trim()) return;
-    const res = await post("edit_comment", {
-      commentId,
-      text: editText.trim(),
-    });
-    if (res?.ok) {
-      setComments((prev) =>
-        prev.map((c) => (c.id === commentId ? { ...c, text: editText.trim() } : c))
-      );
-      setEditingId(null);
-      setEditText("");
-    }
-  };
-
   const onLikeComment = async (id: string) => {
-    if (!currentDisplayName) {
+    if (!displayName) {
       setErr("Đăng nhập để thích bình luận");
       return;
     }
@@ -164,104 +141,52 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     }
   };
 
-  const renderComment = (c: CommentItem, nested = false) => {
-    const isOwner =
-      accountName &&
-      (c.username === accountName || c.username === profile.name);
-
-    const commentAvatar = isOwner ? profile.avatar || c.avatar : c.avatar;
-    const isAuthor =
-      currentDisplayName &&
-      c.username.toLowerCase() === currentDisplayName.toLowerCase();
-
-    return (
-      <div key={c.id} className={nested ? "mt-3 ml-2 pl-3 border-l border-white/10" : "flex gap-2.5"}>
-        {!nested && (
-          <CommentAvatar
-            username={c.username}
-            avatar={commentAvatar}
-            size={36}
-            verified={false}
-          />
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {nested && (
-              <span className="mr-1 inline-block align-middle">
-                <CommentAvatar username={c.username} avatar={commentAvatar} size={24} verified={false} />
-              </span>
-            )}
-            {/* Tên giữ nguyên định dạng, không còn icon xanh phía sau */}
-            <span className="font-semibold text-white">{c.username}</span>
-            <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
-          </div>
-
-          {editingId === c.id ? (
-            <div className="mt-2 flex gap-2 items-center">
-              <input
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/20 text-sm text-white outline-none focus:border-red-500"
-                maxLength={500}
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={() => onSaveEdit(c.id)}
-                disabled={posting}
-                className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
-                title="Lưu"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingId(null)}
-                className="p-1.5 rounded-lg bg-white/10 text-zinc-300 hover:bg-white/20"
-                title="Hủy"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <p className="text-zinc-200 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
+  const renderComment = (c: CommentItem, nested = false) => (
+    <div key={c.id} className={nested ? "mt-3 ml-2 pl-3 border-l border-white/10" : "flex gap-2.5"}>
+      {!nested && (
+        <CommentAvatar
+          username={c.username}
+          avatar={c.avatar}
+          size={36}
+          verified={c.verified}
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-zinc-300 flex items-center gap-1 flex-wrap">
+          {nested && (
+            <span className="mr-1.5 inline-block align-middle">
+              <CommentAvatar username={c.username} avatar={c.avatar} size={24} verified={c.verified} />
+            </span>
           )}
-
-          <div className="flex gap-3 mt-1.5 text-xs text-zinc-500">
+          <span className="font-semibold text-white">{c.username}</span>
+          {c.verified && (
+            <BadgeCheck className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0]" aria-label="Đã xác thực" />
+          )}
+          <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
+        </p>
+        <p className="text-zinc-200 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
+        <div className="flex gap-3 mt-1.5 text-xs text-zinc-500">
+          <button
+            type="button"
+            onClick={() => onLikeComment(c.id)}
+            className="hover:text-red-400 inline-flex items-center gap-1"
+          >
+            <Heart className="w-3 h-3" /> {c.likes || ""}
+          </button>
+          {!nested && (
             <button
               type="button"
-              onClick={() => onLikeComment(c.id)}
-              className="hover:text-red-400 inline-flex items-center gap-1"
+              onClick={() => setReplyTo(c)}
+              className="hover:text-white inline-flex items-center gap-1"
             >
-              <Heart className="w-3 h-3" /> {c.likes || ""}
+              <Reply className="w-3 h-3" /> Trả lời
             </button>
-            {!nested && (
-              <button
-                type="button"
-                onClick={() => setReplyTo(c)}
-                className="hover:text-white inline-flex items-center gap-1"
-              >
-                <Reply className="w-3 h-3" /> Trả lời
-              </button>
-            )}
-            {isAuthor && editingId !== c.id && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingId(c.id);
-                  setEditText(c.text);
-                }}
-                className="hover:text-white inline-flex items-center gap-1"
-              >
-                <Pencil className="w-3 h-3" /> Sửa
-              </button>
-            )}
-          </div>
-          {!nested && repliesOf(c.id).map((r) => renderComment(r, true))}
+          )}
         </div>
+        {!nested && repliesOf(c.id).map((r) => renderComment(r, true))}
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
@@ -288,19 +213,19 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
         <input
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
-          placeholder="Tên hiển thị (tuỳ thích)"
+          placeholder="Tên hiển thị"
           className="w-full mb-3 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-red-500"
-          maxLength={60}
+          maxLength={32}
         />
       )}
 
       <form onSubmit={onComment} className="flex gap-2 mb-4 items-end">
         <div className="shrink-0 pb-0.5">
           <CommentAvatar
-            username={currentDisplayName || "?"}
+            username={displayName || "?"}
             avatar={accountName ? profile.avatar : null}
             size={36}
-            verified={false}
+            verified={!!accountName && !!profile.verified}
           />
         </div>
         <div className="flex-1">

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="g-lq50" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E879F9">
+        <animate attributeName="stop-color" values="#E879F9;#A21CAF;#E879F9" dur="3s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#4A044E"/>
+    </linearGradient>
+    <filter id="f-lq50" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- outer rotating dashes -->
+  <g>
+    <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="16s" repeatCount="indefinite"/>
+    <rect x="12" y="12" width="176" height="176" rx="36" stroke="url(#g-lq50)" stroke-width="5" stroke-dasharray="14 8" fill="none" filter="url(#f-lq50)" opacity="0.95"/>
+  </g>
+  <rect x="22" y="22" width="156" height="156" rx="30" stroke="#A21CAF" stroke-width="2.5" fill="none" opacity="0.85"/>
+  <rect x="30" y="30" width="140" height="140" rx="26" stroke="#E879F9" stroke-width="1.2" fill="none" opacity="0.5"/>
+  <!-- wings style -->
+  <path d="M18 70 Q8 100 18 130 L32 120 Q22 100 32 80 Z" fill="#A21CAF" opacity="0.85"/>
+  <path d="M182 70 Q192 100 182 130 L168 120 Q178 100 168 80 Z" fill="#A21CAF" opacity="0.85"/>
+  <path d="M100 6 L118 20 L100 16 L82 20 Z" fill="#E879F9"/>
+  <circle cx="100" cy="14" r="4" fill="#FAE8FF"/>
+</svg>

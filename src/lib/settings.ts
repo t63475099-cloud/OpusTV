@@ -8,6 +8,10 @@ export interface UserProfile {
   email?: string;
   avatar?: string;
   avatarPosition?: string;
+  /** id khung viền avatar */
+  avatarFrame?: string;
+  /** Tài khoản đã xác thực (tích xanh) */
+  verified?: boolean;
   loggedIn: boolean;
 }
 
@@ -187,6 +191,8 @@ const defaultProfile: UserProfile = {
   email: "",
   avatar: undefined,
   avatarPosition: "50% 50%",
+  avatarFrame: "frame:none",
+  verified: false,
   loggedIn: false,
 };
 
@@ -350,6 +356,7 @@ export const useSettingsStore = create<SettingsState>()(
             name: n,
             email: email?.trim() || s.profile.email,
             loggedIn: true,
+            verified: true,
             avatar: s.profile.avatar || `preset:${(n.charCodeAt(0) % 6) + 1}`,
           },
         }));
@@ -375,13 +382,40 @@ export const useSettingsStore = create<SettingsState>()(
   )
 );
 
+/** Kho màu / gradient avatar có sẵn */
 export const AVATAR_PRESETS = [
-  { id: "preset:1", gradient: "from-red-500 to-rose-700" },
-  { id: "preset:2", gradient: "from-violet-500 to-purple-800" },
-  { id: "preset:3", gradient: "from-cyan-400 to-blue-700" },
-  { id: "preset:4", gradient: "from-amber-400 to-orange-700" },
-  { id: "preset:5", gradient: "from-emerald-400 to-teal-800" },
-  { id: "preset:6", gradient: "from-pink-400 to-fuchsia-800" },
+  { id: "preset:1", label: "Hồng đỏ", gradient: "from-red-500 to-rose-700" },
+  { id: "preset:2", label: "Tím", gradient: "from-violet-500 to-purple-800" },
+  { id: "preset:3", label: "Xanh biển", gradient: "from-cyan-400 to-blue-700" },
+  { id: "preset:4", label: "Cam", gradient: "from-amber-400 to-orange-700" },
+  { id: "preset:5", label: "Ngọc", gradient: "from-emerald-400 to-teal-800" },
+  { id: "preset:6", label: "Hồng", gradient: "from-pink-400 to-fuchsia-800" },
+  { id: "preset:7", label: "Vàng", gradient: "from-yellow-300 to-amber-600" },
+  { id: "preset:8", label: "Xanh lá", gradient: "from-lime-400 to-green-700" },
+  { id: "preset:9", label: "Indigo", gradient: "from-indigo-400 to-indigo-900" },
+  { id: "preset:10", label: "Sky", gradient: "from-sky-300 to-sky-700" },
+  { id: "preset:11", label: "Sunset", gradient: "from-orange-400 via-rose-500 to-purple-700" },
+  { id: "preset:12", label: "Neon", gradient: "from-fuchsia-500 via-purple-500 to-cyan-400" },
+  { id: "preset:13", label: "Midnight", gradient: "from-slate-600 to-slate-950" },
+  { id: "preset:14", label: "Coral", gradient: "from-rose-300 to-red-600" },
+  { id: "preset:15", label: "Mint", gradient: "from-teal-200 to-emerald-600" },
+  { id: "preset:16", label: "Gold", gradient: "from-amber-200 via-yellow-400 to-orange-600" },
+];
+
+/** Kho khung viền avatar kiểu game (overlay SVG /frames/*.svg) */
+export const AVATAR_FRAMES: { id: string; label: string; src: string | null }[] = [
+  { id: "frame:none", label: "Không", src: null },
+  { id: "frame:top1", label: "TOP1 Vàng", src: "/frames/top1.svg" },
+  { id: "frame:top2", label: "TOP2 Xanh", src: "/frames/top2.svg" },
+  { id: "frame:top3", label: "TOP3 Đỏ", src: "/frames/top3.svg" },
+  { id: "frame:ice", label: "Băng tinh", src: "/frames/ice.svg" },
+  { id: "frame:darklord", label: "Ma vương", src: "/frames/darklord.svg" },
+  { id: "frame:knight", label: "Bạch kỵ sĩ", src: "/frames/knight.svg" },
+  { id: "frame:dragon", label: "Long hoàng", src: "/frames/dragon.svg" },
+  { id: "frame:myth", label: "Thần thoại", src: "/frames/myth.svg" },
+  { id: "frame:jade", label: "Ngọc bích", src: "/frames/jade.svg" },
+  { id: "frame:flame", label: "Hỏa diệm", src: "/frames/flame.svg" },
+  { id: "frame:void", label: "Hư không", src: "/frames/void.svg" },
 ];
 
 export function isPresetAvatar(avatar?: string) {
@@ -391,4 +425,8 @@ export function isPresetAvatar(avatar?: string) {
 export function presetGradient(avatar?: string) {
   const p = AVATAR_PRESETS.find((x) => x.id === avatar);
   return p?.gradient || AVATAR_PRESETS[0].gradient;
+}
+
+export function getAvatarFrame(frameId?: string) {
+  return AVATAR_FRAMES.find((f) => f.id === frameId) || AVATAR_FRAMES[0];
 }

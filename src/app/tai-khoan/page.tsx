@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Eye,
@@ -14,9 +14,12 @@ import {
   Check,
   X,
   Loader2,
+  BadgeCheck,
+  Camera,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
-import { useSettingsStore } from "@/lib/settings";
+import { useSettingsStore, AVATAR_PRESETS, AVATAR_FRAMES } from "@/lib/settings";
+import UserAvatar from "@/components/UserAvatar";
 
 type Mode = "login" | "register" | "recover";
 type FieldErrors = {
@@ -145,6 +148,9 @@ export default function AccountPage() {
   const { username, lastSyncAt, login, register, logout, syncNow, resetPassword } =
     useAccountStore();
   const updateProfile = useSettingsStore((s) => s.updateProfile);
+  const profile = useSettingsStore((s) => s.profile);
+  const setAvatar = useSettingsStore((s) => s.setAvatar);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<Mode>("login");
   const [user, setUser] = useState("");
@@ -165,6 +171,39 @@ export default function AccountPage() {
   const [mounted, setMounted] = useState(false);
   const [newPin, setNewPin] = useState("");
   const [pinMsg, setPinMsg] = useState("");
+  const [editName, setEditName] = useState("");
+
+  /** Cắt ảnh vuông giữa + nén JPEG để đồng bộ thiết bị */
+  const processAvatarFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setErr("Ảnh tối đa 4MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        setAvatar(dataUrl, "50% 50%");
+        void useAccountStore.getState().syncNow();
+        setMsg("Đã cập nhật ảnh đại diện");
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const strength = useMemo(() => passwordStrength(pass), [pass]);
 
@@ -272,7 +311,11 @@ export default function AccountPage() {
     setBusy(false);
     if (!res.ok) setErr(res.error || "Đăng ký thất bại");
     else {
-      updateProfile({ name: displayName.trim().slice(0, 40) });
+      updateProfile({
+        name: displayName.trim().slice(0, 40),
+        verified: true,
+      });
+      void syncNow();
       setMsg("Tạo tài khoản thành công.");
       setPass("");
       setPass2("");
@@ -295,34 +338,81 @@ export default function AccountPage() {
   const titles = { login: "Đăng nhập", register: "Đăng ký", recover: "Khôi phục" };
 
   if (username) {
+    const name = profile.name || username;
     return (
-      <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
+      <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
         <AuroraBg />
-        <div className={`relative z-10 mx-auto max-w-md ${mounted ? "auth-enter" : "opacity-0"}`}>
-          <GlassCard className="rounded-3xl p-6 sm:p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-orange-500 shadow-lg shadow-rose-600/40">
-                <Shield className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">{username}</h1>
-                <p className="text-xs text-zinc-400">
-                  {lastSyncAt ? new Date(lastSyncAt).toLocaleString("vi-VN") : ""}
-                </p>
+        <div className={`relative z-10 mx-auto max-w-lg ${mounted ? "auth-enter" : "opacity-0"}`}>
+          {/* Cover kiểu mạng xã hội */}
+          <div className="relative h-36 sm:h-44 w-full overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-600 via-red-700 to-orange-600 opacity-90" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.25),_transparent_55%)]" />
+            <Link
+              href="/cai-dat"
+              className="absolute left-3 top-3 z-10 rounded-full bg-black/40 px-3 py-1.5 text-xs text-white backdrop-blur"
+            >
+              ← Cài đặt
+            </Link>
+          </div>
+
+          <div className="relative px-4 -mt-14 sm:-mt-16">
+            <div className="flex items-end gap-3">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="relative group shrink-0"
+                aria-label="Đổi ảnh đại diện"
+              >
+                <UserAvatar
+                  profile={{ ...profile, name, verified: true }}
+                  size={96}
+                  ring
+                  showBadge
+                />
+                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition">
+                  <Camera className="w-7 h-7 text-white" />
+                </span>
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) processAvatarFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <div className="flex-1 min-w-0 pb-1">
+                <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-1.5 truncate">
+                  <span className="truncate">{name}</span>
+                  <BadgeCheck className="w-5 h-5 shrink-0 text-[#1d9bf0] fill-[#1d9bf0]" />
+                </h1>
+                <p className="text-sm text-zinc-400">@{username}</p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+              >
+                Đổi ảnh
+              </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
+                  setErr("");
                   const r = await syncNow();
                   setBusy(false);
                   if (!r.ok) setErr(r.error || "Lỗi");
-                  else setMsg("Đã đồng bộ.");
+                  else setMsg("Đã đồng bộ các thiết bị");
                 }}
-                className="auth-btn-primary inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-white"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Đồng bộ
@@ -330,58 +420,157 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => logout()}
-                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2.5 text-sm text-zinc-200 hover:bg-white/15 active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10"
               >
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
             </div>
-            <div className="mt-6 border-t border-white/10 pt-5">
-              <FloatingField
-                id="newpin"
-                label="Mã PIN khôi phục"
-                value={newPin}
-                onChange={(v) => setNewPin(v.replace(/\D/g, "").slice(0, 8))}
-                type={showPin ? "text" : "password"}
-                inputMode="numeric"
-                rightSlot={<EyeBtn show={showPin} toggle={() => setShowPin(!showPin)} />}
-              />
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  setPinMsg("");
-                  if (!/^\d{4,8}$/.test(newPin.trim())) {
-                    setPinMsg("4–8 chữ số");
-                    return;
+
+            <GlassCard className="mt-5 rounded-3xl p-5 space-y-4">
+              <div>
+                <label className="text-xs text-zinc-500 mb-1.5 block">Tên hiển thị</label>
+                <div className="flex gap-2">
+                  <input
+                    value={editName || name}
+                    onChange={(e) => setEditName(e.target.value.slice(0, 40))}
+                    className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-rose-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const n = (editName || name).trim();
+                      if (n.length < 2) return;
+                      updateProfile({ name: n });
+                      void syncNow();
+                      setMsg("Đã lưu tên");
+                    }}
+                    className="rounded-xl bg-white text-black px-4 text-sm font-semibold"
+                  >
+                    Lưu
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Kho avatar</p>
+                <div className="grid grid-cols-8 gap-2">
+                  {AVATAR_PRESETS.map((pr) => (
+                    <button
+                      key={pr.id}
+                      type="button"
+                      title={pr.label}
+                      onClick={() => {
+                        setAvatar(pr.id);
+                        void syncNow();
+                      }}
+                      className={`aspect-square w-full rounded-full bg-gradient-to-br ${pr.gradient} ring-2 transition ${
+                        profile.avatar === pr.id ? "ring-white scale-105" : "ring-transparent opacity-90 hover:opacity-100"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Khung viền</p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                  {AVATAR_FRAMES.map((fr) => {
+                    const active = (profile.avatarFrame || "frame:none") === fr.id;
+                    return (
+                      <button
+                        key={fr.id}
+                        type="button"
+                        title={fr.label}
+                        onClick={() => {
+                          updateProfile({ avatarFrame: fr.id });
+                          void syncNow();
+                        }}
+                        className={`relative flex flex-col items-center gap-1 rounded-xl border p-2 transition ${
+                          active
+                            ? "border-amber-400/60 bg-amber-500/10"
+                            : "border-white/10 bg-white/[0.03] hover:bg-white/5"
+                        }`}
+                      >
+                        <span className="relative flex h-14 w-14 items-center justify-center">
+                          <span className="h-9 w-9 rounded-full bg-gradient-to-br from-zinc-500 to-zinc-800" />
+                          {fr.src ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={fr.src}
+                              alt={fr.label}
+                              className="pointer-events-none absolute inset-0 h-full w-full"
+                            />
+                          ) : (
+                            <span className="absolute inset-0 flex items-center justify-center text-[10px] text-zinc-500">
+                              —
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-[10px] text-zinc-400 truncate max-w-full">{fr.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4">
+                <FloatingField
+                  id="newpin"
+                  label="Mã PIN khôi phục"
+                  value={newPin}
+                  onChange={(v) => setNewPin(v.replace(/\D/g, "").slice(0, 8))}
+                  type={showPin ? "text" : "password"}
+                  inputMode="numeric"
+                  rightSlot={
+                    <button
+                      type="button"
+                      onClick={() => setShowPin(!showPin)}
+                      className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400"
+                    >
+                      {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   }
-                  setBusy(true);
-                  try {
-                    const res = await fetch("/api/auth/set-recovery-pin", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ recoveryPin: newPin.trim() }),
-                    });
-                    const data = await res.json();
-                    setPinMsg(data.ok ? "Đã lưu." : data.error || "Lỗi");
-                    if (data.ok) setNewPin("");
-                  } catch {
-                    setPinMsg("Lỗi mạng");
-                  }
-                  setBusy(false);
-                }}
-                className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 active:scale-95"
-              >
-                Lưu PIN
-              </button>
-              {pinMsg && <p className="mt-2 text-xs text-emerald-400">{pinMsg}</p>}
-            </div>
-          </GlassCard>
-          {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
-          {msg && <p className="mt-3 text-center text-sm text-emerald-400">{msg}</p>}
-          <div className="mt-6 text-center">
-            <Link href="/cai-dat" className="text-sm text-rose-400 hover:underline">
-              ← Cài đặt
-            </Link>
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    setPinMsg("");
+                    if (!/^\d{4,8}$/.test(newPin.trim())) {
+                      setPinMsg("4–8 chữ số");
+                      return;
+                    }
+                    setBusy(true);
+                    try {
+                      const res = await fetch("/api/auth/set-recovery-pin", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ recoveryPin: newPin.trim() }),
+                      });
+                      const data = await res.json();
+                      setPinMsg(data.ok ? "Đã lưu PIN" : data.error || "Lỗi");
+                      if (data.ok) setNewPin("");
+                    } catch {
+                      setPinMsg("Lỗi mạng");
+                    }
+                    setBusy(false);
+                  }}
+                  className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white"
+                >
+                  Lưu PIN
+                </button>
+                {pinMsg && <p className="mt-2 text-xs text-emerald-400">{pinMsg}</p>}
+              </div>
+
+              {lastSyncAt && (
+                <p className="text-[11px] text-zinc-600">
+                  Đồng bộ gần nhất: {new Date(lastSyncAt).toLocaleString("vi-VN")}
+                </p>
+              )}
+            </GlassCard>
+
+            {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
+            {msg && <p className="mt-3 text-center text-sm text-emerald-400">{msg}</p>}
           </div>
         </div>
         <AuthStyles />

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="a-top3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF8A8A"/><stop offset="50%" stop-color="#EF4444"/><stop offset="100%" stop-color="#7F1D1D"/>
+    </linearGradient>
+    <linearGradient id="b-top3" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EF4444"/><stop offset="100%" stop-color="#FF8A8A"/>
+    </linearGradient>
+    <radialGradient id="r-top3" cx="50%" cy="50%" r="50%">
+      <stop offset="70%" stop-color="transparent"/><stop offset="100%" stop-color="#EF4444" stop-opacity="0.35"/>
+    </radialGradient>
+    <filter id="gl-top3" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="100" cy="100" r="98" fill="url(#r-top3)"/>
+  <!-- multi rings -->
+  <circle cx="100" cy="100" r="94" stroke="url(#a-top3)" stroke-width="5" filter="url(#gl-top3)"/>
+  <circle cx="100" cy="100" r="88" stroke="#FECACA" stroke-width="1.5" opacity="0.7"/>
+  <circle cx="100" cy="100" r="82" stroke="url(#b-top3)" stroke-width="3.5"/>
+  <circle cx="100" cy="100" r="76" stroke="#FF8A8A" stroke-width="1" opacity="0.45"/>
+  <!-- diamond ornaments N E S W -->
+  <g filter="url(#gl-top3)" fill="#FF8A8A" stroke="#7F1D1D" stroke-width="0.6">
+    <path d="M100 4 L112 26 L100 20 L88 26 Z"/>
+    <path d="M100 196 L112 174 L100 180 L88 174 Z"/>
+    <path d="M4 100 L26 112 L20 100 L26 88 Z"/>
+    <path d="M196 100 L174 112 L180 100 L174 88 Z"/>
+  </g>
+  <!-- corner flourishes -->
+  <g stroke="#EF4444" stroke-width="2.2" fill="none" opacity="0.95">
+    <path d="M28 38 C40 18 62 22 72 38"/>
+    <path d="M172 38 C160 18 138 22 128 38"/>
+    <path d="M28 162 C40 182 62 178 72 162"/>
+    <path d="M172 162 C160 182 138 178 128 162"/>
+  </g>
+  <g fill="#FF8A8A">
+    <circle cx="38" cy="48" r="3.5"/><circle cx="162" cy="48" r="3.5"/>
+    <circle cx="38" cy="152" r="3.5"/><circle cx="162" cy="152" r="3.5"/>
+  </g>
+  <!-- side wings -->
+  <g fill="#EF4444" opacity="0.85" filter="url(#gl-top3)">
+    <path d="M12 78 L28 100 L12 122 L18 100 Z"/>
+    <path d="M188 78 L172 100 L188 122 L182 100 Z"/>
+  </g>
+  <!-- top crown bar -->
+  <path d="M70 18 L100 10 L130 18 L100 28 Z" fill="#FF8A8A" stroke="#7F1D1D" stroke-width="0.5" opacity="0.9"/>
+</svg>

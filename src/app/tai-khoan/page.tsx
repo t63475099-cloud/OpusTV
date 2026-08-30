@@ -281,7 +281,7 @@ export default function AccountPage() {
       setBusy(false);
       if (!res.ok) setErr(res.error || "Thất bại");
       else {
-        setMsg(res.message || "Đã đặt lại mật khẩu.");
+        setMsg("Đã đặt lại mật khẩu.");
         setPass("");
         setPass2("");
         setPin("");

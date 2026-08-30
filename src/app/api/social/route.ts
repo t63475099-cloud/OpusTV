@@ -104,8 +104,8 @@ export async function POST(req: NextRequest) {
     }
     if (action === "delete_comment") {
       const commentId = String(body.commentId || "");
-      const r = await deleteComment(slug, commentId, username);
-      return NextResponse.json({ ok: true, ...r });
+      await deleteComment(slug, commentId, username);
+      return NextResponse.json({ ok: true });
     }
     if (action === "like_comment") {
       const commentId = String(body.commentId || "");

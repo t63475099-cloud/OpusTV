@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { User } from "lucide-react";
-import { getAvatarFrame } from "@/lib/settings";
+import { getAvatarFrame, useSettingsStore } from "@/lib/settings";
 import { useAccountStore } from "@/lib/account";
 
 interface UserAvatarProps {
@@ -20,66 +20,121 @@ export default function UserAvatar({
   showBadge = false,
 }: UserAvatarProps) {
   const [mounted, setMounted] = useState(false);
-  const [localData, setLocalData] = useState<any>(null);
+  const [localData, setLocalData] = useState<any>({});
 
-  // Lấy dữ liệu profile trực tiếp từ Zustand store
-  const storeData = useAccountStore((state: any) => {
-    if (!state) return null;
-    return state.account || state.profile || state.user || state;
-  });
+  // 1. Lắng nghe Zustand Stores
+  const settings = useSettingsStore((state: any) => state?.settings || state || {});
+  const account = useAccountStore((state: any) => state?.profile || state?.user || state?.account || state || {});
+
+  // 2. Đọc và hợp nhất toàn bộ dữ liệu từ LocalStorage
+  const readAllStorages = () => {
+    if (typeof window === "undefined") return;
+    try {
+      const storageKeys = [
+        "opustv-settings",
+        "opustv_settings",
+        "opustv_account",
+        "opustv_user",
+        "opustv_profile",
+        "user_profile",
+        "user_settings",
+        "profile",
+        "settings",
+        "account",
+      ];
+
+      let merged: any = {};
+      for (const key of storageKeys) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          try {
+            const parsed = JSON.parse(item);
+            merged = { ...merged, ...(parsed?.settings || parsed?.profile || parsed?.user || parsed) };
+          } catch {
+            // bỏ qua lỗi parse
+          }
+        }
+      }
+      setLocalData(merged);
+    } catch {
+      setLocalData({});
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
-    const syncData = () => {
-      try {
-        const stored =
-          localStorage.getItem("opustv_account") ||
-          localStorage.getItem("opustv_profile") ||
-          localStorage.getItem("opustv_user") ||
-          localStorage.getItem("user_profile") ||
-          localStorage.getItem("profile");
-        if (stored) {
-          setLocalData(JSON.parse(stored));
-        }
-      } catch {
-        setLocalData(null);
-      }
-    };
+    readAllStorages();
 
-    syncData();
-    window.addEventListener("storage", syncData);
-    window.addEventListener("user-updated", syncData);
-    window.addEventListener("account-updated", syncData);
-    window.addEventListener("profile-updated", syncData);
+    // Đăng ký lắng nghe các sự kiện cập nhật
+    const handleUpdate = () => readAllStorages();
+    window.addEventListener("storage", handleUpdate);
+    window.addEventListener("user-updated", handleUpdate);
+    window.addEventListener("account-updated", handleUpdate);
+    window.addEventListener("profile-updated", handleUpdate);
+    window.addEventListener("settings-updated", handleUpdate);
+
+    // Lắng nghe thay đổi trực tiếp từ store (nếu có hỗ trợ subscribe)
+    const unsubSettings = (useSettingsStore as any)?.subscribe?.(readAllStorages);
+    const unsubAccount = (useAccountStore as any)?.subscribe?.(readAllStorages);
 
     return () => {
-      window.removeEventListener("storage", syncData);
-      window.removeEventListener("user-updated", syncData);
-      window.removeEventListener("account-updated", syncData);
-      window.removeEventListener("profile-updated", syncData);
+      window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("user-updated", handleUpdate);
+      window.removeEventListener("account-updated", handleUpdate);
+      window.removeEventListener("profile-updated", handleUpdate);
+      window.removeEventListener("settings-updated", handleUpdate);
+      if (typeof unsubSettings === "function") unsubSettings();
+      if (typeof unsubAccount === "function") unsubAccount();
     };
   }, []);
 
-  // Ưu tiên: prop truyền vào > Store > LocalStorage
-  const user = propProfile || storeData || localData;
-
+  // 3. Trích xuất URL Avatar theo thứ tự ưu tiên
   const avatarUrl =
-    user?.avatar ||
-    user?.avatarUrl ||
-    user?.photoURL ||
-    user?.image ||
+    propProfile?.customAvatar ||
+    propProfile?.avatar ||
+    propProfile?.avatarUrl ||
+    settings?.customAvatar ||
+    settings?.avatar ||
+    settings?.avatarUrl ||
+    account?.customAvatar ||
+    account?.avatar ||
+    account?.avatarUrl ||
+    account?.photoURL ||
+    account?.image ||
+    localData?.customAvatar ||
+    localData?.avatar ||
+    localData?.avatarUrl ||
+    localData?.photoURL ||
+    localData?.image ||
     null;
 
+  // 4. Trích xuất Khung Viền theo thứ tự ưu tiên
   const frameId =
-    user?.avatarFrame ||
-    user?.frameId ||
-    user?.frame ||
+    propProfile?.avatarFrame ||
+    propProfile?.frameId ||
+    propProfile?.frame ||
+    settings?.avatarFrame ||
+    settings?.frameId ||
+    settings?.frame ||
+    account?.avatarFrame ||
+    account?.frameId ||
+    localData?.avatarFrame ||
+    localData?.frameId ||
+    localData?.frame ||
     null;
+
+  const displayName =
+    propProfile?.name ||
+    propProfile?.username ||
+    account?.name ||
+    account?.username ||
+    settings?.name ||
+    localData?.name ||
+    localData?.username ||
+    "Tài khoản";
 
   const frame = frameId ? getAvatarFrame(frameId) : null;
-  const hasFrame = Boolean(
-    frame && frame.css && frame.css !== "none" && frame.id !== "frame:none"
-  );
+  const hasFrame = Boolean(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
   const pad = hasFrame ? Math.max(3, Math.round(size * 0.06)) : 0;
   const inner = Math.max(0, size - pad * 2);
 
@@ -93,7 +148,7 @@ export default function UserAvatar({
         background: hasFrame ? frame?.css : undefined,
         padding: pad,
       }}
-      title={user?.name || user?.username || "Tài khoản của bạn"}
+      title={displayName}
     >
       <div
         className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-neutral-800 border border-white/10 text-neutral-300 relative shadow-inner"
@@ -102,7 +157,7 @@ export default function UserAvatar({
         {mounted && avatarUrl ? (
           <img
             src={avatarUrl}
-            alt={user?.name || "Avatar"}
+            alt={displayName}
             className="w-full h-full object-cover select-none"
             loading="eager"
             onError={(e) => {
@@ -114,7 +169,7 @@ export default function UserAvatar({
         )}
       </div>
 
-      {showBadge && user?.badge && (
+      {showBadge && (propProfile?.badge || account?.badge || localData?.badge) && (
         <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-neutral-950 shadow-sm" />
       )}
     </Link>
@@ -144,15 +199,12 @@ export function CommentAvatar({
   className = "",
   ...rest
 }: CommentAvatarProps) {
-  const actualAvatar = avatar ?? profile?.avatar ?? profile?.avatarUrl ?? null;
+  const actualAvatar = avatar ?? profile?.customAvatar ?? profile?.avatar ?? profile?.avatarUrl ?? null;
   const actualName = name ?? profile?.name ?? profile?.username ?? "User";
-  const actualFrameId =
-    avatarFrame ?? frameId ?? profile?.avatarFrame ?? profile?.frameId ?? null;
+  const actualFrameId = avatarFrame ?? frameId ?? profile?.avatarFrame ?? profile?.frameId ?? null;
 
   const frame = actualFrameId ? getAvatarFrame(actualFrameId) : null;
-  const hasFrame = Boolean(
-    frame && frame.css && frame.css !== "none" && frame.id !== "frame:none"
-  );
+  const hasFrame = Boolean(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
   const pad = hasFrame ? Math.max(2, Math.round(size * 0.06)) : 0;
   const inner = Math.max(0, size - pad * 2);
 

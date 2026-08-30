@@ -101,7 +101,7 @@ export default function Navbar() {
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Streak Badge */}
+          {/* Daily Streak Badge */}
           <StreakBadge />
 
           {/* User Profile */}

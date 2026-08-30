@@ -2,42 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { getSessionUser } from "@/lib/session";
 
-function sql() {
+function getSql() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("Thiếu DATABASE_URL");
   return neon(url);
 }
 
-async function ensureTables(db: ReturnType<typeof neon>) {
-  await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS verified INTEGER NOT NULL DEFAULT 0`;
-  await db`
-    CREATE TABLE IF NOT EXISTS verification_requests (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      full_name TEXT NOT NULL,
-      field TEXT NOT NULL,
-      social_link TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'pending',
-      note TEXT DEFAULT '',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-}
-
-/** GET: trạng thái verified + yêu cầu gần nhất */
 export async function GET() {
   try {
     const session = await getSessionUser();
     if (!session) {
       return NextResponse.json({ ok: false, error: "Chưa đăng nhập" }, { status: 401 });
     }
-    const db = sql();
-    await ensureTables(db);
+    const db = getSql();
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS verified INTEGER NOT NULL DEFAULT 0`;
+    await db`
+      CREATE TABLE IF NOT EXISTS verification_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        full_name TEXT NOT NULL,
+        field TEXT NOT NULL,
+        social_link TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        note TEXT DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
     const users = await db`
       SELECT verified FROM users WHERE id = ${session.userId} LIMIT 1
     `;
-    const verified = !!(users[0] as { verified?: number } | undefined)?.verified;
+    const verified = Number((users[0] as { verified?: number } | undefined)?.verified || 0) === 1;
     const reqs = await db`
       SELECT id, full_name, field, social_link, status, created_at, updated_at
       FROM verification_requests
@@ -45,18 +40,27 @@ export async function GET() {
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    const latest = reqs[0] || null;
+    const latest = reqs[0] as
+      | {
+          id: number;
+          full_name: string;
+          field: string;
+          social_link: string;
+          status: string;
+          created_at: string;
+        }
+      | undefined;
     return NextResponse.json({
       ok: true,
       verified,
       request: latest
         ? {
-            id: (latest as { id: number }).id,
-            fullName: (latest as { full_name: string }).full_name,
-            field: (latest as { field: string }).field,
-            socialLink: (latest as { social_link: string }).social_link,
-            status: (latest as { status: string }).status,
-            createdAt: (latest as { created_at: string }).created_at,
+            id: latest.id,
+            fullName: latest.full_name,
+            field: latest.field,
+            socialLink: latest.social_link,
+            status: latest.status,
+            createdAt: latest.created_at,
           }
         : null,
     });
@@ -66,7 +70,6 @@ export async function GET() {
   }
 }
 
-/** POST: gửi yêu cầu xác minh */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSessionUser();
@@ -85,13 +88,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Chọn lĩnh vực" }, { status: 400 });
     }
 
-    const db = sql();
-    await ensureTables(db);
+    const db = getSql();
+    await db`ALTER TABLE users ADD COLUMN IF NOT EXISTS verified INTEGER NOT NULL DEFAULT 0`;
+    await db`
+      CREATE TABLE IF NOT EXISTS verification_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        full_name TEXT NOT NULL,
+        field TEXT NOT NULL,
+        social_link TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        note TEXT DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
 
     const users = await db`
       SELECT verified FROM users WHERE id = ${session.userId} LIMIT 1
     `;
-    if ((users[0] as { verified?: number } | undefined)?.verified) {
+    if (Number((users[0] as { verified?: number } | undefined)?.verified || 0) === 1) {
       return NextResponse.json({ ok: false, error: "Tài khoản đã có tích xanh" }, { status: 400 });
     }
 

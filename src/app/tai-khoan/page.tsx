@@ -17,7 +17,7 @@ import {
   Camera,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
-import { useSettingsStore, AVATAR_PRESETS, AVATAR_FRAMES } from "@/lib/settings";
+import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";
 import UserAvatar from "@/components/UserAvatar";
 
 type Mode = "login" | "register" | "recover";
@@ -440,39 +440,6 @@ export default function AccountPage() {
                   >
                     Lưu
                   </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs text-zinc-500 mb-2">Kho avatar (skin Liên Quân)</p>
-                <div className="max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-2 scrollbar-hide">
-                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
-                    {AVATAR_PRESETS.map((pr) => (
-                      <button
-                        key={pr.id}
-                        type="button"
-                        title={pr.label}
-                        onClick={() => {
-                          setAvatar(pr.id);
-                          void syncNow();
-                        }}
-                        className={`relative aspect-square w-full overflow-hidden rounded-full ring-2 transition ${
-                          profile.avatar === pr.id
-                            ? "ring-amber-400 scale-105"
-                            : "ring-transparent opacity-90 hover:opacity-100 hover:ring-white/40"
-                        }`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={pr.url}
-                          alt={pr.label}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
 

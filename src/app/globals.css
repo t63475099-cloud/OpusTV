@@ -602,3 +602,51 @@ html[data-nav-chips="1"] .app-content-offset {
 html[data-nav-minimal="1"] .app-content-offset {
   padding-top: calc(var(--nav-h) + var(--nav-safe) + 0.25rem);
 }
+
+/* Avatar frames */
+.avatar-frame-rainbow {
+  background: linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+    linear-gradient(135deg, #f43f5e, #eab308, #22c55e, #3b82f6, #a855f7, #f43f5e) border-box;
+  border: 3px solid transparent;
+  box-sizing: border-box;
+}
+.avatar-frame-vip {
+  background: linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+    linear-gradient(135deg, #fde68a, #f59e0b, #b45309, #fde68a) border-box;
+  border: 3px solid transparent;
+  animation: avatar-vip-pulse 2.4s ease-in-out infinite;
+}
+@keyframes avatar-vip-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
+
+/* Animated avatar frame wrapper */
+.avatar-frame-wrap {
+  position: relative;
+  display: inline-flex;
+  isolation: isolate;
+}
+.avatar-frame-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -4%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 200, 80, 0.18) 0%, transparent 70%);
+  opacity: 0.6;
+  animation: avatar-frame-glow 2.4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+.avatar-frame-wrap img[data-frame="1"] {
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.35));
+  animation: avatar-frame-breathe 3s ease-in-out infinite;
+}
+@keyframes avatar-frame-glow {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.06); }
+}
+@keyframes avatar-frame-breathe {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 200, 100, 0.25)); }
+  50% { filter: drop-shadow(0 0 12px rgba(255, 200, 100, 0.55)); }
+}

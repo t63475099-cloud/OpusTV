@@ -80,7 +80,7 @@ export default function UserAvatar({
 
   return (
     <span
-      className="relative inline-flex shrink-0 items-center justify-center"
+      className={`relative inline-flex shrink-0 items-center justify-center${hasFrame ? " avatar-frame-wrap" : ""}`}
       style={{ width: size, height: size }}
     >
       <span
@@ -94,6 +94,7 @@ export default function UserAvatar({
         <img
           src={frame.src}
           alt=""
+          data-frame="1"
           className="pointer-events-none absolute inset-0 h-full w-full select-none"
           draggable={false}
         />

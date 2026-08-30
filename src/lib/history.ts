@@ -6,9 +6,13 @@ import { recordDailyStreak } from "./streak";
 interface HistoryState {
   history: WatchHistory[];
   addToHistory: (item: Omit<WatchHistory, "watchedAt">) => void;
+  addOrUpdate: (item: any) => void; // Hỗ trợ Player.tsx
   removeFromHistory: (slug: string) => void;
+  remove: (slug: string) => void; // Hỗ trợ lich-su/page.tsx
   clearHistory: () => void;
+  clear: () => void; // Hỗ trợ cai-dat/page.tsx & lich-su/page.tsx
   getProgress: (slug: string) => WatchHistory | undefined;
+  getBySlug: (slug: string) => any; // Hỗ trợ Player.tsx
   setHistory: (history: WatchHistory[]) => void;
 }
 
@@ -18,7 +22,6 @@ export const useHistoryStore = create<HistoryState>()(
       history: [],
 
       addToHistory: (item) => {
-        // Tự động thắp lửa chuỗi xem phim mỗi ngày (Daily Streak)
         try {
           recordDailyStreak();
         } catch {}
@@ -28,6 +31,23 @@ export const useHistoryStore = create<HistoryState>()(
           const newItem: WatchHistory = {
             ...item,
             watchedAt: Date.now(),
+          } as any;
+          return {
+            history: [newItem, ...filtered].slice(0, 50),
+          };
+        });
+      },
+
+      addOrUpdate: (item) => {
+        try {
+          recordDailyStreak();
+        } catch {}
+
+        set((state) => {
+          const filtered = state.history.filter((h) => h.slug !== item.slug);
+          const newItem = {
+            ...item,
+            watchedAt: item.watchedAt || Date.now(),
           };
           return {
             history: [newItem, ...filtered].slice(0, 50),
@@ -41,11 +61,25 @@ export const useHistoryStore = create<HistoryState>()(
         }));
       },
 
+      remove: (slug) => {
+        set((state) => ({
+          history: state.history.filter((h) => h.slug !== slug),
+        }));
+      },
+
       clearHistory: () => {
         set({ history: [] });
       },
 
+      clear: () => {
+        set({ history: [] });
+      },
+
       getProgress: (slug) => {
+        return get().history.find((h) => h.slug === slug);
+      },
+
+      getBySlug: (slug) => {
         return get().history.find((h) => h.slug === slug);
       },
 
@@ -60,7 +94,7 @@ export const useHistoryStore = create<HistoryState>()(
   )
 );
 
-// Hỗ trợ hàm helper cho các component không dùng Hook
+// Hỗ trợ hàm helper cho các file không dùng Hook
 export function getHistory(): WatchHistory[] {
   return useHistoryStore.getState().history;
 }

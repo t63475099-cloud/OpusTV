@@ -1,521 +1,88 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import {
-  Eye,
-  EyeOff,
-  LogIn,
-  UserPlus,
-  KeyRound,
-  LogOut,
-  RefreshCw,
-  Shield,
-  Check,
-  X,
-  Loader2,
-  Camera,
-} from "lucide-react";
+import { ArrowLeft, RefreshCw, LogOut, BadgeCheck, ShieldAlert, Sparkles, Lock, KeyRound, User, Camera } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
 import UserAvatar from "@/components/UserAvatar";
 
-type Mode = "login" | "register" | "recover";
-type FieldErrors = {
-  user?: string;
-  displayName?: string;
-  pass?: string;
-  pass2?: string;
-  pin?: string;
-  terms?: string;
-};
+export default function TaiKhoanPage() {
+  const username = useAccountStore((s) => s.username);
+  const lastSyncAt = useAccountStore((s) => s.lastSyncAt);
+  const logout = useAccountStore((s) => s.logout);
+  const syncNow = useAccountStore((s) => s.syncNow);
+  const resetPassword = useAccountStore((s) => s.resetPassword);
 
-function passwordStrength(pw: string): { score: 0 | 1 | 2 | 3; label: string; color: string } {
-  if (!pw) return { score: 0, label: "", color: "bg-zinc-700" };
-  let s = 0;
-  if (pw.length >= 8) s++;
-  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
-  if (/\d/.test(pw) || /[^a-zA-Z0-9]/.test(pw)) s++;
-  if (pw.length >= 12 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /\d/.test(pw) && /[^a-zA-Z0-9]/.test(pw))
-    s = 3;
-  if (s <= 1) return { score: 1, label: "Yếu", color: "bg-red-500" };
-  if (s === 2) return { score: 2, label: "Trung bình", color: "bg-amber-500" };
-  return { score: 3, label: "Mạnh", color: "bg-emerald-500" };
-}
-
-function validateUsername(v: string): string | undefined {
-  const t = v.trim().toLowerCase();
-  if (!t) return "Vui lòng nhập tên tài khoản";
-  if (t.length < 3) return "Tối thiểu 3 ký tự";
-  if (!/^[a-z0-9._]+$/.test(t)) return "Chỉ dùng a–z, 0–9, . và _";
-  return undefined;
-}
-
-function validatePassword(pw: string): string | undefined {
-  if (!pw) return "Vui lòng nhập mật khẩu";
-  if (pw.length < 8) return "Tối thiểu 8 ký tự";
-  if (!/[a-z]/.test(pw)) return "Cần có chữ thường";
-  if (!/[A-Z]/.test(pw)) return "Cần có chữ hoa";
-  if (!/\d/.test(pw) && !/[^a-zA-Z0-9]/.test(pw)) return "Cần có số hoặc ký tự đặc biệt";
-  return undefined;
-}
-
-function AuroraBg() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      <div className="absolute inset-0 bg-[#05050a]" />
-      <div className="auth-orb auth-orb-1" />
-      <div className="auth-orb auth-orb-2" />
-      <div className="auth-orb auth-orb-3" />
-    </div>
-  );
-}
-
-function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`auth-glass relative ${className}`}>
-      <div className="auth-glass-border pointer-events-none absolute inset-0 rounded-[inherit]" />
-      {children}
-    </div>
-  );
-}
-
-function FloatingField({
-  id,
-  label,
-  value,
-  onChange,
-  onBlur,
-  type = "text",
-  autoComplete,
-  error,
-  rightSlot,
-  inputMode,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  onBlur?: () => void;
-  type?: string;
-  autoComplete?: string;
-  error?: string;
-  rightSlot?: React.ReactNode;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-}) {
-  const filled = value.length > 0;
-  return (
-    <div className="relative mb-5">
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        placeholder=" "
-        className={`peer w-full rounded-2xl border bg-white/[0.04] px-4 pb-2.5 pt-6 text-sm text-white outline-none transition-all duration-300 ${
-          rightSlot ? "pr-12" : ""
-        } ${
-          error
-            ? "border-red-500/50 focus:border-red-400"
-            : "border-white/10 focus:border-rose-400/60 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
-        }`}
-      />
-      <label
-        htmlFor={id}
-        className={`pointer-events-none absolute left-4 transition-all duration-300 ${
-          filled
-            ? "top-2 text-[10px] font-medium text-rose-300/90"
-            : "top-1/2 -translate-y-1/2 text-sm text-zinc-500 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-medium peer-focus:text-rose-300/90"
-        }`}
-      >
-        {label}
-      </label>
-      {rightSlot}
-      {error && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-400">
-          <X className="h-3 w-3 shrink-0" /> {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-export default function AccountPage() {
-  const { username, lastSyncAt, login, register, logout, syncNow, resetPassword } =
-    useAccountStore();
-  const updateProfile = useSettingsStore((s) => s.updateProfile);
   const profile = useSettingsStore((s) => s.profile);
-  const setAvatar = useSettingsStore((s) => s.setAvatar);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const updateProfile = useSettingsStore((s) => s.updateProfile);
 
-  const [mode, setMode] = useState<Mode>("login");
-  const [user, setUser] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [pass, setPass] = useState("");
-  const [pass2, setPass2] = useState("");
+  const [displayName, setDisplayName] = useState(profile.name || "");
   const [pin, setPin] = useState("");
-  const [remember, setRemember] = useState(true);
-  const [terms, setTerms] = useState(false);
-  const [showPass, setShowPass] = useState(false);
-  const [showPass2, setShowPass2] = useState(false);
-  const [showPin, setShowPin] = useState(false);
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const [newPass, setNewPass] = useState("");
   const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [newPin, setNewPin] = useState("");
-  const [pinMsg, setPinMsg] = useState("");
-  const [editName, setEditName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const currentDisplayName = profile.name || username || "";
+  const isVerified = Boolean(profile.verified);
 
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const r = localStorage.getItem("opusfilm-remember");
-      if (r) {
-        setUser(r);
-        setRemember(true);
-      }
-    } catch {
-      /* */
-    }
-  }, []);
-
-  useEffect(() => {
-    if (currentDisplayName) {
-      setEditName(currentDisplayName);
-    }
-  }, [currentDisplayName]);
-
-  /** Cắt ảnh vuông giữa + nén JPEG chuẩn 128px siêu nhẹ để đồng bộ qua mạng */
-  const processAvatarFile = (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 8 * 1024 * 1024) {
-      setErr("Ảnh tối đa 8MB");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const src = reader.result as string;
-      const img = new Image();
-      img.onload = () => {
-        const size = 128;
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        const side = Math.min(img.width, img.height);
-        const sx = (img.width - side) / 2;
-        const sy = (img.height - side) / 2;
-        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
-        setAvatar(dataUrl, "50% 50%");
-        void useAccountStore.getState().syncNow();
-        setMsg("Đã cập nhật và đồng bộ ảnh đại diện");
-      };
-      img.src = src;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const strength = useMemo(() => passwordStrength(pass), [pass]);
-
-  useEffect(() => {
-    const next: FieldErrors = {};
-    if (touched.user || user) next.user = validateUsername(user);
-    if (mode === "register" && (touched.displayName || displayName)) {
-      if (!displayName.trim() || displayName.trim().length < 2) next.displayName = "Tối thiểu 2 ký tự";
-    }
-    if (touched.pass || pass) {
-      next.pass =
-        mode === "login" ? (pass.length < 1 ? "Vui lòng nhập mật khẩu" : undefined) : validatePassword(pass);
-    }
-    if ((mode === "register" || mode === "recover") && (touched.pass2 || pass2)) {
-      if (!pass2) next.pass2 = "Xác nhận mật khẩu";
-      else if (pass2 !== pass) next.pass2 = "Mật khẩu không khớp";
-    }
-    if ((mode === "register" || mode === "recover") && (touched.pin || pin)) {
-      if (!/^\d{4,8}$/.test(pin.trim())) next.pin = "PIN 4–8 chữ số";
-    }
-    if (mode === "register" && touched.terms && !terms) next.terms = "Cần đồng ý điều khoản";
-    setErrors(next);
-  }, [user, displayName, pass, pass2, pin, terms, mode, touched]);
-
-  const formValid = useMemo(() => {
-    if (validateUsername(user)) return false;
-    if (mode === "login") return pass.length >= 1;
-    if (mode === "register") {
-      if (!displayName.trim() || displayName.trim().length < 2) return false;
-      if (validatePassword(pass)) return false;
-      if (pass !== pass2) return false;
-      if (!/^\d{4,8}$/.test(pin.trim())) return false;
-      if (!terms) return false;
-      return true;
-    }
-    if (!/^\d{4,8}$/.test(pin.trim())) return false;
-    if (validatePassword(pass)) return false;
-    if (pass !== pass2) return false;
-    return true;
-  }, [user, displayName, pass, pass2, pin, terms, mode]);
-
-  const switchMode = (m: Mode) => {
-    setMode(m);
-    setErr("");
-    setMsg("");
-    setTouched({});
-  };
-
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSaveName = (e: React.FormEvent) => {
     e.preventDefault();
-    setTouched({ user: true, displayName: true, pass: true, pass2: true, pin: true, terms: true });
-    setErr("");
-    setMsg("");
-    if (!formValid) {
-      setErr("Kiểm tra lại thông tin.");
-      return;
-    }
-    setBusy(true);
-
-    if (mode === "recover") {
-      const res = await resetPassword(user.trim().toLowerCase(), pin.trim(), pass);
-      setBusy(false);
-      if (!res.ok) setErr(res.error || "Thất bại");
-      else {
-        setMsg("Đã đặt lại mật khẩu.");
-        setPass("");
-        setPass2("");
-        setPin("");
-        switchMode("login");
-      }
-      return;
-    }
-
-    if (mode === "login") {
-      try {
-        if (remember) localStorage.setItem("opusfilm-remember", user.trim().toLowerCase());
-        else localStorage.removeItem("opusfilm-remember");
-      } catch {
-        /* */
-      }
-      const res = await login(user.trim().toLowerCase(), pass);
-      setBusy(false);
-      if (!res.ok) setErr(res.error || "Đăng nhập thất bại");
-      else {
-        setMsg("Đăng nhập thành công.");
-        setPass("");
-        void syncNow();
-      }
-      return;
-    }
-
-    const res = await register(user.trim().toLowerCase(), pass, pin.trim());
-    setBusy(false);
-    if (!res.ok) setErr(res.error || "Đăng ký thất bại");
-    else {
-      updateProfile({
-        name: displayName.trim().slice(0, 40),
-      });
-      void syncNow();
-      setMsg("Tạo tài khoản thành công.");
-      setPass("");
-      setPass2("");
-      setPin("");
-    }
+    updateProfile({ name: displayName.trim() });
+    setMsg("Đã lưu tên hiển thị thành công.");
+    setTimeout(() => setMsg(""), 3000);
   };
 
-  const EyeBtn = ({ show, toggle }: { show: boolean; toggle: () => void }) => (
-    <button
-      type="button"
-      onClick={toggle}
-      className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
-      tabIndex={-1}
-      aria-label={show ? "Ẩn" : "Hiện"}
-    >
-      {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-    </button>
-  );
+  const onSync = async () => {
+    setLoading(true);
+    setMsg("");
+    const res = await syncNow();
+    setLoading(false);
+    if (res.ok) {
+      setMsg("Đồng bộ thời gian thực thành công!");
+    } else {
+      setMsg(res.error || "Lỗi đồng bộ.");
+    }
+    setTimeout(() => setMsg(""), 3000);
+  };
 
-  const titles = { login: "Đăng nhập", register: "Đăng ký", recover: "Khôi phục" };
+  const onReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username) return;
+    setLoading(true);
+    const res = await resetPassword(username, pin, newPass);
+    setLoading(false);
+    if (res.ok) {
+      setMsg("Đã đặt lại mật khẩu thành công.");
+      setPin("");
+      setNewPass("");
+    } else {
+      setMsg(res.error || "Không thể đặt lại mật khẩu.");
+    }
+    setTimeout(() => setMsg(""), 3000);
+  };
 
-  if (username) {
-    const name = profile.name || username;
+  if (!username) {
     return (
-      <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-20">
-        <AuroraBg />
-        <div className={`relative z-10 mx-auto max-w-lg px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>
-          <div className="mb-6">
-            <Link
-              href="/cai-dat"
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur hover:bg-white/15 transition"
-            >
+      <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-[#050508]">
+        <div className="auth-orb auth-orb-1" />
+        <div className="auth-orb auth-orb-2" />
+        <div className="auth-orb auth-orb-3" />
+
+        <div className="relative z-10 w-full max-w-md auth-glass p-8 rounded-3xl text-center space-y-6 auth-enter">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-500/10">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-white tracking-tight">Chưa đăng nhập</h2>
+            <p className="text-sm text-zinc-400">Vui lòng đăng nhập để trải nghiệm không gian kính lỏng cá nhân.</p>
+          </div>
+          <Link href="/cai-dat" className="auth-btn-primary auth-btn-shimmer relative block w-full py-3.5 rounded-2xl text-white font-semibold shadow-lg overflow-hidden text-center">
+            Đến trang Cài đặt & Đăng nhập
+          </Link>
+          <div className="pt-2">
+            <Link href="/cai-dat" className="text-sm text-rose-400 hover:underline inline-flex items-center gap-1">
               ← Cài đặt
             </Link>
-          </div>
-
-          <div className="relative">
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="relative group shrink-0"
-                aria-label="Đổi ảnh đại diện"
-              >
-                <UserAvatar
-                  profile={{ ...profile, name, verified: true }}
-                  size={96}
-                  ring
-                  showBadge
-                />
-                <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition">
-                  <Camera className="w-7 h-7 text-white" />
-                </span>
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) processAvatarFile(f);
-                  e.target.value = "";
-                }}
-              />
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
-                  {name}
-                </h1>
-                <p className="text-sm text-zinc-400">@{username}</p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 transition"
-              >
-                Đổi ảnh
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  setErr("");
-                  const r = await syncNow();
-                  setBusy(false);
-                  if (!r.ok) setErr(r.error || "Lỗi");
-                  else setMsg("Đã đồng bộ các thiết bị");
-                }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 transition"
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Đồng bộ
-              </button>
-              <button
-                type="button"
-                onClick={() => logout()}
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition"
-              >
-                <LogOut className="h-4 w-4" /> Đăng xuất
-              </button>
-            </div>
-
-            <GlassCard className="mt-5 rounded-3xl p-5 space-y-4">
-              <div>
-                <label className="text-xs text-zinc-500 mb-1.5 block">Tên hiển thị</label>
-                <div className="flex gap-2">
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value.slice(0, 40))}
-                    placeholder="Nhập tên hiển thị"
-                    className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-rose-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const n = editName.trim();
-                      if (n.length < 2) {
-                        setErr("Tên tối thiểu 2 ký tự");
-                        return;
-                      }
-                      updateProfile({ name: n });
-                      void syncNow();
-                      setMsg("Đã lưu tên");
-                    }}
-                    className="rounded-xl bg-white text-black px-4 text-sm font-semibold hover:bg-zinc-200 transition"
-                  >
-                    Lưu
-                  </button>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10 pt-4">
-                <FloatingField
-                  id="newpin"
-                  label="Mã PIN khôi phục"
-                  value={newPin}
-                  onChange={(v) => setNewPin(v.replace(/\D/g, "").slice(0, 8))}
-                  type={showPin ? "text" : "password"}
-                  inputMode="numeric"
-                  rightSlot={
-                    <button
-                      type="button"
-                      onClick={() => setShowPin(!showPin)}
-                      className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400"
-                    >
-                      {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  }
-                />
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={async () => {
-                    setPinMsg("");
-                    if (!/^\d{4,8}$/.test(newPin.trim())) {
-                      setPinMsg("4–8 chữ số");
-                      return;
-                    }
-                    setBusy(true);
-                    try {
-                      const res = await fetch("/api/auth/set-recovery-pin", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ recoveryPin: newPin.trim() }),
-                      });
-                      const data = await res.json();
-                      setPinMsg(data.ok ? "Đã lưu PIN" : data.error || "Lỗi");
-                      if (data.ok) setNewPin("");
-                    } catch {
-                      setPinMsg("Lỗi mạng");
-                    }
-                    setBusy(false);
-                  }}
-                  className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 transition"
-                >
-                  Lưu PIN
-                </button>
-                {pinMsg && <p className="mt-2 text-xs text-emerald-400">{pinMsg}</p>}
-              </div>
-
-              {lastSyncAt && (
-                <p className="text-[11px] text-zinc-600">
-                  Đồng bộ gần nhất: {new Date(lastSyncAt).toLocaleString("vi-VN")}
-                </p>
-              )}
-            </GlassCard>
-
-            {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
-            {msg && <p className="mt-3 text-center text-sm text-emerald-400">{msg}</p>}
           </div>
         </div>
         <AuthStyles />
@@ -524,216 +91,149 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
-      <AuroraBg />
-      <div className={`relative z-10 mx-auto w-full max-w-[420px] ${mounted ? "auth-enter" : "opacity-0"}`}>
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-[0_8px_32px_rgba(244,63,94,0.45)] ring-1 ring-white/25">
-            <Shield className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">{titles[mode]}</h1>
-        </div>
+    <div className="relative min-h-screen py-10 px-4 sm:px-6 overflow-hidden bg-[#050508]">
+      <div className="auth-orb auth-orb-1" />
+      <div className="auth-orb auth-orb-2" />
+      <div className="auth-orb auth-orb-3" />
 
-        <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-black/40 p-1 backdrop-blur-xl">
-          {(
-            [
-              ["login", "Đăng nhập", LogIn],
-              ["register", "Đăng ký", UserPlus],
-              ["recover", "Quên MK", KeyRound],
-            ] as const
-          ).map(([m, label, Icon]) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => switchMode(m)}
-              className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-semibold transition-all duration-300 sm:text-sm ${
-                mode === m ? "bg-white text-black shadow-lg" : "text-zinc-400 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="relative z-10 max-w-2xl mx-auto space-y-6 auth-enter">
+        <Link href="/cai-dat" className="inline-flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Cài đặt
+        </Link>
 
-        <GlassCard className="rounded-3xl p-5 sm:p-7">
-          <form onSubmit={onSubmit} noValidate>
-            {mode === "register" && (
-              <FloatingField
-                id="displayName"
-                label="Họ và tên"
-                value={displayName}
-                onChange={setDisplayName}
-                onBlur={() => setTouched((t) => ({ ...t, displayName: true }))}
-                autoComplete="name"
-                error={errors.displayName}
+        {/* Header Profile Kính Lỏng (Đã căn chỉnh cân đối) */}
+        <div className="auth-glass p-6 sm:p-8 rounded-3xl relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10 text-center sm:text-left">
+            <div className="shrink-0">
+              <UserAvatar
+                profile={{ ...profile, name: displayName || username }}
+                size={96}
+                ring
+                showBadge={isVerified}
               />
-            )}
-
-            <FloatingField
-              id="username"
-              label="Tên tài khoản"
-              value={user}
-              onChange={setUser}
-              onBlur={() => setTouched((t) => ({ ...t, user: true }))}
-              autoComplete="username"
-              error={errors.user}
-            />
-
-            {mode === "recover" && (
-              <FloatingField
-                id="pin"
-                label="Mã PIN"
-                value={pin}
-                onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 8))}
-                onBlur={() => setTouched((t) => ({ ...t, pin: true }))}
-                type={showPin ? "text" : "password"}
-                inputMode="numeric"
-                error={errors.pin}
-                rightSlot={<EyeBtn show={showPin} toggle={() => setShowPin(!showPin)} />}
-              />
-            )}
-
-            <div className="mb-1">
-              <FloatingField
-                id="password"
-                label={mode === "recover" ? "Mật khẩu mới" : "Mật khẩu"}
-                value={pass}
-                onChange={setPass}
-                onBlur={() => setTouched((t) => ({ ...t, pass: true }))}
-                type={showPass ? "text" : "password"}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                error={errors.pass}
-                rightSlot={<EyeBtn show={showPass} toggle={() => setShowPass(!showPass)} />}
-              />
-              {(mode === "register" || mode === "recover") && pass && (
-                <div className="-mt-3 mb-4">
-                  <div className="mb-1 flex gap-1">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full ${strength.score >= i ? strength.color : "bg-zinc-700/80"}`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-zinc-500">{strength.label}</p>
-                </div>
-              )}
             </div>
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold text-white tracking-tight truncate">{displayName || username}</h1>
+                {isVerified && (
+                  <BadgeCheck className="w-6 h-6 text-[#1d9bf0] fill-[#1d9bf0] shrink-0" title="Đã xác thực" />
+                )}
+              </div>
+              <p className="text-sm text-zinc-400 font-mono">@{username}</p>
 
-            {(mode === "register" || mode === "recover") && (
-              <FloatingField
-                id="pass2"
-                label="Xác nhận mật khẩu"
-                value={pass2}
-                onChange={setPass2}
-                onBlur={() => setTouched((t) => ({ ...t, pass2: true }))}
-                type={showPass2 ? "text" : "password"}
-                autoComplete="new-password"
-                error={errors.pass2}
-                rightSlot={<EyeBtn show={showPass2} toggle={() => setShowPass2(!showPass2)} />}
+              <div className="pt-1 flex justify-center sm:justify-start">
+                {isVerified ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full backdrop-blur-md">
+                    <Sparkles className="w-3.5 h-3.5" /> Tài khoản Xác thực Cấp cao
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full backdrop-blur-md">
+                    <ShieldAlert className="w-3.5 h-3.5" /> Tài khoản Tiêu chuẩn
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-white/10 relative z-10">
+            <Link
+              href="/cai-dat"
+              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium backdrop-blur-md transition-all hover:scale-[1.02]"
+            >
+              <Camera className="w-4 h-4 text-rose-400" /> Đổi ảnh
+            </Link>
+            <button
+              type="button"
+              onClick={onSync}
+              disabled={loading}
+              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-sm font-medium backdrop-blur-md transition-all hover:scale-[1.02]"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Đồng bộ
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-sm font-medium backdrop-blur-md transition-all hover:scale-[1.02]"
+            >
+              <LogOut className="w-4 h-4" /> Đăng xuất
+            </button>
+          </div>
+        </div>
+
+        {/* Form Cài đặt Kính lỏng */}
+        <div className="auth-glass p-6 sm:p-8 rounded-3xl space-y-6">
+          <form onSubmit={onSaveName} className="space-y-3">
+            <label className="text-xs text-zinc-400 font-semibold tracking-wider uppercase flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-rose-400" /> Tên hiển thị cá nhân
+            </label>
+            <div className="flex gap-3">
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Nhập tên hiển thị tùy thích..."
+                className="flex-1 px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-rose-500 transition-all"
+                maxLength={60}
               />
-            )}
-            {!errors.pass2 && pass2 && pass === pass2 && (mode === "register" || mode === "recover") && (
-              <p className="-mt-3 mb-4 flex items-center gap-1 text-xs text-emerald-400">
-                <Check className="h-3 w-3" /> Khớp
-              </p>
-            )}
+              <button
+                type="submit"
+                className="auth-btn-shimmer relative px-6 py-3 rounded-2xl bg-white text-black font-semibold text-sm shadow-lg hover:bg-zinc-200 transition-all hover:scale-105 active:scale-95 overflow-hidden shrink-0"
+              >
+                Lưu
+              </button>
+            </div>
+          </form>
 
-            {mode === "register" && (
-              <FloatingField
-                id="regpin"
-                label="Mã PIN khôi phục"
+          <div className="h-px bg-white/10 my-4" />
+
+          <form onSubmit={onReset} className="space-y-4">
+            <h2 className="text-sm font-semibold text-zinc-200 tracking-wide flex items-center gap-1.5">
+              <KeyRound className="w-4 h-4 text-purple-400" /> Bảo mật & Khôi phục tài khoản
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="password"
                 value={pin}
-                onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 8))}
-                onBlur={() => setTouched((t) => ({ ...t, pin: true }))}
-                type={showPin ? "text" : "password"}
-                inputMode="numeric"
-                error={errors.pin}
-                rightSlot={<EyeBtn show={showPin} toggle={() => setShowPin(!showPin)} />}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="Mã PIN khôi phục"
+                className="px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-rose-500 transition-all"
               />
-            )}
-
-            {mode === "login" && (
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                    className="h-4 w-4 rounded border-white/20 bg-black/40 text-rose-600"
-                  />
-                  Ghi nhớ
-                </label>
-                <button
-                  type="button"
-                  onClick={() => switchMode("recover")}
-                  className="text-sm font-medium text-rose-400 hover:text-rose-300"
-                >
-                  Quên mật khẩu?
-                </button>
-              </div>
-            )}
-
-            {mode === "register" && (
-              <div className="mb-5">
-                <label className="flex cursor-pointer items-start gap-2.5 text-sm text-zinc-300">
-                  <input
-                    type="checkbox"
-                    checked={terms}
-                    onChange={(e) => {
-                      setTerms(e.target.checked);
-                      setTouched((t) => ({ ...t, terms: true }));
-                    }}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600"
-                  />
-                  <span>Đồng ý Điều khoản & Dịch vụ</span>
-                </label>
-                {errors.terms && <p className="mt-1 text-xs text-red-400">{errors.terms}</p>}
-              </div>
-            )}
-
+              <input
+                type="password"
+                value={newPass}
+                onChange={(e) => setNewPass(e.target.value)}
+                placeholder="Mật khẩu mới"
+                className="px-4 py-3 rounded-2xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-rose-500 transition-all"
+              />
+            </div>
             <button
               type="submit"
-              disabled={busy || !formValid}
-              className="auth-btn-primary auth-btn-shimmer relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-3.5 text-sm font-bold text-white disabled:opacity-40"
+              disabled={loading || !pin || !newPass}
+              className="auth-btn-primary auth-btn-shimmer relative w-full py-3.5 rounded-2xl text-white font-semibold text-sm disabled:opacity-50 overflow-hidden"
             >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : mode === "login" ? (
-                <>
-                  <LogIn className="h-4 w-4" /> Đăng nhập
-                </>
-              ) : mode === "register" ? (
-                <>
-                  <UserPlus className="h-4 w-4" /> Tạo tài khoản
-                </>
-              ) : (
-                <>
-                  <KeyRound className="h-4 w-4" /> Đặt lại mật khẩu
-                </>
-              )}
+              Lưu PIN & Đổi mật khẩu
             </button>
           </form>
-        </GlassCard>
 
-        {err && (
-          <p className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-center text-sm text-red-300">
-            {err}
-          </p>
-        )}
-        {msg && (
-          <p className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-300">
-            {msg}
-          </p>
-        )}
+          {msg && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium text-center backdrop-blur-md animate-pulse">
+              {msg}
+            </div>
+          )}
 
-        <div className="mt-6 text-center">
+          {lastSyncAt && (
+            <p className="text-[11px] text-zinc-500 text-center font-mono pt-2">
+              Đồng bộ gần nhất: {new Date(lastSyncAt).toLocaleString("vi-VN")}
+            </p>
+          )}
+        </div>
+
+        <div className="text-center pt-2">
           <Link href="/cai-dat" className="text-sm text-rose-400 hover:underline">
-            ← Cài đặt
+            ← Trở về Cài đặt
           </Link>
         </div>
       </div>
+
       <AuthStyles />
     </div>
   );
@@ -748,6 +248,7 @@ function AuthStyles() {
         filter: blur(80px);
         opacity: 0.5;
         animation: auth-float 18s ease-in-out infinite;
+        pointer-events: none;
       }
       .auth-orb-1 {
         width: 420px;
@@ -787,15 +288,11 @@ function AuthStyles() {
         -webkit-backdrop-filter: blur(20px) saturate(1.4);
         border: 1px solid rgba(255, 255, 255, 0.1);
         box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       }
-      .auth-glass-border {
-        border-radius: inherit;
-        padding: 1px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), transparent 45%, rgba(244, 63, 94, 0.2));
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
+      .auth-glass:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 30px rgba(244, 63, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
       }
       .auth-btn-primary {
         background: linear-gradient(135deg, #e11d48, #f43f5e 45%, #fb7185);

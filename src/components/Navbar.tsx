@@ -13,7 +13,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // Ẩn thanh menu trên cùng khi người dùng ở trang /cai-dat
+  // 1. Tự động ẩn toàn bộ thanh menu trên cùng khi ở trang Cài đặt (/cai-dat)
   if (pathname === "/cai-dat" || pathname?.startsWith("/cai-dat/")) {
     return null;
   }
@@ -79,10 +79,10 @@ export default function Navbar() {
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Daily Streak Badge */}
+          {/* Chuỗi xem mỗi ngày (Daily Watch Streak) */}
           <StreakBadge />
 
-          {/* Avatar hiển thị ở góc menu trang chủ */}
+          {/* Avatar hiển thị chuẩn xác cả ảnh và khung viền đã chọn */}
           <UserAvatar size={36} />
 
           {/* Mobile Menu Toggle */}

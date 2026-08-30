@@ -52,7 +52,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-neutral-950/80 border-b border-white/10 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Logo & Main Nav */}
+        {/* Logo & Navigation */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 via-red-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-red-500/20 group-hover:scale-105 transition-transform">
@@ -63,7 +63,7 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Links */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
@@ -84,7 +84,7 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Search & Actions */}
+        {/* Right Actions */}
         <div className="flex items-center gap-2.5 sm:gap-3">
           {/* Desktop Search */}
           <div className="hidden lg:block w-64">
@@ -101,13 +101,13 @@ export default function Navbar() {
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Daily Watch Streak Badge */}
+          {/* Streak Badge */}
           <StreakBadge />
 
-          {/* User Account */}
+          {/* User Profile */}
           <UserAvatar profile={profile} />
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Toggle */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -121,9 +121,9 @@ export default function Navbar() {
 
       {/* Mobile Search Modal */}
       {showSearchModal && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md p-4 flex flex-col">
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <span className="font-semibold text-white">Tìm kiếm</span>
+            <span className="font-semibold text-white text-base">Tìm kiếm phim</span>
             <button
               onClick={() => setShowSearchModal(false)}
               className="p-2 text-neutral-400 hover:text-white rounded-lg"
@@ -131,11 +131,13 @@ export default function Navbar() {
               <X className="w-6 h-6" />
             </button>
           </div>
-          <SearchBox onClose={() => setShowSearchModal(false)} />
+          <div className="w-full">
+            <SearchBox />
+          </div>
         </div>
       )}
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-neutral-900 border-b border-neutral-800 px-4 pt-2 pb-6 space-y-2 animate-in slide-in-from-top-4">
           <div className="space-y-1">

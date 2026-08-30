@@ -63,7 +63,7 @@ export default function Sidebar() {
         })}
       </nav>
       <div className="hidden xl:block mt-6 px-3 text-[11px] text-[#717171] leading-relaxed">
-        OpusFilm · Xem phim giải trí cá nhân
+        OpusFilm
       </div>
     </aside>
   );

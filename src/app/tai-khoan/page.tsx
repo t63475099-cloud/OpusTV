@@ -171,6 +171,9 @@ export default function AccountPage() {
   const [newPin, setNewPin] = useState("");
   const [pinMsg, setPinMsg] = useState("");
   const [editName, setEditName] = useState("");
+  useEffect(() => {
+    if (username) setEditName(profile.name ?? "");
+  }, [username, profile.name]);
 
   /** Cắt ảnh vuông giữa + nén JPEG để đồng bộ thiết bị */
   const processAvatarFile = (file: File) => {
@@ -311,7 +314,7 @@ export default function AccountPage() {
     if (!res.ok) setErr(res.error || "Đăng ký thất bại");
     else {
       updateProfile({
-        name: displayName.trim().slice(0, 40),
+        name: displayName.trim().slice(0, 80),
         verified: true,
       });
       void syncNow();
@@ -337,7 +340,8 @@ export default function AccountPage() {
   const titles = { login: "Đăng nhập", register: "Đăng ký", recover: "Khôi phục" };
 
   if (username) {
-    const name = profile.name || username;
+    const name = profile.name != null ? profile.name.trim() : "";
+    const showName = name || username;
     return (
       <div className="relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
         <AuroraBg />
@@ -358,7 +362,7 @@ export default function AccountPage() {
                 aria-label="Đổi ảnh đại diện"
               >
                 <UserAvatar
-                  profile={{ ...profile, name }}
+                  profile={{ ...profile, name: showName }}
                   size={96}
                   showBadge={!!profile.verified}
                 />
@@ -378,8 +382,8 @@ export default function AccountPage() {
                 }}
               />
               <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
-                  {name}
+                <h1 className="text-xl sm:text-2xl font-bold text-white break-words">
+                  {showName}
                 </h1>
                 <p className="text-sm text-zinc-400">@{username}</p>
               </div>
@@ -389,7 +393,7 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+                className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 whitespace-nowrap"
               >
                 Đổi ảnh
               </button>
@@ -404,7 +408,7 @@ export default function AccountPage() {
                   if (!r.ok) setErr(r.error || "Lỗi");
                   else setMsg("Đã đồng bộ các thiết bị");
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10 whitespace-nowrap"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Đồng bộ
@@ -412,7 +416,7 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => logout()}
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 whitespace-nowrap"
               >
                 <LogOut className="h-4 w-4" /> Đăng xuất
               </button>
@@ -423,20 +427,22 @@ export default function AccountPage() {
                 <label className="text-xs text-zinc-500 mb-1.5 block">Tên hiển thị</label>
                 <div className="flex gap-2">
                   <input
-                    value={editName || name}
-                    onChange={(e) => setEditName(e.target.value.slice(0, 40))}
-                    className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-rose-500"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value.slice(0, 64))}
+                    placeholder="Nhập tên hiển thị"
+                    maxLength={64}
+                    className="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none focus:border-rose-500"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      const n = (editName || name).trim();
-                      if (n.length < 2) return;
+                      const n = editName.trim().slice(0, 64);
                       updateProfile({ name: n });
+                      setEditName(n);
                       void syncNow();
-                      setMsg("Đã lưu tên");
+                      setMsg(n ? "Đã lưu" : "Đã xóa tên hiển thị");
                     }}
-                    className="rounded-xl bg-white text-black px-4 text-sm font-semibold"
+                    className="shrink-0 rounded-xl bg-white text-black px-4 text-sm font-semibold"
                   >
                     Lưu
                   </button>

@@ -52,9 +52,10 @@ export function mergePayload(local: SyncPayload, remote: SyncPayload): SyncPaylo
       "watchedAt"
     ),
     settings: remote.settings ?? local.settings,
+    // Tên hiển thị / avatar / khung: ưu tiên bản local (thiết bị đang dùng)
     profile: {
-      ...((local.profile as object) || {}),
       ...((remote.profile as object) || {}),
+      ...((local.profile as object) || {}),
     },
     updatedAt: Date.now(),
   };

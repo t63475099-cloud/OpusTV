@@ -1,5 +1,5 @@
 export const APP_NAME = "OpusFilm";
-export const APP_TAGLINE = "Xem phim tiên hiệp, cổ trang, kinh dị & hơn thế nữa";
+export const APP_TAGLINE = "Xem phim online";
 
 export const FEATURED_XIANXIA = [
   { slug: "tam-sinh-tam-the-thap-ly-dao-hoa", name: "Tam Sinh Tam Thế Thập Lý Đào Hoa" },

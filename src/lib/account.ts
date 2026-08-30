@@ -107,12 +107,10 @@ export const useAccountStore = create<AccountState>()(
           useSettingsStore.setState((s) => ({
             profile: {
               ...s.profile,
-              name: data.username,
+              name: (s.profile.name && s.profile.name.trim()) || data.username,
               loggedIn: true,
-              verified: true,
-              avatar:
-                s.profile.avatar ||
-                `preset:${(String(data.username).charCodeAt(0) % 6) + 1}`,
+              verified: !!s.profile.verified,
+              avatar: s.profile.avatar || undefined,
             },
           }));
           return { ok: true };
@@ -149,12 +147,10 @@ export const useAccountStore = create<AccountState>()(
           useSettingsStore.setState((s) => ({
             profile: {
               ...s.profile,
-              name: s.profile.name || data.username,
+              name: (s.profile.name && s.profile.name.trim()) || data.username,
               loggedIn: true,
-              verified: true,
-              avatar:
-                s.profile.avatar ||
-                `preset:${(String(data.username).charCodeAt(0) % 6) + 1}`,
+              verified: !!s.profile.verified,
+              avatar: s.profile.avatar || undefined,
             },
           }));
           return { ok: true };

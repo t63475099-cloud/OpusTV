@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description:
-    "OpusFilm - Xem phim tiên hiệp, cổ trang, viễn tưởng Trung Quốc full HD.",
+    "OpusFilm — Xem phim online",
   keywords: ["opusfilm", "opustv", "phim tiên hiệp", "xem phim online", "phim cổ trang"],
   robots: {
     index: true,
@@ -60,7 +60,7 @@ export default function RootLayout({
         <footer className="border-t border-[#272727] py-8 px-4 text-center text-[#aaa] text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
           <p className="font-semibold text-zinc-300">{APP_NAME}</p>
           <p className="mt-1">{APP_TAGLINE}</p>
-          <p className="mt-2 text-xs">Nguồn dữ liệu công khai · Chỉ dùng giải trí cá nhân</p>
+          <p className="mt-2 text-xs">OpusFilm</p>
         </footer>
                 </>
       </body>

@@ -363,7 +363,7 @@ function SettingsInner() {
             />
             <RowLink
               icon={<Info className="w-5 h-5" />}
-              label="Giới thiệu OpusTV"
+              label="Giới thiệu"
               onClick={() => go("about")}
             />
           </>
@@ -556,7 +556,7 @@ function SettingsInner() {
         {section === "about" && (
           <div className="px-4 py-6 text-sm text-[#aaa] space-y-2">
             <p className="text-white font-medium text-base">OpusTV</p>
-            <p>Xem phim · Opus Music · Cài đặt cá nhân trên thiết bị.</p>
+            <p>OpusFilm — xem phim và nghe nhạc.</p>
             <p className="text-xs">Dữ liệu (lịch sử, yêu thích, profile) lưu local trên máy bạn.</p>
           </div>
         )}

@@ -213,7 +213,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
         <input
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
-          placeholder="Tên hiển thị"
+          placeholder="Tên của bạn"
           className="w-full mb-3 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-red-500"
           maxLength={32}
         />

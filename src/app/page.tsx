@@ -107,7 +107,7 @@ export default async function HomePage() {
         <ContinueWatching />
         {CURATED_MOVIES.length > 0 && (
           <MovieRow
-            title="Phim Việt đề xuất"
+            title="Phim Việt"
             movies={CURATED_MOVIES.map(
               (m): MovieListItem => ({
                 _id: m.slug,
@@ -131,7 +131,7 @@ export default async function HomePage() {
         )}
         {featured.length > 0 && (
           <MovieRow
-            title="Siêu phẩm đề xuất"
+            title="Phim nổi bật"
             movies={featured}
             href="/the-loai/co-trang"
           />

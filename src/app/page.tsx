@@ -10,6 +10,7 @@ import {
   getFeaturedMovies,
 } from "@/lib/api";
 import { FEATURED_XIANXIA } from "@/lib/constants";
+import { CURATED_MOVIES } from "@/lib/curatedMovies";
 import type { MovieListItem } from "@/lib/types";
 
 export const revalidate = 1800;
@@ -104,6 +105,30 @@ export default async function HomePage() {
       <BannerSlider movies={bannerMovies} />
       <div className="relative z-10 pt-2 space-y-1">
         <ContinueWatching />
+        {CURATED_MOVIES.length > 0 && (
+          <MovieRow
+            title="Phim Việt đề xuất"
+            movies={CURATED_MOVIES.map(
+              (m): MovieListItem => ({
+                _id: m.slug,
+                name: m.name,
+                slug: m.slug,
+                origin_name: m.origin_name,
+                type: "series",
+                time: "",
+                poster_url: m.poster,
+                thumb_url: m.thumb,
+                year: m.year,
+                quality: m.quality,
+                lang: m.lang,
+                episode_current: m.episode_current,
+                episode_total: m.episode_total,
+                category: m.category,
+                country: m.country,
+              })
+            )}
+          />
+        )}
         {featured.length > 0 && (
           <MovieRow
             title="Siêu phẩm đề xuất"

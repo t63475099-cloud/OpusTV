@@ -444,7 +444,7 @@ export default function AccountPage() {
               </div>
 
               <div>
-                <p className="text-xs text-zinc-500 mb-2">Kho avatar Liên Quân</p>
+                <p className="text-xs text-zinc-500 mb-2">Kho avatar (skin Liên Quân)</p>
                 <div className="max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-2 scrollbar-hide">
                   <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                     {AVATAR_PRESETS.map((pr) => (
@@ -512,6 +512,9 @@ export default function AccountPage() {
                           )}
                         </span>
                         <span className="text-[10px] text-zinc-400 truncate max-w-full">{fr.label}</span>
+                        {"effect" in fr && fr.effect && fr.effect !== "none" ? (
+                          <span className="text-[9px] text-amber-400/80">{fr.effect}</span>
+                        ) : null}
                       </button>
                     );
                   })}

@@ -3,6 +3,7 @@
 import {
   isPresetAvatar,
   presetGradient,
+  getLqAvatarUrl,
   getAvatarFrame,
   type UserProfile,
 } from "@/lib/settings";
@@ -43,14 +44,20 @@ export default function UserAvatar({
       : "";
 
   let face: React.ReactNode;
-  if (profile.avatar && !isPresetAvatar(profile.avatar)) {
+  const lqUrl = getLqAvatarUrl(profile.avatar);
+  const imgSrc =
+    lqUrl ||
+    (profile.avatar && !isPresetAvatar(profile.avatar) ? profile.avatar : null);
+
+  if (imgSrc) {
     face = (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={profile.avatar}
+        src={imgSrc}
         alt={profile.name || "Avatar"}
         className={`rounded-full object-cover bg-zinc-800 ${ringCls} ${className}`}
         style={imgStyle}
+        referrerPolicy="no-referrer"
       />
     );
   } else if (isPresetAvatar(profile.avatar)) {

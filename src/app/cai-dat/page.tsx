@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense, type ReactNode } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   useSettingsStore,
-  AVATAR_PRESETS,
   isPresetAvatar,
   defaultSettings,
   type AppSettings,
@@ -253,9 +252,9 @@ function SettingsInner() {
   };
 
   return (
-    <div className="min-h-screen pt-[6.5rem] lg:pt-16 pb-24 max-w-xl mx-auto">
-      {/* Header */}
-      <div className="sticky top-14 lg:top-16 z-30 flex items-center gap-3 px-3 py-3 bg-[#0f0f0f]/90 backdrop-blur-md border-b border-white/10">
+    <div className="min-h-screen pt-[6.5rem] lg:pt-16 pb-24 max-w-xl mx-auto animate-fade-up">
+      {/* Header như YouTube */}
+      <div className="sticky top-14 lg:top-16 z-30 flex items-center gap-3 px-3 py-3 glass-nav border-b border-white/10">
         {section !== "root" ? (
           <button
             type="button"
@@ -384,14 +383,13 @@ function SettingsInner() {
           </div>
         )}
 
-        {section === "playback" && (
-          <>
+        />
             <Toggle label="Tự phát khi mở tập" checked={settings.autoPlayStart} onChange={(v) => set({ autoPlayStart: v })} />
             <Toggle label="Chạm đôi để tua" checked={settings.doubleTapSeek !== false} onChange={(v) => set({ doubleTapSeek: v })} />
             <ChipGroup
               label="Thời gian tua"
               value={settings.seekSeconds ?? 10}
-              options={[1, 5, 10, 20, 30].map((n) => ({ value: n as 1 | 5 | 10 | 20 | 30, label: `${n}s` }))}
+              options={[1, 5, 10, 20, 30].map((n) => ({ value: n as 1|5|10|20|30, label: `${n}s` }))}
               onChange={(v) => set({ seekSeconds: v })}
             />
             <ChipGroup

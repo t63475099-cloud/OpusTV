@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Heart, MessageCircle, Reply, Send, Loader2, BadgeCheck, Pencil, Check, X } from "lucide-react";
+import { Heart, MessageCircle, Reply, Send, Loader2, Pencil, Check, X } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
 import { CommentAvatar } from "@/components/UserAvatar";
@@ -45,7 +45,8 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   const [posting, setPosting] = useState(false);
   const [err, setErr] = useState("");
 
-  const displayName = accountName || guestName.trim().toLowerCase();
+  // Giữ nguyên chữ hoa/thường, ưu tiên Tên hiển thị (profile.name)
+  const currentDisplayName = (profile.name || accountName || guestName).trim();
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -80,9 +81,9 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
         body: JSON.stringify({
           action,
           slug,
-          username: displayName || undefined,
+          username: currentDisplayName || undefined,
           avatar: accountName ? profile.avatar || null : null,
-          verified: Boolean(accountName),
+          verified: false,
           ...extra,
         }),
       });
@@ -101,7 +102,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   };
 
   const onLike = async () => {
-    if (!displayName) {
+    if (!currentDisplayName) {
       setErr("Đăng nhập để thích");
       return;
     }
@@ -114,7 +115,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
 
   const onComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!displayName) {
+    if (!currentDisplayName) {
       setErr("Đăng nhập hoặc nhập tên để bình luận");
       return;
     }
@@ -123,10 +124,8 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
       text: text.trim(),
       parentId: replyTo?.id || null,
       avatar: accountName ? profile.avatar || null : null,
-      verified: Boolean(accountName),
     });
     if (data?.comment) {
-      // Gán avatar máy nếu là chủ tài khoản để hiển thị tức thì
       const newComment = {
         ...data.comment,
         avatar: data.comment.avatar || (accountName ? profile.avatar : null),
@@ -153,7 +152,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   };
 
   const onLikeComment = async (id: string) => {
-    if (!displayName) {
+    if (!currentDisplayName) {
       setErr("Đăng nhập để thích bình luận");
       return;
     }
@@ -166,14 +165,14 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   };
 
   const renderComment = (c: CommentItem, nested = false) => {
-    // Nếu là bình luận của tài khoản hiện tại, ưu tiên dùng ảnh từ profile local
-    const commentAvatar =
-      c.username.toLowerCase() === (accountName || "").toLowerCase()
-        ? profile.avatar || c.avatar
-        : c.avatar;
+    const isOwner =
+      accountName &&
+      (c.username === accountName || c.username === profile.name);
 
+    const commentAvatar = isOwner ? profile.avatar || c.avatar : c.avatar;
     const isAuthor =
-      displayName && c.username.toLowerCase() === displayName.toLowerCase();
+      currentDisplayName &&
+      c.username.toLowerCase() === currentDisplayName.toLowerCase();
 
     return (
       <div key={c.id} className={nested ? "mt-3 ml-2 pl-3 border-l border-white/10" : "flex gap-2.5"}>
@@ -182,20 +181,18 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
             username={c.username}
             avatar={commentAvatar}
             size={36}
-            verified={c.verified}
+            verified={false}
           />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             {nested && (
               <span className="mr-1 inline-block align-middle">
-                <CommentAvatar username={c.username} avatar={commentAvatar} size={24} verified={c.verified} />
+                <CommentAvatar username={c.username} avatar={commentAvatar} size={24} verified={false} />
               </span>
             )}
+            {/* Tên giữ nguyên định dạng, không còn icon xanh phía sau */}
             <span className="font-semibold text-white">{c.username}</span>
-            {c.verified && (
-              <BadgeCheck className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0]" aria-label="Đã xác thực" />
-            )}
             <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
           </div>
 
@@ -291,19 +288,19 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
         <input
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
-          placeholder="Tên hiển thị"
+          placeholder="Tên hiển thị (tuỳ thích)"
           className="w-full mb-3 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-red-500"
-          maxLength={32}
+          maxLength={60}
         />
       )}
 
       <form onSubmit={onComment} className="flex gap-2 mb-4 items-end">
         <div className="shrink-0 pb-0.5">
           <CommentAvatar
-            username={displayName || "?"}
+            username={currentDisplayName || "?"}
             avatar={accountName ? profile.avatar : null}
             size={36}
-            verified={Boolean(accountName)}
+            verified={false}
           />
         </div>
         <div className="flex-1">

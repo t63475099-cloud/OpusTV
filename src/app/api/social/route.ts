@@ -9,11 +9,22 @@ import {
 } from "@/lib/socialServer";
 import { getSessionUser } from "@/lib/session";
 
+interface CommentDoc {
+  id: string;
+  username: string;
+  text: string;
+  parentId?: string | null;
+  likes: number;
+  createdAt: number;
+  avatar?: string | null;
+  verified?: boolean;
+}
+
 function cleanSlug(s: string) {
   return s.replace(/[<>]/g, "").trim().slice(0, 120);
 }
 
-async function resolveUser(_req: NextRequest, body?: { username?: string }) {
+async function resolveUser(req: NextRequest, body?: { username?: string }) {
   try {
     const session = await getSessionUser();
     if (session?.username) return session.username;
@@ -43,7 +54,7 @@ export async function GET(req: NextRequest) {
       slug: data.slug,
       likes: data.likes,
       commentCount: data.comments.length,
-      comments: data.comments
+      comments: (data.comments as CommentDoc[])
         .slice()
         .sort((a, b) => a.createdAt - b.createdAt)
         .map((c) => ({
@@ -67,7 +78,7 @@ export async function POST(req: NextRequest) {
   try {
     if (!process.env.DATABASE_URL) {
       return NextResponse.json(
-        { error: "DATABASE_URL chưa cấu hình — bình luận cần Neon PostgreSQL" },
+        { error: "DATABASE_URL chưa cấu hình" },
         { status: 503 }
       );
     }
@@ -88,30 +99,41 @@ export async function POST(req: NextRequest) {
       const r = await toggleLike(slug, username);
       return NextResponse.json({ ok: true, ...r });
     }
+
     if (action === "comment") {
       const text = String(body.text || "");
       const parentId = body.parentId ? String(body.parentId) : null;
-      const avatar = body.avatar != null ? String(body.avatar) : null;
-      const verified = !!body.verified;
+      const avatar = body.avatar ? String(body.avatar) : null;
+      const verified = Boolean(body.verified);
+
+      // Đúng 6 tham số khớp với định nghĩa addComment
       const c = await addComment(slug, username, text, parentId, avatar, verified);
       return NextResponse.json({ ok: true, comment: c });
     }
+
     if (action === "edit_comment") {
       const commentId = String(body.commentId || "");
-      const text = String(body.text || "");
-      const c = await editComment(slug, commentId, username, text);
-      return NextResponse.json({ ok: true, comment: c });
+      const newText = String(body.text || "").trim();
+      if (!newText) {
+        return NextResponse.json({ error: "Nội dung trống" }, { status: 400 });
+      }
+      // Đúng 3 tham số khớp với định nghĩa editComment
+      const r = await editComment(commentId, username, newText);
+      return NextResponse.json({ ...r });
     }
+
     if (action === "delete_comment") {
       const commentId = String(body.commentId || "");
-      const r = await deleteComment(slug, commentId, username);
-      return NextResponse.json({ ok: true, ...r });
+      const r = await deleteComment(commentId, username);
+      return NextResponse.json({ ...r });
     }
+
     if (action === "like_comment") {
       const commentId = String(body.commentId || "");
       const r = await toggleCommentLike(slug, commentId, username);
       return NextResponse.json({ ok: true, ...r });
     }
+
     return NextResponse.json({ error: "unknown action" }, { status: 400 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Lỗi";

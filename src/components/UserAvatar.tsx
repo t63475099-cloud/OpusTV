@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  isPresetAvatar,
-  presetGradient,
-} from "@/lib/settings";
+import { isPresetAvatar, presetGradient } from "@/lib/settings";
 import { BadgeCheck } from "lucide-react";
 
 interface AvatarProfileData {
@@ -18,25 +15,8 @@ interface Props {
   size?: number;
   className?: string;
   ring?: boolean;
+  liquidRing?: boolean;
   showBadge?: boolean;
-}
-
-const GRADIENTS = [
-  "from-rose-500 to-red-600",
-  "from-violet-500 to-purple-600",
-  "from-blue-500 to-cyan-600",
-  "from-amber-500 to-orange-600",
-  "from-emerald-500 to-teal-600",
-  "from-pink-500 to-rose-600",
-  "from-indigo-500 to-blue-600",
-];
-
-function getGradientByName(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
 }
 
 export default function UserAvatar({
@@ -44,94 +24,73 @@ export default function UserAvatar({
   size = 40,
   className = "",
   ring = false,
+  liquidRing = false,
   showBadge = false,
 }: Props) {
-  const style = {
-    width: size,
-    height: size,
-    objectPosition: profile.avatarPosition || "50% 50%",
-  };
+  const innerSize = size - 6;
 
-  const ringCls = ring
-    ? "ring-2 ring-red-500/60 ring-offset-2 ring-offset-[#0a0a0a]"
-    : "";
+  const renderContent = () => {
+    if (profile.avatar && !isPresetAvatar(profile.avatar)) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={profile.avatar}
+          alt={profile.name || "Avatar"}
+          className={`rounded-full object-cover z-10 transition-transform duration-500 hover:scale-105 ${className}`}
+          style={{ width: innerSize, height: innerSize, objectPosition: profile.avatarPosition || "50% 50%" }}
+        />
+      );
+    }
 
-  let body: React.ReactNode;
-
-  if (profile.avatar && !isPresetAvatar(profile.avatar)) {
-    body = (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={profile.avatar}
-        alt={profile.name || "Avatar"}
-        className={`rounded-full object-cover bg-zinc-800 shrink-0 ${ringCls} ${className}`}
-        style={style}
-      />
-    );
-  } else if (profile.avatar && isPresetAvatar(profile.avatar)) {
     const letter = (profile.name || "?").charAt(0).toUpperCase();
-    body = (
+    const gradient = profile.avatar && isPresetAvatar(profile.avatar) 
+      ? presetGradient(profile.avatar) 
+      : "from-rose-500 via-purple-600 to-blue-600";
+
+    return (
       <div
-        className={`rounded-full bg-gradient-to-br ${presetGradient(
-          profile.avatar
-        )} flex items-center justify-center text-white font-bold select-none shrink-0 ${ringCls} ${className}`}
-        style={{ width: size, height: size, fontSize: size * 0.4 }}
+        className={`rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold select-none z-10 shadow-inner ${className}`}
+        style={{ width: innerSize, height: innerSize, fontSize: size * 0.38 }}
       >
         {letter}
       </div>
     );
-  } else {
-    const letter = (profile.name || "?").charAt(0).toUpperCase();
-    const bgGrad = getGradientByName(profile.name || "User");
+  };
+
+  let body: React.ReactNode;
+
+  if (liquidRing) {
     body = (
       <div
-        className={`rounded-full bg-gradient-to-br ${bgGrad} flex items-center justify-center text-white font-bold select-none shrink-0 shadow-md ${ringCls} ${className}`}
-        style={{ width: size, height: size, fontSize: size * 0.4 }}
+        className="relative flex items-center justify-center rounded-full p-[3px] liquid-ring shadow-[0_0_20px_rgba(244,63,94,0.3)] transition-transform duration-300 hover:scale-105"
+        style={{ width: size, height: size }}
       >
-        {letter}
+        <div className="absolute inset-[3px] bg-[#0a0a0c] rounded-full z-0 backdrop-blur-md" />
+        {renderContent()}
+      </div>
+    );
+  } else {
+    const ringCls = ring ? "ring-2 ring-rose-500/50 ring-offset-2 ring-offset-[#050508] shadow-lg" : "";
+    body = (
+      <div className={`relative rounded-full transition-transform duration-300 hover:scale-105 ${ringCls}`} style={{ width: size, height: size }}>
+        {renderContent()}
       </div>
     );
   }
 
   if (!showBadge) return body;
 
-  const badge = Math.max(14, Math.round(size * 0.28));
+  const badgeSize = Math.max(14, Math.round(size * 0.28));
   return (
-    <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
+    <div className="relative inline-block shrink-0" style={{ width: size, height: size }}>
       {body}
-      <span
-        className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full bg-[#0a0a0a] text-[#1d9bf0]"
-        style={{ width: badge + 2, height: badge + 2 }}
+      <div
+        className="absolute -bottom-0.5 -right-0.5 z-20 flex items-center justify-center rounded-full bg-[#050508] text-[#1d9bf0] shadow-md ring-2 ring-[#050508]"
+        style={{ width: badgeSize + 4, height: badgeSize + 4 }}
         title="Đã xác thực"
       >
-        <BadgeCheck className="fill-[#1d9bf0] text-white" style={{ width: badge, height: badge }} />
-      </span>
-    </span>
-  );
-}
-
-/** Avatar cho bình luận */
-export function CommentAvatar({
-  username,
-  avatar,
-  size = 32,
-  verified,
-}: {
-  username: string;
-  avatar?: string | null;
-  size?: number;
-  verified?: boolean;
-}) {
-  return (
-    <UserAvatar
-      profile={{
-        name: username,
-        avatar: avatar || undefined,
-        avatarPosition: "50% 50%",
-        verified: !!verified,
-      }}
-      size={size}
-      showBadge={!!verified}
-    />
+        <BadgeCheck className="fill-[#1d9bf0] text-white" style={{ width: badgeSize, height: badgeSize }} />
+      </div>
+    </div>
   );
 }

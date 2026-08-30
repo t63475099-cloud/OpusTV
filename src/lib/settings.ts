@@ -8,11 +8,8 @@ export interface UserProfile {
   email?: string;
   avatar?: string;
   avatarPosition?: string;
-<<<<<<< HEAD
   /** id khung viền avatar */
   avatarFrame?: string;
-=======
->>>>>>> bfc4389b26b054ca295033c265ef42066122495a
   /** Tài khoản đã xác thực (tích xanh) */
   verified?: boolean;
   loggedIn: boolean;
@@ -194,10 +191,7 @@ const defaultProfile: UserProfile = {
   email: "",
   avatar: undefined,
   avatarPosition: "50% 50%",
-<<<<<<< HEAD
   avatarFrame: "frame:none",
-=======
->>>>>>> bfc4389b26b054ca295033c265ef42066122495a
   verified: false,
   loggedIn: false,
 };

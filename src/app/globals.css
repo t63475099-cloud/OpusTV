@@ -996,3 +996,549 @@ html[data-nav-minimal="1"] .app-content-offset {
   border-radius: 50%;
   background: #050508;
 }
+
+/* ========== Animated Circular Avatar Frames (4 styles) ========== */
+.af-ring {
+  position: relative;
+  isolation: isolate;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.af-ring:hover {
+  transform: scale(1.06);
+}
+
+/* shared border shell */
+.af-ring__border {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --- 1 Magical Conic Spin --- */
+.af-ring--conic .af-ring__border {
+  background: conic-gradient(
+    from var(--af-angle, 0deg),
+    #f43f5e,
+    #a855f7,
+    #3b82f6,
+    #22d3ee,
+    #f43f5e
+  );
+  animation: af-conic-spin 3.5s linear infinite;
+  padding: 3px;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  box-shadow:
+    0 0 12px rgba(168, 85, 247, 0.45),
+    0 0 28px rgba(244, 63, 94, 0.25);
+}
+.af-ring--conic:hover .af-ring__border {
+  box-shadow:
+    0 0 18px rgba(168, 85, 247, 0.7),
+    0 0 40px rgba(59, 130, 246, 0.35);
+}
+@property --af-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes af-conic-spin {
+  to { --af-angle: 360deg; }
+}
+
+/* --- 2 Cyber Electric Pulse --- */
+.af-ring--electric .af-ring__border {
+  border: 2px solid rgba(34, 211, 238, 0.7);
+  box-shadow:
+    0 0 0 0 rgba(34, 211, 238, 0.45),
+    inset 0 0 12px rgba(34, 211, 238, 0.15);
+  animation: af-electric-pulse 1.8s ease-out infinite;
+}
+@keyframes af-electric-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.5), inset 0 0 8px rgba(34, 211, 238, 0.2); }
+  70% { box-shadow: 0 0 0 10px rgba(34, 211, 238, 0), inset 0 0 14px rgba(34, 211, 238, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0), inset 0 0 8px rgba(34, 211, 238, 0.2); }
+}
+.af-orbit {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 8px #22d3ee, 0 0 14px #67e8f9;
+  animation: af-orbit-spin 2.2s linear infinite;
+  z-index: 2;
+}
+.af-orbit--1 { animation-duration: 2.2s; }
+.af-orbit--2 { animation-duration: 2.8s; animation-direction: reverse; background: #a5f3fc; width: 4px; height: 4px; margin: -2px; }
+.af-orbit--3 { animation-duration: 1.6s; background: #e0f2fe; width: 3px; height: 3px; margin: -1.5px; }
+@keyframes af-orbit-spin {
+  from { transform: rotate(0deg) translateX(calc(var(--af-size, 40px) / 2 - 2px)); }
+  to { transform: rotate(360deg) translateX(calc(var(--af-size, 40px) / 2 - 2px)); }
+}
+
+/* --- 3 Liquid Glass Ripple --- */
+.af-ring--ripple .af-ring__border {
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(6px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 4px 16px rgba(59, 130, 246, 0.2);
+}
+.af-ripple {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(59, 130, 246, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.af-ring--ripple:hover .af-ripple--1 {
+  animation: af-ripple-out 1.2s ease-out infinite;
+}
+.af-ring--ripple:hover .af-ripple--2 {
+  animation: af-ripple-out 1.2s ease-out 0.35s infinite;
+}
+@keyframes af-ripple-out {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* --- 4 Metallic Gold Shimmer --- */
+.af-ring--gold .af-ring__border {
+  background: conic-gradient(
+    from 0deg,
+    #92400e,
+    #fbbf24,
+    #fef3c7,
+    #f59e0b,
+    #b45309,
+    #fbbf24,
+    #92400e
+  );
+  padding: 3px;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.4);
+}
+.af-shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 60%
+  );
+  mix-blend-mode: soft-light;
+  animation: af-shimmer-sweep 2.4s ease-in-out infinite;
+}
+@keyframes af-shimmer-sweep {
+  0% { transform: translateX(-60%) rotate(0deg); opacity: 0; }
+  20% { opacity: 1; }
+  50% { transform: translateX(60%) rotate(0deg); opacity: 0.8; }
+  100% { transform: translateX(80%); opacity: 0; }
+}
+.af-ring--gold:hover .af-ring__border {
+  box-shadow: 0 0 22px rgba(251, 191, 36, 0.65);
+}
+
+/* ========== Animated Circular Avatar Borders (50 styles) ========== */
+.ab-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ab-face {
+  position: relative;
+  z-index: 2;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.ab-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 3;
+}
+.ab-ring::before,
+.ab-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* --- Fantasy --- */
+.ab-frame--spin-rainbow .ab-ring {
+  padding: 3px;
+  background: conic-gradient(from var(--ab-a, 0deg), #f43f5e, #a855f7, #3b82f6, #22d3ee, #22c55e, #fbbf24, #f43f5e);
+  animation: ab-spin 3s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.ab-frame--halo-white .ab-ring {
+  box-shadow: 0 0 12px 3px rgba(255,255,255,0.45), 0 0 28px 6px rgba(253,224,171,0.35);
+  border: 2px solid rgba(255,255,255,0.7);
+  animation: ab-pulse 2.4s ease-in-out infinite;
+}
+.ab-frame--flame .ab-ring {
+  border: 2px solid #fb923c;
+  box-shadow: 0 0 14px #f97316, inset 0 0 10px rgba(249,115,22,0.4);
+  animation: ab-flame 1.2s ease-in-out infinite;
+}
+.ab-frame--frost .ab-ring {
+  border: 2px solid #67e8f9;
+  box-shadow: 0 0 16px #22d3ee, 0 0 4px #fff inset;
+  animation: ab-pulse 2.8s ease-in-out infinite;
+}
+.ab-frame--galaxy .ab-ring {
+  padding: 3px;
+  background: conic-gradient(from var(--ab-a, 0deg), #4c1d95, #db2777, #7c3aed, #1e1b4b, #4c1d95);
+  animation: ab-spin 8s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  filter: blur(0.2px);
+}
+.ab-frame--spirit .ab-ring {
+  border: 2px solid rgba(196,181,253,0.8);
+  box-shadow: 0 0 20px rgba(167,139,250,0.55);
+  animation: ab-pulse 1.8s ease-in-out infinite;
+}
+.ab-frame--emerald .ab-ring {
+  border: 2px solid #34d399;
+  box-shadow: 0 0 14px #10b981, inset 0 0 8px rgba(16,185,129,0.35);
+  animation: ab-pulse 2.2s ease-in-out infinite;
+}
+.ab-frame--lightning .ab-ring {
+  border: 2px solid #fde047;
+  box-shadow: 0 0 8px #facc15;
+  animation: ab-flicker 0.9s steps(2) infinite;
+}
+.ab-frame--solar .ab-ring {
+  border: 3px solid #78350f;
+  box-shadow: 0 0 16px #f59e0b, inset 0 0 12px #7c2d12;
+  animation: ab-pulse 3s ease-in-out infinite;
+}
+.ab-frame--lunar .ab-ring {
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 0 14px rgba(226,232,240,0.5), inset 0 0 8px rgba(148,163,184,0.4);
+  animation: ab-pulse 3.5s ease-in-out infinite;
+}
+
+/* --- Cyber --- */
+.ab-frame--emp .ab-ring {
+  border: 2px solid #22d3ee;
+  box-shadow: 0 0 10px #06b6d4;
+  animation: ab-emp 1.4s ease-out infinite;
+}
+.ab-frame--neon-flicker .ab-ring {
+  border: 2px solid #f472b6;
+  box-shadow: 0 0 12px #ec4899;
+  animation: ab-flicker 1.1s infinite;
+}
+.ab-frame--matrix .ab-ring {
+  border: 2px dashed #4ade80;
+  box-shadow: 0 0 10px #22c55e;
+  animation: ab-spin 6s linear infinite;
+}
+.ab-frame--laser .ab-ring {
+  border: 2px solid transparent;
+  background: conic-gradient(from var(--ab-a, 0deg), transparent 0 75%, #ef4444 75% 100%);
+  animation: ab-spin 1.5s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding: 2px;
+}
+.ab-frame--radio .ab-ring::before {
+  inset: -4px;
+  border: 1px solid rgba(59,130,246,0.5);
+  animation: ab-ripple 2s ease-out infinite;
+}
+.ab-frame--radio .ab-ring {
+  border: 2px solid #3b82f6;
+  box-shadow: 0 0 10px #2563eb;
+}
+.ab-frame--fiber .ab-ring {
+  padding: 2px;
+  background: conic-gradient(from var(--ab-a, 0deg), #f43f5e, #3b82f6, #22c55e, #fbbf24, #f43f5e);
+  animation: ab-spin 2.5s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.ab-frame--plasma .ab-ring {
+  border: 2px solid #2dd4bf;
+  box-shadow: 0 0 16px #14b8a6, 0 0 4px #5eead4 inset;
+  animation: ab-spin 4s linear infinite;
+}
+.ab-frame--circuit .ab-ring {
+  border: 2px solid #38bdf8;
+  border-style: double;
+  box-shadow: 0 0 12px #0ea5e9;
+  animation: ab-pulse 2s ease-in-out infinite;
+}
+.ab-frame--reactor .ab-ring {
+  border: 3px solid #f87171;
+  box-shadow: 0 0 18px #ef4444, inset 0 0 12px rgba(239,68,68,0.5);
+  animation: ab-pulse 0.9s ease-in-out infinite;
+}
+.ab-frame--xray .ab-ring {
+  border: 2px solid rgba(255,255,255,0.35);
+  box-shadow: 0 0 20px rgba(148,163,184,0.4);
+  animation: ab-scan 2.2s linear infinite;
+}
+
+/* --- Luxury --- */
+.ab-frame--gold .ab-ring {
+  border: 3px solid #fbbf24;
+  box-shadow: 0 0 14px rgba(251,191,36,0.55);
+  background: linear-gradient(135deg, transparent 40%, rgba(253,224,71,0.35) 50%, transparent 60%);
+  background-size: 200% 200%;
+  animation: ab-shimmer 2.5s linear infinite;
+}
+.ab-frame--platinum .ab-ring {
+  border: 3px solid #e2e8f0;
+  box-shadow: 0 0 12px rgba(226,232,240,0.5);
+  animation: ab-shimmer 2.2s linear infinite;
+}
+.ab-frame--bronze .ab-ring {
+  border: 3px solid #b45309;
+  box-shadow: 0 0 10px rgba(180,83,9,0.45);
+}
+.ab-frame--diamond .ab-ring {
+  border: 2px solid #e0f2fe;
+  box-shadow: 0 0 8px #fff, 0 0 16px #7dd3fc, 0 0 24px #a5b4fc;
+  animation: ab-sparkle 1.6s ease-in-out infinite;
+}
+.ab-frame--rose-gold .ab-ring {
+  border: 3px solid #fb7185;
+  box-shadow: 0 0 12px rgba(251,113,133,0.45);
+  animation: ab-shimmer 2.8s linear infinite;
+}
+.ab-frame--silver .ab-ring {
+  border: 3px solid #cbd5e1;
+  box-shadow: 0 0 12px rgba(203,213,225,0.5);
+  animation: ab-shimmer 2s linear infinite;
+}
+.ab-frame--titanium .ab-ring {
+  border: 3px solid #64748b;
+  box-shadow: 0 0 10px rgba(100,116,139,0.45);
+}
+.ab-frame--marble .ab-ring {
+  border: 3px solid #f5f5f4;
+  box-shadow: 0 0 8px rgba(251,191,36,0.35);
+  background: linear-gradient(45deg, transparent 45%, rgba(251,191,36,0.25) 50%, transparent 55%);
+  animation: ab-shimmer 3s linear infinite;
+}
+.ab-frame--prism .ab-ring {
+  padding: 2px;
+  background: conic-gradient(from var(--ab-a, 0deg), #f43f5e, #fbbf24, #22c55e, #3b82f6, #a855f7, #f43f5e);
+  animation: ab-spin 5s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.ab-frame--crown .ab-ring {
+  border: 3px solid #facc15;
+  box-shadow: 0 0 16px #eab308, inset 0 0 8px rgba(250,204,21,0.3);
+  animation: ab-pulse 2.5s ease-in-out infinite;
+}
+
+/* --- Nature --- */
+.ab-frame--magma .ab-ring {
+  border: 2px solid #ea580c;
+  box-shadow: 0 0 16px #dc2626, inset 0 0 10px #9a3412;
+  animation: ab-flame 1.5s ease-in-out infinite;
+}
+.ab-frame--ocean .ab-ring {
+  border: 2px solid #0ea5e9;
+  box-shadow: 0 0 14px #0284c7;
+  animation: ab-wave 2.4s ease-in-out infinite;
+}
+.ab-frame--tornado .ab-ring {
+  border: 2px dashed #94a3b8;
+  animation: ab-spin 1.8s linear infinite;
+  box-shadow: 0 0 10px rgba(148,163,184,0.4);
+}
+.ab-frame--quartz .ab-ring {
+  border: 2px solid #e9d5ff;
+  box-shadow: 0 0 14px #c084fc;
+  animation: ab-sparkle 2s ease-in-out infinite;
+}
+.ab-frame--fog .ab-ring {
+  border: 2px solid rgba(255,255,255,0.25);
+  box-shadow: 0 0 20px rgba(255,255,255,0.2);
+  animation: ab-pulse 4s ease-in-out infinite;
+}
+.ab-frame--meteor .ab-ring {
+  border: 2px solid #fcd34d;
+  box-shadow: 0 0 12px #f59e0b;
+  background: conic-gradient(from var(--ab-a, 0deg), transparent 0 85%, #fbbf24 85% 100%);
+  animation: ab-spin 1.2s linear infinite;
+  padding: 2px;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.ab-frame--sakura .ab-ring {
+  border: 2px solid #fda4af;
+  box-shadow: 0 0 12px #fb7185;
+  animation: ab-pulse 2.6s ease-in-out infinite;
+}
+.ab-frame--phoenix .ab-ring {
+  border: 2px solid #f97316;
+  box-shadow: 0 0 14px #ef4444, 0 0 28px rgba(249,115,22,0.35);
+  animation: ab-flame 1.1s ease-in-out infinite;
+}
+.ab-frame--aurora .ab-ring {
+  padding: 3px;
+  background: conic-gradient(from var(--ab-a, 0deg), #22d3ee, #a78bfa, #34d399, #22d3ee);
+  animation: ab-spin 7s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.ab-frame--sand .ab-ring {
+  border: 2px solid #fcd34d;
+  box-shadow: 0 0 10px rgba(252,211,77,0.4);
+  animation: ab-spin 9s linear infinite;
+}
+
+/* --- Rank & Glass --- */
+.ab-frame--tier-bronze .ab-ring { border: 3px solid #cd7f32; box-shadow: 0 0 10px rgba(205,127,50,0.5); }
+.ab-frame--tier-silver .ab-ring { border: 3px solid #c0c0c0; box-shadow: 0 0 12px rgba(192,192,192,0.55); }
+.ab-frame--tier-gold .ab-ring {
+  border: 3px solid #ffd700;
+  box-shadow: 0 0 16px rgba(255,215,0,0.6);
+  animation: ab-pulse 2s ease-in-out infinite;
+}
+.ab-frame--tier-plat .ab-ring {
+  border: 3px solid #5eead4;
+  box-shadow: 0 0 14px #2dd4bf;
+  animation: ab-pulse 2.2s ease-in-out infinite;
+}
+.ab-frame--tier-diamond .ab-ring {
+  border: 2px solid #a5f3fc;
+  box-shadow: 0 0 8px #fff, 0 0 18px #22d3ee, 0 0 28px #818cf8;
+  animation: ab-sparkle 1.5s ease-in-out infinite;
+}
+.ab-frame--tier-challenger .ab-ring {
+  padding: 3px;
+  background: conic-gradient(from var(--ab-a, 0deg), #f43f5e, #fbbf24, #a855f7, #f43f5e);
+  animation: ab-spin 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  filter: drop-shadow(0 0 8px rgba(244,63,94,0.5));
+}
+.ab-frame--glass-pure .ab-ring {
+  border: 2px solid rgba(255,255,255,0.35);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 0 12px rgba(255,255,255,0.15), inset 0 0 12px rgba(255,255,255,0.08);
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+.ab-frame--glass-pure:hover .ab-ring {
+  box-shadow: 0 0 20px rgba(255,255,255,0.3), inset 0 0 16px rgba(255,255,255,0.12);
+}
+.ab-frame--glass-frost .ab-ring {
+  border: 2px solid rgba(186,230,253,0.5);
+  box-shadow: 0 0 14px rgba(186,230,253,0.25);
+  animation: ab-pulse 3s ease-in-out infinite;
+}
+.ab-frame--infinity .ab-ring {
+  border: 2px solid rgba(255,255,255,0.2);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.08), 0 0 0 6px rgba(255,255,255,0.04), 0 0 20px rgba(99,102,241,0.35);
+  animation: ab-pulse 2.8s ease-in-out infinite;
+}
+.ab-frame--blackhole .ab-ring {
+  border: 2px solid #1e1b4b;
+  box-shadow: 0 0 24px #312e81, inset 0 0 20px #000;
+  animation: ab-spin 12s linear infinite;
+}
+
+/* hover scale for all frames */
+.ab-wrap:hover {
+  transform: scale(1.06);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ab-wrap {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@property --ab-a {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes ab-spin { to { --ab-a: 360deg; transform: rotate(360deg); } }
+@keyframes ab-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.04); }
+}
+@keyframes ab-flame {
+  0%, 100% { box-shadow: 0 0 10px #f97316, inset 0 0 6px rgba(249,115,22,0.3); }
+  50% { box-shadow: 0 0 22px #ef4444, inset 0 0 12px rgba(239,68,68,0.45); }
+}
+@keyframes ab-flicker {
+  0%, 100% { opacity: 1; }
+  40% { opacity: 0.55; }
+  60% { opacity: 1; }
+  80% { opacity: 0.7; }
+}
+@keyframes ab-emp {
+  0% { box-shadow: 0 0 4px #06b6d4; }
+  50% { box-shadow: 0 0 22px #22d3ee, 0 0 40px rgba(6,182,212,0.4); }
+  100% { box-shadow: 0 0 4px #06b6d4; }
+}
+@keyframes ab-ripple {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@keyframes ab-shimmer {
+  0% { background-position: 200% 0; filter: brightness(1); }
+  50% { filter: brightness(1.25); }
+  100% { background-position: -200% 0; filter: brightness(1); }
+}
+@keyframes ab-sparkle {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 8px #fff, 0 0 16px #7dd3fc; }
+  50% { filter: brightness(1.3); box-shadow: 0 0 14px #fff, 0 0 28px #a5b4fc; }
+}
+@keyframes ab-wave {
+  0%, 100% { box-shadow: 0 0 10px #0284c7; }
+  50% { box-shadow: 0 0 20px #0ea5e9, 0 0 32px rgba(14,165,233,0.35); }
+}
+@keyframes ab-scan {
+  0%, 100% { box-shadow: 0 0 10px rgba(148,163,184,0.3); }
+  50% { box-shadow: 0 0 24px rgba(226,232,240,0.55); }
+}

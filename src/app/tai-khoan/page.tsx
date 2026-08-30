@@ -437,7 +437,7 @@ export default function AccountPage() {
               </div>
 
               <div>
-                <p className="text-xs text-zinc-500 mb-2">Khung viền ({AVATAR_FRAMES.length - 1})</p>
+                <p className="text-xs text-zinc-500 mb-2">Khung viền</p>
                 <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-2 scrollbar-hide">
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                   {AVATAR_FRAMES.map((fr) => {
@@ -457,24 +457,21 @@ export default function AccountPage() {
                             : "border-white/10 bg-white/[0.03] hover:bg-white/5"
                         }`}
                       >
-                        <span className="relative flex h-14 w-14 items-center justify-center">
-                          <span className="h-9 w-9 rounded-full bg-gradient-to-br from-zinc-500 to-zinc-800" />
-                          {fr.src ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={fr.src}
-                              alt={fr.label}
-                              className="pointer-events-none absolute inset-0 h-full w-full"
-                            />
-                          ) : (
-                            <span className="absolute inset-0 flex items-center justify-center text-[10px] text-zinc-500">
-                              —
-                            </span>
-                          )}
+                        <span
+                          className={`ab-wrap ab-frame--${fr.css || "none"}`}
+                          style={{ width: 52, height: 52 }}
+                        >
+                          <span
+                            className="ab-face rounded-full bg-gradient-to-br from-zinc-600 to-zinc-900"
+                            style={{ width: 36, height: 36 }}
+                          />
+                          {fr.id !== "frame:none" ? <span className="ab-ring" /> : null}
                         </span>
-                        <span className="text-[10px] text-zinc-400 truncate max-w-full">{fr.label}</span>
-                        {"effect" in fr && fr.effect && fr.effect !== "none" ? (
-                          <span className="text-[9px] text-amber-400/80">{fr.effect}</span>
+                        <span className="text-[10px] text-zinc-400 truncate max-w-full text-center leading-tight">
+                          {fr.label}
+                        </span>
+                        {fr.group && fr.group !== "none" ? (
+                          <span className="text-[9px] text-zinc-500">{fr.group}</span>
                         ) : null}
                       </button>
                     );

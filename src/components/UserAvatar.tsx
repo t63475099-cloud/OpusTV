@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   isPresetAvatar,
   presetGradient,
   getLqAvatarUrl,
   getAvatarFrame,
   type UserProfile,
-  type FrameEffect,
 } from "@/lib/settings";
 import { User, BadgeCheck } from "lucide-react";
 
@@ -22,37 +20,6 @@ interface Props {
   showBadge?: boolean;
 }
 
-function FrameParticles({
-  effect,
-  color,
-  size,
-}: {
-  effect: FrameEffect;
-  color?: string;
-  size: number;
-}) {
-  if (effect === "none" || effect === "pulse" || effect === "spin") return null;
-  const c = color || "#fbbf24";
-  const n = effect === "particle" || effect === "spark" ? 10 : 6;
-  return (
-    <span className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden>
-      {Array.from({ length: n }).map((_, i) => (
-        <span
-          key={i}
-          className={`avatar-particle avatar-particle--${effect}`}
-          style={
-            {
-              "--i": i,
-              "--c": c,
-              "--s": `${size}px`,
-            } as React.CSSProperties
-          }
-        />
-      ))}
-    </span>
-  );
-}
-
 export default function UserAvatar({
   profile,
   size = 40,
@@ -61,18 +28,9 @@ export default function UserAvatar({
   showBadge = false,
 }: Props) {
   const frame = getAvatarFrame(profile.avatarFrame);
-  const hasFrame = !!(frame && frame.src && frame.id !== "frame:none");
-  const effect: FrameEffect = (frame?.effect as FrameEffect) || "none";
-  const [morph, setMorph] = useState(false);
-
-  useEffect(() => {
-    if (effect !== "morph" || !frame?.srcAlt) return;
-    const t = setInterval(() => setMorph((m) => !m), 2800);
-    return () => clearInterval(t);
-  }, [effect, frame?.srcAlt]);
-
-  const inner = hasFrame ? Math.round(size * 0.72) : size;
-  const pad = hasFrame ? Math.round((size - inner) / 2) : 0;
+  const hasFrame = !!(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
+  const pad = hasFrame ? Math.max(3, Math.round(size * 0.06)) : 0;
+  const inner = size - pad * 2;
 
   const imgStyle: React.CSSProperties = {
     width: inner,
@@ -126,56 +84,17 @@ export default function UserAvatar({
   }
 
   const badge = Math.max(14, Math.round(size * 0.28));
-  const frameSrc =
-    effect === "morph" && morph && frame?.srcAlt ? frame.srcAlt : frame?.src;
-
-  const effectClass =
-    effect === "spin"
-      ? "avatar-fx-spin"
-      : effect === "pulse"
-        ? "avatar-fx-pulse"
-        : effect === "flame"
-          ? "avatar-fx-flame"
-          : effect === "ice"
-            ? "avatar-fx-ice"
-            : effect === "neon"
-              ? "avatar-fx-neon"
-              : effect === "rainbow"
-                ? "avatar-fx-rainbow"
-                : effect === "orbit"
-                  ? "avatar-fx-orbit"
-                  : "";
+  const frameClass = hasFrame ? `ab-frame--${frame.css}` : "";
 
   return (
     <span
-      className={`relative inline-flex shrink-0 items-center justify-center${hasFrame ? " avatar-frame-wrap" : ""}`}
-      style={
-        {
-          width: size,
-          height: size,
-          ["--frame-color" as string]: frame?.color || "#fbbf24",
-        } as React.CSSProperties
-      }
+      className={`ab-wrap ${frameClass}`}
+      style={{ width: size, height: size }}
     >
-      <span
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ padding: pad }}
-      >
+      <span className="ab-face" style={{ width: inner, height: inner }}>
         {face}
       </span>
-      {hasFrame && frameSrc && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={frameSrc}
-          alt=""
-          data-frame="1"
-          className={`pointer-events-none absolute inset-0 h-full w-full select-none transition-opacity duration-700 ${effectClass}`}
-          draggable={false}
-        />
-      )}
-      {hasFrame && (
-        <FrameParticles effect={effect} color={frame?.color} size={size} />
-      )}
+      {hasFrame && <span className="ab-ring" aria-hidden />}
       {showBadge && profile.verified && (
         <span
           className="absolute -bottom-0.5 -right-0.5 z-10 flex items-center justify-center rounded-full bg-[#0a0a0a] text-[#1d9bf0]"

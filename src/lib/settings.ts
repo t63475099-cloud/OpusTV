@@ -348,7 +348,7 @@ export const useSettingsStore = create<SettingsState>()(
       profile: { ...defaultProfile },
       settings: { ...defaultSettings },
       login: (name, email) => {
-        const n = name.trim().slice(0, 40);
+        const n = name.trim().slice(0, 80);
         if (!n) return;
         set((s) => ({
           profile: {
@@ -484,79 +484,72 @@ export const AVATAR_PRESETS: { id: string; label: string; url: string }[] = [
 
 /** Kho khung viền avatar kiểu game (overlay SVG /frames/*.svg) */
 /** Khung viền + hiệu ứng (effect dùng trong UserAvatar) */
-export type FrameEffect =
-  | "none"
-  | "spin"
-  | "pulse"
-  | "particle"
-  | "morph"
-  | "spark"
-  | "orbit"
-  | "flame"
-  | "ice"
-  | "neon"
-  | "rainbow";
+/** 4 khung viền tròn động (CSS thuần) */
+export type FrameEffect = string;
 
 export const AVATAR_FRAMES: {
   id: string;
   label: string;
-  src: string | null;
-  effect: FrameEffect;
-  srcAlt?: string | null;
-  color?: string;
+  /** CSS class suffix: ab-frame--{css} */
+  css: string;
+  group: string;
 }[] = [
-  { id: "frame:none", label: "Không", src: null, effect: "none" },
-  { id: "frame:lq01", label: "Vàng cổ điển", src: "/frames/lq01.svg", effect: "morph", srcAlt: "/frames/lq08.svg", color: "#F5A623" },
-  { id: "frame:lq02", label: "Xanh đại dương", src: "/frames/lq02.svg", effect: "orbit", srcAlt: null, color: "#3B82F6" },
-  { id: "frame:lq03", label: "Huyết long", src: "/frames/lq03.svg", effect: "pulse", srcAlt: null, color: "#EF4444" },
-  { id: "frame:lq04", label: "Tử thần", src: "/frames/lq04.svg", effect: "particle", srcAlt: null, color: "#8B5CF6" },
-  { id: "frame:lq05", label: "Băng hà", src: "/frames/lq05.svg", effect: "spark", srcAlt: null, color: "#06B6D4" },
-  { id: "frame:lq06", label: "Ngọc lục", src: "/frames/lq06.svg", effect: "flame", srcAlt: null, color: "#10B981" },
-  { id: "frame:lq07", label: "Hồng đào", src: "/frames/lq07.svg", effect: "ice", srcAlt: null, color: "#EC4899" },
-  { id: "frame:lq08", label: "Hỏa diệm", src: "/frames/lq08.svg", effect: "neon", srcAlt: null, color: "#F97316" },
-  { id: "frame:lq09", label: "Bạch ngân", src: "/frames/lq09.svg", effect: "rainbow", srcAlt: null, color: "#A8A29E" },
-  { id: "frame:lq10", label: "Hư không", src: "/frames/lq10.svg", effect: "spin", srcAlt: null, color: "#A21CAF" },
-  { id: "frame:lq11", label: "Thiên sứ", src: "/frames/lq11.svg", effect: "morph", srcAlt: "/frames/lq18.svg", color: "#F5A623" },
-  { id: "frame:lq12", label: "Hải vương", src: "/frames/lq12.svg", effect: "orbit", srcAlt: null, color: "#3B82F6" },
-  { id: "frame:lq13", label: "Ma đao", src: "/frames/lq13.svg", effect: "pulse", srcAlt: null, color: "#EF4444" },
-  { id: "frame:lq14", label: "Huyền vũ", src: "/frames/lq14.svg", effect: "particle", srcAlt: null, color: "#8B5CF6" },
-  { id: "frame:lq15", label: "Tinh không", src: "/frames/lq15.svg", effect: "spark", srcAlt: null, color: "#06B6D4" },
-  { id: "frame:lq16", label: "Lâm giáp", src: "/frames/lq16.svg", effect: "flame", srcAlt: null, color: "#10B981" },
-  { id: "frame:lq17", label: "Anh đào", src: "/frames/lq17.svg", effect: "ice", srcAlt: null, color: "#EC4899" },
-  { id: "frame:lq18", label: "Mặt trời", src: "/frames/lq18.svg", effect: "neon", srcAlt: null, color: "#F97316" },
-  { id: "frame:lq19", label: "Sắt thép", src: "/frames/lq19.svg", effect: "rainbow", srcAlt: null, color: "#A8A29E" },
-  { id: "frame:lq20", label: "Hồng ngoại", src: "/frames/lq20.svg", effect: "spin", srcAlt: null, color: "#A21CAF" },
-  { id: "frame:lq21", label: "Nhạc hội", src: "/frames/lq21.svg", effect: "morph", srcAlt: "/frames/lq28.svg", color: "#F5A623" },
-  { id: "frame:lq22", label: "Sóng xanh", src: "/frames/lq22.svg", effect: "orbit", srcAlt: null, color: "#3B82F6" },
-  { id: "frame:lq23", label: "Phượng hoàng", src: "/frames/lq23.svg", effect: "pulse", srcAlt: null, color: "#EF4444" },
-  { id: "frame:lq24", label: "Mộng ảo", src: "/frames/lq24.svg", effect: "particle", srcAlt: null, color: "#8B5CF6" },
-  { id: "frame:lq25", label: "Băng tinh", src: "/frames/lq25.svg", effect: "spark", srcAlt: null, color: "#06B6D4" },
-  { id: "frame:lq26", label: "Rừng sâu", src: "/frames/lq26.svg", effect: "flame", srcAlt: null, color: "#10B981" },
-  { id: "frame:lq27", label: "Hồng hạc", src: "/frames/lq27.svg", effect: "ice", srcAlt: null, color: "#EC4899" },
-  { id: "frame:lq28", label: "Cam thảo", src: "/frames/lq28.svg", effect: "neon", srcAlt: null, color: "#F97316" },
-  { id: "frame:lq29", label: "Bạch kim", src: "/frames/lq29.svg", effect: "rainbow", srcAlt: null, color: "#A8A29E" },
-  { id: "frame:lq30", label: "Tím sẫm", src: "/frames/lq30.svg", effect: "spin", srcAlt: null, color: "#A21CAF" },
-  { id: "frame:lq31", label: "Thánh giá", src: "/frames/lq31.svg", effect: "morph", srcAlt: "/frames/lq38.svg", color: "#F5A623" },
-  { id: "frame:lq32", label: "Sấm sét", src: "/frames/lq32.svg", effect: "orbit", srcAlt: null, color: "#3B82F6" },
-  { id: "frame:lq33", label: "Huyết ảnh", src: "/frames/lq33.svg", effect: "pulse", srcAlt: null, color: "#EF4444" },
-  { id: "frame:lq34", label: "Thần thoại", src: "/frames/lq34.svg", effect: "particle", srcAlt: null, color: "#8B5CF6" },
-  { id: "frame:lq35", label: "Cực quang", src: "/frames/lq35.svg", effect: "spark", srcAlt: null, color: "#06B6D4" },
-  { id: "frame:lq36", label: "Lá phong", src: "/frames/lq36.svg", effect: "flame", srcAlt: null, color: "#10B981" },
-  { id: "frame:lq37", label: "Hồng ngọc", src: "/frames/lq37.svg", effect: "ice", srcAlt: null, color: "#EC4899" },
-  { id: "frame:lq38", label: "Nham thạch", src: "/frames/lq38.svg", effect: "neon", srcAlt: null, color: "#F97316" },
-  { id: "frame:lq39", label: "Sương mù", src: "/frames/lq39.svg", effect: "rainbow", srcAlt: null, color: "#A8A29E" },
-  { id: "frame:lq40", label: "Ảo ảnh", src: "/frames/lq40.svg", effect: "spin", srcAlt: null, color: "#A21CAF" },
-  { id: "frame:lq41", label: "Vương miện", src: "/frames/lq41.svg", effect: "morph", srcAlt: "/frames/lq48.svg", color: "#F5A623" },
-  { id: "frame:lq42", label: "Thủy cung", src: "/frames/lq42.svg", effect: "orbit", srcAlt: null, color: "#3B82F6" },
-  { id: "frame:lq43", label: "Chiến binh", src: "/frames/lq43.svg", effect: "pulse", srcAlt: null, color: "#EF4444" },
-  { id: "frame:lq44", label: "Pháp sư", src: "/frames/lq44.svg", effect: "particle", srcAlt: null, color: "#8B5CF6" },
-  { id: "frame:lq45", label: "Cung thủ", src: "/frames/lq45.svg", effect: "spark", srcAlt: null, color: "#06B6D4" },
-  { id: "frame:lq46", label: "Sát thủ", src: "/frames/lq46.svg", effect: "flame", srcAlt: null, color: "#10B981" },
-  { id: "frame:lq47", label: "Đỡ đòn", src: "/frames/lq47.svg", effect: "ice", srcAlt: null, color: "#EC4899" },
-  { id: "frame:lq48", label: "Trợ thủ", src: "/frames/lq48.svg", effect: "neon", srcAlt: null, color: "#F97316" },
-  { id: "frame:lq49", label: "Rừng rậm", src: "/frames/lq49.svg", effect: "rainbow", srcAlt: null, color: "#A8A29E" },
-  { id: "frame:lq50", label: "Đường giữa", src: "/frames/lq50.svg", effect: "spin", srcAlt: null, color: "#A21CAF" },
+  { id: "frame:none", label: "Không", css: "none", group: "none" },
+  { id: "frame:conic-rainbow", label: "Conic Rainbow Spin", css: "spin-rainbow", group: "Fantasy" },
+  { id: "frame:celestial-halo", label: "Celestial Halo", css: "halo-white", group: "Fantasy" },
+  { id: "frame:flame-ring", label: "Flame Ring Aura", css: "flame", group: "Fantasy" },
+  { id: "frame:mystic-frost", label: "Mystic Frost", css: "frost", group: "Fantasy" },
+  { id: "frame:galaxy-nebula", label: "Galaxy Nebula", css: "galaxy", group: "Fantasy" },
+  { id: "frame:spirit-orb", label: "Spirit Orb Pulse", css: "spirit", group: "Fantasy" },
+  { id: "frame:emerald-forest", label: "Emerald Forest", css: "emerald", group: "Fantasy" },
+  { id: "frame:mythic-lightning", label: "Mythic Lightning", css: "lightning", group: "Fantasy" },
+  { id: "frame:solar-eclipse", label: "Solar Eclipse", css: "solar", group: "Fantasy" },
+  { id: "frame:lunar-eclipse", label: "Lunar Eclipse", css: "lunar", group: "Fantasy" },
+  { id: "frame:emp-pulse", label: "Electro Magnetic", css: "emp", group: "Cyber" },
+  { id: "frame:neon-flicker", label: "Neon Flicker", css: "neon-flicker", group: "Cyber" },
+  { id: "frame:digital-matrix", label: "Digital Matrix", css: "matrix", group: "Cyber" },
+  { id: "frame:red-laser", label: "Red Laser Scan", css: "laser", group: "Cyber" },
+  { id: "frame:radio-wave", label: "Radio Wave Echo", css: "radio", group: "Cyber" },
+  { id: "frame:optical-fiber", label: "Optical Fiber", css: "fiber", group: "Cyber" },
+  { id: "frame:plasma-jet", label: "Plasma Jet", css: "plasma", group: "Cyber" },
+  { id: "frame:circuit-board", label: "Circuit Board", css: "circuit", group: "Cyber" },
+  { id: "frame:reactor-core", label: "Reactor Core", css: "reactor", group: "Cyber" },
+  { id: "frame:xray-scan", label: "X-Ray Scanner", css: "xray", group: "Cyber" },
+  { id: "frame:solid-gold", label: "Solid Gold", css: "gold", group: "Luxury" },
+  { id: "frame:platinum-sweep", label: "Platinum Sweep", css: "platinum", group: "Luxury" },
+  { id: "frame:antique-bronze", label: "Antique Bronze", css: "bronze", group: "Luxury" },
+  { id: "frame:diamond-sparkle", label: "Diamond Sparkle", css: "diamond", group: "Luxury" },
+  { id: "frame:rose-gold", label: "Rose Gold", css: "rose-gold", group: "Luxury" },
+  { id: "frame:sterling-silver", label: "Sterling Silver", css: "silver", group: "Luxury" },
+  { id: "frame:titanium-alloy", label: "Titanium Alloy", css: "titanium", group: "Luxury" },
+  { id: "frame:gold-marble", label: "Gold Vein Marble", css: "marble", group: "Luxury" },
+  { id: "frame:crystal-prism", label: "Crystal Prism", css: "prism", group: "Luxury" },
+  { id: "frame:royal-crown", label: "Royal Crown", css: "crown", group: "Luxury" },
+  { id: "frame:magma-flow", label: "Magma Flow", css: "magma", group: "Nature" },
+  { id: "frame:ocean-wave", label: "Ocean Wave", css: "ocean", group: "Nature" },
+  { id: "frame:tornado-vortex", label: "Tornado Vortex", css: "tornado", group: "Nature" },
+  { id: "frame:quartz-crystal", label: "Quartz Crystal", css: "quartz", group: "Nature" },
+  { id: "frame:mystic-fog", label: "Mystic Fog", css: "fog", group: "Nature" },
+  { id: "frame:meteor-shower", label: "Meteor Shower", css: "meteor", group: "Nature" },
+  { id: "frame:cherry-blossom", label: "Cherry Blossom", css: "sakura", group: "Nature" },
+  { id: "frame:phoenix-ash", label: "Phoenix Ash", css: "phoenix", group: "Nature" },
+  { id: "frame:northern-lights", label: "Northern Lights", css: "aurora", group: "Nature" },
+  { id: "frame:desert-sand", label: "Desert Sandstorm", css: "sand", group: "Nature" },
+  { id: "frame:bronze-tier", label: "Bronze Tier", css: "tier-bronze", group: "Rank" },
+  { id: "frame:silver-tier", label: "Silver Tier", css: "tier-silver", group: "Rank" },
+  { id: "frame:gold-tier", label: "Gold Conqueror", css: "tier-gold", group: "Rank" },
+  { id: "frame:platinum-tier", label: "Platinum Elite", css: "tier-plat", group: "Rank" },
+  { id: "frame:diamond-tier", label: "Diamond Master", css: "tier-diamond", group: "Rank" },
+  { id: "frame:challenger", label: "Challenger Legend", css: "tier-challenger", group: "Rank" },
+  { id: "frame:liquid-glass", label: "Liquid Glass Pure", css: "glass-pure", group: "Rank" },
+  { id: "frame:frosted-glass", label: "Frosted Glass", css: "glass-frost", group: "Rank" },
+  { id: "frame:infinity-mirror", label: "Infinity Mirror", css: "infinity", group: "Rank" },
+  { id: "frame:blackhole", label: "Cosmic Blackhole", css: "blackhole", group: "Rank" },
 ];
+
+export function getAvatarFrame(frameId?: string) {
+  return AVATAR_FRAMES.find((f) => f.id === frameId) || AVATAR_FRAMES[0];
+}
 
 export function isPresetAvatar(avatar?: string) {
   return !!avatar?.startsWith("preset:") || !!avatar?.startsWith("lq:");
@@ -573,6 +566,3 @@ export function presetGradient(avatar?: string) {
   return "from-zinc-600 to-zinc-800";
 }
 
-export function getAvatarFrame(frameId?: string) {
-  return AVATAR_FRAMES.find((f) => f.id === frameId) || AVATAR_FRAMES[0];
-}

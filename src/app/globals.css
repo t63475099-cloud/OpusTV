@@ -1542,3 +1542,13 @@ html[data-nav-minimal="1"] .app-content-offset {
   0%, 100% { box-shadow: 0 0 10px rgba(148,163,184,0.3); }
   50% { box-shadow: 0 0 24px rgba(226,232,240,0.55); }
 }
+
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-130px) scale(1.35); }
+}
+@keyframes danmaku-move {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100vw - 100%)); }
+}

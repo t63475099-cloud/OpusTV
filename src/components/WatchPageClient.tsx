@@ -1,4 +1,7 @@
 "use client";
+import AmbientGlow from "@/components/AmbientGlow";
+import FloatingReactions from "@/components/FloatingReactions";
+import { useXpStore } from "@/lib/xpStore";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -108,15 +111,17 @@ export default function WatchPageClient({
           <div>
             <div className="w-full bg-black xl:rounded-xl overflow-hidden shadow-2xl">
               {m3u8 ? (
-                <Player
-                  key={`${serverIdx}-${epIdx}-${m3u8}`}
-                  m3u8={m3u8}
-                  movie={movie}
-                  currentEpisode={currentEpisode}
-                  serverName={currentServer?.server_name || ""}
-                  nextEpisode={nextEpisode}
-                  onNextEpisode={handleNext}
-                />
+                <AmbientGlow src={poster}>
+                  <Player
+                    key={`${serverIdx}-${epIdx}-${m3u8}`}
+                    m3u8={m3u8}
+                    movie={movie}
+                    currentEpisode={currentEpisode}
+                    serverName={currentServer?.server_name || ""}
+                    nextEpisode={nextEpisode}
+                    onNextEpisode={handleNext}
+                  />
+                </AmbientGlow>
               ) : (
                 <div className="aspect-video bg-zinc-900 flex items-center justify-center text-zinc-500">
                   Không tìm thấy link phát
@@ -263,6 +268,9 @@ export default function WatchPageClient({
             </div>
           </div>
 
+                        <div className="mb-3">
+                          <FloatingReactions />
+                        </div>
                         <VideoSocial slug={movie.slug} title={movie.name} />
 
               {/* Related sidebar - YouTube style */}

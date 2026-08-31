@@ -1,4 +1,5 @@
 "use client";
+import { useXpStore } from "@/lib/xpStore";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
@@ -94,6 +95,8 @@ export default function Player({
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const addXp = useXpStore((s) => s.add);
+  const xpTick = useRef(0);
   const [duration, setDuration] = useState(0);
   const [isFs, setIsFs] = useState(false);
   const [seeking, setSeeking] = useState(false);
@@ -240,8 +243,18 @@ export default function Player({
     }
 
     const interval = setInterval(saveProgress, 5000);
+    const xpInterval = setInterval(() => {
+      if (video.paused) return;
+      xpTick.current += 1;
+      if (xpTick.current >= 12) {
+        // ~60s
+        xpTick.current = 0;
+        addXp({ type: "watch_min", minutes: 1 });
+      }
+    }, 5000);
     return () => {
       clearInterval(interval);
+      clearInterval(xpInterval);
       saveProgress();
       if (hlsRef.current) {
         hlsRef.current.destroy();

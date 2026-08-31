@@ -1,5 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { useXpStore } from "@/lib/xpStore";
+import { useNotifStore } from "@/lib/notifications";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Heart, MessageCircle, Reply, Send, Loader2, BadgeCheck } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
@@ -61,6 +65,8 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     }
   }, [slug]);
 
+    const addXp = useXpStore((s) => s.add);
+  const addNotif = useNotifStore((s) => s.add);
   useEffect(() => {
     void load();
   }, [load]);
@@ -123,6 +129,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     });
     if (data?.comment) {
       setComments((prev) => [...prev, data.comment]);
+      addXp({ type: "comment" });
       setText("");
       setReplyTo(null);
     }
@@ -158,7 +165,12 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
               <CommentAvatar username={c.username} avatar={c.avatar} size={24} verified={c.verified} />
             </span>
           )}
-          <span className="font-semibold text-white">{c.username}</span>
+          <Link
+            href={`/u/${encodeURIComponent(c.username)}`}
+            className="font-semibold text-white hover:text-sky-400 transition"
+          >
+            {c.username}
+          </Link>
           {c.verified && (
             <BadgeCheck className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0]" aria-label="Đã xác thực" />
           )}

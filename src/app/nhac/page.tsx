@@ -17,6 +17,10 @@ import {
 import { useMusicHistoryStore } from "@/lib/musicHistory";
 import { Music2, Play, Search, Flame, Library, Loader2, X, History } from "lucide-react";
 import VideoSocial from "@/components/VideoSocial";
+import AmbientGlow from "@/components/AmbientGlow";
+import FloatingReactions from "@/components/FloatingReactions";
+import { useMusicPlayerStore } from "@/lib/musicPlayerStore";
+import { useXpStore } from "@/lib/xpStore";
 
 type Tab = "home" | "library" | "trending";
 
@@ -62,6 +66,8 @@ export default function MusicPage() {
 
   const watchedList = useMusicHistoryStore((s) => s.watched);
   const addWatched = useMusicHistoryStore((s) => s.add);
+  const setMiniTrack = useMusicPlayerStore((s) => s.setTrack);
+  const addXp = useXpStore((s) => s.add);
   const watchedIds = useMusicHistoryStore((s) => s.ids);
 
   const library = useMemo(() => {
@@ -272,6 +278,13 @@ export default function MusicPage() {
     setCurrentTrack(track);
     setCurrentId(track.id);
     setPlaying(true);
+    setMiniTrack({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      thumb: track.thumb,
+    });
+    addXp({ type: "music_play" });
     addWatched({
       id: track.id,
       title: track.title,
@@ -533,7 +546,11 @@ export default function MusicPage() {
       )}
 
       {playing && currentId && (
-        <div className="mb-5 rounded-2xl overflow-hidden bg-black border border-[#272727]">
+        <AmbientGlow
+          src={current?.thumb || `https://i.ytimg.com/vi/${currentId}/hqdefault.jpg`}
+          className="mb-5"
+        >
+        <div className="rounded-2xl overflow-hidden bg-black border border-[#272727]">
           <div className="relative w-full aspect-video">
             <iframe
               key={currentId}
@@ -550,8 +567,12 @@ export default function MusicPage() {
               {current?.title || "Đang phát"}
             </h2>
             <p className="text-sm text-[#aaa]">{current?.artist || ""}</p>
+            <div className="mt-2">
+              <FloatingReactions onReact={() => addXp({ type: "like" })} />
+            </div>
           </div>
         </div>
+        </AmbientGlow>
       )}
 
       {currentId && (

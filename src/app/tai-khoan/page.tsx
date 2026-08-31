@@ -20,6 +20,7 @@ import { useAccountStore } from "@/lib/account";
 import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";
 import UserAvatar from "@/components/UserAvatar";
 import VerifyRequestModal from "@/components/VerifyRequestModal";
+import { useXpStore } from "@/lib/xpStore";
 
 type Mode = "login" | "register" | "recover";
 type FieldErrors = {
@@ -146,6 +147,7 @@ export default function AccountPage() {
   const { username, lastSyncAt, login, register, logout, syncNow, resetPassword } =
     useAccountStore();
   const updateProfile = useSettingsStore((s) => s.updateProfile);
+  const xpSummary = useXpStore((s) => s.summary);
   const profile = useSettingsStore((s) => s.profile);
   const setAvatar = useSettingsStore((s) => s.setAvatar);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -447,6 +449,40 @@ export default function AccountPage() {
             />
 
             <GlassCard className="lg-enter-delay-4 mt-6 rounded-3xl p-5 space-y-5">
+              {(() => {
+                const xp = xpSummary();
+                return (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-white">
+                        Lv.{xp.level} · <span style={{ color: xp.rankColor }}>{xp.rankLabel}</span>
+                      </span>
+                      <span className="text-xs text-zinc-500">{xp.exp} EXP</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-rose-500 to-violet-500 transition-all"
+                        style={{ width: `${xp.pct}%` }}
+                      />
+                    </div>
+                    {xp.badges.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {xp.badges.map((b) => (
+                          <span
+                            key={b.id}
+                            className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300"
+                          >
+                            {b.icon} {b.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <Link href={`/u/${username}`} className="text-xs text-sky-400 inline-block pt-1">
+                      Xem trang cá nhân công khai →
+                    </Link>
+                  </div>
+                );
+              })()}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-zinc-400">Tên hiển thị</label>
                 <div className="flex gap-2">

@@ -1,5 +1,6 @@
 "use client";
 import { useXpStore } from "@/lib/xpStore";
+import { useStreakStore } from "@/lib/streak";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
@@ -96,7 +97,9 @@ export default function Player({
   const [muted, setMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const addXp = useXpStore((s) => s.add);
+  const streakCheckIn = useStreakStore((s) => s.checkIn);
   const xpTick = useRef(0);
+  const streakDone = useRef(false);
   const [duration, setDuration] = useState(0);
   const [isFs, setIsFs] = useState(false);
   const [seeking, setSeeking] = useState(false);
@@ -250,6 +253,11 @@ export default function Player({
         // ~60s
         xpTick.current = 0;
         addXp({ type: "watch_min", minutes: 1 });
+      }
+      // Thắp lửa chuỗi sau ~30s xem
+      if (!streakDone.current && video.currentTime > 30) {
+        streakDone.current = true;
+        try { streakCheckIn(); } catch { /* */ }
       }
     }, 5000);
     return () => {

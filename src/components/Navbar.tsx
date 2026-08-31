@@ -16,6 +16,7 @@ import {
   Music2,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import StreakBadge from "@/components/StreakBadge";
 import { NAV_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import SearchBox from "./SearchBox";
@@ -130,7 +131,8 @@ export default function Navbar() {
             </div>
           )}
         </div>
-        <div className="shrink-0 flex items-center">
+        <div className="shrink-0 flex items-center gap-0.5">
+          <StreakBadge />
           <NotificationBell />
         </div>
       </div>

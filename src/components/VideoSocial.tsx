@@ -3,9 +3,19 @@
 import Link from "next/link";
 import { useXpStore } from "@/lib/xpStore";
 import { useNotifStore } from "@/lib/notifications";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Heart, MessageCircle, Reply, Send, Loader2, BadgeCheck } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Reply,
+  Send,
+  Loader2,
+  BadgeCheck,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+} from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
 import { CommentAvatar } from "@/components/UserAvatar";
@@ -34,6 +44,10 @@ function timeAgo(ts: number) {
   return `${Math.floor(s / 86400)} ngày`;
 }
 
+function sameUser(a?: string | null, b?: string | null) {
+  return !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 export default function VideoSocial({ slug, title }: VideoSocialProps) {
   const accountName = useAccountStore((s) => s.username);
   const profile = useSettingsStore((s) => s.profile);
@@ -46,8 +60,11 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [err, setErr] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
 
   const displayName = accountName || guestName.trim().toLowerCase();
+  const addXp = useXpStore((s) => s.add);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -65,8 +82,6 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     }
   }, [slug]);
 
-    const addXp = useXpStore((s) => s.add);
-  const addNotif = useNotifStore((s) => s.add);
   useEffect(() => {
     void load();
   }, [load]);
@@ -148,57 +163,172 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     }
   };
 
-  const renderComment = (c: CommentItem, nested = false) => (
-    <div key={c.id} className={nested ? "mt-3 ml-2 pl-3 border-l border-white/10" : "flex gap-2.5"}>
-      {!nested && (
-        <CommentAvatar
-          username={c.username}
-          avatar={c.avatar}
-          size={36}
-          verified={c.verified}
-        />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="text-zinc-300 flex items-center gap-1 flex-wrap">
-          {nested && (
-            <span className="mr-1.5 inline-block align-middle">
-              <CommentAvatar username={c.username} avatar={c.avatar} size={24} verified={c.verified} />
-            </span>
+  const startEdit = (c: CommentItem) => {
+    setEditingId(c.id);
+    setEditText(c.text);
+    setErr("");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!displayName) {
+      setErr("Đăng nhập để sửa bình luận");
+      return;
+    }
+    const t = editText.trim();
+    if (!t) {
+      setErr("Nội dung không được trống");
+      return;
+    }
+    const data = await post("edit_comment", { commentId: id, text: t });
+    if (data?.comment) {
+      setComments((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, text: data.comment.text } : c))
+      );
+      cancelEdit();
+    } else if (data?.ok) {
+      setComments((prev) => prev.map((c) => (c.id === id ? { ...c, text: t } : c)));
+      cancelEdit();
+    }
+  };
+
+  const onDelete = async (id: string) => {
+    if (!displayName) {
+      setErr("Đăng nhập để xóa bình luận");
+      return;
+    }
+    if (typeof window !== "undefined" && !window.confirm("Xóa bình luận này?")) return;
+    const data = await post("delete_comment", { commentId: id });
+    if (data?.ok) {
+      setComments((prev) =>
+        prev.filter((c) => c.id !== id && c.parentId !== id)
+      );
+      if (editingId === id) cancelEdit();
+      if (replyTo?.id === id) setReplyTo(null);
+    }
+  };
+
+  const renderComment = (c: CommentItem, nested = false) => {
+    const mine = sameUser(c.username, displayName);
+    const isEditing = editingId === c.id;
+
+    return (
+      <div
+        key={c.id}
+        className={nested ? "mt-3 ml-2 pl-3 border-l border-white/10" : "flex gap-2.5"}
+      >
+        {!nested && (
+          <CommentAvatar
+            username={c.username}
+            avatar={c.avatar}
+            size={36}
+            verified={c.verified}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-zinc-300 flex items-center gap-1 flex-wrap">
+            {nested && (
+              <span className="mr-1.5 inline-block align-middle">
+                <CommentAvatar
+                  username={c.username}
+                  avatar={c.avatar}
+                  size={24}
+                  verified={c.verified}
+                />
+              </span>
+            )}
+            <Link
+              href={`/u/${encodeURIComponent(c.username)}`}
+              className="font-semibold text-white hover:text-sky-400 transition"
+            >
+              {c.username}
+            </Link>
+            {c.verified && (
+              <BadgeCheck
+                className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0]"
+                aria-label="Đã xác thực"
+              />
+            )}
+            <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
+          </p>
+
+          {isEditing ? (
+            <div className="mt-1.5 space-y-2">
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                maxLength={500}
+                rows={3}
+                className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-red-500 resize-y"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={posting || !editText.trim()}
+                  onClick={() => void saveEdit(c.id)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-red-600 text-white disabled:opacity-50"
+                >
+                  <Check className="w-3 h-3" /> Lưu
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white/10 text-zinc-300"
+                >
+                  <X className="w-3 h-3" /> Hủy
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-zinc-200 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
           )}
-          <Link
-            href={`/u/${encodeURIComponent(c.username)}`}
-            className="font-semibold text-white hover:text-sky-400 transition"
-          >
-            {c.username}
-          </Link>
-          {c.verified && (
-            <BadgeCheck className="w-3.5 h-3.5 text-[#1d9bf0] fill-[#1d9bf0]" aria-label="Đã xác thực" />
-          )}
-          <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
-        </p>
-        <p className="text-zinc-200 mt-0.5 whitespace-pre-wrap break-words">{c.text}</p>
-        <div className="flex gap-3 mt-1.5 text-xs text-zinc-500">
-          <button
-            type="button"
-            onClick={() => onLikeComment(c.id)}
-            className="hover:text-red-400 inline-flex items-center gap-1"
-          >
-            <Heart className="w-3 h-3" /> {c.likes || ""}
-          </button>
-          {!nested && (
+
+          <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-zinc-500">
             <button
               type="button"
-              onClick={() => setReplyTo(c)}
-              className="hover:text-white inline-flex items-center gap-1"
+              onClick={() => onLikeComment(c.id)}
+              className="hover:text-red-400 inline-flex items-center gap-1"
             >
-              <Reply className="w-3 h-3" /> Trả lời
+              <Heart className="w-3 h-3" /> {c.likes || ""}
             </button>
-          )}
+            {!nested && (
+              <button
+                type="button"
+                onClick={() => setReplyTo(c)}
+                className="hover:text-white inline-flex items-center gap-1"
+              >
+                <Reply className="w-3 h-3" /> Trả lời
+              </button>
+            )}
+            {mine && !isEditing && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => startEdit(c)}
+                  className="hover:text-sky-400 inline-flex items-center gap-1"
+                >
+                  <Pencil className="w-3 h-3" /> Sửa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void onDelete(c.id)}
+                  className="hover:text-red-400 inline-flex items-center gap-1"
+                  disabled={posting}
+                >
+                  <Trash2 className="w-3 h-3" /> Xóa
+                </button>
+              </>
+            )}
+          </div>
+          {!nested && repliesOf(c.id).map((r) => renderComment(r, true))}
         </div>
-        {!nested && repliesOf(c.id).map((r) => renderComment(r, true))}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">

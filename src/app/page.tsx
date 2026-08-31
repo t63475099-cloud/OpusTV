@@ -14,9 +14,7 @@ import {
   Star,
   Clock,
   Loader2,
-  ChevronRight,
-  RefreshCw,
-  SlidersHorizontal,
+  Eye,
 } from "lucide-react";
 
 interface RealMovie {
@@ -54,7 +52,6 @@ export default function LiquidGlassHomePage() {
 
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
-  // Hiệu ứng tương tác vị trí chuột theo thời gian thực (Desktop)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const x = (e.clientX / window.innerWidth - 0.5) * 20;
@@ -66,7 +63,6 @@ export default function LiquidGlassHomePage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Hàm tải dữ liệu chuẩn hóa từ nhiều nguồn API
   const fetchMoviesByPage = useCallback(
     async (pageNum: number, catId: string, isReset: boolean = false) => {
       if (loading && !isReset) return;
@@ -106,7 +102,6 @@ export default function LiquidGlassHomePage() {
     []
   );
 
-  // Khi chuyển danh mục: reset về trang 1 và tải danh sách mới
   useEffect(() => {
     setPage(1);
     setHasMore(true);
@@ -115,7 +110,6 @@ export default function LiquidGlassHomePage() {
     fetchMoviesByPage(1, activeCategory, true);
   }, [activeCategory, fetchMoviesByPage]);
 
-  // Thiết lập Infinite Scroll quan sát điểm chạm đáy trang
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -144,15 +138,17 @@ export default function LiquidGlassHomePage() {
 
   const featuredMovie = movies[activeMovieIndex] || movies[0];
 
-  const getPoster = (url?: string) => {
-    if (!url) return "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800";
-    return url.startsWith("http") ? url : `https://phimimg.com/${url}`;
+  // Ưu tiên lấy thumb_url (ảnh ngang) chuẩn khung hình 16:9
+  const getPoster = (thumbUrl?: string, posterUrl?: string) => {
+    const target = thumbUrl || posterUrl;
+    if (!target) return "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1200";
+    return target.startsWith("http") ? target : `https://phimimg.com/${target}`;
   };
 
   return (
     <div className="relative min-h-screen text-zinc-100 overflow-hidden pb-20 selection:bg-rose-500/30 selection:text-rose-200">
       
-      {/* 1. NỀN KÍNH LỎNG & QUẢ CẦU PHÁT QUANG */}
+      {/* 1. NỀN KÍNH LỎNG & ÁNH SÁNG ĐỘNG */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div
           className="liquid-orb orb-primary"
@@ -171,10 +167,9 @@ export default function LiquidGlassHomePage() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-10">
 
-        {/* 2. THANH DANH MỤC KÍNH NỔI (CUỘN CẢM ỨNG MƯỢT MÀ CHO IPHONE / ANDROID) */}
+        {/* 2. THANH DANH MỤC KÍNH NỔI */}
         <section className="pt-2 sm:pt-4">
           <div className="liquid-glass-panel p-2 sm:p-3.5 rounded-2xl sm:rounded-3xl flex items-center justify-between gap-3 overflow-hidden">
-            
             <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 px-0.5 w-full">
               {CATEGORIES.map((tab) => {
                 const IconComponent = tab.icon;
@@ -203,22 +198,20 @@ export default function LiquidGlassHomePage() {
           </div>
         </section>
 
-        {/* 3. HERO BANNER TIÊU ĐIỂM (CÂN ĐỐI TRÊN MỌI KÍCH THƯỚC MÀN HÌNH) */}
+        {/* 3. HERO BANNER TIÊU ĐIỂM */}
         {featuredMovie && (
           <section className="relative">
             <div className="liquid-spotlight-card relative rounded-2xl sm:rounded-[2.5rem] overflow-hidden p-5 sm:p-8 lg:p-12 min-h-[360px] sm:min-h-[460px] lg:min-h-[500px] flex flex-col justify-end">
               
-              {/* Ảnh nền tiêu điểm */}
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 scale-105"
-                style={{ backgroundImage: `url(${getPoster(featuredMovie.poster_url || featuredMovie.thumb_url)})` }}
+                style={{ backgroundImage: `url(${getPoster(featuredMovie.poster_url, featuredMovie.thumb_url)})` }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/80 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#050508] via-[#050508]/60 to-transparent hidden sm:block" />
 
               <div className="absolute top-1/4 left-6 sm:left-12 w-64 sm:w-96 h-64 sm:h-96 bg-rose-500/20 rounded-full blur-3xl pointer-events-none" />
 
-              {/* Thông tin phim */}
               <div className="relative z-10 max-w-2xl space-y-3 sm:space-y-4">
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <span className="px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-bold tracking-wider uppercase bg-rose-500/20 border border-rose-500/40 text-rose-300 backdrop-blur-md flex items-center gap-1">
@@ -262,7 +255,6 @@ export default function LiquidGlassHomePage() {
                 </div>
               </div>
 
-              {/* Nút chuyển nhanh tiêu điểm trên Laptop/PC */}
               <div className="absolute bottom-6 right-6 z-20 hidden lg:flex items-center gap-2 p-1.5 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-xl">
                 {movies.slice(0, 4).map((item, idx) => (
                   <button
@@ -282,7 +274,7 @@ export default function LiquidGlassHomePage() {
           </section>
         )}
 
-        {/* 4. LƯỚI POSTER PHIM RESPONSIVE (CUỘN VÔ TẬN) */}
+        {/* 4. LƯỚI POSTER NẰM NGANG 16:9 (RESPONSIVE CHUẨN MỌI THIẾT BỊ) */}
         <section className="space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
@@ -293,54 +285,59 @@ export default function LiquidGlassHomePage() {
             </div>
           </div>
 
-          {/* Lưới poster: 2 cột (Android/iPhone), 3 cột (Tablet), 4-6 cột (Laptop/PC) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
+          {/* Lưới poster nằm ngang: 2 cột (Mobile), 3 cột (Tablet), 4 cột (Laptop/PC) */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
             {movies.map((item, index) => (
               <Link
                 key={`${item._id}-${index}`}
                 href={`/phim/${item.slug}`}
                 className="liquid-media-card group relative rounded-2xl sm:rounded-3xl overflow-hidden p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1.5 cursor-pointer"
               >
-                <div className="relative aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden mb-2 bg-zinc-900">
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${getPoster(item.thumb_url || item.poster_url)})` }}
+                {/* Khung ảnh nằm ngang 16:9 căn chỉnh hoàn chỉnh */}
+                <div className="relative aspect-[16/9] rounded-xl sm:rounded-2xl overflow-hidden mb-2.5 bg-zinc-950">
+                  <img
+                    src={getPoster(item.thumb_url, item.poster_url)}
+                    alt={item.name}
+                    loading="lazy"
+                    className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-50 group-hover:opacity-30 transition-opacity" />
+                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-60 group-hover:opacity-30 transition-opacity" />
 
-                  {/* Nút Play khi hover */}
+                  {/* Nút Play hiển thị mượt mà khi hover */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100">
-                    <div className="w-10 h-10 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-[0_0_20px_rgba(244,63,94,0.6)] backdrop-blur-md">
-                      <Play className="w-4 h-4 fill-white ml-0.5" />
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-[0_0_20px_rgba(244,63,94,0.6)] backdrop-blur-md">
+                      <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-white ml-0.5" />
                     </div>
                   </div>
 
                   {/* Nhãn Tập / Chất Lượng */}
                   <div className="absolute top-1.5 left-1.5">
-                    <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/60 border border-white/10 text-white backdrop-blur-md">
+                    <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-black/70 border border-white/10 text-white backdrop-blur-md">
                       {item.episode_current || "HD"}
                     </span>
                   </div>
 
-                  {/* Nhãn Năm */}
+                  {/* Nhãn Năm phát hành */}
                   <div className="absolute bottom-1.5 right-1.5">
-                    <span className="text-[9px] sm:text-[10px] font-medium bg-black/60 px-1.5 py-0.5 rounded-md backdrop-blur-md text-zinc-300">
+                    <span className="text-[9px] sm:text-[10px] font-medium bg-black/70 px-1.5 sm:px-2 py-0.5 rounded-md backdrop-blur-md text-zinc-300">
                       {item.year || 2026}
                     </span>
                   </div>
                 </div>
 
+                {/* Tiêu đề và tên gốc */}
                 <div className="space-y-0.5 px-0.5">
                   <h3 className="text-xs sm:text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate">
                     {item.name}
                   </h3>
-                  <p className="text-[10px] text-zinc-500 truncate">{item.origin_name}</p>
+                  <p className="text-[10px] sm:text-[11px] text-zinc-500 truncate">{item.origin_name}</p>
                 </div>
               </Link>
             ))}
           </div>
 
-          {/* 5. VÙNG OBSERVER INFINITE SCROLL & LOADING SPINNER */}
+          {/* 5. VÙNG THEO DÕI CUỘN VÔ TẬN */}
           <div ref={observerTarget} className="py-10 flex flex-col items-center justify-center">
             {loading && (
               <div className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-white/10 backdrop-blur-xl">
@@ -356,9 +353,7 @@ export default function LiquidGlassHomePage() {
 
       </div>
 
-      {/* TÙY BIẾN CSS KÍNH LỎNG & RESPONSIVE */}
       <style jsx global>{`
-        /* Ẩn thanh cuộn mặc định nhưng vẫn hỗ trợ vuốt mượt mà trên iPhone / Android */
         .no-scrollbar::-webkit-scrollbar {
           display: none;
         }

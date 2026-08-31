@@ -41,6 +41,7 @@ export default function MusicPage() {
   const [searchInput, setSearchInput] = useState("");
   const [playing, setPlaying] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [feed, setFeed] = useState<Track[]>([]);
   const [nextToken, setNextToken] = useState<string | null>(null);
   const [feedQuery, setFeedQuery] = useState(HOME_QUERY);
@@ -73,17 +74,43 @@ export default function MusicPage() {
 
   const gridItems: Track[] = tab === "library" && !searchMode ? library : feed;
 
-  const current = currentId
-    ? [...MUSIC_TRACKS, ...feed, ...suggests].find((t) => t.id === currentId)
-    : null;
+  const current =
+    (currentTrack && currentId && currentTrack.id === currentId && currentTrack) ||
+    (currentId
+      ? (
+          [...MUSIC_TRACKS, ...feed, ...suggests]
+            .concat(
+              watchedList.map((w) => ({
+                id: w.id,
+                title: w.title,
+                artist: w.artist,
+                thumb: w.thumb,
+                category: w.category,
+              }))
+            )
+            .find((x) => x.id === currentId) || null
+        )
+      : null);
 
   const fetchPage = useCallback(
-    async (query: string, token: string | null, append: boolean) => {
+    async (
+      query: string,
+      token: string | null,
+      append: boolean,
+      opts?: { hideWatched?: boolean }
+    ) => {
       if (busy.current) return;
       busy.current = true;
       if (append) setLoadingMore(true);
       else setLoading(true);
       setMsg("");
+      const hideWatched = !!opts?.hideWatched;
+      const withThumb = (it: Track): Track => ({
+        ...it,
+        thumb:
+          (it as Track & { thumb?: string }).thumb ||
+          `https://i.ytimg.com/vi/${it.id}/hqdefault.jpg`,
+      });
       try {
         const qs = new URLSearchParams({ q: query, max: "24" });
         if (token) qs.set("pageToken", token);
@@ -97,33 +124,36 @@ export default function MusicPage() {
                 : "Chưa cấu hình API key — dùng thư viện offline.")
           );
           if (!append) {
-            const local = (data.items?.length ? data.items : MUSIC_TRACKS.slice(0, 24)).map(
-              (it: Track) => ({
-                ...it,
-                thumb:
-                  (it as Track & { thumb?: string }).thumb ||
-                  `https://i.ytimg.com/vi/${it.id}/hqdefault.jpg`,
-              })
+            let local = (data.items?.length ? data.items : MUSIC_TRACKS.slice(0, 24)).map(
+              (it: Track) => withThumb(it)
             );
+            if (hideWatched) {
+              const filtered = local.filter((it: Track) => it.id && !watchedSet.has(it.id));
+              if (filtered.length) local = filtered;
+            }
             setFeed(local);
           }
           setNextToken(null);
         } else if (data.items?.length) {
-          const seenWatched = watchedSet;
-          const filterNew = (arr: Track[]) =>
-            arr.filter((it) => it.id && !seenWatched.has(it.id));
+          const items: Track[] = (data.items as Track[])
+            .filter((it) => !!it?.id)
+            .map(withThumb);
           setFeed((prev) => {
             if (!append) {
-              const fresh = filterNew(data.items);
-              return shuffleTracks(fresh.length ? fresh : data.items);
+              if (hideWatched) {
+                const fresh = items.filter((it) => !watchedSet.has(it.id));
+                return shuffleTracks(fresh.length ? fresh : items);
+              }
+              // Tìm kiếm: giữ nguyên mọi kết quả (kể cả đã xem)
+              return items;
             }
             const seen = new Set(prev.map((x) => x.id));
             const merged = [...prev];
-            filterNew(data.items).forEach((it: Track) => {
-              if (it.id && !seen.has(it.id)) {
-                seen.add(it.id);
-                merged.push(it);
-              }
+            items.forEach((it) => {
+              if (!it.id || seen.has(it.id)) return;
+              if (hideWatched && watchedSet.has(it.id)) return;
+              seen.add(it.id);
+              merged.push(it);
             });
             return merged;
           });
@@ -132,12 +162,15 @@ export default function MusicPage() {
           else setMsg("");
         } else {
           if (!append) {
-            setFeed(
-              MUSIC_TRACKS.slice(0, 24).map((it) => ({
-                ...it,
-                thumb: `https://i.ytimg.com/vi/${it.id}/hqdefault.jpg`,
-              }))
+            const q = query.toLowerCase();
+            let local = MUSIC_TRACKS.filter(
+              (it) =>
+                it.title.toLowerCase().includes(q) ||
+                it.artist.toLowerCase().includes(q) ||
+                (it.category || "").toLowerCase().includes(q)
             );
+            if (!local.length) local = MUSIC_TRACKS.slice(0, 24);
+            setFeed(local.map(withThumb));
             setMsg(data.detail || data.message || "Không có kết quả YouTube — dùng offline.");
           }
           setNextToken(null);
@@ -145,12 +178,14 @@ export default function MusicPage() {
       } catch {
         setMsg("Lỗi mạng — đang dùng thư viện offline.");
         if (!append) {
-          setFeed(
-            MUSIC_TRACKS.slice(0, 24).map((it) => ({
-              ...it,
-              thumb: `https://i.ytimg.com/vi/${it.id}/hqdefault.jpg`,
-            }))
+          const q = query.toLowerCase();
+          let local = MUSIC_TRACKS.filter(
+            (it) =>
+              it.title.toLowerCase().includes(q) ||
+              it.artist.toLowerCase().includes(q)
           );
+          if (!local.length) local = MUSIC_TRACKS.slice(0, 24);
+          setFeed(local.map(withThumb));
         }
       } finally {
         setLoading(false);
@@ -178,7 +213,7 @@ export default function MusicPage() {
       TREND_QUERIES[0] ||
       "nhạc việt nam";
     setFeedQuery(q);
-    void fetchPage(q, null, false);
+    void fetchPage(q, null, false, { hideWatched: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -190,7 +225,9 @@ export default function MusicPage() {
         if (!entries[0]?.isIntersecting) return;
         if (tab === "library" && !searchMode) return;
         if (!nextToken || loading || loadingMore) return;
-        fetchPage(feedQuery, nextToken, true);
+        fetchPage(feedQuery, nextToken, true, {
+          hideWatched: !searchMode && (tab === "home" || tab === "trending"),
+        });
       },
       { rootMargin: "500px" }
     );
@@ -203,6 +240,7 @@ export default function MusicPage() {
     setSearchMode(false);
     setPlaying(false);
     setCurrentId(null);
+    setCurrentTrack(null);
     setTabSwitching(true);
     setOpenSuggest(false);
     if (switchTimer.current) clearTimeout(switchTimer.current);
@@ -211,26 +249,35 @@ export default function MusicPage() {
       if (next === "home") {
         const q = (typeof pickRandomQueries === "function" ? pickRandomQueries(1)[0] : null) || TREND_QUERIES[0] || "nhạc việt nam";
         setFeedQuery(q);
-        fetchPage(q, null, false);
+        fetchPage(q, null, false, { hideWatched: true });
       } else if (next === "trending") {
         const q = pickRandomQueries(1)[0] || TREND_QUERIES[0] || "nhạc việt";
         setTrendQ(q);
         setFeedQuery(q);
-        fetchPage(q, null, false);
+        fetchPage(q, null, false, { hideWatched: true });
       }
       setTimeout(() => setTabSwitching(false), 150);
     }, 180);
   };
 
   const playTrack = (t: Track) => {
-    setCurrentId(t.id);
+    if (!t?.id) return;
+    const track: Track = {
+      id: t.id,
+      title: t.title || "Video",
+      artist: t.artist || "",
+      thumb: t.thumb || `https://i.ytimg.com/vi/${t.id}/hqdefault.jpg`,
+      category: t.category,
+    };
+    setCurrentTrack(track);
+    setCurrentId(track.id);
     setPlaying(true);
     addWatched({
-      id: t.id,
-      title: t.title,
-      artist: t.artist,
-      thumb: t.thumb,
-      category: t.category,
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      thumb: track.thumb,
+      category: track.category,
     });
   };
 
@@ -294,8 +341,9 @@ export default function MusicPage() {
     setSearchMode(true);
     setPlaying(false);
     setCurrentId(null);
+    setCurrentTrack(null);
     setFeedQuery(s);
-    await fetchPage(s, null, false);
+    await fetchPage(s, null, false, { hideWatched: false });
   };
 
   return (
@@ -449,7 +497,7 @@ export default function MusicPage() {
               onClick={() => {
                 setTrendQ(tq);
                 setFeedQuery(tq);
-                fetchPage(tq, null, false);
+                fetchPage(tq, null, false, { hideWatched: true });
               }}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs transition ${
                 trendQ === tq ? "bg-white text-black" : "bg-[#272727] text-white"
@@ -484,21 +532,24 @@ export default function MusicPage() {
         </p>
       )}
 
-      {playing && current && (
+      {playing && currentId && (
         <div className="mb-5 rounded-2xl overflow-hidden bg-black border border-[#272727]">
           <div className="relative w-full aspect-video">
             <iframe
-              key={current.id}
-              title={current.title}
-              src={`https://www.youtube.com/embed/${current.id}?autoplay=1&rel=0`}
+              key={currentId}
+              title={current?.title || "Opus Music"}
+              src={`https://www.youtube.com/embed/${currentId}?autoplay=1&rel=0`}
               className="absolute inset-0 w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
             />
           </div>
           <div className="px-3 py-2.5">
-            <h2 className="text-base font-semibold text-white line-clamp-2">{current.title}</h2>
-            <p className="text-sm text-[#aaa]">{current.artist}</p>
+            <h2 className="text-base font-semibold text-white line-clamp-2">
+              {current?.title || "Đang phát"}
+            </h2>
+            <p className="text-sm text-[#aaa]">{current?.artist || ""}</p>
           </div>
         </div>
       )}
@@ -559,6 +610,10 @@ export default function MusicPage() {
               <Flame className="w-4 h-4 text-red-500" /> Đề xuất mới cho bạn
             </h2>
           )}
+
+        {!loading && !tabSwitching && searchMode && gridItems.length === 0 && (
+          <p className="text-sm text-zinc-400 py-8 text-center">Không tìm thấy video. Thử từ khóa khác.</p>
+        )}
 
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6">
           {(tab === "home" && !searchMode ? feed.filter((x) => !watchedSet.has(x.id)) : gridItems).map((t) => (

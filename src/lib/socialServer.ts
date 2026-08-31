@@ -96,15 +96,22 @@ async function save(doc: VideoSocialDoc) {
   const sql = getSql();
   const likes = doc.likes;
   const slug = doc.slug;
-  const likedBy = doc.likedBy ?? [];
-  const comments = doc.comments ?? [];
+  // Neon HTTP: phải stringify + ::jsonb, không truyền mảng JS thô
+  const likedByJson = JSON.stringify(Array.isArray(doc.likedBy) ? doc.likedBy : []);
+  const commentsJson = JSON.stringify(Array.isArray(doc.comments) ? doc.comments : []);
   await sql`
     INSERT INTO video_social (slug, likes, liked_by, comments, updated_at)
-    VALUES (${slug}, ${likes}, ${likedBy}, ${comments}, NOW())
+    VALUES (
+      ${slug},
+      ${likes},
+      ${likedByJson}::jsonb,
+      ${commentsJson}::jsonb,
+      NOW()
+    )
     ON CONFLICT (slug) DO UPDATE SET
       likes = ${likes},
-      liked_by = ${likedBy},
-      comments = ${comments},
+      liked_by = ${likedByJson}::jsonb,
+      comments = ${commentsJson}::jsonb,
       updated_at = NOW()
   `;
 }

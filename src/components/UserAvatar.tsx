@@ -1,140 +1,258 @@
 "use client";
 
-import {
-  isPresetAvatar,
-  presetGradient,
-  getLqAvatarUrl,
-  getAvatarFrame,
-  type UserProfile,
-} from "@/lib/settings";
-import { User, BadgeCheck } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { User } from "lucide-react";
+import { getAvatarFrame, useSettingsStore } from "@/lib/settings";
+import { useAccountStore } from "@/lib/account";
 
-interface Props {
-  profile: Pick<
-    UserProfile,
-    "name" | "avatar" | "avatarPosition" | "verified" | "avatarFrame"
-  >;
+interface UserAvatarProps {
+  profile?: any | null;
   size?: number;
   className?: string;
-  ring?: boolean;
   showBadge?: boolean;
 }
 
-export default function UserAvatar({
-  profile,
-  size = 40,
-  className = "",
-  ring = false,
-  showBadge = false,
-}: Props) {
-  const frame = getAvatarFrame(profile.avatarFrame);
-  const hasFrame = !!(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
-  const pad = hasFrame ? Math.max(3, Math.round(size * 0.06)) : 0;
-  const inner = size - pad * 2;
+// Hàm bóc tách avatar và khung viền từ mọi định dạng object (kể cả Zustand persist { state: ... })
+function extractUserData(data: any) {
+  if (!data || typeof data !== "object") return { avatar: null, frameId: null, name: "" };
 
-  const imgStyle: React.CSSProperties = {
-    width: inner,
-    height: inner,
-    objectPosition: profile.avatarPosition || "50% 50%",
+  const unwrapped = data.state ? { ...data, ...data.state } : data;
+  const inner = unwrapped.profile || unwrapped.account || unwrapped.user || unwrapped.settings || {};
+  const merged = { ...unwrapped, ...inner };
+
+  const avatar =
+    merged.customAvatar ||
+    merged.avatar ||
+    merged.avatarUrl ||
+    merged.photoURL ||
+    merged.image ||
+    merged.picture ||
+    null;
+
+  const frameId =
+    merged.avatarFrame ||
+    merged.frameId ||
+    merged.frame ||
+    merged.selectedFrame ||
+    null;
+
+  const name =
+    merged.name ||
+    merged.username ||
+    merged.displayName ||
+    merged.fullName ||
+    merged.email ||
+    "Tài khoản";
+
+  return { avatar, frameId, name };
+}
+
+export default function UserAvatar({
+  profile: propProfile = null,
+  size = 36,
+  className = "",
+  showBadge = false,
+}: UserAvatarProps) {
+  const [mounted, setMounted] = useState(false);
+  const [syncedUser, setSyncedUser] = useState<any>({ avatar: null, frameId: null, name: "" });
+
+  // 1. Lấy dữ liệu từ Zustand store
+  const storeAccount = useAccountStore((state: any) => state?.profile || state?.user || state?.account || state);
+  const storeSettings = useSettingsStore((state: any) => state?.settings || state);
+
+  const syncAllSources = async () => {
+    let foundAvatar: string | null = null;
+    let foundFrame: string | null = null;
+    let foundName = "Tài khoản";
+
+    // A. Kiểm tra prop truyền vào
+    if (propProfile) {
+      const parsed = extractUserData(propProfile);
+      if (parsed.avatar) foundAvatar = parsed.avatar;
+      if (parsed.frameId) foundFrame = parsed.frameId;
+      if (parsed.name) foundName = parsed.name;
+    }
+
+    // B. Kiểm tra Zustand stores
+    if (!foundAvatar || !foundFrame) {
+      const fromAcc = extractUserData(storeAccount);
+      const fromSet = extractUserData(storeSettings);
+      if (!foundAvatar) foundAvatar = fromAcc.avatar || fromSet.avatar;
+      if (!foundFrame) foundFrame = fromAcc.frameId || fromSet.frameId;
+      if (foundName === "Tài khoản") foundName = fromAcc.name || fromSet.name;
+    }
+
+    // C. Quét toàn bộ các key trong LocalStorage
+    if (typeof window !== "undefined") {
+      const storageKeys = [
+        "opustv-settings",
+        "opustv-account",
+        "opustv_settings",
+        "opustv_account",
+        "opustv_user",
+        "opustv_profile",
+        "user_profile",
+        "user_settings",
+        "profile",
+        "settings",
+        "account",
+      ];
+
+      for (const key of storageKeys) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = extractUserData(JSON.parse(raw));
+            if (!foundAvatar && parsed.avatar) foundAvatar = parsed.avatar;
+            if (!foundFrame && parsed.frameId) foundFrame = parsed.frameId;
+            if (foundName === "Tài khoản" && parsed.name) foundName = parsed.name;
+          }
+        } catch {}
+      }
+
+      // D. Nếu vẫn chưa có, gọi API kiểm tra Session đăng nhập
+      if (!foundAvatar) {
+        try {
+          const res = await fetch("/api/auth/me", { cache: "no-store" });
+          if (res.ok) {
+            const json = await res.json();
+            const parsed = extractUserData(json?.user || json?.profile || json);
+            if (parsed.avatar) foundAvatar = parsed.avatar;
+            if (parsed.frameId && !foundFrame) foundFrame = parsed.frameId;
+            if (parsed.name && foundName === "Tài khoản") foundName = parsed.name;
+          }
+        } catch {}
+      }
+    }
+
+    setSyncedUser({ avatar: foundAvatar, frameId: foundFrame, name: foundName });
   };
 
-  const ringCls =
-    ring && !hasFrame
-      ? "ring-2 ring-red-500/60 ring-offset-2 ring-offset-[#0a0a0a]"
-      : "";
+  useEffect(() => {
+    setMounted(true);
+    syncAllSources();
 
-  const lqUrl = getLqAvatarUrl(profile.avatar);
-  const imgSrc =
-    lqUrl ||
-    (profile.avatar && !isPresetAvatar(profile.avatar) ? profile.avatar : null);
+    const handleEvent = () => syncAllSources();
+    window.addEventListener("storage", handleEvent);
+    window.addEventListener("focus", handleEvent);
+    window.addEventListener("user-updated", handleEvent);
+    window.addEventListener("account-updated", handleEvent);
+    window.addEventListener("profile-updated", handleEvent);
+    window.addEventListener("settings-updated", handleEvent);
 
-  let face: React.ReactNode;
-  if (imgSrc) {
-    face = (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={imgSrc}
-        alt={profile.name || "Avatar"}
-        className={`rounded-full object-cover bg-zinc-800 ${ringCls} ${className}`}
-        style={imgStyle}
-        referrerPolicy="no-referrer"
-      />
-    );
-  } else if (isPresetAvatar(profile.avatar)) {
-    const letter = (profile.name || "?").charAt(0).toUpperCase();
-    face = (
-      <div
-        className={`rounded-full bg-gradient-to-br ${presetGradient(
-          profile.avatar
-        )} flex items-center justify-center text-white font-bold select-none ${ringCls} ${className}`}
-        style={{ width: inner, height: inner, fontSize: inner * 0.4 }}
-      >
-        {letter}
-      </div>
-    );
-  } else {
-    face = (
-      <div
-        className={`rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 ${ringCls} ${className}`}
-        style={{ width: inner, height: inner }}
-      >
-        <User style={{ width: inner * 0.45, height: inner * 0.45 }} />
-      </div>
-    );
-  }
+    return () => {
+      window.removeEventListener("storage", handleEvent);
+      window.removeEventListener("focus", handleEvent);
+      window.removeEventListener("user-updated", handleEvent);
+      window.removeEventListener("account-updated", handleEvent);
+      window.removeEventListener("profile-updated", handleEvent);
+      window.removeEventListener("settings-updated", handleEvent);
+    };
+  }, [storeAccount, storeSettings, propProfile]);
 
-  const badge = Math.max(14, Math.round(size * 0.28));
-  const frameClass = hasFrame ? `ab-frame--${frame.css}` : "";
+  const frame = syncedUser.frameId ? getAvatarFrame(syncedUser.frameId) : null;
+  const hasFrame = Boolean(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
+  const pad = hasFrame ? Math.max(3, Math.round(size * 0.06)) : 0;
+  const inner = Math.max(0, size - pad * 2);
 
   return (
-    <span
-      className={`ab-wrap ${frameClass}`}
-      style={{ width: size, height: size }}
+    <Link
+      href="/tai-khoan"
+      className={`relative inline-flex items-center justify-center shrink-0 rounded-full transition-transform hover:scale-105 active:scale-95 ${className}`}
+      style={{
+        width: size,
+        height: size,
+        background: hasFrame ? frame?.css : undefined,
+        padding: pad,
+      }}
+      title={syncedUser.name || "Tài khoản của bạn"}
     >
-      <span className="ab-face" style={{ width: inner, height: inner }}>
-        {face}
-      </span>
-      {hasFrame && <span className="ab-ring" aria-hidden />}
-      {showBadge && profile.verified && (
-        <span
-          className="absolute -bottom-0.5 -right-0.5 z-10 flex items-center justify-center rounded-full bg-[#0a0a0a] text-[#1d9bf0]"
-          style={{ width: badge + 2, height: badge + 2 }}
-          title="Đã xác thực"
-        >
-          <BadgeCheck
-            className="fill-[#1d9bf0] text-white"
-            style={{ width: badge, height: badge }}
+      <div
+        className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-neutral-800 border border-white/10 text-neutral-300 relative shadow-inner"
+        style={{ width: inner, height: inner }}
+      >
+        {mounted && syncedUser.avatar ? (
+          <img
+            src={syncedUser.avatar}
+            alt={syncedUser.name || "Avatar"}
+            className="w-full h-full object-cover select-none"
+            loading="eager"
+            onError={() => {
+              setSyncedUser((prev: any) => ({ ...prev, avatar: null }));
+            }}
           />
-        </span>
+        ) : (
+          <User className="w-1/2 h-1/2 text-neutral-400" />
+        )}
+      </div>
+
+      {showBadge && (
+        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-neutral-950 shadow-sm" />
       )}
-    </span>
+    </Link>
   );
 }
 
-export function CommentAvatar({
-  username,
-  avatar,
-  size = 32,
-  verified,
-  avatarFrame,
-}: {
-  username: string;
+export { UserAvatar };
+
+interface CommentAvatarProps {
   avatar?: string | null;
+  name?: string | null;
+  avatarFrame?: string | null;
+  frameId?: string | null;
+  profile?: any | null;
   size?: number;
-  verified?: boolean;
-  avatarFrame?: string;
-}) {
+  className?: string;
+  [key: string]: any;
+}
+
+export function CommentAvatar({
+  avatar,
+  name,
+  avatarFrame,
+  frameId,
+  profile,
+  size = 32,
+  className = "",
+  ...rest
+}: CommentAvatarProps) {
+  const actualAvatar = avatar ?? profile?.customAvatar ?? profile?.avatar ?? profile?.avatarUrl ?? null;
+  const actualName = name ?? profile?.name ?? profile?.username ?? "User";
+  const actualFrameId = avatarFrame ?? frameId ?? profile?.avatarFrame ?? profile?.frameId ?? null;
+
+  const frame = actualFrameId ? getAvatarFrame(actualFrameId) : null;
+  const hasFrame = Boolean(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
+  const pad = hasFrame ? Math.max(2, Math.round(size * 0.06)) : 0;
+  const inner = Math.max(0, size - pad * 2);
+
   return (
-    <UserAvatar
-      profile={{
-        name: username,
-        avatar: avatar || undefined,
-        avatarPosition: "50% 50%",
-        verified: !!verified,
-        avatarFrame,
+    <div
+      className={`relative inline-flex items-center justify-center shrink-0 rounded-full ${className}`}
+      style={{
+        width: size,
+        height: size,
+        background: hasFrame ? frame?.css : undefined,
+        padding: pad,
       }}
-      size={size}
-      showBadge={!!verified}
-    />
+      title={actualName}
+      {...rest}
+    >
+      <div
+        className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-neutral-800 border border-white/10 text-neutral-300"
+        style={{ width: inner, height: inner }}
+      >
+        {actualAvatar ? (
+          <img
+            src={actualAvatar}
+            alt={actualName}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <User className="w-1/2 h-1/2 text-neutral-400" />
+        )}
+      </div>
+    </div>
   );
 }

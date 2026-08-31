@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/navigation";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Film,
@@ -10,14 +10,9 @@ import {
   Search,
   Settings,
   User,
-  Sparkles,
-  Flame,
-  Radio,
   Bookmark,
-  Bell,
   X,
   ChevronRight,
-  ShieldCheck,
   Play,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
@@ -32,10 +27,10 @@ const NAV_LINKS = [
 ];
 
 const SEARCH_SUGGESTIONS = [
-  { id: "1", title: "Thiên Mệnh Thần Giới", type: "Phim 4K", category: "Tiên Hiệp", rating: 9.8 },
-  { id: "2", title: "Nguyệt Hoa Vũ Điệu", type: "Soundtrack", category: "Cổ Phong", rating: 9.9 },
-  { id: "3", title: "Vạn Cổ Độc Tôn", type: "Phim Bộ", category: "Hành Động", rating: 9.5 },
-  { id: "4", title: "Thư Kích Thần Vực", type: "Phim Chiếu Rạp", category: "Viễn Tưởng", rating: 9.2 },
+  { id: "1", title: "Thiên Mệnh Thần Giới", type: "Phim 4K", category: "Tiên Hiệp" },
+  { id: "2", title: "Nguyệt Hoa Vũ Điệu", type: "Soundtrack", category: "Cổ Phong" },
+  { id: "3", title: "Vạn Cổ Độc Tôn", type: "Phim Bộ", category: "Hành Động" },
+  { id: "4", title: "Thư Kích Thần Vực", type: "Phim Chiếu Rạp", category: "Viễn Tưởng" },
 ];
 
 export default function Navbar() {
@@ -46,11 +41,9 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isVerified = Boolean(profile.verified);
 
-  // Theo dõi cuộn trang để tăng độ mờ và bóng của thanh kính
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -59,7 +52,6 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Đóng modal tìm kiếm khi ấn phím Escape hoặc mở phím tắt Ctrl+K / Cmd+K
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -107,7 +99,7 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* Menu Điều Hướng Trung Tâm (Desktop) */}
+            {/* Menu Điều Hướng Desktop */}
             <nav className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl shadow-inner">
               {NAV_LINKS.map((link) => {
                 const Icon = link.icon;
@@ -129,10 +121,8 @@ export default function Navbar() {
               })}
             </nav>
 
-            {/* Cụm Tiện Ích: Tìm Kiếm, Cài Đặt & Profile */}
+            {/* Cụm Tìm Kiếm, Cài Đặt & Tài Khoản */}
             <div className="flex items-center gap-3">
-              
-              {/* Nút Tìm kiếm nhanh */}
               <button
                 type="button"
                 onClick={() => setShowSearchModal(true)}
@@ -145,7 +135,6 @@ export default function Navbar() {
                 </kbd>
               </button>
 
-              {/* Nút Cài đặt */}
               <Link
                 href="/cai-dat"
                 className="p-2.5 rounded-2xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 text-zinc-400 hover:text-white transition-all backdrop-blur-md"
@@ -154,7 +143,6 @@ export default function Navbar() {
                 <Settings className="w-4 h-4" />
               </Link>
 
-              {/* Khu vực Tài Khoản */}
               {username ? (
                 <Link
                   href="/tai-khoan"
@@ -163,7 +151,6 @@ export default function Navbar() {
                   <UserAvatar
                     profile={{ ...profile, name: profile.name || username }}
                     size={32}
-                    ring
                     showBadge={isVerified}
                   />
                   <div className="hidden sm:flex flex-col text-left">
@@ -188,11 +175,10 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* POPUP TÌM KIẾM NHANH DẠNG KÍNH LỎNG (QUICK SEARCH MODAL) */}
+      {/* Modal Tìm kiếm nhanh */}
       {showSearchModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/75 backdrop-blur-xl animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/75 backdrop-blur-xl">
           <div className="relative w-full max-w-2xl bg-[#0d111d]/90 border border-white/15 rounded-3xl p-5 shadow-[0_25px_70px_rgba(0,0,0,0.8)] space-y-4 backdrop-blur-2xl">
-            
             <div className="flex items-center gap-3 border-b border-white/10 pb-4">
               <Search className="w-5 h-5 text-rose-500" />
               <input
@@ -236,15 +222,14 @@ export default function Navbar() {
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-zinc-500">Không tìm thấy kết quả phù hợp cho từ khóa trên.</div>
+                <div className="py-8 text-center text-xs text-zinc-500">Không tìm thấy kết quả phù hợp.</div>
               )}
             </div>
 
             <div className="pt-2 border-t border-white/10 flex justify-between items-center text-[11px] text-zinc-500">
               <span>Nhấn <kbd className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-zinc-400 font-mono">ESC</kbd> để đóng</span>
-              <span>Hệ thống tìm kiếm thời gian thực</span>
+              <span>Tìm kiếm thời gian thực</span>
             </div>
-
           </div>
         </div>
       )}

@@ -1,9 +1,8 @@
 "use client";
+
 import AmbientGlow from "@/components/AmbientGlow";
 import FloatingReactions from "@/components/FloatingReactions";
-import { useXpStore } from "@/lib/xpStore";
-
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Player from "./Player";
@@ -11,6 +10,7 @@ import { getImageUrl } from "@/lib/api";
 import type { Movie, Server, MovieListItem } from "@/lib/types";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useFavoritesStore } from "@/lib/favorites";
+import { useHistoryStore } from "@/lib/history";
 import VideoSocial from "@/components/VideoSocial";
 import {
   Copy,
@@ -19,6 +19,8 @@ import {
   Heart,
   Share2,
   Download,
+  Clapperboard,
+  X,
 } from "lucide-react";
 
 interface WatchPageClientProps {
@@ -39,22 +41,73 @@ function isDubServer(name: string) {
   );
 }
 
+function findEpisodeIndex(server: Server | undefined, epSlug: string | null) {
+  if (!server || !epSlug) return 0;
+  const i = server.server_data.findIndex(
+    (e) => e.slug === epSlug || e.name === epSlug
+  );
+  return i >= 0 ? i : 0;
+}
+
 export default function WatchPageClient({
   movie,
   episodes,
   related = [],
 }: WatchPageClientProps) {
-  const defaultServerIdx = Math.max(
-    0,
-    episodes.findIndex((s) => isDubServer(s.server_name))
-  );
-  const [serverIdx, setServerIdx] = useState(defaultServerIdx >= 0 ? defaultServerIdx : 0);
+  const historyItem = useHistoryStore((s) => s.getBySlug(movie.slug));
+
+  const defaultServerIdx = useMemo(() => {
+    const fromHist =
+      historyItem?.server != null
+        ? episodes.findIndex((s) => s.server_name === historyItem.server)
+        : -1;
+    if (fromHist >= 0) return fromHist;
+    const dub = episodes.findIndex((s) => isDubServer(s.server_name));
+    return dub >= 0 ? dub : 0;
+  }, [episodes, historyItem?.server]);
+
+  const [serverIdx, setServerIdx] = useState(defaultServerIdx);
   const [epIdx, setEpIdx] = useState(0);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [theater, setTheater] = useState(false);
+  const [resumed, setResumed] = useState(false);
 
   const toggleFav = useFavoritesStore((s) => s.toggle);
   const isFav = useFavoritesStore((s) => s.isFav(movie.slug));
+
+  // Khôi phục tập/server từ URL ?ep= & ?server= hoặc lịch sử
+  useEffect(() => {
+    if (typeof window === "undefined" || resumed) return;
+    const sp = new URLSearchParams(window.location.search);
+    const epQ = sp.get("ep");
+    const serverQ = sp.get("server");
+
+    let sIdx = serverIdx;
+    if (serverQ) {
+      const i = episodes.findIndex((s) => s.server_name === serverQ);
+      if (i >= 0) sIdx = i;
+    } else if (historyItem?.server) {
+      const i = episodes.findIndex((s) => s.server_name === historyItem.server);
+      if (i >= 0) sIdx = i;
+    }
+    setServerIdx(sIdx);
+
+    const server = episodes[sIdx] || episodes[0];
+    const epSlug = epQ || historyItem?.episodeSlug || null;
+    setEpIdx(findEpisodeIndex(server, epSlug));
+    setResumed(true);
+  }, [episodes, historyItem, resumed, serverIdx]);
+
+  // Khóa body khi theater
+  useEffect(() => {
+    if (!theater) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [theater]);
 
   const currentServer = episodes[serverIdx] || episodes[0];
   const currentEpisodes = currentServer?.server_data || [];
@@ -62,6 +115,25 @@ export default function WatchPageClient({
   const nextEpisode = currentEpisodes[epIdx + 1] || null;
   const m3u8 = currentEpisode?.link_m3u8 || "";
   const poster = getImageUrl(movie.poster_url || movie.thumb_url);
+
+  const switchServer = useCallback(
+    (idx: number) => {
+      const prevName = currentEpisode?.name;
+      setServerIdx(idx);
+      const next = episodes[idx];
+      if (!next) return;
+      // Giữ cùng tên tập nếu có
+      if (prevName) {
+        const match = next.server_data.findIndex(
+          (e) => e.name === prevName || e.slug === currentEpisode?.slug
+        );
+        setEpIdx(match >= 0 ? match : 0);
+      } else {
+        setEpIdx(0);
+      }
+    },
+    [currentEpisode, episodes]
+  );
 
   const handleNext = () => {
     if (epIdx < currentEpisodes.length - 1) setEpIdx(epIdx + 1);
@@ -89,7 +161,7 @@ export default function WatchPageClient({
         setTimeout(() => setShared(false), 2000);
       }
     } catch {
-      /* user cancelled */
+      /* cancelled */
     }
   };
 
@@ -103,15 +175,107 @@ export default function WatchPageClient({
     });
   };
 
+  const episodePanel = (
+    <div className="space-y-3">
+      {episodes.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+            Server / Phiên bản
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {episodes.map((s, idx) => {
+              const isDub = isDubServer(s.server_name);
+              const active = idx === serverIdx;
+              return (
+                <button
+                  key={s.server_name + idx}
+                  type="button"
+                  onClick={() => switchServer(idx)}
+                  className={`px-3.5 py-2 rounded-full text-sm font-medium transition border ${
+                    active
+                      ? isDub
+                        ? "bg-amber-400 border-amber-300 text-black"
+                        : "bg-red-600 border-red-500 text-white"
+                      : isDub
+                      ? "bg-amber-400/10 border-amber-400/40 text-amber-300 hover:bg-amber-400/20"
+                      : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
+                  }`}
+                >
+                  {isDub ? "🔊 " : "Server "}
+                  {s.server_name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            Tập phim ({currentEpisodes.length})
+          </h3>
+          {currentEpisode && (
+            <span className="text-xs text-zinc-400">
+              Đang xem: {currentEpisode.name}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5 max-h-52 overflow-y-auto pr-1 custom-scroll">
+          {currentEpisodes.map((ep, idx) => (
+            <button
+              key={ep.slug + idx}
+              type="button"
+              onClick={() => setEpIdx(idx)}
+              className={`min-w-[48px] px-2.5 py-1.5 rounded-lg text-sm transition ${
+                idx === epIdx
+                  ? "bg-red-600 text-white font-semibold ring-2 ring-red-400/40"
+                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+              }`}
+            >
+              {ep.name.replace(/^Tập\s*/i, "")}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen pt-14 animate-fade-in">
-      <div className="max-w-[1600px] mx-auto px-0 md:px-4 lg:px-6">
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-0 xl:gap-6">
-          {/* Main column */}
+    <div
+      className={`min-h-screen pt-14 animate-fade-in ${
+        theater ? "bg-black" : ""
+      }`}
+    >
+      {/* Theater overlay dim */}
+      {theater && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/80 backdrop-blur-sm"
+          aria-label="Thoát chế độ rạp"
+          onClick={() => setTheater(false)}
+        />
+      )}
+
+      <div
+        className={`max-w-[1600px] mx-auto px-0 md:px-4 lg:px-6 relative ${
+          theater ? "z-40" : ""
+        }`}
+      >
+        <div
+          className={`grid grid-cols-1 gap-0 xl:gap-6 ${
+            theater ? "" : "xl:grid-cols-[1fr_360px]"
+          }`}
+        >
           <div>
-            <div className="w-full bg-black xl:rounded-xl overflow-hidden shadow-2xl">
+            <div
+              className={`w-full bg-black overflow-hidden shadow-2xl ${
+                theater
+                  ? "fixed inset-x-0 top-[10%] z-40 max-w-6xl mx-auto rounded-xl"
+                  : "xl:rounded-xl"
+              }`}
+            >
               {m3u8 ? (
-                <AmbientGlow src={poster}>
+                <AmbientGlow src={poster} className={theater ? "scale-[1.02]" : ""}>
                   <Player
                     key={`${serverIdx}-${epIdx}-${m3u8}`}
                     m3u8={m3u8}
@@ -124,199 +288,155 @@ export default function WatchPageClient({
                 </AmbientGlow>
               ) : (
                 <div className="aspect-video bg-zinc-900 flex items-center justify-center text-zinc-500">
-                  Không tìm thấy link phát
+                  Không tìm thấy link phát — thử server khác
                 </div>
               )}
             </div>
 
-            <div className="px-3 md:px-0 py-4 space-y-4">
-              <div>
-                <h1 className="text-lg md:text-2xl font-bold text-white leading-snug">
-                  {movie.name}
-                  {currentEpisode ? ` · ${currentEpisode.name}` : ""}
-                </h1>
-                <p className="text-zinc-400 text-sm mt-1">
-                  {movie.origin_name} · {movie.year} · {movie.quality} · {movie.lang}
-                </p>
-              </div>
-
-              {/* Action bar YouTube-like */}
+            {/* Nút rạp + panel tập ngay dưới player */}
+            <div
+              className={`px-3 md:px-0 py-3 space-y-4 ${
+                theater ? "fixed bottom-4 inset-x-0 z-40 max-w-6xl mx-auto px-4" : ""
+              }`}
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={onToggleFav}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition btn-press ${
-                    isFav
-                      ? "bg-red-600 text-white"
-                      : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                  type="button"
+                  onClick={() => setTheater((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition ${
+                    theater
+                      ? "bg-white text-black border-white"
+                      : "bg-zinc-800 text-zinc-200 border-zinc-700 hover:bg-zinc-700"
                   }`}
                 >
-                  <Heart className={`w-4 h-4 ${isFav ? "fill-white" : ""}`} />
-                  {isFav ? "Đã thích" : "Yêu thích"}
+                  {theater ? <X className="w-4 h-4" /> : <Clapperboard className="w-4 h-4" />}
+                  {theater ? "Thoát rạp" : "Chế độ rạp"}
                 </button>
-                <button
-                  onClick={sharePage}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition btn-press"
-                >
-                  <Share2 className="w-4 h-4" />
-                  {shared ? "Đã copy link" : "Chia sẻ"}
-                </button>
-                <button
-                  onClick={copyLink}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition btn-press"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4 text-green-400" /> Đã copy m3u8
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" /> Copy link tải
-                    </>
-                  )}
-                </button>
-                <a
-                  href={m3u8 || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-zinc-800 text-zinc-200 hover:bg-zinc-700 transition btn-press"
-                >
-                  <ExternalLink className="w-4 h-4" /> Mở tab mới
-                </a>
-                <a
-                  href={m3u8 || "#"}
-                  download={`${movie.slug}-${currentEpisode?.slug || "ep"}.m3u8`}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-red-600 text-white hover:bg-red-500 transition btn-press"
-                >
-                  <Download className="w-4 h-4" /> Tải m3u8
-                </a>
+                {historyItem && historyItem.currentTime > 10 && (
+                  <span className="text-xs text-zinc-400">
+                    Đã lưu tiến trình · {currentEpisode?.name || historyItem.episode}
+                  </span>
+                )}
               </div>
 
-              <p className="text-xs text-zinc-500 glass-card rounded-xl p-3 border border-zinc-800">
-                💡 <strong className="text-zinc-300">Tải về điện thoại:</strong> Bấm{" "}
-                <strong className="text-red-400">Copy link tải</strong> → mở app{" "}
-                <strong>VLC</strong> (miễn phí) → biểu tượng mạng → dán link → phát hoặc tải.
-                Trình duyệt thường không tải được file video HLS (.m3u8) trực tiếp như YouTube.
-              </p>
-
-              {/* Servers */}
-              {episodes.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                    Phiên bản / Server
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {episodes.map((s, idx) => {
-                      const isDub = isDubServer(s.server_name);
-                      const active = idx === serverIdx;
-                      return (
-                        <button
-                          key={s.server_name + idx}
-                          onClick={() => {
-                            setServerIdx(idx);
-                            setEpIdx(0);
-                          }}
-                          className={`px-3.5 py-2 rounded-full text-sm font-medium transition border btn-press ${
-                            active
-                              ? isDub
-                                ? "bg-amber-400 border-amber-300 text-black"
-                                : "bg-red-600 border-red-500 text-white"
-                              : isDub
-                              ? "bg-amber-400/10 border-amber-400/40 text-amber-300 hover:bg-amber-400/20"
-                              : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
-                          }`}
-                        >
-                          {isDub ? "🔊 " : ""}
-                          {s.server_name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Episodes */}
-              <div>
-                <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                  Tập phim ({currentEpisodes.length})
-                </h3>
-                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1 custom-scroll">
-                  {currentEpisodes.map((ep, idx) => (
-                    <button
-                      key={ep.slug + idx}
-                      onClick={() => setEpIdx(idx)}
-                      className={`min-w-[48px] px-2.5 py-1.5 rounded-lg text-sm transition btn-press ${
-                        idx === epIdx
-                          ? "bg-red-600 text-white font-semibold"
-                          : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                      }`}
-                    >
-                      {ep.name.replace(/^Tập\s*/i, "")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {movie.content && (
-                <div className="bg-[#212121] rounded-xl p-4 border border-zinc-800">
-                  <h3 className="text-sm font-semibold text-white mb-2">Mô tả</h3>
-                  <div
-                    className="text-zinc-300 text-sm leading-relaxed line-clamp-6"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(movie.content) }}
-                  />
+              {!theater && (
+                <div className="rounded-2xl border border-zinc-800 bg-[#121212] p-3 sm:p-4">
+                  {episodePanel}
                 </div>
               )}
             </div>
+
+            {!theater && (
+              <div className="px-3 md:px-0 py-4 space-y-4">
+                <div>
+                  <h1 className="text-lg md:text-2xl font-bold text-white leading-snug">
+                    {movie.name}
+                    {currentEpisode ? ` · ${currentEpisode.name}` : ""}
+                  </h1>
+                  <p className="text-zinc-400 text-sm mt-1">
+                    {movie.origin_name} · {movie.year} · {movie.quality} · {movie.lang}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={onToggleFav}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm border ${
+                      isFav
+                        ? "bg-red-600/20 border-red-500 text-red-400"
+                        : "bg-zinc-800 border-zinc-700 text-zinc-300"
+                    }`}
+                  >
+                    <Heart className={`w-4 h-4 ${isFav ? "fill-current" : ""}`} />
+                    {isFav ? "Đã thích" : "Yêu thích"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={sharePage}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm bg-zinc-800 border border-zinc-700 text-zinc-300"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    {shared ? "Đã copy" : "Chia sẻ"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copyLink}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm bg-zinc-800 border border-zinc-700 text-zinc-300"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                    {copied ? "Đã copy" : "Copy link"}
+                  </button>
+                  {m3u8 && (
+                    <a
+                      href={m3u8}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm bg-zinc-800 border border-zinc-700 text-zinc-300"
+                    >
+                      <ExternalLink className="w-4 h-4" /> Mở nguồn
+                    </a>
+                  )}
+                </div>
+
+                <FloatingReactions />
+                <VideoSocial slug={movie.slug} title={movie.name} />
+
+                {movie.content && (
+                  <div className="bg-[#212121] rounded-xl p-4 border border-zinc-800">
+                    <h3 className="text-sm font-semibold text-white mb-2">Mô tả</h3>
+                    <div
+                      className="text-zinc-300 text-sm leading-relaxed line-clamp-6"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(movie.content) }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-                        <div className="mb-3">
-                          <FloatingReactions />
-                        </div>
-                        <VideoSocial slug={movie.slug} title={movie.name} />
-
-              {/* Related sidebar - YouTube style */}
-          <aside className="px-3 md:px-0 pb-8 xl:pt-0 pt-2">
-            <h3 className="text-sm font-semibold text-white mb-3 sticky top-14 bg-[#0f0f0f] py-2 z-10">
-              Video liên quan
-            </h3>
-            <div className="space-y-3">
-              {related.length === 0 && (
-                <p className="text-zinc-500 text-sm">Đang tải gợi ý...</p>
-              )}
-              {related.map((item) => (
-                <Link
-                  key={item.slug}
-                  href={`/phim/${item.slug}`}
-                  className="flex gap-3 group hover:bg-white/5 rounded-lg p-1.5 -mx-1.5 transition"
-                >
-                  <div className="relative w-40 aspect-video rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-                    <Image
-                      src={getImageUrl(item.thumb_url || item.poster_url)}
-                      alt={item.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      unoptimized
-                    />
-                    {item.episode_current && (
-                      <span className="absolute bottom-1 right-1 bg-black/80 text-[10px] text-white px-1 rounded">
-                        {item.episode_current}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 py-0.5">
-                    <h4 className="text-sm font-medium text-zinc-100 line-clamp-2 group-hover:text-red-400 transition-colors">
-                      {item.name}
-                    </h4>
-                    <p className="text-xs text-zinc-500 mt-1 line-clamp-1">
-                      {item.origin_name}
-                    </p>
-                    <p className="text-xs text-zinc-600 mt-0.5">
-                      {item.year} · {item.quality}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </aside>
+          {!theater && (
+            <aside className="px-3 md:px-0 pb-8 xl:pt-0 pt-2">
+              <h3 className="text-sm font-semibold text-white mb-3 sticky top-14 bg-[#0f0f0f] py-2 z-10">
+                Video liên quan
+              </h3>
+              <div className="space-y-3">
+                {related.length === 0 && (
+                  <p className="text-zinc-500 text-sm">Đang tải gợi ý...</p>
+                )}
+                {related.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/phim/${item.slug}`}
+                    className="flex gap-3 group hover:bg-white/5 rounded-lg p-1.5 -mx-1.5 transition"
+                  >
+                    <div className="relative w-40 aspect-video rounded-lg overflow-hidden bg-zinc-800 shrink-0">
+                      <Image
+                        src={getImageUrl(item.thumb_url || item.poster_url)}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      {item.episode_current && (
+                        <span className="absolute bottom-1 right-1 text-[10px] bg-black/80 text-white px-1 rounded">
+                          {item.episode_current}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 py-0.5">
+                      <p className="text-sm text-white font-medium line-clamp-2 group-hover:text-red-400">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-1 line-clamp-1">
+                        {item.year} · {item.quality}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </aside>
+          )}
         </div>
       </div>
     </div>

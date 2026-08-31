@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Film,
   Music,
@@ -14,6 +14,8 @@ import {
   X,
   ChevronRight,
   Play,
+  Loader2,
+  Star,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
@@ -26,22 +28,19 @@ const NAV_LINKS = [
   { href: "/yeu-thich", label: "Bộ Sưu Tập", icon: Bookmark },
 ];
 
-const SEARCH_SUGGESTIONS = [
-  { id: "1", title: "Thiên Mệnh Thần Giới", type: "Phim 4K", category: "Tiên Hiệp" },
-  { id: "2", title: "Nguyệt Hoa Vũ Điệu", type: "Soundtrack", category: "Cổ Phong" },
-  { id: "3", title: "Vạn Cổ Độc Tôn", type: "Phim Bộ", category: "Hành Động" },
-  { id: "4", title: "Thư Kích Thần Vực", type: "Phim Chiếu Rạp", category: "Viễn Tưởng" },
-];
-
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const username = useAccountStore((s) => s.username);
   const profile = useSettingsStore((s) => s.profile);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isVerified = Boolean(profile.verified);
 
   useEffect(() => {
@@ -66,11 +65,46 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const filteredSuggestions = SEARCH_SUGGESTIONS.filter(
-    (item) =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Gọi API tìm kiếm phim thật theo từ khóa
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    setIsSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(searchQuery.trim())}&limit=10`);
+        const data = await res.json();
+        if (data?.status === "success" && data?.data?.items) {
+          setSearchResults(data.data.items);
+        } else {
+          // Thử endpoint dự phòng nếu có
+          const resFallback = await fetch(`https://ophim1.com/v1/api/tim-kiem?keyword=${encodeURIComponent(searchQuery.trim())}`);
+          const fallbackData = await resFallback.json();
+          setSearchResults(fallbackData?.data?.items || []);
+        }
+      } catch (err) {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
+
+  const handleSelectMovie = (slug: string) => {
+    setShowSearchModal(false);
+    setSearchQuery("");
+    router.push(`/phim/${slug}`);
+  };
 
   return (
     <>
@@ -121,7 +155,7 @@ export default function Navbar() {
               })}
             </nav>
 
-            {/* Cụm Tìm Kiếm, Cài Đặt & Tài Khoản */}
+            {/* Cụm Tìm Kiếm & Tài Khoản */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -129,7 +163,7 @@ export default function Navbar() {
                 className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 text-zinc-400 hover:text-white transition-all duration-300 backdrop-blur-md text-xs group"
               >
                 <Search className="w-4 h-4 text-zinc-400 group-hover:text-rose-400 transition-colors" />
-                <span className="hidden sm:inline">Tìm kiếm tác phẩm...</span>
+                <span className="hidden sm:inline">Tìm kiếm phim, diễn viên...</span>
                 <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-black/40 rounded-md border border-white/10 text-zinc-500">
                   Ctrl K
                 </kbd>
@@ -175,9 +209,9 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Modal Tìm kiếm nhanh */}
+      {/* POPUP TÌM KIẾM PHIM THỰC KÍNH LỎNG */}
       {showSearchModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/75 backdrop-blur-xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/75 backdrop-blur-xl animate-fade-in">
           <div className="relative w-full max-w-2xl bg-[#0d111d]/90 border border-white/15 rounded-3xl p-5 shadow-[0_25px_70px_rgba(0,0,0,0.8)] space-y-4 backdrop-blur-2xl">
             <div className="flex items-center gap-3 border-b border-white/10 pb-4">
               <Search className="w-5 h-5 text-rose-500" />
@@ -186,9 +220,10 @@ export default function Navbar() {
                 autoFocus
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Nhập tên phim, bài hát, nghệ sĩ hoặc thể loại..."
+                placeholder="Nhập tên phim muốn xem (Ví dụ: Trường Nguyệt Tẫn Minh, Tiên Kiếm...)"
                 className="flex-1 bg-transparent text-sm text-white placeholder-zinc-500 outline-none"
               />
+              {isSearching && <Loader2 className="w-4 h-4 text-rose-500 animate-spin" />}
               <button
                 type="button"
                 onClick={() => setShowSearchModal(false)}
@@ -198,37 +233,54 @@ export default function Navbar() {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-              <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider px-2">Gợi ý thịnh hành</div>
-              {filteredSuggestions.length > 0 ? (
-                filteredSuggestions.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setShowSearchModal(false)}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-xs font-bold">
-                        ★
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors">
-                          {item.title}
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider px-2">
+                {searchQuery ? `Kết quả tìm kiếm (${searchResults.length})` : "Gợi ý thịnh hành"}
+              </div>
+
+              {searchResults.length > 0 ? (
+                searchResults.map((item) => {
+                  const poster = item.poster_url?.startsWith("http")
+                    ? item.poster_url
+                    : `https://phimimg.com/${item.poster_url || item.thumb_url}`;
+
+                  return (
+                    <div
+                      key={item._id || item.slug}
+                      onClick={() => handleSelectMovie(item.slug)}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-10 h-14 rounded-xl bg-cover bg-center shrink-0 bg-zinc-800"
+                          style={{ backgroundImage: `url(${poster})` }}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate">
+                            {item.name}
+                          </div>
+                          <div className="text-[11px] text-zinc-400 truncate">
+                            {item.origin_name} · {item.year || "Mới"} · {item.quality || "HD"}
+                          </div>
                         </div>
-                        <div className="text-[11px] text-zinc-400">{item.category} · {item.type}</div>
                       </div>
+                      <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-transform group-hover:translate-x-1 shrink-0 ml-2" />
                     </div>
-                    <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-transform group-hover:translate-x-1" />
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                <div className="py-8 text-center text-xs text-zinc-500">Không tìm thấy kết quả phù hợp.</div>
+                !isSearching && searchQuery && (
+                  <div className="py-10 text-center space-y-2">
+                    <p className="text-sm text-zinc-400">Không tìm thấy phim phù hợp với từ khóa <strong className="text-white">"{searchQuery}"</strong></p>
+                    <p className="text-xs text-zinc-600">Vui lòng kiểm tra lại chính tả hoặc thử tên gốc của phim.</p>
+                  </div>
+                )
               )}
             </div>
 
             <div className="pt-2 border-t border-white/10 flex justify-between items-center text-[11px] text-zinc-500">
               <span>Nhấn <kbd className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-zinc-400 font-mono">ESC</kbd> để đóng</span>
-              <span>Tìm kiếm thời gian thực</span>
+              <span>Nguồn dữ liệu phim trực tuyến 24/7</span>
             </div>
           </div>
         </div>

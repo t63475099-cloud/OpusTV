@@ -1,290 +1,183 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import {
-  Film,
-  Music,
-  Compass,
-  Search,
-  Settings,
-  User,
-  Bookmark,
+  Menu,
   X,
-  ChevronRight,
-  Play,
-  Loader2,
-  Star,
+  PlayCircle,
+  History,
+  Heart,
+  Settings,
+  Home,
+  Flame,
+  Clapperboard,
+  Music2,
 } from "lucide-react";
-import { useAccountStore } from "@/lib/account";
-import { useSettingsStore } from "@/lib/settings";
-import UserAvatar from "@/components/UserAvatar";
-
-const NAV_LINKS = [
-  { href: "/", label: "Khám Phá", icon: Compass },
-  { href: "/phim", label: "Phim Chiếu Rạp", icon: Film },
-  { href: "/nhac", label: "Âm Nhạc & OST", icon: Music },
-  { href: "/yeu-thich", label: "Bộ Sưu Tập", icon: Bookmark },
-];
+import { NAV_CATEGORIES } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import SearchBox from "./SearchBox";
 
 export default function Navbar() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const username = useAccountStore((s) => s.username);
-  const profile = useSettingsStore((s) => s.profile);
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname() || "/";
 
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const isMinimalChrome =
+    pathname.startsWith("/cai-dat") || pathname.startsWith("/tai-khoan");
 
-  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isVerified = Boolean(profile.verified);
+  const hideChips =
+    isMinimalChrome ||
+    pathname.startsWith("/nhac") ||
+    pathname.startsWith("/phim/");
+
+  /** Search luôn ngoài trên mobile (trừ trang form) */
+  const showSearch = !isMinimalChrome;
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setShowSearchModal((prev) => !prev);
-      }
-      if (e.key === "Escape") {
-        setShowSearchModal(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    setMenuOpen(false);
+  }, [pathname]);
 
-  // Gọi API tìm kiếm phim thật theo từ khóa
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-
-    setIsSearching(true);
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(searchQuery.trim())}&limit=10`);
-        const data = await res.json();
-        if (data?.status === "success" && data?.data?.items) {
-          setSearchResults(data.data.items);
-        } else {
-          // Thử endpoint dự phòng nếu có
-          const resFallback = await fetch(`https://ophim1.com/v1/api/tim-kiem?keyword=${encodeURIComponent(searchQuery.trim())}`);
-          const fallbackData = await resFallback.json();
-          setSearchResults(fallbackData?.data?.items || []);
-        }
-      } catch (err) {
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 350);
-
+    document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      document.body.style.overflow = "";
     };
-  }, [searchQuery]);
+  }, [menuOpen]);
 
-  const handleSelectMovie = (slug: string) => {
-    setShowSearchModal(false);
-    setSearchQuery("");
-    router.push(`/phim/${slug}`);
-  };
+  /** Chiều cao header → content không bị đè */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.navChips = hideChips ? "0" : "1";
+    root.dataset.navMinimal = isMinimalChrome ? "1" : "0";
+    return () => {
+      root.dataset.navChips = "0";
+      root.dataset.navMinimal = "0";
+    };
+  }, [hideChips, isMinimalChrome]);
+
+  const mainNav = NAV_CATEGORIES.filter((i) => i.href !== "/cai-dat");
+
+  const drawerLinks = [
+    { href: "/", name: "Trang chủ", icon: Home },
+    { href: "/nhac", name: "Opus Music", icon: Music2 },
+    { href: "/danh-sach/phim-moi-cap-nhat", name: "Mới cập nhật", icon: Flame },
+    { href: "/yeu-thich", name: "Yêu thích", icon: Heart },
+    { href: "/lich-su", name: "Lịch sử xem", icon: History },
+    ...mainNav
+      .filter(
+        (i) =>
+          !["/", "/nhac", "/yeu-thich", "/lich-su"].includes(i.href) &&
+          i.href !== "/danh-sach/phim-moi-cap-nhat"
+      )
+      .slice(0, 8)
+      .map((i) => ({ href: i.href, name: i.name, icon: Clapperboard })),
+    { href: "/cai-dat", name: "Cài đặt", icon: Settings },
+  ];
 
   return (
-    <>
-      <header
-        className={`sticky top-0 z-40 w-full transition-all duration-500 ${
-          isScrolled
-            ? "py-3 bg-[#050508]/80 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
-            : "py-5 bg-transparent"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
-            
-            {/* Logo Thương Hiệu Kính Lỏng */}
-            <Link href="/" className="flex items-center gap-3 group shrink-0">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 via-purple-600 to-blue-600 p-[1.5px] shadow-[0_0_20px_rgba(244,63,94,0.3)] group-hover:scale-105 transition-transform duration-300">
-                <div className="w-full h-full bg-[#0a0a10] rounded-[14px] flex items-center justify-center backdrop-blur-md">
-                  <Play className="w-4 h-4 fill-rose-500 text-rose-500 ml-0.5 group-hover:scale-110 transition-transform" />
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-black tracking-tight text-white flex items-center gap-1">
-                  OPUS<span className="text-rose-500">FILM</span>
-                </span>
-                <span className="text-[10px] text-zinc-400 font-mono tracking-widest uppercase">Giải Trí Đỉnh Cao</span>
-              </div>
-            </Link>
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
+        scrolled || menuOpen
+          ? "glass-nav border-b border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
+          : "glass-nav border-b border-transparent",
+        "overflow-visible"
+      )}
+      style={{
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingLeft: "env(safe-area-inset-left, 0px)",
+        paddingRight: "env(safe-area-inset-right, 0px)",
+      }}
+    >
+      {/* Hàng 1: logo + search ngoài (mobile & desktop) */}
+      <div className="flex items-center gap-1.5 sm:gap-2 h-12 sm:h-14 px-2.5 sm:px-4">
+        <button
+          type="button"
+          className="lg:hidden p-2 -ml-0.5 rounded-full text-zinc-200 hover:bg-white/10 shrink-0"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
+        >
+          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
 
-            {/* Menu Điều Hướng Desktop */}
-            <nav className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl shadow-inner">
-              {NAV_LINKS.map((link) => {
-                const Icon = link.icon;
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-300 ${
-                      isActive
-                        ? "bg-gradient-to-r from-rose-600/90 to-purple-600/90 text-white shadow-[0_0_15px_rgba(244,63,94,0.35)] border border-white/20"
-                        : "text-zinc-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* Cụm Tìm Kiếm & Tài Khoản */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowSearchModal(true)}
-                className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 text-zinc-400 hover:text-white transition-all duration-300 backdrop-blur-md text-xs group"
-              >
-                <Search className="w-4 h-4 text-zinc-400 group-hover:text-rose-400 transition-colors" />
-                <span className="hidden sm:inline">Tìm kiếm phim, diễn viên...</span>
-                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-black/40 rounded-md border border-white/10 text-zinc-500">
-                  Ctrl K
-                </kbd>
-              </button>
-
-              <Link
-                href="/cai-dat"
-                className="p-2.5 rounded-2xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 text-zinc-400 hover:text-white transition-all backdrop-blur-md"
-                title="Cài đặt hệ thống"
-              >
-                <Settings className="w-4 h-4" />
-              </Link>
-
-              {username ? (
-                <Link
-                  href="/tai-khoan"
-                  className="flex items-center gap-2.5 p-1.5 pr-3 rounded-2xl bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 transition-all backdrop-blur-md group"
-                >
-                  <UserAvatar
-                    profile={{ ...profile, name: profile.name || username }}
-                    size={32}
-                    showBadge={isVerified}
-                  />
-                  <div className="hidden sm:flex flex-col text-left">
-                    <span className="text-xs font-bold text-zinc-200 group-hover:text-rose-400 transition-colors truncate max-w-[90px]">
-                      {profile.name || username}
-                    </span>
-                    <span className="text-[10px] text-zinc-500 font-mono">@{username}</span>
-                  </div>
-                </Link>
-              ) : (
-                <Link
-                  href="/cai-dat"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-purple-600 text-white text-xs font-bold shadow-[0_0_20px_rgba(244,63,94,0.3)] hover:scale-105 transition-all"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Đăng Nhập</span>
-                </Link>
-              )}
-            </div>
-
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 shrink-0"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-red-600/40 ring-1 ring-white/20">
+            <PlayCircle className="w-5 h-5 text-white fill-white/30" />
           </div>
+          <span className="hidden xs:inline text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap min-[380px]:inline">
+            Opus<span className="font-semibold">Film</span>
+          </span>
+        </Link>
+
+        {/* Search ngoài — mobile + desktop */}
+        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-1 overflow-visible">
+          {showSearch && (
+            <div className="w-full max-w-[640px]">
+              <SearchBox variant="desktop" />
+            </div>
+          )}
         </div>
-      </header>
+      </div>
 
-      {/* POPUP TÌM KIẾM PHIM THỰC KÍNH LỎNG */}
-      {showSearchModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/75 backdrop-blur-xl animate-fade-in">
-          <div className="relative w-full max-w-2xl bg-[#0d111d]/90 border border-white/15 rounded-3xl p-5 shadow-[0_25px_70px_rgba(0,0,0,0.8)] space-y-4 backdrop-blur-2xl">
-            <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-              <Search className="w-5 h-5 text-rose-500" />
-              <input
-                type="text"
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Nhập tên phim muốn xem (Ví dụ: Trường Nguyệt Tẫn Minh, Tiên Kiếm...)"
-                className="flex-1 bg-transparent text-sm text-white placeholder-zinc-500 outline-none"
-              />
-              {isSearching && <Loader2 className="w-4 h-4 text-rose-500 animate-spin" />}
-              <button
-                type="button"
-                onClick={() => setShowSearchModal(false)}
-                className="p-1 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-              <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider px-2">
-                {searchQuery ? `Kết quả tìm kiếm (${searchResults.length})` : "Gợi ý thịnh hành"}
-              </div>
-
-              {searchResults.length > 0 ? (
-                searchResults.map((item) => {
-                  const poster = item.poster_url?.startsWith("http")
-                    ? item.poster_url
-                    : `https://phimimg.com/${item.poster_url || item.thumb_url}`;
-
-                  return (
-                    <div
-                      key={item._id || item.slug}
-                      onClick={() => handleSelectMovie(item.slug)}
-                      className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className="w-10 h-14 rounded-xl bg-cover bg-center shrink-0 bg-zinc-800"
-                          style={{ backgroundImage: `url(${poster})` }}
-                        />
-                        <div className="min-w-0">
-                          <div className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate">
-                            {item.name}
-                          </div>
-                          <div className="text-[11px] text-zinc-400 truncate">
-                            {item.origin_name} · {item.year || "Mới"} · {item.quality || "HD"}
-                          </div>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-transform group-hover:translate-x-1 shrink-0 ml-2" />
-                    </div>
-                  );
-                })
-              ) : (
-                !isSearching && searchQuery && (
-                  <div className="py-10 text-center space-y-2">
-                    <p className="text-sm text-zinc-400">Không tìm thấy phim phù hợp với từ khóa <strong className="text-white">"{searchQuery}"</strong></p>
-                    <p className="text-xs text-zinc-600">Vui lòng kiểm tra lại chính tả hoặc thử tên gốc của phim.</p>
-                  </div>
-                )
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-white/10 flex justify-between items-center text-[11px] text-zinc-500">
-              <span>Nhấn <kbd className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-zinc-400 font-mono">ESC</kbd> để đóng</span>
-              <span>Nguồn dữ liệu phim trực tuyến 24/7</span>
-            </div>
-          </div>
+      {/* Hàng 2: chip — chỉ mobile, không đè form */}
+      {!hideChips && (
+        <div className="flex lg:hidden items-center gap-2 px-3 pb-2 overflow-x-auto scrollbar-hide h-10">
+          <Link
+            href="/"
+            className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-white to-zinc-100 text-black text-sm font-semibold shadow-sm"
+          >
+            Tất cả
+          </Link>
+          {mainNav.slice(0, 8).map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="shrink-0 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-sm transition backdrop-blur-md border border-white/5"
+            >
+              {item.name}
+            </Link>
+          ))}
         </div>
       )}
-    </>
+
+      {menuOpen && (
+        <div
+          className="lg:hidden border-t border-white/10 glass-strong px-3 py-3 space-y-1 max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <nav className="space-y-0.5" aria-label="Menu chính">
+            {drawerLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 active:scale-[0.98]",
+                  pathname === item.href ||
+                    (item.href !== "/" && pathname.startsWith(item.href.split("?")[0]))
+                    ? "bg-[#272727] text-white font-medium"
+                    : "text-zinc-200 hover:bg-white/10"
+                )}
+              >
+                <item.icon className="w-5 h-5 text-zinc-400 shrink-0" />
+                <span className="truncate">{item.name}</span>
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
+    </header>
   );
 }

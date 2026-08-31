@@ -17,13 +17,9 @@ function yesterdayKey() {
 }
 
 interface StreakState {
-  /** Chuỗi hiện tại (số ngày liên tục) */
   current: number;
-  /** Kỷ lục cao nhất */
   best: number;
-  /** Ngày cuối cùng đã "thắp lửa" YYYY-MM-DD */
   lastActive: string | null;
-  /** Ghi nhận xem phim hôm nay */
   checkIn: () => { lit: boolean; current: number; best: number; already: boolean };
   status: () => {
     current: number;
@@ -49,8 +45,6 @@ export const useStreakStore = create<StreakState>()(
         let next = 1;
         if (s.lastActive === yest) {
           next = s.current + 1;
-        } else if (s.lastActive === today) {
-          next = s.current;
         }
         const best = Math.max(s.best, next);
         set({ current: next, best, lastActive: today });
@@ -59,7 +53,6 @@ export const useStreakStore = create<StreakState>()(
       status: () => {
         const s = get();
         const today = todayKey();
-        // Nếu bỏ lỡ >1 ngày, chuỗi về 0 khi xem status (chưa check-in)
         let current = s.current;
         if (s.lastActive && s.lastActive !== today && s.lastActive !== yesterdayKey()) {
           current = 0;
@@ -75,3 +68,17 @@ export const useStreakStore = create<StreakState>()(
     { name: "opusfilm-watch-streak" }
   )
 );
+
+/** Gọi từ history / player khi user xem phim — tương thích history.ts */
+export function recordDailyStreak(): {
+  lit: boolean;
+  current: number;
+  best: number;
+  already: boolean;
+} {
+  try {
+    return useStreakStore.getState().checkIn();
+  } catch {
+    return { lit: false, current: 0, best: 0, already: false };
+  }
+}

@@ -78,7 +78,16 @@ export default function MusicPage() {
 
   const watchedSet = useMemo(() => watchedIds(), [watchedList, watchedIds]);
 
-  const gridItems: Track[] = tab === "library" && !searchMode ? library : feed;
+  const gridItems: Track[] =
+    tab === "library" && !searchMode
+      ? library.map((t) => ({
+          id: t.id,
+          title: t.title,
+          artist: t.artist,
+          category: t.category,
+          thumb: t.thumb || `https://i.ytimg.com/vi/${t.id}/hqdefault.jpg`,
+        }))
+      : feed;
 
   const current =
     (currentTrack && currentId && currentTrack.id === currentId && currentTrack) ||
@@ -547,7 +556,10 @@ export default function MusicPage() {
 
       {playing && currentId && (
         <AmbientGlow
-          src={current?.thumb || `https://i.ytimg.com/vi/${currentId}/hqdefault.jpg`}
+          src={
+            (current && "thumb" in current && current.thumb) ||
+            `https://i.ytimg.com/vi/${currentId}/hqdefault.jpg`
+          }
           className="mb-5"
         >
         <div className="rounded-2xl overflow-hidden bg-black border border-[#272727]">

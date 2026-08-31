@@ -4,6 +4,7 @@ export interface MusicTrack {
   title: string;
   artist: string;
   category: string;
+  thumb?: string;
 }
 
 export interface MusicPlaylist {

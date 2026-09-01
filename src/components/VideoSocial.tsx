@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore } from "@/lib/settings";
-import { VerifiedBadge, CommentAvatar } from "@/components/UserAvatar";
+import { CommentAvatar } from "@/components/UserAvatar";
 
 interface CommentItem {
   id: string;
@@ -246,7 +246,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
             >
               {c.username}
             </Link>
-            {c.verified && <VerifiedBadge size={14} />}
+            
             <span className="text-zinc-600 text-xs ml-1">{timeAgo(c.createdAt)}</span>
           </p>
 

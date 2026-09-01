@@ -77,13 +77,25 @@ export const useAccountStore = create<AccountState>()(
           }));
         }
         if (data.profile && typeof data.profile === "object") {
-          useSettingsStore.setState((s) => ({
-            profile: {
-              ...s.profile,
-              ...(data.profile as object),
-              loggedIn: true,
-            },
-          }));
+          useSettingsStore.setState((s) => {
+            const remote = data.profile as Record<string, unknown>;
+            const localName = (s.profile.name || "").trim();
+            const remoteName = String(remote.name ?? "").trim();
+            // Giữ tên local nếu user đã đặt; không ghi đè bằng username rỗng / mặc định
+            const name =
+              localName ||
+              remoteName ||
+              s.profile.name ||
+              "";
+            return {
+              profile: {
+                ...s.profile,
+                ...remote,
+                name,
+                loggedIn: true,
+              },
+            };
+          });
         }
       },
 
@@ -107,7 +119,7 @@ export const useAccountStore = create<AccountState>()(
           useSettingsStore.setState((s) => ({
             profile: {
               ...s.profile,
-              name: (s.profile.name && s.profile.name.trim()) || data.username,
+              name: (s.profile.name && String(s.profile.name).trim()) || data.username,
               loggedIn: true,
               verified: !!(data.data?.profile?.verified ?? s.profile.verified),
               avatar: s.profile.avatar || undefined,
@@ -147,7 +159,7 @@ export const useAccountStore = create<AccountState>()(
           useSettingsStore.setState((s) => ({
             profile: {
               ...s.profile,
-              name: (s.profile.name && s.profile.name.trim()) || data.username,
+              name: (s.profile.name && String(s.profile.name).trim()) || data.username,
               loggedIn: true,
               verified: !!(data.data?.profile?.verified ?? s.profile.verified),
               avatar: s.profile.avatar || undefined,

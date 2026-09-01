@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import UserAvatar, { VerifiedBadge } from "@/components/UserAvatar";
+import UserAvatar from "@/components/UserAvatar";
 import { ArrowLeft } from "lucide-react";
 import { RANKS } from "@/lib/gamification";
 
@@ -101,14 +101,10 @@ export default function PublicProfilePage() {
               showBadge={!!profile?.verified}
             />
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-white flex items-center gap-1.5">
-                <span className="truncate">{profile?.name || username}</span>
-                {profile?.verified && <VerifiedBadge size={18} />}
+              <h1 className="text-xl font-bold text-white truncate">
+                {profile?.name || username}
               </h1>
-              <p className="text-sm text-zinc-400 inline-flex items-center gap-1">
-                @{username}
-                {profile?.verified && <VerifiedBadge size={14} />}
-              </p>
+              <p className="text-sm text-zinc-400">@{username}</p>
               {profile?.rankLabel && (
                 <span
                   className="inline-flex mt-2 text-xs font-semibold px-2.5 py-1 rounded-full border border-white/10"

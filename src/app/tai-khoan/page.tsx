@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";
-import UserAvatar, { VerifiedBadge } from "@/components/UserAvatar";
+import UserAvatar from "@/components/UserAvatar";
 import VerifyRequestModal from "@/components/VerifyRequestModal";
 import { useXpStore } from "@/lib/xpStore";
 
@@ -190,7 +190,7 @@ export default function AccountPage() {
   const [verifyOpen, setVerifyOpen] = useState(false);
   useEffect(() => {
     if (username) setEditName(profile.name ?? "");
-  }, [username, profile.name]);
+  }, [username]); // không phụ thuộc profile.name để tránh reset khi sync
 
   useEffect(() => {
     if (!username) return;
@@ -351,7 +351,7 @@ export default function AccountPage() {
     if (!res.ok) setErr(res.error || "Đăng ký thất bại");
     else {
       updateProfile({
-        name: displayName.trim().slice(0, 80),
+        name: displayName.slice(0, 80),
         verified: true,
       });
       void syncNow();
@@ -416,14 +416,10 @@ export default function AccountPage() {
                 }}
               />
               <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-white break-words tracking-tight inline-flex items-center gap-1.5 flex-wrap">
-                  <span>{showName}</span>
-                  {profile.verified ? <VerifiedBadge size={20} /> : null}
+                <h1 className="text-xl sm:text-2xl font-bold text-white break-words tracking-tight">
+                  {showName}
                 </h1>
-                <p className="text-sm text-zinc-400 inline-flex items-center gap-1">
-                  @{username}
-                  {profile.verified ? <VerifiedBadge size={14} /> : null}
-                </p>
+                <p className="text-sm text-zinc-400">@{username}</p>
               </div>
             </div>
 
@@ -459,8 +455,7 @@ export default function AccountPage() {
                   Yêu cầu xác minh
                 </button>
               ) : (
-                <span className="lg-btn pointer-events-none inline-flex items-center gap-1.5 text-sky-400">
-                  <VerifiedBadge size={16} />
+                <span className="lg-btn pointer-events-none text-sky-400">
                   Đã xác minh
                 </span>
               )}
@@ -560,19 +555,20 @@ export default function AccountPage() {
                 <div className="flex gap-2">
                   <input
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value.slice(0, 64))}
+                    onChange={(e) => setEditName(e.target.value.slice(0, 80))}
                     placeholder="Nhập tên hiển thị"
-                    maxLength={64}
+                    maxLength={80}
                     className="lg-input flex-1 min-w-0"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      const n = editName.trim().slice(0, 64);
+                      // Giữ nguyên hoa/thường, số, ký tự đặc biệt; chỉ cắt độ dài
+                      const n = editName.slice(0, 80);
                       updateProfile({ name: n });
                       setEditName(n);
                       void syncNow();
-                      setMsg(n ? "Đã lưu" : "Đã xóa tên hiển thị");
+                      setMsg(n.trim() ? "Đã lưu tên hiển thị" : "Đã xóa tên hiển thị");
                     }}
                     className="lg-btn lg-btn-primary shrink-0 px-5"
                   >

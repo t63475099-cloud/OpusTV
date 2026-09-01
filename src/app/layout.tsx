@@ -23,8 +23,8 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description:
-    "OpusFilm — Xem phim online",
-  keywords: ["opusfilm", "opustv", "phim tiên hiệp", "xem phim online", "phim cổ trang"],
+    "OpusFilm — xem phim online theo sở thích: bộ, lẻ, Hàn, hành động, tình cảm, kinh dị và nhiều thể loại khác.",
+  keywords: ["opusfilm", "xem phim online", "phim bộ", "phim lẻ", "phim hàn", "phim hành động"],
   robots: {
     index: true,
     follow: true,

@@ -66,7 +66,7 @@ export default function GetKeyPage() {
             </span>
             <h1 className="text-xl font-bold text-white tracking-tight">Get Key</h1>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              Tạo mã kích hoạt ngẫu nhiên để đăng ký tài khoản OpusFilm
+              Tạo mã kích hoạt ngẫu nhiên để tạo tài khoản
             </p>
           </div>
 

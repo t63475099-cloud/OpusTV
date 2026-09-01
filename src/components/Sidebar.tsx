@@ -19,10 +19,10 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/", label: "Trang chủ", icon: Home },
   { href: "/danh-sach/phim-moi-cap-nhat", label: "Thịnh hành", icon: Flame },
-  { href: "/the-loai/co-trang", label: "Tiên hiệp", icon: Sparkles },
+  { href: "/danh-sach/phim-bo", label: "Phim bộ", icon: Clapperboard },
   { href: "/quoc-gia/han-quoc", label: "Phim Hàn", icon: Film },
   { href: "/the-loai/kinh-di", label: "Kinh dị", icon: Ghost },
-  { href: "/danh-sach/phim-bo", label: "Phim bộ", icon: Clapperboard },
+  { href: "/the-loai/co-trang", label: "Cổ trang", icon: Sparkles },
   { href: "/yeu-thich", label: "Yêu thích", icon: Heart },
   { href: "/lich-su", label: "Đã xem", icon: History },
   { href: "/nhac", label: "Opus Music", icon: Music2 },

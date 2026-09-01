@@ -1,3 +1,4 @@
+import Link from "next/link";
 import BannerSlider from "@/components/BannerSlider";
 import MovieRow from "@/components/MovieRow";
 import ContinueWatching from "@/components/ContinueWatching";
@@ -9,7 +10,7 @@ import {
   getMoviesByCountry,
   getFeaturedMovies,
 } from "@/lib/api";
-import { FEATURED_XIANXIA } from "@/lib/constants";
+import { FEATURED_PICKS } from "@/lib/constants";
 import { CURATED_MOVIES } from "@/lib/curatedMovies";
 import type { MovieListItem } from "@/lib/types";
 
@@ -90,7 +91,7 @@ export default async function HomePage() {
     loadList("phim-bo", 2),
     loadList("phim-le", 2),
     loadList("hoathinh", 2),
-    getFeaturedMovies(FEATURED_XIANXIA.map((f) => f.slug)).catch(() => []),
+    getFeaturedMovies(FEATURED_PICKS.map((f) => f.slug)).catch(() => []),
   ]);
 
   const bannerMovies = mergeMovies(
@@ -101,8 +102,33 @@ export default async function HomePage() {
   ).slice(0, 12);
 
   return (
-    <div className="min-h-screen pb-16 app-content-offset">
+    <div className="fpt-home min-h-screen pb-16 app-content-offset">
+      <div className="relative w-full">
       <BannerSlider movies={bannerMovies} />
+      {/* Thanh chuyên mục kiểu FPT Play */}
+      <nav className="fpt-home-cats flex gap-2 overflow-x-auto scrollbar-hide px-3 sm:px-4 md:px-6 lg:px-8 py-3 -mt-1">
+        {[
+          { href: "/danh-sach/phim-moi-cap-nhat", label: "Mới cập nhật" },
+          { href: "/danh-sach/phim-bo", label: "Phim bộ" },
+          { href: "/danh-sach/phim-le", label: "Phim lẻ" },
+          { href: "/quoc-gia/han-quoc", label: "Phim Hàn" },
+          { href: "/the-loai/hanh-dong", label: "Hành động" },
+          { href: "/the-loai/tinh-cam", label: "Tình cảm" },
+          { href: "/the-loai/kinh-di", label: "Kinh dị" },
+          { href: "/the-loai/co-trang", label: "Cổ trang" },
+          { href: "/danh-sach/hoathinh", label: "Hoạt hình" },
+          { href: "/nhac", label: "Nhạc" },
+        ].map((c) => (
+          <Link
+            key={c.href}
+            href={c.href}
+            className="shrink-0 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium bg-white/8 hover:bg-white/15 border border-white/10 text-zinc-200 transition"
+          >
+            {c.label}
+          </Link>
+        ))}
+      </nav>
+
       <div className="relative z-10 pt-2 space-y-1">
         <ContinueWatching />
         {CURATED_MOVIES.length > 0 && (
@@ -131,9 +157,9 @@ export default async function HomePage() {
         )}
         {featured.length > 0 && (
           <MovieRow
-            title="Phim nổi bật"
+            title="Có thể bạn thích"
             movies={featured}
-            href="/the-loai/co-trang"
+            href="/danh-sach/phim-moi-cap-nhat"
           />
         )}
         <MovieRow
@@ -152,7 +178,7 @@ export default async function HomePage() {
           <MovieRow title="Phim kinh dị" movies={kinhDi} href="/the-loai/kinh-di" />
         )}
         <MovieRow
-          title="Cổ trang · Tiên hiệp"
+          title="Cổ trang"
           movies={coTrang}
           href="/the-loai/co-trang"
         />

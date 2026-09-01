@@ -51,7 +51,7 @@ type Section =
   | "more"
   | "language"
   | "notify"
-  | "about";
+  | "about" | "legal";
 
 function Toggle({
   label,
@@ -249,6 +249,7 @@ function SettingsInner() {
     language: "Ngôn ngữ",
     notify: "Thông báo",
     about: "Giới thiệu",
+    legal: "Chính sách & Điều khoản",
   };
 
   return (
@@ -360,6 +361,11 @@ function SettingsInner() {
               label="Tính năng thêm"
               desc="Nhiều tùy chọn nâng cao"
               onClick={() => go("more")}
+            />
+            <RowLink
+              icon={<Shield className="w-5 h-5" />}
+              label="Chính sách & Điều khoản"
+              onClick={() => go("legal")}
             />
             <RowLink
               icon={<Info className="w-5 h-5" />}
@@ -553,11 +559,32 @@ function SettingsInner() {
           </div>
         )}
 
+        {section === "legal" && (
+          <div className="px-2 py-2 space-y-1">
+            <Link
+              href="/dieu-khoan"
+              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/5 text-sm text-white"
+            >
+              Điều khoản sử dụng
+              <span className="text-[#717171]">›</span>
+            </Link>
+            <Link
+              href="/chinh-sach"
+              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/5 text-sm text-white"
+            >
+              Chính sách bảo mật
+              <span className="text-[#717171]">›</span>
+            </Link>
+            <p className="px-3 pt-2 text-xs text-zinc-500 leading-relaxed">
+              Áp dụng khi bạn tạo và dùng tài khoản trên trang này.
+            </p>
+          </div>
+        )}
+
         {section === "about" && (
           <div className="px-4 py-6 text-sm text-[#aaa] space-y-2">
-            <p className="text-white font-medium text-base">OpusTV</p>
-            <p>OpusFilm — xem phim và nghe nhạc.</p>
-            <p className="text-xs">Dữ liệu (lịch sử, yêu thích, profile) lưu local trên máy bạn.</p>
+            <p className="text-white font-medium text-base">OpusFilm</p>
+            <p className="text-xs text-zinc-500">Phiên bản web</p>
           </div>
         )}
       </div>

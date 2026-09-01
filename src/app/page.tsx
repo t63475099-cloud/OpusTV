@@ -211,6 +211,7 @@ export default async function HomePage() {
         />
         <HomeInfiniteFeed />
       </div>
+      </div>
     </div>
   );
 }

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";
-import UserAvatar from "@/components/UserAvatar";
+import UserAvatar, { VerifiedBadge } from "@/components/UserAvatar";
 import VerifyRequestModal from "@/components/VerifyRequestModal";
 import { useXpStore } from "@/lib/xpStore";
 
@@ -416,10 +416,14 @@ export default function AccountPage() {
                 }}
               />
               <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-white break-words tracking-tight">
-                  {showName}
+                <h1 className="text-xl sm:text-2xl font-bold text-white break-words tracking-tight inline-flex items-center gap-1.5 flex-wrap">
+                  <span>{showName}</span>
+                  {profile.verified ? <VerifiedBadge size={20} /> : null}
                 </h1>
-                <p className="text-sm text-zinc-400">@{username}</p>
+                <p className="text-sm text-zinc-400 inline-flex items-center gap-1">
+                  @{username}
+                  {profile.verified ? <VerifiedBadge size={14} /> : null}
+                </p>
               </div>
             </div>
 
@@ -455,7 +459,8 @@ export default function AccountPage() {
                   Yêu cầu xác minh
                 </button>
               ) : (
-                <span className="lg-btn text-sky-400 pointer-events-none">
+                <span className="lg-btn pointer-events-none inline-flex items-center gap-1.5 text-sky-400">
+                  <VerifiedBadge size={16} />
                   Đã xác minh
                 </span>
               )}

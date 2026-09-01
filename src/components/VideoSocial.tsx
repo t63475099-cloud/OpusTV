@@ -10,7 +10,6 @@ import {
   Reply,
   Send,
   Loader2,
-  BadgeCheck,
   Pencil,
   Trash2,
   Check,

@@ -7,7 +7,9 @@ import {
   levelFromExp,
   rankFromLevel,
   progressToNext,
+  nextRankFromLevel,
   BADGES,
+  RANKS,
   type Activity,
 } from "@/lib/gamification";
 import { useNotifStore } from "@/lib/notifications";
@@ -25,6 +27,11 @@ interface XpState {
     rankLabel: string;
     rankColor: string;
     pct: number;
+    need: number;
+    nextAt: number;
+    nextRankLabel: string | null;
+    nextRankLevel: number | null;
+    ranks: { id: string; label: string; minLevel: number; color: string; active: boolean; reached: boolean }[];
     badges: { id: string; label: string; icon: string }[];
   };
 }
@@ -80,7 +87,8 @@ export const useXpStore = create<XpState>()(
         const s = get();
         const level = levelFromExp(s.exp);
         const rank = rankFromLevel(level);
-        const { pct } = progressToNext(s.exp);
+        const prog = progressToNext(s.exp);
+        const nr = nextRankFromLevel(level);
         const hours = s.watchMinutes / 60;
         const badges = BADGES.filter((b) => {
           const n = b.need as Record<string, number>;
@@ -90,12 +98,25 @@ export const useXpStore = create<XpState>()(
           if (n.musicPlays && s.musicPlays < n.musicPlays) return false;
           return true;
         }).map((b) => ({ id: b.id, label: b.label, icon: b.icon }));
+        const ranks = RANKS.map((r) => ({
+          id: r.id,
+          label: r.label,
+          minLevel: r.minLevel,
+          color: r.color,
+          active: rank.id === r.id,
+          reached: level >= r.minLevel,
+        }));
         return {
           exp: s.exp,
           level,
           rankLabel: rank.label,
           rankColor: rank.color,
-          pct,
+          pct: prog.pct,
+          need: prog.need,
+          nextAt: prog.nextAt,
+          nextRankLabel: nr?.label ?? null,
+          nextRankLevel: nr?.minLevel ?? null,
+          ranks,
           badges,
         };
       },

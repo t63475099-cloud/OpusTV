@@ -42,12 +42,32 @@ export function rankFromLevel(level: number): RankDef {
   return r;
 }
 
-export function progressToNext(exp: number): { level: number; pct: number; nextAt: number } {
+export function progressToNext(exp: number): {
+  level: number;
+  pct: number;
+  nextAt: number;
+  currentAt: number;
+  need: number;
+} {
   const level = levelFromExp(exp);
   const cur = expForLevel(level);
   const next = expForLevel(level + 1);
   const pct = next > cur ? Math.min(100, ((exp - cur) / (next - cur)) * 100) : 100;
-  return { level, pct, nextAt: next };
+  return {
+    level,
+    pct,
+    nextAt: next,
+    currentAt: cur,
+    need: Math.max(0, next - exp),
+  };
+}
+
+/** Hạng kế tiếp theo level */
+export function nextRankFromLevel(level: number): RankDef | null {
+  const higher = RANKS.filter((r) => r.minLevel > level).sort(
+    (a, b) => a.minLevel - b.minLevel
+  );
+  return higher[0] || null;
 }
 
 export type Activity =

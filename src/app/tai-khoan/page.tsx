@@ -452,21 +452,69 @@ export default function AccountPage() {
               {(() => {
                 const xp = xpSummary();
                 return (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 space-y-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-white">
-                        Lv.{xp.level} · <span style={{ color: xp.rankColor }}>{xp.rankLabel}</span>
+                        Lv.{xp.level} ·{" "}
+                        <span style={{ color: xp.rankColor }}>{xp.rankLabel}</span>
                       </span>
-                      <span className="text-xs text-zinc-500">{xp.exp} EXP</span>
+                      <span className="text-xs text-zinc-400 tabular-nums">
+                        {xp.exp} / {xp.nextAt} EXP
+                      </span>
                     </div>
-                    <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-rose-500 to-violet-500 transition-all"
-                        style={{ width: `${xp.pct}%` }}
-                      />
+                    <div className="space-y-1">
+                      <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-rose-500 via-fuchsia-500 to-violet-500 transition-all"
+                          style={{ width: `${Math.max(4, xp.pct)}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-zinc-500">
+                        Còn <span className="text-zinc-300 font-medium">{xp.need} EXP</span> để lên{" "}
+                        <span className="text-zinc-300">Lv.{xp.level + 1}</span>
+                        {xp.nextRankLabel && xp.nextRankLevel ? (
+                          <>
+                            {" "}· Hạng tiếp:{" "}
+                            <span className="text-zinc-300">
+                              {xp.nextRankLabel} (Lv.{xp.nextRankLevel})
+                            </span>
+                          </>
+                        ) : (
+                          <> · Đã đạt hạng cao nhất</>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {xp.ranks.map((r) => (
+                        <span
+                          key={r.id}
+                          className={`text-[11px] px-2 py-0.5 rounded-full border transition ${
+                            r.active
+                              ? "font-semibold text-white border-white/30"
+                              : r.reached
+                              ? "text-zinc-300 border-white/15 bg-white/5"
+                              : "text-zinc-600 border-white/5"
+                          }`}
+                          style={
+                            r.active
+                              ? {
+                                  background: `${r.color}33`,
+                                  borderColor: `${r.color}88`,
+                                  color: r.color,
+                                }
+                              : r.reached
+                              ? { color: r.color, borderColor: `${r.color}44` }
+                              : undefined
+                          }
+                          title={`Từ Lv.${r.minLevel}`}
+                        >
+                          {r.label}
+                          <span className="opacity-70"> ·{r.minLevel}</span>
+                        </span>
+                      ))}
                     </div>
                     {xp.badges.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
                         {xp.badges.map((b) => (
                           <span
                             key={b.id}
@@ -477,7 +525,7 @@ export default function AccountPage() {
                         ))}
                       </div>
                     )}
-                    <Link href={`/u/${username}`} className="text-xs text-sky-400 inline-block pt-1">
+                    <Link href={`/u/${username}`} className="text-xs text-sky-400 inline-block">
                       Xem trang cá nhân công khai →
                     </Link>
                   </div>

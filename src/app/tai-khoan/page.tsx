@@ -29,6 +29,7 @@ type FieldErrors = {
   pass?: string;
   pass2?: string;
   pin?: string;
+  key?: string;
   terms?: string;
 };
 
@@ -160,6 +161,20 @@ export default function AccountPage() {
   const [pin, setPin] = useState("");
   const [remember, setRemember] = useState(true);
   const [terms, setTerms] = useState(false);
+  const [inviteKey, setInviteKey] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const k = sp.get("key");
+      const m = sp.get("mode");
+      if (m === "register" || m === "login" || m === "recover") setMode(m);
+      if (k) setInviteKey(k.toUpperCase().slice(0, 24));
+    } catch {
+      /* */
+    }
+  }, []);
   const [showPass, setShowPass] = useState(false);
   const [showPass2, setShowPass2] = useState(false);
   const [showPin, setShowPin] = useState(false);
@@ -257,9 +272,12 @@ export default function AccountPage() {
     if ((mode === "register" || mode === "recover") && (touched.pin || pin)) {
       if (!/^\d{4,8}$/.test(pin.trim())) next.pin = "PIN 4–8 chữ số";
     }
+    if (mode === "register" && (touched.key || inviteKey !== undefined)) {
+      if (touched.key && !inviteKey.trim()) next.key = "Vui lòng nhập key";
+    }
     if (mode === "register" && touched.terms && !terms) next.terms = "Cần đồng ý điều khoản";
     setErrors(next);
-  }, [user, displayName, pass, pass2, pin, terms, mode, touched]);
+  }, [user, displayName, pass, pass2, pin, inviteKey, terms, mode, touched]);
 
   const formValid = useMemo(() => {
     if (validateUsername(user)) return false;
@@ -269,6 +287,7 @@ export default function AccountPage() {
       if (validatePassword(pass)) return false;
       if (pass !== pass2) return false;
       if (!/^\d{4,8}$/.test(pin.trim())) return false;
+      if (!inviteKey.trim() || inviteKey.trim().length < 8) return false;
       if (!terms) return false;
       return true;
     }
@@ -276,7 +295,7 @@ export default function AccountPage() {
     if (validatePassword(pass)) return false;
     if (pass !== pass2) return false;
     return true;
-  }, [user, displayName, pass, pass2, pin, terms, mode]);
+  }, [user, displayName, pass, pass2, pin, inviteKey, terms, mode]);
 
   const switchMode = (m: Mode) => {
     setMode(m);
@@ -287,7 +306,7 @@ export default function AccountPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTouched({ user: true, displayName: true, pass: true, pass2: true, pin: true, terms: true });
+    setTouched({ user: true, displayName: true, pass: true, pass2: true, pin: true, key: true, terms: true });
     setErr("");
     setMsg("");
     if (!formValid) {
@@ -327,7 +346,7 @@ export default function AccountPage() {
       return;
     }
 
-    const res = await register(user.trim().toLowerCase(), pass, pin.trim());
+    const res = await register(user.trim().toLowerCase(), pass, pin.trim(), inviteKey.trim());
     setBusy(false);
     if (!res.ok) setErr(res.error || "Đăng ký thất bại");
     else {
@@ -818,7 +837,45 @@ export default function AccountPage() {
               </div>
             )}
 
-            {mode === "register" && (
+                        {mode === "register" && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="block text-xs font-medium text-zinc-400">
+                    Mã kích hoạt (Key) <span className="text-rose-400">*</span>
+                  </label>
+                  <Link
+                    href="/get-key"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-300 hover:text-amber-200 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 transition"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    Get Key
+                  </Link>
+                </div>
+                <input
+                  value={inviteKey}
+                  onChange={(e) => {
+                    setInviteKey(e.target.value.toUpperCase().slice(0, 24));
+                    setTouched((t) => ({ ...t, key: true }));
+                  }}
+                  onBlur={() => setTouched((t) => ({ ...t, key: true }))}
+                  placeholder="OF-XXXX-XXXX-XXXX"
+                  className={`lg-input w-full font-mono tracking-wider ${
+                    errors.key ? "border-red-500/60 focus:border-red-500" : ""
+                  }`}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                {errors.key ? (
+                  <p className="text-xs text-red-400">{errors.key}</p>
+                ) : (
+                  <p className="text-[11px] text-zinc-500">
+                    Chưa có key? Bấm <strong className="text-amber-300">Get Key</strong> để nhận mã ngẫu nhiên.
+                  </p>
+                )}
+              </div>
+            )}
+
+{mode === "register" && (
               <div className="mb-5">
                 <label className="flex cursor-pointer items-start gap-2.5 text-sm text-zinc-300">
                   <input

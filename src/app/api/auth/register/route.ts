@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUser, findUserByUsername } from "@/lib/db/users";
 import { createSession, cookieOptions, SESSION_COOKIE } from "@/lib/session";
+import { consumeKey, validateKey } from "@/lib/db/keys";
 
 function cleanUsername(s: string) {
   return s.trim().toLowerCase().slice(0, 32);
@@ -15,6 +16,7 @@ export async function POST(req: NextRequest) {
     const username = cleanUsername(String(body.username || ""));
     const password = String(body.password || "");
     const recoveryPin = String(body.recoveryPin || body.pin || "").trim();
+    const activationKey = String(body.activationKey || body.key || body.inviteCode || "").trim();
 
     if (username.length < 3) {
       return NextResponse.json({ ok: false, error: "Tên tài khoản tối thiểu 3 ký tự" }, { status: 400 });
@@ -28,8 +30,25 @@ export async function POST(req: NextRequest) {
     if (!/^\d{4,8}$/.test(recoveryPin)) {
       return NextResponse.json({ ok: false, error: "Mã PIN: 4–8 chữ số" }, { status: 400 });
     }
+    if (!activationKey) {
+      return NextResponse.json(
+        { ok: false, error: "Cần mã kích hoạt để tạo tài khoản" },
+        { status: 400 }
+      );
+    }
+
+    const keyCheck = await validateKey(activationKey);
+    if (!keyCheck.ok) {
+      return NextResponse.json({ ok: false, error: keyCheck.error || "Mã kích hoạt không hợp lệ" }, { status: 400 });
+    }
+
     if (await findUserByUsername(username)) {
       return NextResponse.json({ ok: false, error: "Tên tài khoản đã tồn tại" }, { status: 409 });
+    }
+
+    const used = await consumeKey(activationKey, username);
+    if (!used.ok) {
+      return NextResponse.json({ ok: false, error: used.error || "Không dùng được mã" }, { status: 400 });
     }
 
     const user = await createUser(username, password, recoveryPin);

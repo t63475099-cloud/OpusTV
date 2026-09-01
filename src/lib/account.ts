@@ -18,7 +18,7 @@ interface AccountState {
   collectLocal: () => SyncPayload;
   applyRemote: (data: SyncPayload) => void;
   login: (username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (username: string, password: string, recoveryPin: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (username: string, password: string, recoveryPin: string, activationKey: string) => Promise<{ ok: boolean; error?: string }>;
   resetPassword: (username: string, recoveryPin: string, newPassword: string) => Promise<{ ok: boolean; error?: string; message?: string }>;
   syncNow: () => Promise<{ ok: boolean; error?: string }>;
   refreshMe: () => Promise<void>;
@@ -87,12 +87,12 @@ export const useAccountStore = create<AccountState>()(
         }
       },
 
-      register: async (username, password, recoveryPin: string) => {
+      register: async (username, password, recoveryPin: string, activationKey: string) => {
         try {
           const res = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password, recoveryPin }),
+            body: JSON.stringify({ username, password, recoveryPin, activationKey }),
           });
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Đăng ký thất bại" };

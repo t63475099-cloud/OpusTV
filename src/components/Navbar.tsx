@@ -22,6 +22,9 @@ import { cn } from "@/lib/utils";
 import SearchBox from "./SearchBox";
 
 export default function Navbar() {
+  const pathEarly = usePathname() || "/";
+  if (pathEarly.startsWith("/admin")) return null;
+
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname() || "/";

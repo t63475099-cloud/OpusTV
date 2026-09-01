@@ -30,7 +30,8 @@ const ITEMS = [
 ];
 
 export default function Sidebar() {
-  const path = usePathname();
+  const path = usePathname() || "/";
+  if (path.startsWith("/admin")) return null;
 
   return (
     <aside data-sidebar="1"

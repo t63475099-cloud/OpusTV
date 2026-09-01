@@ -113,8 +113,25 @@ export default function WatchPageClient({
   const currentEpisodes = currentServer?.server_data || [];
   const currentEpisode = currentEpisodes[epIdx] || currentEpisodes[0];
   const nextEpisode = currentEpisodes[epIdx + 1] || null;
-  const m3u8 = currentEpisode?.link_m3u8 || "";
+  const rawM3u8 = (currentEpisode?.link_m3u8 || "").trim();
+  const rawEmbed = (currentEpisode?.link_embed || "").trim();
+  const m3u8 = rawM3u8
+    ? rawM3u8.startsWith("http://")
+      ? "https://" + rawM3u8.slice(7)
+      : rawM3u8
+    : "";
+  const embedUrl = rawEmbed
+    ? rawEmbed.startsWith("http://")
+      ? "https://" + rawEmbed.slice(7)
+      : rawEmbed
+    : "";
   const poster = getImageUrl(movie.poster_url || movie.thumb_url);
+
+  const tryNextServer = () => {
+    if (episodes.length <= 1) return;
+    const next = (serverIdx + 1) % episodes.length;
+    switchServer(next);
+  };
 
   const switchServer = useCallback(
     (idx: number) => {
@@ -277,18 +294,29 @@ export default function WatchPageClient({
               {m3u8 ? (
                 <AmbientGlow src={poster} className={theater ? "scale-[1.02]" : ""}>
                   <Player
-                    key={`${serverIdx}-${epIdx}-${m3u8}`}
+                    key={`${serverIdx}-${epIdx}-${m3u8 || embedUrl}`}
                     m3u8={m3u8}
+                    embedUrl={embedUrl}
                     movie={movie}
                     currentEpisode={currentEpisode}
                     serverName={currentServer?.server_name || ""}
                     nextEpisode={nextEpisode}
                     onNextEpisode={handleNext}
+                    onStreamError={tryNextServer}
                   />
                 </AmbientGlow>
               ) : (
-                <div className="aspect-video bg-zinc-900 flex items-center justify-center text-zinc-500">
-                  Không tìm thấy link phát — thử server khác
+                <div className="aspect-video bg-zinc-900 flex flex-col items-center justify-center gap-3 text-zinc-500 px-4 text-center">
+                  <p>Không tìm thấy link phát cho tập này.</p>
+                  {episodes.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={tryNextServer}
+                      className="px-4 py-2 rounded-full bg-red-600 text-white text-sm"
+                    >
+                      Thử server khác
+                    </button>
+                  )}
                 </div>
               )}
             </div>

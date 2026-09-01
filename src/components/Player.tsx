@@ -24,11 +24,21 @@ import { getImageUrl } from "@/lib/api";
 
 interface PlayerProps {
   m3u8: string;
+  embedUrl?: string;
   movie: Movie;
   currentEpisode: Episode;
   serverName: string;
   nextEpisode?: Episode | null;
   onNextEpisode?: () => void;
+  onStreamError?: () => void;
+}
+
+function normalizeStreamUrl(url: string): string {
+  if (!url) return "";
+  let u = url.trim();
+  // http -> https khi có thể
+  if (u.startsWith("http://")) u = "https://" + u.slice(7);
+  return u;
 }
 
 interface QualityOption {
@@ -60,13 +70,18 @@ function formatTime(s: number) {
 }
 
 export default function Player({
-  m3u8,
+  m3u8: m3u8Raw,
+  embedUrl,
   movie,
   currentEpisode,
   serverName,
   nextEpisode,
   onNextEpisode,
+  onStreamError,
 }: PlayerProps) {
+  const m3u8 = normalizeStreamUrl(m3u8Raw);
+  const embed = normalizeStreamUrl(embedUrl || "");
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const fsPlaceholderRef = useRef<HTMLDivElement | null>(null);
@@ -84,6 +99,9 @@ export default function Player({
   }, []);
 
   const [showNext, setShowNext] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const [useEmbed, setUseEmbed] = useState(false);
+  const fatalRef = useRef(false);
   const [qualities, setQualities] = useState<QualityOption[]>([
     { level: -1, label: "Tự động" },
   ]);
@@ -166,15 +184,69 @@ export default function Player({
     setMenuOpen(false);
     setShowNext(false);
 
-    if (Hls.isSupported()) {
+    setStreamError(null);
+    fatalRef.current = false;
+    setUseEmbed(false);
+
+    if (!m3u8 && embed) {
+      setUseEmbed(true);
+      return () => {};
+    }
+
+    if (Hls.isSupported() && m3u8) {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        maxBufferLength: 30,
+        maxBufferLength: 45,
+        maxMaxBufferLength: 90,
         startLevel: -1,
+        fragLoadingMaxRetry: 4,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        xhrSetup: (xhr: XMLHttpRequest) => {
+          try {
+            xhr.withCredentials = false;
+          } catch {
+            /* */
+          }
+        },
       });
       hls.loadSource(m3u8);
       hls.attachMedia(video);
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (!data.fatal) return;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          try {
+            hls.startLoad();
+          } catch {
+            /* */
+          }
+          return;
+        }
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          try {
+            hls.recoverMediaError();
+          } catch {
+            /* */
+          }
+          return;
+        }
+        if (fatalRef.current) return;
+        fatalRef.current = true;
+        if (embed) {
+          setUseEmbed(true);
+          setStreamError("Nguồn HLS lỗi — đang dùng trình phát dự phòng");
+        } else {
+          setStreamError("Không phát được nguồn này. Thử server khác hoặc tải lại.");
+          onStreamError?.();
+        }
+        try {
+          hls.destroy();
+        } catch {
+          /* */
+        }
+      });
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
         const levels = data.levels || hls.levels || [];
@@ -231,8 +303,18 @@ export default function Player({
       });
 
       hlsRef.current = hls;
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    } else if (m3u8 && video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = m3u8;
+      const onErr = () => {
+        if (embed) {
+          setUseEmbed(true);
+          setStreamError("Nguồn HLS lỗi — đang dùng trình phát dự phòng");
+        } else {
+          setStreamError("Không phát được trên thiết bị này. Thử server khác.");
+          onStreamError?.();
+        }
+      };
+      video.addEventListener("error", onErr);
       video.addEventListener("loadedmetadata", () => {
         if (
           historyItem &&
@@ -243,6 +325,10 @@ export default function Player({
         }
         video.play().catch(() => {});
       });
+    } else if (embed) {
+      setUseEmbed(true);
+    } else if (!m3u8) {
+      setStreamError("Tập này chưa có link phát. Thử server khác.");
     }
 
     const interval = setInterval(saveProgress, 5000);
@@ -946,6 +1032,52 @@ export default function Player({
         </div>
       </div>
 
+      {useEmbed && embed && (
+        <div className="absolute inset-0 z-20 bg-black">
+          <iframe
+            key={embed}
+            src={embed}
+            title={currentEpisode.name}
+            className="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      )}
+      {streamError && !useEmbed && (
+        <div className="absolute inset-0 z-25 flex flex-col items-center justify-center gap-3 bg-black/85 px-4 text-center">
+          <p className="text-sm text-zinc-200 max-w-sm">{streamError}</p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {embed && (
+              <button
+                type="button"
+                onClick={() => setUseEmbed(true)}
+                className="px-3 py-1.5 rounded-full bg-red-600 text-white text-sm"
+              >
+                Xem bản dự phòng
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setStreamError(null);
+                fatalRef.current = false;
+                setUseEmbed(false);
+                // force remount source
+                const v = videoRef.current;
+                if (v && m3u8) {
+                  v.load();
+                }
+                onStreamError?.();
+              }}
+              className="px-3 py-1.5 rounded-full bg-white/10 text-white text-sm"
+            >
+              Thử lại / Đổi server
+            </button>
+          </div>
+        </div>
+      )}
       {showNext && nextEpisode && (
         <div
           data-controls

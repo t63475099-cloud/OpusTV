@@ -1755,3 +1755,138 @@ html[data-nav-minimal="1"] .app-content-offset {
   15% { opacity: 1; }
   100% { transform: translateY(-48px) scale(0.2); opacity: 0; }
 }
+
+
+/* FPT Play–style home spacing */
+.fpt-home {
+  --home-pad-x: clamp(0.75rem, 2.5vw, 1.75rem);
+}
+.fpt-home [data-movie-row] {
+  padding-left: var(--home-pad-x);
+  padding-right: var(--home-pad-x);
+}
+
+
+/* ========== FPT Play style home ========== */
+.fpt-home {
+  --fpt-gap: 0.25rem;
+}
+.fpt-home [data-movie-row] {
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+.fpt-home [data-movie-row] h2,
+.fpt-home [data-movie-row] .row-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  padding-left: 0.25rem;
+}
+@media (min-width: 768px) {
+  .fpt-home [data-movie-row] h2,
+  .fpt-home [data-movie-row] .row-title {
+    font-size: 1.2rem;
+  }
+}
+.fpt-home .banner-slider,
+.fpt-home [data-banner] {
+  border-radius: 0 0 1rem 1rem;
+  overflow: hidden;
+}
+@media (min-width: 1024px) {
+  .fpt-home .banner-slider,
+  .fpt-home [data-banner] {
+    border-radius: 0 0 1.25rem 1.25rem;
+  }
+}
+
+/* Zalo-style profile cover */
+.zalo-profile-cover {
+  position: relative;
+  height: 120px;
+  border-radius: 1.25rem 1.25rem 0 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f43f5e 0%, #a855f7 45%, #3b82f6 100%);
+}
+.zalo-profile-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.25), transparent 50%);
+}
+.zalo-profile-card {
+  margin-top: -40px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Extra circular frame motion */
+@keyframes ab-spin { to { --ab-a: 360deg; transform: rotate(360deg); } }
+@keyframes ab-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.85; }
+}
+@keyframes ab-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes ab-sparkle {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 8px #fff, 0 0 16px #7dd3fc; }
+  50% { filter: brightness(1.25); box-shadow: 0 0 14px #fff, 0 0 28px #a5b4fc; }
+}
+@property --ab-a {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.zalo-glass {
+  background: rgba(18, 18, 28, 0.55);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.zalo-glass-soft {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.zalo-cover {
+  height: 140px;
+  border-radius: 1.5rem 1.5rem 0 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(244, 63, 94, 0.55), transparent 55%),
+    radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.5), transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(59, 130, 246, 0.45), transparent 55%),
+    linear-gradient(135deg, #1a1030, #0c1228);
+  position: relative;
+  overflow: hidden;
+}
+.zalo-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(8, 8, 14, 0.85));
+}
+.profile-action-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.65rem;
+  color: #e4e4e7;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s;
+}
+.profile-action-chip:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+}
+.profile-action-chip:active {
+  transform: scale(0.96);
+}

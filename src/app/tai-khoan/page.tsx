@@ -15,10 +15,16 @@ import {
   X,
   Loader2,
   Camera,
+  Heart,
+  History,
+  Mail,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";
 import UserAvatar from "@/components/UserAvatar";
+import ProfileMotionCanvas from "@/components/ProfileMotionCanvas";
 import VerifyRequestModal from "@/components/VerifyRequestModal";
 import { useXpStore } from "@/lib/xpStore";
 
@@ -187,10 +193,15 @@ export default function AccountPage() {
   const [newPin, setNewPin] = useState("");
   const [pinMsg, setPinMsg] = useState("");
   const [editName, setEditName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [uidCopied, setUidCopied] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   useEffect(() => {
-    if (username) setEditName(profile.name ?? "");
-  }, [username]); // không phụ thuộc profile.name để tránh reset khi sync
+    if (username) {
+      setEditName(profile.name ?? "");
+      setEditBio(profile.bio ?? "");
+    }
+  }, [username]);
 
   useEffect(() => {
     if (!username) return;
@@ -380,94 +391,153 @@ export default function AccountPage() {
     const name = profile.name != null ? profile.name.trim() : "";
     const showName = name || username;
     return (
-      <div className="lg-page relative min-h-[100dvh] overflow-hidden pb-24 pt-16">
-        <AuroraBg />
-        <div className={`relative z-10 mx-auto max-w-lg px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
-          <div className="relative pt-4">
-            <Link href="/cai-dat" className="lg-btn lg-enter-delay-1 mb-5 text-xs">
+      <div className="relative min-h-[100dvh] overflow-hidden pb-28 pt-14">
+        <ProfileMotionCanvas />
+        <div className={`relative z-10 mx-auto max-w-md px-3 sm:px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
+          <div className="pt-3 pb-2">
+            <Link
+              href="/cai-dat"
+              className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition px-1"
+            >
               ← Cài đặt
             </Link>
+          </div>
 
-            <div className="lg-enter-delay-2 flex items-end gap-4">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="relative group shrink-0 lg-avatar-ring"
-                aria-label="Đổi ảnh đại diện"
-              >
-                <UserAvatar
-                  profile={{ ...profile, name: showName }}
-                  size={96}
-                  showBadge={!!profile.verified}
+          {/* Card profile Zalo */}
+          <div className="zalo-glass rounded-3xl overflow-hidden lg-enter-delay-1">
+            <div className="zalo-cover" />
+            <div className="relative px-4 pb-4 -mt-12">
+              <div className="flex flex-col items-center text-center">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="relative group"
+                  aria-label="Đổi ảnh đại diện"
+                >
+                  <UserAvatar
+                    profile={{ ...profile, name: showName }}
+                    size={108}
+                    showBadge={!!profile.verified}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition">
+                    <Camera className="w-7 h-7 text-white" />
+                  </span>
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) processAvatarFile(f);
+                    e.target.value = "";
+                  }}
                 />
-                <span className="absolute inset-[3px] flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition">
-                  <Camera className="w-7 h-7 text-white" />
-                </span>
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) processAvatarFile(f);
-                  e.target.value = "";
-                }}
-              />
-              <div className="flex-1 min-w-0 pb-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-white break-words tracking-tight">
+                <h1 className="mt-3 text-xl font-bold text-white tracking-tight break-words max-w-full">
                   {showName}
                 </h1>
                 <p className="text-sm text-zinc-400">@{username}</p>
+                {profile.uid ? (
+                  <button
+                    type="button"
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 font-mono px-2 py-0.5 rounded-full zalo-glass-soft"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(String(profile.uid));
+                        setUidCopied(true);
+                        setTimeout(() => setUidCopied(false), 1500);
+                      } catch {
+                        /* */
+                      }
+                    }}
+                  >
+                    UID {profile.uid}
+                    {uidCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                ) : null}
+                {profile.bio ? (
+                  <p className="mt-2 text-xs text-zinc-400 leading-relaxed line-clamp-3 max-w-sm">
+                    {profile.bio}
+                  </p>
+                ) : null}
               </div>
-            </div>
 
-            <div className="lg-enter-delay-3 mt-5 flex flex-wrap gap-2">
-              <button type="button" onClick={() => fileRef.current?.click()} className="lg-btn lg-shimmer">
-                Đổi ảnh
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  setErr("");
-                  const r = await syncNow();
-                  setBusy(false);
-                  if (!r.ok) setErr(r.error || "Lỗi");
-                  else setMsg("Đã đồng bộ");
-                }}
-                className="lg-btn lg-shimmer"
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Đồng bộ
-              </button>
-              <button type="button" onClick={() => logout()} className="lg-btn lg-btn-danger">
-                <LogOut className="h-4 w-4" /> Đăng xuất
-              </button>
-              {!profile.verified ? (
+              <div className="mt-4 grid grid-cols-4 gap-1.5">
+                <Link href="/hop-thu" className="profile-action-chip zalo-glass-soft">
+                  <Mail className="w-5 h-5 text-sky-400" />
+                  Hòm thư
+                </Link>
+                <Link href="/yeu-thich" className="profile-action-chip zalo-glass-soft">
+                  <Heart className="w-5 h-5 text-rose-400" />
+                  Yêu thích
+                </Link>
+                <Link href="/lich-su" className="profile-action-chip zalo-glass-soft">
+                  <History className="w-5 h-5 text-amber-400" />
+                  Đã xem
+                </Link>
+                <Link href={`/u/${username}`} className="profile-action-chip zalo-glass-soft">
+                  <UserPlus className="w-5 h-5 text-violet-400" />
+                  Công khai
+                </Link>
+              </div>
+
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setVerifyOpen(true)}
-                  className="lg-btn lg-shimmer"
+                  onClick={() => fileRef.current?.click()}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-medium zalo-glass-soft text-white hover:bg-white/10 transition"
                 >
-                  Yêu cầu xác minh
+                  Đổi ảnh
                 </button>
-              ) : (
-                <span className="lg-btn pointer-events-none text-sky-400">
-                  Đã xác minh
-                </span>
-              )}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setErr("");
+                    const r = await syncNow();
+                    setBusy(false);
+                    if (!r.ok) setErr(r.error || "Lỗi");
+                    else setMsg("Đã đồng bộ");
+                  }}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-medium zalo-glass-soft text-white hover:bg-white/10 transition inline-flex items-center gap-1.5"
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  Đồng bộ
+                </button>
+                {!profile.verified ? (
+                  <button
+                    type="button"
+                    onClick={() => setVerifyOpen(true)}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-sky-600/80 text-white hover:bg-sky-500 transition"
+                  >
+                    Xác minh
+                  </button>
+                ) : (
+                  <span className="px-3.5 py-1.5 rounded-full text-xs font-medium text-sky-300 zalo-glass-soft">
+                    Đã xác minh
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="px-3.5 py-1.5 rounded-full text-xs font-medium text-rose-300 hover:bg-rose-500/15 transition"
+                >
+                  Đăng xuất
+                </button>
+              </div>
             </div>
-            <VerifyRequestModal
-              open={verifyOpen}
-              onClose={() => setVerifyOpen(false)}
-              verified={!!profile.verified}
-              onVerifiedChange={(v) => updateProfile({ verified: v })}
-            />
+          </div>
 
-            <GlassCard className="lg-enter-delay-4 mt-6 rounded-3xl p-5 space-y-5">
+          <VerifyRequestModal
+            open={verifyOpen}
+            onClose={() => setVerifyOpen(false)}
+            verified={!!profile.verified}
+            onVerifiedChange={(v) => updateProfile({ verified: v })}
+          />
+
+          <div className="zalo-glass rounded-3xl p-4 sm:p-5 space-y-5 mt-4 lg-enter-delay-2">
               {(() => {
                 const xp = xpSummary();
                 return (
@@ -563,7 +633,6 @@ export default function AccountPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      // Giữ nguyên hoa/thường, số, ký tự đặc biệt; chỉ cắt độ dài
                       const n = editName.slice(0, 80);
                       updateProfile({ name: n });
                       setEditName(n);
@@ -576,11 +645,33 @@ export default function AccountPage() {
                   </button>
                 </div>
               </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Giới thiệu</label>
+                <textarea
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value.slice(0, 160))}
+                  placeholder="Viết vài dòng về bạn..."
+                  maxLength={160}
+                  rows={2}
+                  className="lg-input w-full resize-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateProfile({ bio: editBio.slice(0, 160) });
+                    void syncNow();
+                    setMsg("Đã lưu giới thiệu");
+                  }}
+                  className="lg-btn lg-btn-primary mt-2 px-5"
+                >
+                  Lưu giới thiệu
+                </button>
+              </div>
 
               <div>
-                <p className="text-xs text-zinc-500 mb-2">Khung viền</p>
-                <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-2 scrollbar-hide">
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                <p className="text-xs text-zinc-400 mb-2 font-medium">Khung viền tròn</p>
+                <div className="max-h-80 overflow-y-auto rounded-2xl zalo-glass-soft p-2.5 scrollbar-hide">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
                   {AVATAR_FRAMES.map((fr) => {
                     const active = (profile.avatarFrame || "frame:none") === fr.id;
                     return (
@@ -592,10 +683,10 @@ export default function AccountPage() {
                           updateProfile({ avatarFrame: fr.id });
                           void syncNow();
                         }}
-                        className={`relative flex flex-col items-center gap-1 rounded-xl border p-2 transition ${
+                        className={`relative flex flex-col items-center gap-1.5 rounded-2xl border p-2 transition duration-300 ${
                           active
-                            ? "border-amber-400/60 bg-amber-500/10"
-                            : "border-white/10 bg-white/[0.03] hover:bg-white/5"
+                            ? "border-sky-400/50 bg-sky-500/10 shadow-[0_0_16px_rgba(56,189,248,0.2)] scale-[1.03]"
+                            : "border-white/10 bg-black/20 hover:bg-white/5 hover:scale-[1.02]"
                         }`}
                       >
                         <span
@@ -675,11 +766,10 @@ export default function AccountPage() {
                   Đồng bộ gần nhất: {new Date(lastSyncAt).toLocaleString("vi-VN")}
                 </p>
               )}
-            </GlassCard>
+            </div>
 
             {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
             {msg && <p className="mt-3 text-center text-sm text-emerald-400">{msg}</p>}
-          </div>
         </div>
         <AuthStyles />
       </div>
@@ -888,7 +978,16 @@ export default function AccountPage() {
                     }}
                     className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600"
                   />
-                  <span>Đồng ý Điều khoản & Dịch vụ</span>
+                  <span>
+                    Đồng ý{" "}
+                    <Link href="/dieu-khoan" className="text-sky-400 hover:underline" target="_blank">
+                      Điều khoản
+                    </Link>{" "}
+                    &{" "}
+                    <Link href="/chinh-sach" className="text-sky-400 hover:underline" target="_blank">
+                      Chính sách
+                    </Link>
+                  </span>
                 </label>
                 {errors.terms && <p className="mt-1 text-xs text-red-400">{errors.terms}</p>}
               </div>

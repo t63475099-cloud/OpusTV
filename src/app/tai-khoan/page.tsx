@@ -15,8 +15,6 @@ import {
   X,
   Loader2,
   Camera,
-  Heart,
-  History,
   Mail,
   Copy,
 } from "lucide-react";
@@ -462,22 +460,13 @@ export default function AccountPage() {
                 ) : null}
               </div>
 
-              <div className="mt-4 grid grid-cols-4 gap-1.5">
-                <Link href="/hop-thu" className="profile-action-chip zalo-glass-soft">
-                  <Mail className="w-5 h-5 text-sky-400" />
+              <div className="mt-4 flex justify-center gap-2">
+                <Link
+                  href="/hop-thu"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full zalo-glass-soft text-xs font-medium text-white hover:bg-white/10 transition"
+                >
+                  <Mail className="w-4 h-4 text-sky-400" />
                   Hòm thư
-                </Link>
-                <Link href="/yeu-thich" className="profile-action-chip zalo-glass-soft">
-                  <Heart className="w-5 h-5 text-rose-400" />
-                  Yêu thích
-                </Link>
-                <Link href="/lich-su" className="profile-action-chip zalo-glass-soft">
-                  <History className="w-5 h-5 text-amber-400" />
-                  Đã xem
-                </Link>
-                <Link href={`/u/${username}`} className="profile-action-chip zalo-glass-soft">
-                  <UserPlus className="w-5 h-5 text-violet-400" />
-                  Công khai
                 </Link>
               </div>
 
@@ -536,236 +525,191 @@ export default function AccountPage() {
             onVerifiedChange={(v) => updateProfile({ verified: v })}
           />
 
-          <div className="zalo-glass rounded-3xl p-4 sm:p-5 space-y-5 mt-4 lg-enter-delay-2">
-              {(() => {
-                const xp = xpSummary();
-                return (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5 space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-white">
-                        Lv.{xp.level} ·{" "}
-                        <span style={{ color: xp.rankColor }}>{xp.rankLabel}</span>
-                      </span>
-                      <span className="text-xs text-zinc-400 tabular-nums">
-                        {xp.exp} / {xp.nextAt} EXP
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-rose-500 via-fuchsia-500 to-violet-500 transition-all"
-                          style={{ width: `${Math.max(4, xp.pct)}%` }}
-                        />
-                      </div>
-                      <p className="text-[11px] text-zinc-500">
-                        Còn <span className="text-zinc-300 font-medium">{xp.need} EXP</span> để lên{" "}
-                        <span className="text-zinc-300">Lv.{xp.level + 1}</span>
-                        {xp.nextRankLabel && xp.nextRankLevel ? (
-                          <>
-                            {" "}· Hạng tiếp:{" "}
-                            <span className="text-zinc-300">
-                              {xp.nextRankLabel} (Lv.{xp.nextRankLevel})
-                            </span>
-                          </>
-                        ) : (
-                          <> · Đã đạt hạng cao nhất</>
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {xp.ranks.map((r) => (
-                        <span
-                          key={r.id}
-                          className={`text-[11px] px-2 py-0.5 rounded-full border transition ${
-                            r.active
-                              ? "font-semibold text-white border-white/30"
-                              : r.reached
-                              ? "text-zinc-300 border-white/15 bg-white/5"
-                              : "text-zinc-600 border-white/5"
-                          }`}
-                          style={
-                            r.active
-                              ? {
-                                  background: `${r.color}33`,
-                                  borderColor: `${r.color}88`,
-                                  color: r.color,
-                                }
-                              : r.reached
-                              ? { color: r.color, borderColor: `${r.color}44` }
-                              : undefined
-                          }
-                          title={`Từ Lv.${r.minLevel}`}
-                        >
-                          {r.label}
-                          <span className="opacity-70"> ·{r.minLevel}</span>
-                        </span>
-                      ))}
-                    </div>
-                    {xp.badges.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {xp.badges.map((b) => (
-                          <span
-                            key={b.id}
-                            className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300"
-                          >
-                            {b.icon} {b.label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <Link href={`/u/${username}`} className="text-xs text-sky-400 inline-block">
-                      Xem trang cá nhân công khai →
-                    </Link>
+          
+          {/* Cấp bậc */}
+          <div className="zalo-glass rounded-2xl p-4 mt-3 lg-enter-delay-2 space-y-3">
+            <p className="text-xs font-medium text-zinc-400">Cấp bậc</p>
+            {(() => {
+              const xp = xpSummary();
+              return (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-white">
+                      Lv.{xp.level} · <span style={{ color: xp.rankColor }}>{xp.rankLabel}</span>
+                    </span>
+                    <span className="text-xs text-zinc-400 tabular-nums">
+                      {xp.exp} / {xp.nextAt} EXP
+                    </span>
                   </div>
-                );
-              })()}
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Tên hiển thị</label>
-                <div className="flex gap-2">
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value.slice(0, 80))}
-                    placeholder="Nhập tên hiển thị"
-                    maxLength={80}
-                    className="lg-input flex-1 min-w-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const n = editName.slice(0, 80);
-                      updateProfile({ name: n });
-                      setEditName(n);
-                      void syncNow();
-                      setMsg(n.trim() ? "Đã lưu tên hiển thị" : "Đã xóa tên hiển thị");
-                    }}
-                    className="lg-btn lg-btn-primary shrink-0 px-5"
-                  >
-                    Lưu
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-zinc-400">Giới thiệu</label>
-                <textarea
-                  value={editBio}
-                  onChange={(e) => setEditBio(e.target.value.slice(0, 160))}
-                  placeholder="Viết vài dòng về bạn..."
-                  maxLength={160}
-                  rows={2}
-                  className="lg-input w-full resize-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateProfile({ bio: editBio.slice(0, 160) });
-                    void syncNow();
-                    setMsg("Đã lưu giới thiệu");
-                  }}
-                  className="lg-btn lg-btn-primary mt-2 px-5"
-                >
-                  Lưu giới thiệu
-                </button>
-              </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-rose-500 via-fuchsia-500 to-violet-500 transition-all"
+                      style={{ width: `${Math.max(4, xp.pct)}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-zinc-500">
+                    Còn <span className="text-zinc-300">{xp.need} EXP</span> để lên Lv.{xp.level + 1}
+                  </p>
+                </>
+              );
+            })()}
+          </div>
 
-              <div>
-                <p className="text-xs text-zinc-400 mb-2 font-medium">Khung viền tròn</p>
-                <div className="max-h-80 overflow-y-auto rounded-2xl zalo-glass-soft p-2.5 scrollbar-hide">
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
-                  {AVATAR_FRAMES.map((fr) => {
-                    const active = (profile.avatarFrame || "frame:none") === fr.id;
-                    return (
-                      <button
-                        key={fr.id}
-                        type="button"
-                        title={fr.label}
-                        onClick={() => {
-                          updateProfile({ avatarFrame: fr.id });
-                          void syncNow();
-                        }}
-                        className={`relative flex flex-col items-center gap-1.5 rounded-2xl border p-2 transition duration-300 ${
-                          active
-                            ? "border-sky-400/50 bg-sky-500/10 shadow-[0_0_16px_rgba(56,189,248,0.2)] scale-[1.03]"
-                            : "border-white/10 bg-black/20 hover:bg-white/5 hover:scale-[1.02]"
-                        }`}
+          {/* Tên hiển thị */}
+          <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
+            <p className="text-xs font-medium text-zinc-400">Tên hiển thị</p>
+            <div className="flex gap-2">
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value.slice(0, 80))}
+                placeholder="Nhập tên"
+                maxLength={80}
+                className="lg-input flex-1 min-w-0"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const n = editName.slice(0, 80);
+                  updateProfile({ name: n });
+                  setEditName(n);
+                  void syncNow();
+                  setMsg(n.trim() ? "Đã lưu tên" : "Đã xóa tên");
+                }}
+                className="lg-btn lg-btn-primary shrink-0 px-4"
+              >
+                Lưu
+              </button>
+            </div>
+          </div>
+
+          {/* Giới thiệu */}
+          <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
+            <p className="text-xs font-medium text-zinc-400">Giới thiệu</p>
+            <textarea
+              value={editBio}
+              onChange={(e) => setEditBio(e.target.value.slice(0, 160))}
+              placeholder="Viết vài dòng về bạn..."
+              maxLength={160}
+              rows={2}
+              className="lg-input w-full resize-none"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                updateProfile({ bio: editBio.slice(0, 160) });
+                void syncNow();
+                setMsg("Đã lưu giới thiệu");
+              }}
+              className="lg-btn lg-btn-primary px-4"
+            >
+              Lưu
+            </button>
+          </div>
+
+          {/* Khung viền */}
+          <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
+            <p className="text-xs font-medium text-zinc-400">Khung viền</p>
+            <div className="max-h-64 overflow-y-auto rounded-xl zalo-glass-soft p-2 scrollbar-hide">
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                {AVATAR_FRAMES.map((fr) => {
+                  const active = (profile.avatarFrame || "frame:none") === fr.id;
+                  return (
+                    <button
+                      key={fr.id}
+                      type="button"
+                      title={fr.label}
+                      onClick={() => {
+                        updateProfile({ avatarFrame: fr.id });
+                        void syncNow();
+                      }}
+                      className={`relative flex flex-col items-center gap-1 rounded-xl border p-1.5 transition ${
+                        active
+                          ? "border-sky-400/50 bg-sky-500/10"
+                          : "border-white/10 bg-black/20 hover:bg-white/5"
+                      }`}
+                    >
+                      <span
+                        className={`ab-wrap ab-frame--${fr.css || "none"}`}
+                        style={{ width: 48, height: 48 }}
                       >
                         <span
-                          className={`ab-wrap ab-frame--${fr.css || "none"}`}
-                          style={{ width: 52, height: 52 }}
-                        >
-                          <span
-                            className="ab-face rounded-full bg-gradient-to-br from-zinc-600 to-zinc-900"
-                            style={{ width: 36, height: 36 }}
-                          />
-                          {fr.id !== "frame:none" ? <span className="ab-ring" /> : null}
-                        </span>
-                        <span className="text-[10px] text-zinc-400 truncate max-w-full text-center leading-tight">
-                          {fr.label}
-                        </span>
-                        {fr.group && fr.group !== "none" ? (
-                          <span className="text-[9px] text-zinc-500">{fr.group}</span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10 pt-4">
-                <FloatingField
-                  id="newpin"
-                  label="Mã PIN khôi phục"
-                  value={newPin}
-                  onChange={(v) => setNewPin(v.replace(/\D/g, "").slice(0, 8))}
-                  type={showPin ? "text" : "password"}
-                  inputMode="numeric"
-                  rightSlot={
-                    <button
-                      type="button"
-                      onClick={() => setShowPin(!showPin)}
-                      className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400"
-                    >
-                      {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          className="ab-face rounded-full bg-gradient-to-br from-zinc-600 to-zinc-900"
+                          style={{ width: 34, height: 34 }}
+                        />
+                        {fr.id !== "frame:none" ? <span className="ab-ring" /> : null}
+                      </span>
+                      <span className="text-[9px] text-zinc-500 truncate max-w-full text-center leading-tight">
+                        {fr.label}
+                      </span>
                     </button>
-                  }
-                />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Bảo mật */}
+          <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
+            <p className="text-xs font-medium text-zinc-400">Bảo mật</p>
+            <FloatingField
+              id="newpin"
+              label="Mã PIN khôi phục"
+              value={newPin}
+              onChange={(v) => setNewPin(v.replace(/\D/g, "").slice(0, 8))}
+              type={showPin ? "text" : "password"}
+              inputMode="numeric"
+              rightSlot={
                 <button
                   type="button"
-                  disabled={busy}
-                  onClick={async () => {
-                    setPinMsg("");
-                    if (!/^\d{4,8}$/.test(newPin.trim())) {
-                      setPinMsg("4–8 chữ số");
-                      return;
-                    }
-                    setBusy(true);
-                    try {
-                      const res = await fetch("/api/auth/set-recovery-pin", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ recoveryPin: newPin.trim() }),
-                      });
-                      const data = await res.json();
-                      setPinMsg(data.ok ? "Đã lưu PIN" : data.error || "Lỗi");
-                      if (data.ok) setNewPin("");
-                    } catch {
-                      setPinMsg("Lỗi mạng");
-                    }
-                    setBusy(false);
-                  }}
-                  className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400"
                 >
-                  Lưu PIN
+                  {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
-                {pinMsg && <p className="mt-2 text-xs text-emerald-400">{pinMsg}</p>}
-              </div>
+              }
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                setPinMsg("");
+                if (!/^\d{4,8}$/.test(newPin.trim())) {
+                  setPinMsg("4–8 chữ số");
+                  return;
+                }
+                setBusy(true);
+                try {
+                  const res = await fetch("/api/auth/set-recovery-pin", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ recoveryPin: newPin.trim() }),
+                  });
+                  const data = await res.json();
+                  setPinMsg(data.ok ? "Đã lưu PIN" : data.error || "Lỗi");
+                  if (data.ok) setNewPin("");
+                } catch {
+                  setPinMsg("Lỗi mạng");
+                }
+                setBusy(false);
+              }}
+              className="rounded-full bg-amber-600/90 px-4 py-2 text-sm font-medium text-white"
+            >
+              Lưu PIN
+            </button>
+            {pinMsg && <p className="text-xs text-emerald-400">{pinMsg}</p>}
+          </div>
 
-              {lastSyncAt && (
-                <p className="text-[11px] text-zinc-600">
-                  Đồng bộ gần nhất: {new Date(lastSyncAt).toLocaleString("vi-VN")}
-                </p>
-              )}
-            </div>
+          {/* Đồng bộ */}
+          <div className="zalo-glass rounded-2xl p-4 mt-3 mb-2">
+            {lastSyncAt ? (
+              <p className="text-[11px] text-zinc-500">
+                Đồng bộ gần nhất: {new Date(lastSyncAt).toLocaleString("vi-VN")}
+              </p>
+            ) : (
+              <p className="text-[11px] text-zinc-600">Chưa đồng bộ lần nào</p>
+            )}
+          </div>
+
 
             {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
             {msg && <p className="mt-3 text-center text-sm text-emerald-400">{msg}</p>}

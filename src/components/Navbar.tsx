@@ -22,9 +22,6 @@ import { cn } from "@/lib/utils";
 import SearchBox from "./SearchBox";
 
 export default function Navbar() {
-  const pathEarly = usePathname() || "/";
-  if (pathEarly.startsWith("/admin")) return null;
-
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname() || "/";
@@ -86,6 +83,8 @@ export default function Navbar() {
       .map((i) => ({ href: i.href, name: i.name, icon: Clapperboard })),
     { href: "/cai-dat", name: "Cài đặt", icon: Settings },
   ];
+
+  if (pathname.startsWith("/admin")) return null;
 
   return (
     <header

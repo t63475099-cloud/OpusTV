@@ -50,7 +50,7 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-4 rounded-xl px-3 py-2.5 text-sm transition",
+                "side-link flex items-center gap-4 rounded-xl px-3 py-2.5 text-sm",
                 active
                   ? "bg-[#272727] text-white font-medium"
                   : "text-[#f1f1f1] hover:bg-[#272727]/80"

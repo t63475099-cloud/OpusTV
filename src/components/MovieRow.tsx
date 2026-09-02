@@ -14,7 +14,7 @@ export default function MovieRow({ title, movies, href }: MovieRowProps) {
   if (!movies?.length) return null;
 
   return (
-    <section className="mb-6 md:mb-8 px-3 sm:px-4 md:px-6 lg:px-8 animate-fade-up">
+    <section data-movie-row className="mb-6 md:mb-8 px-3 sm:px-4 md:px-6 lg:px-8 bounce-in">
       <div className="flex items-center justify-between mb-3 gap-2">
         <h2 className="text-base md:text-lg font-bold text-white tracking-tight">{title}</h2>
         {href && (

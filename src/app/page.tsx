@@ -122,7 +122,7 @@ export default async function HomePage() {
           <Link
             key={c.href}
             href={c.href}
-            className="shrink-0 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium bg-white/8 hover:bg-white/15 border border-white/10 text-zinc-200 transition"
+            className="glass-chip shrink-0 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium text-zinc-200"
           >
             {c.label}
           </Link>

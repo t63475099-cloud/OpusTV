@@ -20,7 +20,7 @@ export default function MovieCard({
   return (
     <Link
       href={`/phim/${movie.slug}`}
-      className="group movie-card-hover relative flex-shrink-0 w-[118px] sm:w-[148px] md:w-[168px] lg:w-[188px] max-w-full card-lift block"
+      className="movie-card-glass bounce-press group movie-card-hover relative flex-shrink-0 w-[118px] sm:w-[148px] md:w-[168px] lg:w-[188px] max-w-full card-lift block"
     >
       <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#272727] ring-1 ring-white/5">
         <Image

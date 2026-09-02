@@ -927,7 +927,7 @@ export default function AccountPage() {
                       Điều khoản
                     </Link>{" "}
                     &{" "}
-                    <Link href="/chinh-sach" className="text-sky-400 hover:underline" target="_blank">
+                    <Link href="/dieu-khoan#bao-mat" className="text-sky-400 hover:underline" target="_blank">
                       Chính sách
                     </Link>
                   </span>

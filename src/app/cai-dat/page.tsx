@@ -569,7 +569,7 @@ function SettingsInner() {
               <span className="text-[#717171]">›</span>
             </Link>
             <Link
-              href="/chinh-sach"
+              href="/dieu-khoan#bao-mat"
               className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/5 text-sm text-white"
             >
               Chính sách bảo mật

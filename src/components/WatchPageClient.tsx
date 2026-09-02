@@ -12,6 +12,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { useFavoritesStore } from "@/lib/favorites";
 import { useHistoryStore } from "@/lib/history";
 import VideoSocial from "@/components/VideoSocial";
+import RelatedInfinite from "@/components/RelatedInfinite";
 import {
   Copy,
   ExternalLink,
@@ -27,6 +28,7 @@ interface WatchPageClientProps {
   movie: Movie;
   episodes: Server[];
   related?: MovieListItem[];
+  categorySlug?: string;
 }
 
 function isDubServer(name: string) {
@@ -53,6 +55,7 @@ export default function WatchPageClient({
   movie,
   episodes,
   related = [],
+  categorySlug = "phim-moi-cap-nhat",
 }: WatchPageClientProps) {
   const historyItem = useHistoryStore((s) => s.getBySlug(movie.slug));
 
@@ -428,41 +431,11 @@ export default function WatchPageClient({
               <h3 className="text-sm font-semibold text-white mb-3 sticky top-14 bg-[#0f0f0f] py-2 z-10">
                 Video liên quan
               </h3>
-              <div className="space-y-3">
-                {related.length === 0 && (
-                  <p className="text-zinc-500 text-sm">Đang tải gợi ý...</p>
-                )}
-                {related.map((item) => (
-                  <Link
-                    key={item.slug}
-                    href={`/phim/${item.slug}`}
-                    className="flex gap-3 group hover:bg-white/5 rounded-lg p-1.5 -mx-1.5 transition"
-                  >
-                    <div className="relative w-40 aspect-video rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-                      <Image
-                        src={getImageUrl(item.thumb_url || item.poster_url)}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      {item.episode_current && (
-                        <span className="absolute bottom-1 right-1 text-[10px] bg-black/80 text-white px-1 rounded">
-                          {item.episode_current}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 py-0.5">
-                      <p className="text-sm text-white font-medium line-clamp-2 group-hover:text-red-400">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-zinc-500 mt-1 line-clamp-1">
-                        {item.year} · {item.quality}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              <RelatedInfinite
+                initial={related}
+                excludeSlug={movie.slug}
+                categorySlug={categorySlug}
+              />
             </aside>
           )}
         </div>

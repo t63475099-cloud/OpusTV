@@ -59,13 +59,14 @@ export default async function PhimPage({ params }: Props) {
   ]
     .filter((m) => m.slug !== slug)
     .filter((m, i, arr) => arr.findIndex((x) => x.slug === m.slug) === i)
-    .slice(0, 15);
+    .slice(0, 24);
 
   return (
     <WatchPageClient
       movie={data.movie}
       episodes={data.episodes || []}
       related={related}
+      categorySlug={catSlug}
     />
   );
 }

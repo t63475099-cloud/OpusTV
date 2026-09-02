@@ -5,6 +5,10 @@ import { persist } from "zustand/middleware";
 
 export interface UserProfile {
   name: string;
+  /** UID 10 số */
+  uid?: string;
+  /** Giới thiệu ngắn */
+  bio?: string;
   email?: string;
   avatar?: string;
   avatarPosition?: string;
@@ -188,6 +192,8 @@ interface SettingsState {
 
 const defaultProfile: UserProfile = {
   name: "",
+  uid: "",
+  bio: "",
   email: "",
   avatar: undefined,
   avatarPosition: "50% 50%",

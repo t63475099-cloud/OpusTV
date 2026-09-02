@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState , Suspense} from "react";
 import {
   MUSIC_TRACKS,
   MUSIC_CATEGORIES,
@@ -41,7 +41,7 @@ function thumbUrl(id: string, custom?: string) {
 
 const HOME_QUERY = "top music hits 2024 2025";
 
-export default function MusicPage() {
+function NhacInner() {
   const [tab, setTab] = useState<Tab>("home");
   const [cat, setCat] = useState("Tất cả");
   const [searchInput, setSearchInput] = useState("");
@@ -712,5 +712,13 @@ export default function MusicPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NhacPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[50vh] pt-20 text-center text-zinc-500 text-sm">Đang tải nhạc…</div>}>
+      <NhacInner />
+    </Suspense>
   );
 }

@@ -19,7 +19,6 @@ import {
   History,
   Mail,
   Copy,
-  Check,
 } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";

@@ -20,7 +20,9 @@ import {
   MISSION_MAX_CLAIMS,
   type MissionId,
 } from "@/lib/eventCoins";
+import { useNotifStore } from "@/lib/notifications";
 
+/** Nền canvas giữ nguyên phong cách hạt sáng */
 function EventCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -32,13 +34,13 @@ function EventCanvas() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let w = 0;
     let h = 0;
-    const particles = Array.from({ length: 28 }, () => ({
+    const particles = Array.from({ length: 32 }, () => ({
       x: Math.random(),
       y: Math.random(),
-      r: 1 + Math.random() * 2.5,
-      vx: (Math.random() - 0.5) * 0.00025,
-      vy: -0.00015 - Math.random() * 0.00035,
-      a: 0.2 + Math.random() * 0.5,
+      r: 1 + Math.random() * 2.8,
+      vx: (Math.random() - 0.5) * 0.00022,
+      vy: -0.00012 - Math.random() * 0.0003,
+      a: 0.25 + Math.random() * 0.55,
     }));
     const resize = () => {
       w = canvas.clientWidth;
@@ -55,17 +57,17 @@ function EventCanvas() {
       const t = (now - t0) / 1000;
       ctx.clearRect(0, 0, w, h);
       const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, `hsla(${18 + t * 8}, 70%, 12%, 0.9)`);
-      g.addColorStop(0.5, `hsla(${280 + t * 6}, 50%, 10%, 0.85)`);
-      g.addColorStop(1, `hsla(${200 + t * 5}, 55%, 11%, 0.9)`);
+      g.addColorStop(0, `hsla(${150 + t * 6}, 40%, 10%, 0.95)`);
+      g.addColorStop(0.45, `hsla(${280 + t * 5}, 35%, 9%, 0.92)`);
+      g.addColorStop(1, `hsla(${220 + t * 4}, 45%, 10%, 0.95)`);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
       for (let i = 0; i < 3; i++) {
-        const cx = w * (0.25 + i * 0.28 + 0.05 * Math.sin(t * 0.4 + i));
-        const cy = h * (0.3 + 0.2 * Math.cos(t * 0.35 + i));
-        const r = Math.min(w, h) * (0.2 + 0.05 * Math.sin(t + i));
+        const cx = w * (0.2 + i * 0.3 + 0.04 * Math.sin(t * 0.35 + i));
+        const cy = h * (0.35 + 0.15 * Math.cos(t * 0.3 + i));
+        const r = Math.min(w, h) * (0.18 + 0.04 * Math.sin(t + i));
         const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        rg.addColorStop(0, `hsla(${30 + i * 40}, 90%, 55%, 0.18)`);
+        rg.addColorStop(0, `hsla(${40 + i * 50}, 80%, 50%, 0.16)`);
         rg.addColorStop(1, "transparent");
         ctx.fillStyle = rg;
         ctx.beginPath();
@@ -82,7 +84,7 @@ function EventCanvas() {
         if (p.x < 0) p.x = 1;
         if (p.x > 1) p.x = 0;
         ctx.beginPath();
-        ctx.fillStyle = `rgba(255,200,120,${p.a * (0.6 + 0.4 * Math.sin(t * 2 + p.x * 10))})`;
+        ctx.fillStyle = `rgba(255,210,130,${p.a * (0.55 + 0.45 * Math.sin(t * 2 + p.x * 8))})`;
         ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
         ctx.fill();
       }
@@ -97,17 +99,38 @@ function EventCanvas() {
   return (
     <canvas
       ref={ref}
-      className="absolute inset-0 w-full h-full rounded-2xl pointer-events-none opacity-90"
+      className="absolute inset-0 w-full h-full rounded-2xl pointer-events-none"
       aria-hidden
     />
   );
 }
 
-function fmtProgress(id: MissionId, cur: number, target: number, unit: "sec" | "count") {
+/** Intro chữ Hello kiểu Apple — viết nét + gradient */
+function AppleHello() {
+  return (
+    <div className="apple-hello-wrap pointer-events-none select-none" aria-hidden>
+      <span className="apple-hello-text">Hello</span>
+    </div>
+  );
+}
+
+function fmtProgress(cur: number, target: number, unit: "sec" | "count") {
+  const c = Math.max(0, cur);
   if (unit === "sec") {
-    return `${Math.min(Math.floor(cur / 60), Math.floor(target / 60))}/${Math.floor(target / 60)} phút`;
+    return `${Math.min(Math.floor(c / 60), Math.floor(target / 60))}/${Math.floor(target / 60)} phút`;
   }
-  return `${Math.min(cur, target)}/${target}`;
+  return `${Math.min(c, target)}/${target}`;
+}
+
+function pushMissionNotif(title: string, body: string) {
+  try {
+    useNotifStore.getState().add({
+      kind: "mission",
+      title,
+      body,
+      href: "/su-kien",
+    });
+  } catch {}
 }
 
 export default function SuKienPage() {
@@ -133,9 +156,13 @@ export default function SuKienPage() {
     todayReward: 10,
     cycleDay: 1,
   });
-  const [summary, setSummary] = useState({ done: 0, total: DAILY_MISSIONS.length, pct: 0 });
+  const [summary, setSummary] = useState({
+    done: 0,
+    total: DAILY_MISSIONS.length * MISSION_MAX_CLAIMS,
+    pct: 0,
+  });
+  const [showHello, setShowHello] = useState(true);
 
-  // Chỉ chạy 1 lần khi vào trang — tránh vòng lặp vô hạn
   useEffect(() => {
     try {
       ensureMissionDay();
@@ -146,6 +173,8 @@ export default function SuKienPage() {
       console.error(e);
     }
     setReady(true);
+    const t = setTimeout(() => setShowHello(false), 4200);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -159,6 +188,24 @@ export default function SuKienPage() {
   function flash(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 2800);
+  }
+
+  function onClaimMission(id: MissionId, title: string) {
+    const r = claimMission(id);
+    setSummary(dailyMissionSummary());
+    flash(r.message);
+    if (r.ok) {
+      pushMissionNotif(`Hoàn thành: ${title}`, r.message);
+    }
+  }
+
+  function onCheckIn() {
+    const r = claimCheckIn();
+    setStatus(getStreakStatus());
+    flash(r.message);
+    if (r.ok) {
+      pushMissionNotif("Điểm danh 7 ngày", r.message);
+    }
   }
 
   if (!ready) {
@@ -180,9 +227,9 @@ export default function SuKienPage() {
             <Sparkles className="w-4 h-4 text-amber-300" />
             Sự kiện 7 ngày
           </h1>
-          <p className="text-xs text-zinc-500">Nhiều nhiệm vụ · Nhận xu dễ hơn</p>
+          <p className="text-xs text-zinc-500">Nhiệm vụ · Xu · Thông báo</p>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-border-live text-amber-300 text-sm font-semibold bounce-in">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-border-live text-amber-300 text-sm font-semibold">
           <Coins className="w-4 h-4" />
           {coins}
         </div>
@@ -194,19 +241,19 @@ export default function SuKienPage() {
         </div>
       )}
 
-      {/* Check-in with canvas */}
-      <section className="relative overflow-hidden rounded-2xl mb-4 glass-border-live bounce-in">
+      <section className="relative overflow-hidden rounded-2xl mb-4 glass-border-live min-h-[200px]">
         <EventCanvas />
-        <div className="relative z-10 p-4 backdrop-blur-[2px]">
+        {showHello && <AppleHello />}
+        <div className="relative z-10 p-4">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center shadow-lg shadow-orange-600/40 animate-pulse">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center shadow-lg shadow-orange-600/40">
               <Flame className="w-7 h-7 text-white" />
             </div>
             <div>
               <p className="text-white font-semibold drop-shadow">
                 Chuỗi {status.streakDay > 0 ? status.streakDay : 0} ngày
               </p>
-              <p className="text-xs text-white/70">
+              <p className="text-xs text-white/75">
                 {status.canClaim
                   ? `Nhận ${status.todayReward} xu hôm nay`
                   : "Đã điểm danh hôm nay"}
@@ -223,9 +270,9 @@ export default function SuKienPage() {
               return (
                 <div
                   key={day}
-                  className={`rounded-xl py-2 text-center border text-[10px] transition duration-300 ${
+                  className={`rounded-xl py-2 text-center border text-[10px] ${
                     done
-                      ? "bg-orange-500/30 border-orange-300/50 text-orange-100 scale-105"
+                      ? "bg-orange-500/30 border-orange-300/50 text-orange-100"
                       : isToday
                       ? "bg-white/15 border-amber-300/60 text-white ring-1 ring-amber-300/50"
                       : "bg-black/25 border-white/15 text-zinc-400"
@@ -242,11 +289,7 @@ export default function SuKienPage() {
           <button
             type="button"
             disabled={!status.canClaim}
-            onClick={() => {
-              const r = claimCheckIn();
-              setStatus(getStreakStatus());
-              flash(r.message);
-            }}
+            onClick={onCheckIn}
             className="w-full py-3 rounded-xl font-semibold text-sm transition bounce-press disabled:opacity-40 bg-gradient-to-r from-orange-500 via-rose-500 to-fuchsia-600 text-white shadow-lg shadow-rose-900/40"
           >
             {status.canClaim ? `Điểm danh · +${status.todayReward} xu` : "Đã nhận hôm nay"}
@@ -254,70 +297,68 @@ export default function SuKienPage() {
         </div>
       </section>
 
-      {/* Missions */}
-      <section className="glass-panel p-4 mb-4 bounce-in" style={{ animationDelay: "0.08s" }}>
+      <section className="glass-panel p-4 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-white">Nhiệm vụ ngày ({DAILY_MISSIONS.length})</h2>
+          <h2 className="text-sm font-semibold text-white">
+            Nhiệm vụ ({DAILY_MISSIONS.length}) · +{MISSION_REWARD} xu/lần
+          </h2>
           <span className="text-xs text-zinc-400">
             {summary.done}/{summary.total}
           </span>
         </div>
         <div className="h-2.5 rounded-full bg-white/10 overflow-hidden mb-4">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-violet-500 transition-all duration-700 ease-out"
+            className="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-violet-500 transition-all duration-700"
             style={{ width: `${summary.pct}%` }}
           />
         </div>
 
-        <ul className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-0.5 custom-scroll">
-          {DAILY_MISSIONS.map((m, idx) => {
+        <ul className="space-y-2.5 max-h-[55vh] overflow-y-auto custom-scroll">
+          {DAILY_MISSIONS.map((m) => {
             const cur = (missionProgress && missionProgress[m.id]) || 0;
             const claims = (missionClaimCount && missionClaimCount[m.id]) || 0;
             const maxed = claims >= MISSION_MAX_CLAIMS;
-            const pct = Math.min(100, Math.round((cur / m.target) * 100));
+            const inCycle = maxed ? m.target : cur % m.target === 0 && cur > 0 ? m.target : cur % m.target;
+            const displayCur = maxed ? m.target : cur >= m.target ? Math.min(m.target, inCycle || m.target) : cur % m.target;
+            const pct = Math.min(100, Math.round((displayCur / m.target) * 100));
             const canClaim = !maxed && cur >= m.target;
             return (
               <li
                 key={m.id}
-                className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-3 bounce-in"
-                style={{ animationDelay: `${0.04 * idx}s` }}
+                className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-3"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
                     <p className="text-sm text-white font-medium">{m.title}</p>
                     <p className="text-[11px] text-zinc-500">
-                      {m.desc} · Lần {claims}/{MISSION_MAX_CLAIMS}
+                      {m.desc} · {claims}/{MISSION_MAX_CLAIMS} lần
                     </p>
                   </div>
                   <span className="text-xs text-amber-300 shrink-0 font-semibold">
-                    +{MISSION_REWARD}/lần
+                    +{MISSION_REWARD}
                   </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-2">
                   <div
-                    className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-all"
                     style={{ width: `${maxed ? 100 : pct}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-zinc-500">
                     {maxed
-                      ? "Đã hết lượt hôm nay"
-                      : fmtProgress(m.id, cur % m.target || (cur >= m.target ? m.target : cur), m.target, m.unit)}
+                      ? "Hết lượt hôm nay"
+                      : fmtProgress(displayCur, m.target, m.unit)}
                   </span>
                   <button
                     type="button"
                     disabled={!canClaim}
-                    onClick={() => {
-                      const r = claimMission(m.id);
-                      setSummary(dailyMissionSummary());
-                      flash(r.message);
-                    }}
-                    className="text-xs px-3 py-1 rounded-full font-medium disabled:opacity-40 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-400/30 bounce-press"
+                    onClick={() => onClaimMission(m.id, m.title)}
+                    className="text-xs px-3 py-1 rounded-full font-medium disabled:opacity-40 bg-amber-500/20 text-amber-200 border border-amber-400/30 bounce-press"
                   >
                     {maxed ? (
                       <span className="inline-flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Max 10
+                        <Check className="w-3 h-3" /> Max
                       </span>
                     ) : canClaim ? (
                       `Nhận +${MISSION_REWARD}`
@@ -337,10 +378,16 @@ export default function SuKienPage() {
           <Lock className="w-4 h-4" /> Dùng xu
         </h2>
         <p>
-          1 tập: <strong className="text-amber-300">{UNLOCK_COST.episode} xu</strong> · Cả phim:{" "}
-          <strong className="text-amber-300">{UNLOCK_COST.movie} xu</strong>
+          1 tập: <strong className="text-amber-300">{UNLOCK_COST.episode} xu</strong> · Cả
+          phim: <strong className="text-amber-300">{UNLOCK_COST.movie} xu</strong>
         </p>
-        <p className="text-xs">Tổng đã kiếm: <span className="text-white">{totalEarned}</span> xu</p>
+        <p className="text-xs">
+          Tổng đã kiếm: <span className="text-white">{totalEarned}</span> xu · Thông báo
+          hiện ở chuông &amp;{" "}
+          <Link href="/hop-thu" className="text-sky-400 hover:underline">
+            Hòm thư
+          </Link>
+        </p>
       </section>
     </div>
   );

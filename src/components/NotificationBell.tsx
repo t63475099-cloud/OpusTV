@@ -35,6 +35,8 @@ function NotifIcon({ kind }: { kind: NotifKind }) {
       return <Heart className={`${cls} text-rose-400`} />;
     case "key":
       return <KeyRound className={`${cls} text-amber-300`} />;
+    case "mission":
+      return <Sparkles className={`${cls} text-amber-300`} />;
     default:
       return <Info className={`${cls} text-zinc-400`} />;
   }
@@ -149,6 +151,11 @@ export default function NotificationBell() {
             )}
           </div>
 
+          <div className="px-3 py-2 border-b border-white/5">
+            <Link href="/hop-thu" onClick={() => setOpen(false)} className="text-xs text-sky-400 hover:underline">
+              Mở hòm thư đầy đủ →
+            </Link>
+          </div>
           <div className="overflow-y-auto overscroll-contain flex-1">
             {items.length === 0 ? (
               <p className="text-sm text-zinc-500 p-6 text-center">Chưa có thông báo</p>

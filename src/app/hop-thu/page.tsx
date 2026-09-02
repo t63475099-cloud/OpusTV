@@ -38,6 +38,8 @@ function iconFor(kind: NotifKind) {
       return <Flame className={`${c} text-orange-400`} />;
     case "like":
       return <Heart className={`${c} text-rose-400`} />;
+    case "mission":
+      return <Sparkles className={`${c} text-amber-300`} />;
     default:
       return <Info className={`${c} text-zinc-400`} />;
   }

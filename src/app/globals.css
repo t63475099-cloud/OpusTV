@@ -2137,3 +2137,65 @@ html[data-nav-minimal="1"] .app-content-offset {
   box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.45);
   cursor: pointer;
 }
+
+/* Apple-style Hello intro on event canvas */
+.apple-hello-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.apple-hello-text {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(2.75rem, 12vw, 4rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  background: linear-gradient(
+    90deg,
+    #ff375f 0%,
+    #ff8a00 18%,
+    #ffd60a 36%,
+    #30d158 52%,
+    #64d2ff 70%,
+    #bf5af2 88%,
+    #ff375f 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation:
+    apple-hello-write 2.4s cubic-bezier(0.22, 1, 0.36, 1) both,
+    apple-hello-shine 3.5s ease-in-out 0.4s infinite;
+  filter: drop-shadow(0 0 24px rgba(255, 255, 255, 0.15));
+}
+@keyframes apple-hello-write {
+  0% {
+    opacity: 0;
+    letter-spacing: 0.35em;
+    transform: scale(0.92);
+    filter: blur(8px);
+  }
+  40% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    letter-spacing: -0.04em;
+    transform: scale(1);
+  }
+}
+@keyframes apple-hello-shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .apple-hello-text {
+    animation: none;
+    opacity: 1;
+  }
+}

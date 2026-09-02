@@ -12,7 +12,8 @@ export type NotifKind =
   | "system"
   | "streak"
   | "like"
-  | "key";
+  | "key"
+  | "mission";
 
 export interface AppNotification {
   id: string;

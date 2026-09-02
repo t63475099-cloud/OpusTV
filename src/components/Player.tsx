@@ -1,5 +1,6 @@
 "use client";
 import { useXpStore } from "@/lib/xpStore";
+import { useEventStore } from "@/lib/eventCoins";
 import { useStreakStore } from "@/lib/streak";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -117,6 +118,7 @@ export default function Player({
   const addXp = useXpStore((s) => s.add);
   const streakCheckIn = useStreakStore((s) => s.checkIn);
   const xpTick = useRef(0);
+  const lastMissionTick = useRef(0);
   const streakDone = useRef(false);
   const [duration, setDuration] = useState(0);
   const [isFs, setIsFs] = useState(false);
@@ -163,7 +165,13 @@ export default function Player({
     }, hideControlsMs);
   }, [alwaysShowControls, hideControlsMs]);
 
-  const showControls = useCallback(() => {
+  
+  useEffect(() => {
+    try {
+      useEventStore.getState().trackEpisode(movie.slug + ":" + currentEpisode.slug);
+    } catch {}
+  }, [movie.slug, currentEpisode.slug]);
+const showControls = useCallback(() => {
     setControlsVisible(true);
     scheduleHide();
   }, [scheduleHide]);
@@ -368,6 +376,18 @@ export default function Player({
     };
     const onTime = () => {
       if (!seeking) setCurrentTime(video.currentTime);
+      {
+        const sec = Math.floor(video.currentTime);
+        if (sec > 0 && sec - lastMissionTick.current >= 5 && !video.paused) {
+          lastMissionTick.current = sec;
+          try {
+            const ev = useEventStore.getState();
+            ev.addMissionProgress("watch5", 5);
+            ev.addMissionProgress("watch15", 5);
+            ev.addMissionProgress("watch30", 5);
+          } catch {}
+        }
+      };
     };
     const onMeta = () => setDuration(video.duration || 0);
     const onVol = () => setMuted(video.muted || video.volume === 0);

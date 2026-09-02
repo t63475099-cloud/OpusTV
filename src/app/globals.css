@@ -2108,3 +2108,32 @@ html[data-nav-minimal="1"] .app-content-offset {
     -webkit-backdrop-filter: blur(12px) saturate(1.2);
   }
 }
+
+
+/* Player timeline always visible */
+.player-timeline {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+}
+.player-timeline::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.45);
+  cursor: pointer;
+}
+.player-timeline::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.45);
+  cursor: pointer;
+}

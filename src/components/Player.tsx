@@ -916,44 +916,53 @@ export default function Player({
         </div>
       )}
 
+      {/* Thanh thời gian luôn hiện khi xem phim */}
       <div
         data-controls
-        className={`absolute inset-x-0 bottom-0 z-20 transition-opacity duration-300 ${
-          controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className="absolute inset-x-0 bottom-0 z-20 pointer-events-none"
       >
-        <div className="player-controls-bar glass-player-bar bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-12 px-3 sm:px-4">
-          <div className="flex items-center gap-2 mb-2">
-            {showTimeCode && (
-              <span className="text-[11px] text-zinc-300 tabular-nums w-10 text-right shrink-0">
-                {formatTime(currentTime)}
-              </span>
-            )}
+        <div
+          className={`player-controls-bar glass-player-bar bg-gradient-to-t from-black/95 via-black/55 to-transparent pt-10 px-3 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-opacity duration-300 ${
+            controlsVisible ? "opacity-100" : "opacity-100"
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-2 pointer-events-auto">
+            <span className="text-[11px] sm:text-xs text-white tabular-nums min-w-[2.5rem] text-right shrink-0 font-medium drop-shadow">
+              {formatTime(currentTime)}
+            </span>
             <input
               type="range"
               min={0}
               max={duration || 0}
               step={0.1}
-              value={currentTime}
+              value={Number.isFinite(currentTime) ? currentTime : 0}
               onChange={onProgressChange}
-              onMouseDown={() => setSeeking(true)}
+              onMouseDown={() => {
+                setSeeking(true);
+                showControls();
+              }}
               onMouseUp={() => setSeeking(false)}
-              onTouchStart={() => setSeeking(true)}
+              onTouchStart={() => {
+                setSeeking(true);
+                showControls();
+              }}
               onTouchEnd={() => setSeeking(false)}
-              className="flex-1 h-1 accent-red-600 cursor-pointer"
+              className="player-timeline flex-1 h-1.5 sm:h-2 accent-red-600 cursor-pointer rounded-full appearance-none"
               style={{
-                background: `linear-gradient(to right, #e50914 ${progress}%, #52525b ${progress}%)`,
+                background: `linear-gradient(to right, #e50914 ${progress}%, rgba(255,255,255,0.28) ${progress}%)`,
               }}
               aria-label="Thanh thời gian"
             />
-            {showTimeCode && (
-              <span className="text-[11px] text-zinc-300 tabular-nums w-10 shrink-0">
-                {formatTime(duration)}
-              </span>
-            )}
+            <span className="text-[11px] sm:text-xs text-white/90 tabular-nums min-w-[2.5rem] shrink-0 font-medium drop-shadow">
+              {formatTime(duration)}
+            </span>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
+          <div
+            className={`flex items-center justify-between gap-2 pointer-events-auto transition-opacity duration-300 ${
+              controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+          >
             <div className="flex items-center gap-1 sm:gap-2">
               <button
                 type="button"

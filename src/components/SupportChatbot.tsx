@@ -3,79 +3,55 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MessageCircle, X, Send, HelpCircle } from "lucide-react";
+import { useMusicPlayerStore } from "@/lib/musicPlayerStore";
+import { usePathname } from "next/navigation";
 
 type Msg = { id: string; role: "bot" | "user"; text: string };
 
 const FAQ: { keys: string[]; answer: string }[] = [
   {
-    keys: ["đăng ký", "tao tai khoan", "tạo tài khoản", "register", "sign up"],
+    keys: ["đăng ký", "tao tai khoan", "tạo tài khoản", "register"],
     answer:
-      "Vào Cài đặt → Tài khoản (hoặc /tai-khoan), chọn Đăng ký. Điền tên đăng nhập, mật khẩu, PIN khôi phục và mã kích hoạt nếu trang yêu cầu.",
+      "Vào Cài đặt → Tài khoản (hoặc /tai-khoan), chọn Đăng ký. Cần tên đăng nhập, mật khẩu và PIN khôi phục.",
   },
   {
     keys: ["đăng nhập", "login", "dang nhap"],
-    answer:
-      "Mở /tai-khoan, chọn Đăng nhập, nhập tên tài khoản và mật khẩu. Có thể bật hiện mật khẩu để kiểm tra khi gõ.",
+    answer: "Mở /tai-khoan → Đăng nhập, nhập tài khoản và mật khẩu.",
   },
   {
-    keys: ["quên mật khẩu", "quen mat khau", "khôi phục", "khoi phuc", "pin", "quên mk"],
+    keys: ["quên mật khẩu", "quen mat khau", "khôi phục", "pin", "quên mk"],
     answer:
-      "Ở màn đăng nhập chọn Quên MK. Cần đúng tên tài khoản và mã PIN khôi phục (4–8 số). Nếu quên cả PIN, liên hệ quản trị để xác minh chủ tài khoản.",
+      "Chọn Quên MK, nhập tài khoản + PIN khôi phục (4–8 số), rồi đặt mật khẩu mới.",
   },
   {
-    keys: ["uid"],
+    keys: ["không xem được", "ko xem", "lỗi phim", "không phát"],
     answer:
-      "UID là dãy 10 số gắn với tài khoản, xem trong trang Tài khoản. Có thể bấm để sao chép. Đổi tên hiển thị không đổi UID.",
+      "Nguồn phim từ API bên thứ ba. Thử đổi server, tải lại trang, hoặc chọn phim khác.",
   },
   {
-    keys: ["tích xanh", "xác minh", "xac minh", "tick", "verified"],
-    answer:
-      "Trong Tài khoản bấm Xác minh, điền form và gửi. Quản trị duyệt thủ công; được duyệt thì huy hiệu hiện trên avatar.",
+    keys: ["đồng bộ", "dong bo", "thiết bị"],
+    answer: "Đăng nhập cùng tài khoản rồi bấm Đồng bộ trong trang Tài khoản.",
   },
   {
-    keys: ["không xem được", "ko xem", "lỗi phim", "không phát", "loi phim", "404 phim"],
-    answer:
-      "Nguồn phim từ API bên thứ ba — link có thể lỗi hoặc bị chặn mạng. Thử đổi server trong player (nếu có), tải lại trang, hoặc chọn tựa khác.",
+    keys: ["tích xanh", "xác minh", "tick"],
+    answer: "Trong Tài khoản → Xác minh, gửi form. Quản trị duyệt thủ công.",
   },
   {
-    keys: ["toàn màn hình", "fullscreen", "full man hinh", "iphone"],
-    answer:
-      "Dùng nút toàn màn hình trong player. Trên điện thoại, xoay ngang và ẩn thanh địa chỉ trình duyệt thường giúp khung phát rộng hơn.",
+    keys: ["hòm thư", "thông báo", "hom thu"],
+    answer: "Mở /hop-thu hoặc biểu tượng chuông trên thanh trên.",
   },
   {
-    keys: ["đồng bộ", "dong bo", "thiết bị khác", "may khac"],
+    keys: ["nhạc", "music", "playbox", "mini"],
     answer:
-      "Đăng nhập cùng tài khoản trên máy khác rồi bấm Đồng bộ trong Tài khoản. Dữ liệu chỉ trên máy (chưa đăng nhập) sẽ không tự lên cloud.",
+      "Opus Music ở menu bên trái. Khi nghe nền, bấm nút phóng to trên playbox để quay lại đúng bài đang phát.",
   },
   {
-    keys: ["hòm thư", "hom thu", "thông báo", "thong bao", "chuông"],
-    answer:
-      "Hòm thư tại /hop-thu hoặc biểu tượng chuông trên thanh trên. Có thông báo tương tác, xác minh và hệ thống (tùy tính năng đang bật).",
-  },
-  {
-    keys: ["nhạc", "music", "opus music"],
-    answer:
-      "Vào mục Opus Music trên menu. Cần cấu hình API nhạc trên server nếu danh sách trống. Lịch sử nghe tách với lịch sử phim.",
-  },
-  {
-    keys: ["điều khoản", "chính sách", "bao mat", "bảo mật", "policy"],
-    answer:
-      "Chính sách & Điều khoản gộp tại /dieu-khoan. Trong Cài đặt cũng có mục tương ứng.",
-  },
-  {
-    keys: ["faq", "hỗ trợ", "ho tro", "trợ giúp", "help"],
-    answer:
-      "Trang FAQ đầy đủ tại /ho-tro. Bạn cũng có thể hỏi tôi các từ khóa: đăng ký, quên mật khẩu, tích xanh, lỗi phim, đồng bộ…",
+    keys: ["faq", "hỗ trợ", "help"],
+    answer: "Xem đầy đủ tại /ho-tro.",
   },
 ];
 
-const QUICK = [
-  "Đăng ký thế nào?",
-  "Quên mật khẩu",
-  "Không xem được phim",
-  "Tích xanh",
-  "Đồng bộ thiết bị",
-];
+const QUICK = ["Đăng ký", "Quên mật khẩu", "Lỗi xem phim", "Đồng bộ", "FAQ"];
 
 function normalize(s: string) {
   return s
@@ -88,9 +64,7 @@ function normalize(s: string) {
 
 function replyFor(input: string): string {
   const n = normalize(input);
-  if (!n) {
-    return "Bạn hỏi gì về OpusFilm? Ví dụ: đăng ký, quên mật khẩu, lỗi xem phim…";
-  }
+  if (!n) return "Bạn cần hỗ trợ gì? Ví dụ: đăng ký, quên mật khẩu, lỗi phim…";
   let best: { score: number; answer: string } | null = null;
   for (const item of FAQ) {
     let score = 0;
@@ -98,12 +72,12 @@ function replyFor(input: string): string {
       const nk = normalize(k);
       if (n.includes(nk) || nk.includes(n)) score += nk.length;
     }
-    if (score > 0 && (!best || score > best.score)) {
-      best = { score, answer: item.answer };
-    }
+    if (score > 0 && (!best || score > best.score)) best = { score, answer: item.answer };
   }
-  if (best) return best.answer;
-  return "Mình chưa khớp đúng câu này. Thử từ khóa: đăng ký, đăng nhập, PIN, tích xanh, lỗi phim, đồng bộ, hòm thư — hoặc xem FAQ tại /ho-tro.";
+  return (
+    best?.answer ||
+    "Chưa khớp câu hỏi. Thử: đăng ký, quên mật khẩu, lỗi phim, đồng bộ — hoặc mở /ho-tro."
+  );
 }
 
 export default function SupportChatbot() {
@@ -113,31 +87,37 @@ export default function SupportChatbot() {
     {
       id: "0",
       role: "bot",
-      text: "Xin chào, mình là trợ lý OpusFilm. Hỏi về tài khoản, xem phim, đồng bộ hoặc mở FAQ nếu cần.",
+      text: "Xin chào. Mình hỗ trợ nhanh về tài khoản, xem phim, nhạc. Gõ câu hỏi hoặc chọn gợi ý.",
     },
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const path = usePathname();
+  const track = useMusicPlayerStore((s) => s.track);
+  const miniVisible = !!track && !path?.startsWith("/nhac");
 
   useEffect(() => {
-    if (open) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [open, msgs]);
 
   function send(text: string) {
     const t = text.trim();
     if (!t) return;
-    const userMsg: Msg = { id: String(Date.now()), role: "user", text: t };
-    const botMsg: Msg = {
-      id: String(Date.now() + 1),
-      role: "bot",
-      text: replyFor(t),
-    };
-    setMsgs((m) => [...m, userMsg, botMsg]);
+    setMsgs((m) => [
+      ...m,
+      { id: String(Date.now()), role: "user", text: t },
+      { id: String(Date.now() + 1), role: "bot", text: replyFor(t) },
+    ]);
     setInput("");
   }
+
+  // Nút hỗ trợ: góc trái dưới; đẩy lên nếu có mini player
+  const btnPos = miniVisible
+    ? "bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] left-3 sm:left-4"
+    : "bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-3 sm:left-4";
+
+  const panelPos = miniVisible
+    ? "bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] left-3 sm:left-4"
+    : "bottom-[max(1rem,env(safe-area-inset-bottom))] left-3 sm:left-4";
 
   return (
     <>
@@ -145,55 +125,37 @@ export default function SupportChatbot() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed z-[80] bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 sm:right-6 flex items-center gap-2 rounded-full bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-900/40 px-4 py-3 text-sm font-medium transition active:scale-95"
-          aria-label="Mở chat hỗ trợ"
+          className={`fixed z-[70] ${btnPos} flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-xl text-white shadow-lg px-3.5 py-2.5 text-sm font-medium transition active:scale-95`}
+          aria-label="Hỗ trợ"
         >
-          <MessageCircle className="w-5 h-5" />
+          <MessageCircle className="w-4 h-4 text-sky-400" />
           <span className="hidden sm:inline">Hỗ trợ</span>
         </button>
       )}
 
       {open && (
         <div
-          className="fixed z-[80] bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 sm:right-6 w-[min(100vw-1.5rem,380px)] h-[min(70vh,520px)] flex flex-col rounded-2xl border border-white/15 bg-[#12121a]/95 backdrop-blur-xl shadow-2xl overflow-hidden"
+          className={`fixed z-[70] ${panelPos} w-[min(100vw-1.5rem,360px)] h-[min(62vh,480px)] flex flex-col rounded-2xl border border-white/15 bg-[#12121a]/92 backdrop-blur-xl shadow-2xl overflow-hidden`}
           role="dialog"
-          aria-label="Chat hỗ trợ"
+          aria-label="Hỗ trợ"
         >
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10 bg-white/5">
-            <div className="w-8 h-8 rounded-full bg-sky-600/30 flex items-center justify-center">
-              <HelpCircle className="w-4 h-4 text-sky-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Trợ lý OpusFilm</p>
-              <p className="text-[10px] text-zinc-500">Hỗ trợ nhanh · FAQ</p>
-            </div>
-            <Link
-              href="/ho-tro"
-              className="text-[11px] text-sky-400 hover:underline px-1"
-              onClick={() => setOpen(false)}
-            >
+            <HelpCircle className="w-4 h-4 text-sky-400" />
+            <p className="flex-1 text-sm font-semibold text-white">Hỗ trợ OpusFilm</p>
+            <Link href="/ho-tro" className="text-[11px] text-sky-400" onClick={() => setOpen(false)}>
               FAQ
             </Link>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400"
-              aria-label="Đóng"
-            >
+            <button type="button" onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400" aria-label="Đóng">
               <X className="w-4 h-4" />
             </button>
           </div>
-
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
             {msgs.map((m) => (
-              <div
-                key={m.id}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
+              <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     m.role === "user"
-                      ? "bg-sky-600 text-white rounded-br-md"
+                      ? "bg-sky-600/90 text-white rounded-br-md"
                       : "bg-white/8 text-zinc-200 border border-white/10 rounded-bl-md"
                   }`}
                 >
@@ -203,8 +165,7 @@ export default function SupportChatbot() {
             ))}
             <div ref={bottomRef} />
           </div>
-
-          <div className="px-2 pb-1 flex gap-1.5 overflow-x-auto scrollbar-hide">
+          <div className="px-2 flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
             {QUICK.map((q) => (
               <button
                 key={q}
@@ -216,7 +177,6 @@ export default function SupportChatbot() {
               </button>
             ))}
           </div>
-
           <form
             className="p-2 border-t border-white/10 flex gap-2"
             onSubmit={(e) => {
@@ -225,17 +185,12 @@ export default function SupportChatbot() {
             }}
           >
             <input
-              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, 300))}
               placeholder="Nhập câu hỏi..."
-              className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-sky-500/50"
+              className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/40"
             />
-            <button
-              type="submit"
-              className="p-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white shrink-0"
-              aria-label="Gửi"
-            >
+            <button type="submit" className="p-2.5 rounded-xl bg-sky-600 text-white" aria-label="Gửi">
               <Send className="w-4 h-4" />
             </button>
           </form>

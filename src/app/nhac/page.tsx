@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MUSIC_TRACKS,
@@ -67,6 +69,17 @@ export default function MusicPage() {
   const watchedList = useMusicHistoryStore((s) => s.watched);
   const addWatched = useMusicHistoryStore((s) => s.add);
   const setMiniTrack = useMusicPlayerStore((s) => s.setTrack);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const v = searchParams?.get("v");
+    if (!v || typeof v !== "string") return;
+    const thumb = `https://i.ytimg.com/vi/${v}/hqdefault.jpg`;
+    setCurrentId(v);
+    setCurrentTrack({ id: v, title: "Đang phát", artist: "", thumb });
+    setPlaying(true);
+    setMiniTrack({ id: v, title: "Đang phát", artist: "", thumb });
+  }, [searchParams, setMiniTrack]);
   const addXp = useXpStore((s) => s.add);
   const watchedIds = useMusicHistoryStore((s) => s.ids);
 

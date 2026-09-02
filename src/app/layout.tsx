@@ -6,6 +6,7 @@ import SyncBootstrap from "@/components/SyncBootstrap";
 import Sidebar from "@/components/Sidebar";
 import FloatingMiniPlayer from "@/components/FloatingMiniPlayer";
 import SupportChatbot from "@/components/SupportChatbot";
+import AmbientBackdrop from "@/components/AmbientBackdrop";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -51,7 +52,8 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-[#0f0f0f] text-zinc-100">
+      <body className="min-h-full flex flex-col bg-[#0a0a0f] text-zinc-100 relative">
+        <AmbientBackdrop />
         <>
           <SyncBootstrap />
           <Navbar />
@@ -61,7 +63,7 @@ export default function RootLayout({
           <FloatingMiniPlayer />
           <SupportChatbot />
         </div>
-        <footer className="border-t border-[#272727] py-8 px-4 text-center text-[#aaa] text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
+        <footer className="border-t border-white/10 py-8 px-4 text-center text-zinc-500 text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))] bg-black/20 backdrop-blur-md">
           <p className="font-semibold text-zinc-300">{APP_NAME}</p>
           <p className="mt-1">{APP_TAGLINE}</p>
           <p className="mt-2 text-xs">OpusFilm</p>

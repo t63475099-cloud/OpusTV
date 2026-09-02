@@ -124,20 +124,49 @@ export default function SuKienPage() {
   const streakDay = useEventStore((s) => s.streakDay);
   const lastCheckIn = useEventStore((s) => s.lastCheckIn);
 
+  const [ready, setReady] = useState(false);
   const [toast, setToast] = useState("");
-  const [status, setStatus] = useState(() => getStreakStatus());
+  const [status, setStatus] = useState({
+    streakDay: 0,
+    canClaim: true,
+    missed: false,
+    todayReward: 10,
+    cycleDay: 1,
+  });
   const [summary, setSummary] = useState({ done: 0, total: DAILY_MISSIONS.length, pct: 0 });
 
+  // Chỉ chạy 1 lần khi vào trang — tránh vòng lặp vô hạn
   useEffect(() => {
-    ensureMissionDay();
-    addMissionProgress("openEvent", 1);
-    setStatus(getStreakStatus());
-    setSummary(dailyMissionSummary());
-  }, [ensureMissionDay, addMissionProgress, getStreakStatus, dailyMissionSummary, missionProgress, lastCheckIn, streakDay]);
+    try {
+      ensureMissionDay();
+      addMissionProgress("openEvent", 1);
+      setStatus(getStreakStatus());
+      setSummary(dailyMissionSummary());
+    } catch (e) {
+      console.error(e);
+    }
+    setReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      setStatus(getStreakStatus());
+      setSummary(dailyMissionSummary());
+    } catch {}
+  }, [missionProgress, missionClaimCount, streakDay, lastCheckIn, coins, getStreakStatus, dailyMissionSummary]);
 
   function flash(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 2800);
+  }
+
+  if (!ready) {
+    return (
+      <div className="min-h-[50vh] pt-20 text-center text-zinc-500 text-sm">
+        Đang tải sự kiện…
+      </div>
+    );
   }
 
   return (
@@ -242,8 +271,8 @@ export default function SuKienPage() {
 
         <ul className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-0.5 custom-scroll">
           {DAILY_MISSIONS.map((m, idx) => {
-            const cur = missionProgress[m.id] || 0;
-            const claims = missionClaimCount?.[m.id] || 0;
+            const cur = (missionProgress && missionProgress[m.id]) || 0;
+            const claims = (missionClaimCount && missionClaimCount[m.id]) || 0;
             const maxed = claims >= MISSION_MAX_CLAIMS;
             const pct = Math.min(100, Math.round((cur / m.target) * 100));
             const canClaim = !maxed && cur >= m.target;

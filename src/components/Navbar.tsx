@@ -10,12 +10,14 @@ import {
   History,
   Heart,
   Settings,
+  Gift,
   Home,
   Flame,
   Clapperboard,
   Music2,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import EventNavChip from "@/components/EventNavChip";
 import StreakBadge from "@/components/StreakBadge";
 import { NAV_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -81,6 +83,7 @@ export default function Navbar() {
       )
       .slice(0, 8)
       .map((i) => ({ href: i.href, name: i.name, icon: Clapperboard })),
+    { href: "/su-kien", name: "Sự kiện", icon: Gift },
     { href: "/cai-dat", name: "Cài đặt", icon: Settings },
   ];
 
@@ -101,8 +104,16 @@ export default function Navbar() {
         paddingRight: "env(safe-area-inset-right, 0px)",
       }}
     >
+      {/* Chuông tách riêng — góc phải trên, z cao, không bị search/chip đè */}
+      <div
+        data-bell-fixed
+        className="absolute top-[max(0.4rem,env(safe-area-inset-top))] right-1.5 sm:right-3 z-[120]"
+      >
+        <NotificationBell />
+      </div>
+
       {/* Hàng 1: logo + search ngoài (mobile & desktop) */}
-      <div className="flex items-center gap-1.5 sm:gap-2 h-12 sm:h-14 px-2.5 sm:px-4">
+      <div className="flex items-center gap-1.5 sm:gap-2 h-12 sm:h-14 px-2.5 sm:px-4 pr-12 sm:pr-14">
         <button
           type="button"
           className="lg:hidden p-2 -ml-0.5 rounded-full text-zinc-200 hover:bg-white/10 shrink-0"
@@ -133,9 +144,9 @@ export default function Navbar() {
             </div>
           )}
         </div>
-        <div className="shrink-0 flex items-center gap-0.5">
+        <div className="shrink-0 flex items-center gap-1 relative z-[95]">
+          <EventNavChip />
           <StreakBadge />
-          <NotificationBell />
         </div>
       </div>
 

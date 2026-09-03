@@ -2199,3 +2199,25 @@ html[data-nav-minimal="1"] .app-content-offset {
     opacity: 1;
   }
 }
+
+
+/* Apple Hello video — white bg removed on dark canvas */
+.apple-hello-video-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.apple-hello-video {
+  width: min(88%, 340px);
+  height: auto;
+  max-height: 42%;
+  object-fit: contain;
+  /* Nền trắng → trong suốt trên nền tối */
+  mix-blend-mode: multiply;
+  filter: contrast(1.15) brightness(1.05);
+  opacity: 0.95;
+}

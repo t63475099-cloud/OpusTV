@@ -105,11 +105,19 @@ function EventCanvas() {
   );
 }
 
-/** Intro chữ Hello kiểu Apple — viết nét + gradient */
+/** Video Hello Apple — bỏ nền trắng bằng mix-blend, lặp mãi, căn giữa */
 function AppleHello() {
   return (
-    <div className="apple-hello-wrap pointer-events-none select-none" aria-hidden>
-      <span className="apple-hello-text">Hello</span>
+    <div className="apple-hello-video-wrap" aria-hidden>
+      <video
+        className="apple-hello-video"
+        src="/hello-apple.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+      />
     </div>
   );
 }
@@ -161,7 +169,6 @@ export default function SuKienPage() {
     total: DAILY_MISSIONS.length * MISSION_MAX_CLAIMS,
     pct: 0,
   });
-  const [showHello, setShowHello] = useState(true);
 
   useEffect(() => {
     try {
@@ -173,8 +180,6 @@ export default function SuKienPage() {
       console.error(e);
     }
     setReady(true);
-    const t = setTimeout(() => setShowHello(false), 4200);
-    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -243,7 +248,7 @@ export default function SuKienPage() {
 
       <section className="relative overflow-hidden rounded-2xl mb-4 glass-border-live min-h-[200px]">
         <EventCanvas />
-        {showHello && <AppleHello />}
+        <AppleHello />
         <div className="relative z-10 p-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center shadow-lg shadow-orange-600/40">

@@ -17,19 +17,20 @@ export default function ChatAvatar({
   size?: "sm" | "md" | "lg";
   showStatus?: boolean;
 }) {
-  const dim = size === "sm" ? "w-9 h-9 text-sm" : size === "lg" ? "w-14 h-14 text-xl" : "w-11 h-11 text-base";
+  const dim =
+    size === "sm" ? "w-9 h-9 text-sm" : size === "lg" ? "w-14 h-14 text-xl" : "w-11 h-11 text-base";
   const dot = size === "sm" ? "w-2.5 h-2.5" : "w-3 h-3";
   const letter = (user?.name || "?").slice(0, 1).toUpperCase();
-  const isEmoji = user?.avatar && /\p{Extended_Pictographic}/u.test(user.avatar);
+  const isEmoji = !!(user?.avatar && /\p{Extended_Pictographic}/u.test(user.avatar));
 
   return (
     <div className={`relative shrink-0 ${dim}`}>
       <div
-        className={`${dim} rounded-full bg-gradient-to-br from-rose-500/80 to-indigo-600/80 flex items-center justify-center text-white font-semibold overflow-hidden ring-1 ring-white/10`}
+        className={`${dim} rounded-full bg-gradient-to-br from-rose-500/90 to-indigo-600/90 flex items-center justify-center text-white font-semibold overflow-hidden ring-1 ring-white/10`}
       >
         {isEmoji ? (
           <span className="leading-none">{user!.avatar}</span>
-        ) : user?.avatar && user.avatar.startsWith("http") ? (
+        ) : user?.avatar?.startsWith("http") || user?.avatar?.startsWith("data:") ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={user.avatar} alt="" className="w-full h-full object-cover" />
         ) : (
@@ -39,7 +40,6 @@ export default function ChatAvatar({
       {showStatus && user && (
         <span
           className={`absolute bottom-0 right-0 ${dot} rounded-full border-2 border-neutral-950 ${statusColor[user.status]}`}
-          title={user.status}
         />
       )}
     </div>

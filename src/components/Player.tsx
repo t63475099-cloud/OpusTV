@@ -111,7 +111,7 @@ export default function Player({
   const [activeLabel, setActiveLabel] = useState("Tự động");
   const [supportsLevels, setSupportsLevels] = useState(false);
 
-  const [controlsVisible, setControlsVisible] = useState(true);
+  const [controlsVisible, setControlsVisible] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -525,33 +525,31 @@ const showControls = useCallback(() => {
     }
   };
 
+  /** Chạm/click vùng xem: chỉ hiện điều khiển, KHÔNG tạm dừng. Double-tap (nếu bật) vẫn tua. */
   const onStageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest("button") || target.closest("input") || target.closest("[data-controls]")) {
       return;
     }
-    if (!doubleTapSeek) {
-      togglePlay();
-      showControls();
-      return;
-    }
-    const now = Date.now();
-    const last = lastTap.current;
-    lastTap.current = { t: now, x: e.clientX };
-    if (last && now - last.t < 320) {
-      const rect = wrapRef.current?.getBoundingClientRect();
-      if (rect) {
-        const mid = rect.left + rect.width / 2;
-        if (e.clientX < mid) seekBy(-seekSeconds);
-        else seekBy(seekSeconds);
-        setSeekFlash(e.clientX < mid ? "left" : "right");
-        window.setTimeout(() => setSeekFlash(null), 500);
+    if (doubleTapSeek) {
+      const now = Date.now();
+      const last = lastTap.current;
+      lastTap.current = { t: now, x: e.clientX };
+      if (last && now - last.t < 320) {
+        const rect = wrapRef.current?.getBoundingClientRect();
+        if (rect) {
+          const mid = rect.left + rect.width / 2;
+          if (e.clientX < mid) seekBy(-seekSeconds);
+          else seekBy(seekSeconds);
+          setSeekFlash(e.clientX < mid ? "left" : "right");
+          window.setTimeout(() => setSeekFlash(null), 500);
+        }
+        lastTap.current = { t: 0, x: 0 };
+        showControls();
+        return;
       }
-      lastTap.current = { t: 0, x: 0 };
-      return;
     }
-    if (controlsVisible) togglePlay();
-    else showControls();
+    showControls();
   };
 
   const selectQuality = (opt: QualityOption) => {
@@ -936,14 +934,16 @@ const showControls = useCallback(() => {
         </div>
       )}
 
-      {/* Thanh thời gian luôn hiện khi xem phim */}
+      {/* Thanh thời gian + điều khiển: ẩn mặc định, hiện khi chạm màn hình */}
       <div
         data-controls
-        className="absolute inset-x-0 bottom-0 z-20 pointer-events-none"
+        className={`absolute inset-x-0 bottom-0 z-20 pointer-events-none transition-opacity duration-300 ${
+          controlsVisible ? "opacity-100" : "opacity-0"
+        }`}
       >
         <div
-          className={`player-controls-bar glass-player-bar bg-gradient-to-t from-black/95 via-black/55 to-transparent pt-10 px-3 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-opacity duration-300 ${
-            controlsVisible ? "opacity-100" : "opacity-100"
+          className={`player-controls-bar glass-player-bar bg-gradient-to-t from-black/95 via-black/55 to-transparent pt-10 px-3 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
+            controlsVisible ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >
           <div className="flex items-center gap-2 mb-2 pointer-events-auto">

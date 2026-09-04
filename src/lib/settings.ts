@@ -236,7 +236,7 @@ export const defaultSettings: AppSettings = {
   largeText: false,
   highContrast: false,
   reduceTransparency: false,
-  alwaysShowControls: true,
+  alwaysShowControls: false,
   centerPlayButton: true,
   bottomProgress: true,
   volumeRemember: true,

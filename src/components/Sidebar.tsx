@@ -13,6 +13,8 @@ import {
   Ghost,
   Sparkles,
   Music2,
+  MessageCircle,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +28,8 @@ const ITEMS = [
   { href: "/yeu-thich", label: "Yêu thích", icon: Heart },
   { href: "/lich-su", label: "Đã xem", icon: History },
   { href: "/nhac", label: "Opus Music", icon: Music2 },
+  { href: "/tin-nhan", label: "Tin nhắn", icon: MessageCircle },
+  { href: "/su-kien", label: "Sự kiện", icon: Gift },
   { href: "/cai-dat", label: "Cài đặt", icon: Settings },
 ];
 

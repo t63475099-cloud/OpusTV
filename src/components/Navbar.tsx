@@ -11,6 +11,7 @@ import {
   Heart,
   Settings,
   Gift,
+  MessageCircle,
   Home,
   Flame,
   Clapperboard,
@@ -72,6 +73,7 @@ export default function Navbar() {
   const drawerLinks = [
     { href: "/", name: "Trang chủ", icon: Home },
     { href: "/su-kien", name: "Sự kiện", icon: Gift },
+    { href: "/tin-nhan", name: "Tin nhắn", icon: MessageCircle },
     { href: "/nhac", name: "Opus Music", icon: Music2 },
     { href: "/danh-sach/phim-moi-cap-nhat", name: "Mới cập nhật", icon: Flame },
     { href: "/yeu-thich", name: "Yêu thích", icon: Heart },

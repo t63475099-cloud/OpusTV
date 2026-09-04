@@ -37,6 +37,8 @@ function NotifIcon({ kind }: { kind: NotifKind }) {
       return <KeyRound className={`${cls} text-amber-300`} />;
     case "mission":
       return <Sparkles className={`${cls} text-amber-300`} />;
+    case "chat":
+      return <MessageCircle className={`${cls} text-rose-400`} />;
     default:
       return <Info className={`${cls} text-zinc-400`} />;
   }

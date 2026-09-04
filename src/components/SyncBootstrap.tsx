@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useAccountStore } from "@/lib/account";
+import { useChatStore } from "@/lib/chatStore";
 
 /** Đồng bộ định kỳ khi đã đăng nhập (cookie session + Neon) */
 export default function SyncBootstrap() {
@@ -51,6 +52,28 @@ export default function SyncBootstrap() {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [username, syncNow]);
+
+  // Opus Chat: đồng bộ hộp thư + đẩy thông báo tin mới ra chuông / hòm thư
+  useEffect(() => {
+    if (!username) {
+      useChatStore.getState().setMe(null);
+      return;
+    }
+    useChatStore.getState().setMe(username);
+    const tick = () => {
+      void useChatStore.getState().syncFromServer();
+    };
+    tick();
+    const id = window.setInterval(tick, 12_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [username]);
 
   return null;
 }

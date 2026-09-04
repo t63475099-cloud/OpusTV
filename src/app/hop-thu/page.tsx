@@ -18,6 +18,7 @@ import { useNotifStore, type NotifKind } from "@/lib/notifications";
 const FILTERS: { id: "all" | NotifKind | "social"; label: string }[] = [
   { id: "all", label: "Tất cả" },
   { id: "social", label: "Tương tác" },
+  { id: "chat", label: "Opus Chat" },
   { id: "verify", label: "Xác minh" },
   { id: "system", label: "Hệ thống" },
 ];
@@ -40,6 +41,8 @@ function iconFor(kind: NotifKind) {
       return <Heart className={`${c} text-rose-400`} />;
     case "mission":
       return <Sparkles className={`${c} text-amber-300`} />;
+    case "chat":
+      return <MessageCircle className={`${c} text-rose-400`} />;
     default:
       return <Info className={`${c} text-zinc-400`} />;
   }
@@ -56,6 +59,8 @@ export default function HopThuPage() {
     if (filter === "all") return items;
     if (filter === "social")
       return items.filter((n) => ["reply", "like"].includes(n.kind));
+    if (filter === "chat")
+      return items.filter((n) => n.kind === "chat");
     if (filter === "verify")
       return items.filter((n) => n.kind.startsWith("verify"));
     return items.filter((n) => n.kind === filter || n.kind === "system" || n.kind === "key");

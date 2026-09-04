@@ -13,7 +13,8 @@ export type NotifKind =
   | "streak"
   | "like"
   | "key"
-  | "mission";
+  | "mission"
+  | "chat";
 
 export interface AppNotification {
   id: string;
@@ -34,6 +35,7 @@ interface NotifState {
   markAllRead: () => void;
   unreadCount: () => number;
   clear: () => void;
+  markChatRead: () => void;
 }
 
 export const useNotifStore = create<NotifState>()(
@@ -66,6 +68,11 @@ export const useNotifStore = create<NotifState>()(
         set((s) => ({ items: s.items.map((x) => ({ ...x, read: true })) })),
       unreadCount: () => get().items.filter((x) => !x.read).length,
       clear: () => set({ items: [] }),
+      /** Đánh dấu đã đọc mọi thông báo chat (hoặc theo peer trong title/body) */
+      markChatRead: () =>
+        set((s) => ({
+          items: s.items.map((x) => (x.kind === "chat" ? { ...x, read: true } : x)),
+        })),
     }),
     { name: "opusfilm-notifications" }
   )

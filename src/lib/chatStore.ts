@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { useNotifStore } from "@/lib/notifications";
 import { persist } from "zustand/middleware";
 
 export type UserStatus = "online" | "offline" | "away";
@@ -285,6 +286,35 @@ export const useChatStore = create<ChatState>()(
             synced: true,
             activeId: prevActive && conversations.some((c) => c.id === prevActive) ? prevActive : get().activeId,
           });
+
+          // Đồng bộ thông báo tin nhắn → chuông + hòm thư
+          try {
+            const notif = useNotifStore.getState();
+            for (const row of inboxRes.inbox || []) {
+              const unread = Number(row.unread || 0);
+              if (unread <= 0) continue;
+              const from = String(row.from_user || "").toLowerCase();
+              if (!from || from === me) continue;
+              const peer = String(row.peer || from).toLowerCase();
+              const name = users[peer]?.name || row.peer || from;
+              const body = String(row.body || "").trim();
+              notif.add({
+                kind: "chat",
+                title: `Opus Chat · ${name}`,
+                body: body
+                  ? body.length > 100
+                    ? body.slice(0, 100) + "…"
+                    : body
+                  : unread > 1
+                    ? `${unread} tin nhắn mới`
+                    : "Tin nhắn mới",
+                href: "/tin-nhan",
+                dedupeKey: `chat-msg-${row.id}`,
+              });
+            }
+          } catch {
+            /* ignore */
+          }
         } catch (e: unknown) {
           set({
             loading: false,

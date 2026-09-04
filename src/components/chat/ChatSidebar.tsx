@@ -77,7 +77,7 @@ export default function ChatSidebar({
 
   return (
     <aside
-      className={`w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-neutral-800 flex flex-col bg-neutral-950 ${
+      className={`w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-neutral-800 flex flex-col bg-neutral-950 min-h-0 h-full ${
         hiddenOnMobileChat ? "hidden md:flex" : "flex"
       }`}
     >

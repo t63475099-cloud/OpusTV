@@ -2211,3 +2211,21 @@ html[data-nav-minimal="1"] .app-content-offset {
   pointer-events: none;
   border-radius: inherit;
 }
+
+
+/* Trang tin nhắn: khóa scroll body, full màn hình mobile */
+html.opus-chat-lock,
+html.opus-chat-lock body {
+  overflow: hidden !important;
+  height: 100%;
+  overscroll-behavior: none;
+}
+html.opus-chat-lock footer {
+  display: none !important;
+}
+
+/* Chống tràn ngang trên điện thoại */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}

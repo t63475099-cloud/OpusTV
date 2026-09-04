@@ -85,7 +85,7 @@ export default function ChatWindow({
     : "Bạn bè";
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-neutral-950">
+    <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-neutral-950 h-full">
       <div className="h-14 shrink-0 px-2 sm:px-4 flex items-center gap-2 border-b border-neutral-800">
         <button
           type="button"

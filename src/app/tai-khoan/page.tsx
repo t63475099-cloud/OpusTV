@@ -418,7 +418,7 @@ export default function AccountPage() {
     const name = profile.name != null ? profile.name.trim() : "";
     const showName = name || username;
     return (
-      <div className="relative min-h-[100dvh] overflow-hidden pb-28 pt-14">
+      <div className="relative min-h-[100dvh] overflow-x-hidden overflow-y-auto pb-[max(7rem,env(safe-area-inset-bottom))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
         <ProfileMotionCanvas />
         <div className={`relative z-10 mx-auto max-w-md px-3 sm:px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
           <div className="pt-3 pb-2">

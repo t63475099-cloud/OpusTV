@@ -35,14 +35,13 @@ export default function TinNhanPage() {
     }
   }, [username, setMe, syncFromServer]);
 
-  // Poll inbox + active thread mỗi 4s khi đã đăng nhập
   useEffect(() => {
     if (!username) return;
     const t = setInterval(() => {
       void syncFromServer();
-      const c = useChatStore.getState().conversations.find(
-        (x) => x.id === useChatStore.getState().activeId
-      );
+      const c = useChatStore
+        .getState()
+        .conversations.find((x) => x.id === useChatStore.getState().activeId);
       const peer = c?.peerUsername;
       if (peer) void loadThread(peer);
     }, 2000);
@@ -53,16 +52,22 @@ export default function TinNhanPage() {
     if (activeId) setMobileChat(true);
   }, [activeId]);
 
+  // Ẩn scroll body trên mobile khi ở trang chat
+  useEffect(() => {
+    document.documentElement.classList.add("opus-chat-lock");
+    return () => document.documentElement.classList.remove("opus-chat-lock");
+  }, []);
+
   if (!username) {
     return (
-      <div className="min-h-[100dvh] pt-20 px-4 flex flex-col items-center justify-center bg-neutral-950 text-center">
+      <div className="min-h-[100dvh] px-4 flex flex-col items-center justify-center bg-neutral-950 text-center pt-[calc(4.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)]">
         <p className="text-white font-semibold text-lg mb-2">Đăng nhập để nhắn tin</p>
         <p className="text-sm text-zinc-500 max-w-sm mb-6">
-          Nhắn tin realtime giữa các tài khoản OpusFilm (giống Zalo). Kết bạn bằng username hoặc UID của đối phương.
+          Kết bạn bằng UID trong Tài khoản. Mỗi người một tài khoản riêng.
         </p>
         <Link
           href="/tai-khoan"
-          className="px-5 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold"
+          className="px-5 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold active:scale-95"
         >
           Đăng nhập / Đăng ký
         </Link>
@@ -71,30 +76,42 @@ export default function TinNhanPage() {
   }
 
   return (
-    <div className="h-[100dvh] pt-14 bg-neutral-950 flex flex-col">
+    <div
+      className="fixed inset-0 z-40 flex flex-col bg-neutral-950"
+      style={{
+        paddingTop: "calc(3.25rem + env(safe-area-inset-top, 0px))",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
       {error && (
-        <div className="mx-auto max-w-6xl w-full px-3 pt-2">
+        <div className="shrink-0 px-3 pt-1">
           <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
             {error}
           </p>
         </div>
       )}
-      <div className="flex-1 min-h-0 flex max-w-6xl w-full mx-auto border-x border-neutral-900">
+      <div className="flex-1 min-h-0 flex w-full max-w-6xl mx-auto border-x border-neutral-900/80">
         <ChatSidebar
           onOpenCreate={() => setCreateOpen(true)}
           hiddenOnMobileChat={mobileChat}
         />
-        <ChatWindow
-          conversation={active}
-          onBack={() => {
-            setMobileChat(false);
-            setActive(null);
-          }}
-        />
-        {active && showInfo && <ChatInfoPanel conversation={active} />}
+        <div className={`flex-1 min-w-0 min-h-0 flex ${mobileChat ? "flex" : "hidden md:flex"}`}>
+          <ChatWindow
+            conversation={active}
+            onBack={() => {
+              setMobileChat(false);
+              setActive(null);
+            }}
+          />
+          {active && showInfo && (
+            <div className="hidden lg:flex">
+              <ChatInfoPanel conversation={active} />
+            </div>
+          )}
+        </div>
       </div>
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
-      <p className="sr-only">Đăng nhập: {me}</p>
+      <span className="sr-only">{me}</span>
     </div>
   );
 }

@@ -71,6 +71,7 @@ export default function Navbar() {
 
   const drawerLinks = [
     { href: "/", name: "Trang chủ", icon: Home },
+    { href: "/su-kien", name: "Sự kiện", icon: Gift },
     { href: "/nhac", name: "Opus Music", icon: Music2 },
     { href: "/danh-sach/phim-moi-cap-nhat", name: "Mới cập nhật", icon: Flame },
     { href: "/yeu-thich", name: "Yêu thích", icon: Heart },
@@ -83,7 +84,6 @@ export default function Navbar() {
       )
       .slice(0, 8)
       .map((i) => ({ href: i.href, name: i.name, icon: Clapperboard })),
-    { href: "/su-kien", name: "Sự kiện", icon: Gift },
     { href: "/cai-dat", name: "Cài đặt", icon: Settings },
   ];
 
@@ -145,7 +145,10 @@ export default function Navbar() {
           )}
         </div>
         <div className="shrink-0 flex items-center gap-1 relative z-[95]">
-          <EventNavChip />
+          {/* Sự kiện trên thanh: chỉ Laptop/PC */}
+          <div className="hidden lg:block">
+            <EventNavChip />
+          </div>
           <StreakBadge />
         </div>
       </div>

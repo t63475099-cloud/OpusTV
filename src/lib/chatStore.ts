@@ -255,7 +255,7 @@ export const useChatStore = create<ChatState>()(
                 id: peer,
                 name: row.peer,
                 nickname: row.peer,
-                avatar: users[peer]?.avatar || "",
+                avatar: "",
                 status: "offline",
               };
             }

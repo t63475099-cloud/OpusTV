@@ -105,12 +105,108 @@ function EventCanvas() {
   );
 }
 
-/** Intro chữ Hello kiểu Apple — viết nét + gradient */
+/** Hello Apple: chroma-key bỏ nền trắng, nét chữ sáng, căn giữa, lặp mãi */
 function AppleHello() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const out = canvasRef.current;
+    if (!out) return;
+
+    const video = document.createElement("video");
+    videoRef.current = video;
+    video.src = "/hello-apple.mp4";
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "true");
+    video.preload = "auto";
+    video.crossOrigin = "anonymous";
+
+    let raf = 0;
+    let running = true;
+    const tmp = document.createElement("canvas");
+    const tctx = tmp.getContext("2d", { willReadFrequently: true });
+    const octx = out.getContext("2d");
+    if (!tctx || !octx) return;
+
+    const draw = () => {
+      if (!running) return;
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (vw > 0 && vh > 0 && !video.paused) {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const cw = out.clientWidth || 320;
+        const ch = out.clientHeight || 180;
+        if (out.width !== Math.floor(cw * dpr) || out.height !== Math.floor(ch * dpr)) {
+          out.width = Math.floor(cw * dpr);
+          out.height = Math.floor(ch * dpr);
+        }
+        octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        octx.clearRect(0, 0, cw, ch);
+
+        // scale video fit contain, centered
+        const scale = Math.min((cw * 0.72) / vw, (ch * 0.55) / vh);
+        const dw = vw * scale;
+        const dh = vh * scale;
+        const dx = (cw - dw) / 2;
+        const dy = (ch - dh) / 2 - ch * 0.02;
+
+        tmp.width = Math.max(1, Math.floor(dw * dpr));
+        tmp.height = Math.max(1, Math.floor(dh * dpr));
+        tctx.setTransform(1, 0, 0, 1, 0, 0);
+        tctx.clearRect(0, 0, tmp.width, tmp.height);
+        tctx.drawImage(video, 0, 0, tmp.width, tmp.height);
+
+        const img = tctx.getImageData(0, 0, tmp.width, tmp.height);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i];
+          const g = d[i + 1];
+          const b = d[i + 2];
+          const avg = (r + g + b) / 3;
+          // Nền trắng / gần trắng → trong suốt
+          if (avg > 235 || (r > 230 && g > 230 && b > 230)) {
+            d[i + 3] = 0;
+          } else {
+            // Nét đen → trắng sáng để hiện trên canvas tối
+            const strength = Math.min(1, (1 - avg / 255) * 1.5);
+            d[i] = 255;
+            d[i + 1] = 255;
+            d[i + 2] = 255;
+            d[i + 3] = Math.floor(255 * strength);
+          }
+        }
+        tctx.putImageData(img, 0, 0);
+        octx.drawImage(tmp, dx, dy, dw, dh);
+      }
+      raf = requestAnimationFrame(draw);
+    };
+
+    const start = () => {
+      video.play().catch(() => {});
+      raf = requestAnimationFrame(draw);
+    };
+    video.addEventListener("loadeddata", start);
+    video.load();
+
+    return () => {
+      running = false;
+      cancelAnimationFrame(raf);
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      videoRef.current = null;
+    };
+  }, []);
+
   return (
-    <div className="apple-hello-wrap pointer-events-none select-none" aria-hidden>
-      <span className="apple-hello-text">Hello</span>
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="apple-hello-canvas"
+      aria-hidden
+    />
   );
 }
 
@@ -161,7 +257,6 @@ export default function SuKienPage() {
     total: DAILY_MISSIONS.length * MISSION_MAX_CLAIMS,
     pct: 0,
   });
-  const [showHello, setShowHello] = useState(true);
 
   useEffect(() => {
     try {
@@ -173,8 +268,6 @@ export default function SuKienPage() {
       console.error(e);
     }
     setReady(true);
-    const t = setTimeout(() => setShowHello(false), 4200);
-    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -243,7 +336,7 @@ export default function SuKienPage() {
 
       <section className="relative overflow-hidden rounded-2xl mb-4 glass-border-live min-h-[200px]">
         <EventCanvas />
-        {showHello && <AppleHello />}
+        <AppleHello />
         <div className="relative z-10 p-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center shadow-lg shadow-orange-600/40">

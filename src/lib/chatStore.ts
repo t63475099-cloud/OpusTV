@@ -206,6 +206,7 @@ export const useChatStore = create<ChatState>()(
           return;
         }
         set({ loading: true, error: null });
+        const prevActive = get().activeId;
         try {
           const [fr, inboxRes] = await Promise.all([
             fetch("/api/chat/friends").then((r) => r.json()),
@@ -216,22 +217,37 @@ export const useChatStore = create<ChatState>()(
 
           const users: Record<string, ChatUser> = { ...get().users };
           const friendIds: string[] = [];
+
           for (const f of fr.friends || []) {
             const id = String(f.username).toLowerCase();
             friendIds.push(id);
             users[id] = {
               id,
-              name: f.username,
+              name: f.displayName || f.username,
               nickname: f.username,
               uid: f.uid || undefined,
-              avatar: "",
+              avatar: f.avatar || users[id]?.avatar || "",
               status: "online",
               bio: f.bio || undefined,
               verified: !!f.verified,
             };
           }
 
-          const conversations: Conversation[] = [];
+          // Hội thoại: mỗi bạn bè luôn có 1 slot (không mất khi chưa nhắn)
+          const convMap = new Map<string, Conversation>();
+          for (const peer of friendIds) {
+            const id = convIdFor(me, peer);
+            convMap.set(id, {
+              id,
+              isGroup: false,
+              participants: [me, peer],
+              peerUsername: peer,
+              unreadCount: 0,
+              updatedAt: Date.now(),
+              lastMessage: get().conversations.find((c) => c.id === id)?.lastMessage,
+            });
+          }
+
           for (const row of inboxRes.inbox || []) {
             const peer = String(row.peer).toLowerCase();
             if (!users[peer]) {
@@ -239,14 +255,14 @@ export const useChatStore = create<ChatState>()(
                 id: peer,
                 name: row.peer,
                 nickname: row.peer,
-                avatar: "",
+                avatar: users[peer]?.avatar || "",
                 status: "offline",
               };
             }
             if (!friendIds.includes(peer)) friendIds.push(peer);
             const id = convIdFor(me, peer);
             const msg = mapServerMsg(row, me);
-            conversations.push({
+            convMap.set(id, {
               id,
               isGroup: false,
               participants: [me, peer],
@@ -257,12 +273,17 @@ export const useChatStore = create<ChatState>()(
             });
           }
 
+          const conversations = Array.from(convMap.values()).sort(
+            (a, b) => b.updatedAt - a.updatedAt
+          );
+
           set({
             users,
             friends: friendIds,
             conversations,
             loading: false,
             synced: true,
+            activeId: prevActive && conversations.some((c) => c.id === prevActive) ? prevActive : get().activeId,
           });
         } catch (e: unknown) {
           set({
@@ -292,10 +313,10 @@ export const useChatStore = create<ChatState>()(
               ...s.users,
               [id]: {
                 id,
-                name: data.friend.username,
+                name: data.friend.displayName || data.friend.username,
                 nickname: data.friend.username,
                 uid: data.friend.uid || undefined,
-                avatar: "",
+                avatar: data.friend.avatar || "",
                 status: "online",
                 bio: data.friend.bio || undefined,
                 verified: !!data.friend.verified,
@@ -305,6 +326,8 @@ export const useChatStore = create<ChatState>()(
           }));
           get().openDirect(id);
           await get().syncFromServer();
+          // giữ hội thoại sau sync
+          get().openDirect(id);
           return { ok: true, message: `Đã kết bạn ${data.friend.username}` };
         } catch {
           return { ok: false, message: "Không kết nối server" };

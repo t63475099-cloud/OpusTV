@@ -8,6 +8,11 @@ function getSql() {
 
 export async function ensureChatTables() {
   const sql = getSql();
+  // Cột hồ sơ public — tránh lỗi "column uid does not exist"
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS uid TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS verified INTEGER NOT NULL DEFAULT 0`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS users_uid_uidx ON users (uid)`;
   await sql`
     CREATE TABLE IF NOT EXISTS chat_friendships (
       id SERIAL PRIMARY KEY,
@@ -116,7 +121,24 @@ export async function addFriendByUid(meUsername: string, targetUid: string) {
     throw new Error("Không thể tự kết bạn");
   }
   await addFriendship(meUsername, target.username);
-  return target;
+  // Lấy avatar / tên hiển thị từ settings (đồng bộ OpusFilm)
+  const sql = getSql();
+  let avatar: string | undefined;
+  let displayName: string | undefined;
+  try {
+    const rows = await sql`
+      SELECT s.payload
+      FROM users u
+      LEFT JOIN settings s ON s.user_id = u.id
+      WHERE lower(u.username) = lower(${target.username})
+      LIMIT 1
+    `;
+    const payload = (rows as { payload: unknown }[])[0]?.payload as Record<string, unknown> | undefined;
+    const profile = (payload?.profile as Record<string, unknown>) || {};
+    if (typeof profile.avatar === "string" && profile.avatar) avatar = profile.avatar;
+    if (typeof profile.name === "string" && profile.name.trim()) displayName = profile.name.trim();
+  } catch {}
+  return { ...target, avatar, displayName };
 }
 
 export async function listFriends(me: string) {
@@ -132,18 +154,48 @@ export async function listFriends(me: string) {
   const names = (rows as { friend: string }[]).map((r) => r.friend);
   if (names.length === 0) return [];
   const users = await sql`
-    SELECT username, uid, bio, verified
-    FROM users
-    WHERE lower(username) = ANY(${names})
+    SELECT u.id, u.username, u.uid, u.bio, u.verified
+    FROM users u
+    WHERE lower(u.username) = ANY(${names})
   `;
-  return (users as { username: string; uid: string | null; bio: string | null; verified: number }[]).map(
-    (u) => ({
+  const out: {
+    username: string;
+    uid: string | null;
+    bio: string | null;
+    verified: boolean;
+    avatar?: string;
+    displayName?: string;
+  }[] = [];
+  for (const u of users as {
+    id: number;
+    username: string;
+    uid: string | null;
+    bio: string | null;
+    verified: number;
+  }[]) {
+    let avatar: string | undefined;
+    let displayName: string | undefined;
+    try {
+      const st = await sql`
+        SELECT payload FROM settings WHERE user_id = ${u.id} LIMIT 1
+      `;
+      const payload = (st as { payload: unknown }[])[0]?.payload as Record<string, unknown> | undefined;
+      const profile = (payload?.profile as Record<string, unknown>) || payload || {};
+      if (typeof profile.avatar === "string" && profile.avatar) avatar = profile.avatar;
+      if (typeof profile.name === "string" && profile.name.trim()) displayName = profile.name.trim();
+    } catch {
+      /* settings table may differ */
+    }
+    out.push({
       username: u.username,
       uid: u.uid,
       bio: u.bio,
       verified: !!u.verified,
-    })
-  );
+      avatar,
+      displayName,
+    });
+  }
+  return out;
 }
 
 export async function listInbox(me: string) {

@@ -27,15 +27,14 @@ export default function ChatWindow({
 }) {
   const messagesMap = useChatStore((s) => s.messages);
   const sendMessage = useChatStore((s) => s.sendMessage);
-  const typingIn = useChatStore((s) => s.typingIn);
   const displayTitle = useChatStore((s) => s.displayTitle);
   const peerOf = useChatStore((s) => s.peerOf);
   const getUser = useChatStore((s) => s.getUser);
   const showInfo = useChatStore((s) => s.showInfo);
   const setShowInfo = useChatStore((s) => s.setShowInfo);
   const replyTo = useChatStore((s) => s.replyTo);
-  const me = useChatStore((s) => s.me);
   const setReplyTo = useChatStore((s) => s.setReplyTo);
+  const me = useChatStore((s) => s.me);
 
   const [text, setText] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -49,19 +48,19 @@ export default function ChatWindow({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [msgs.length, typingIn, activeId]);
+  }, [msgs.length, activeId]);
 
   if (!conversation) {
     return (
       <div className="flex-1 hidden md:flex flex-col items-center justify-center text-zinc-500 bg-neutral-950">
-        <p className="text-sm">Chọn hội thoại hoặc kết bạn bằng nickname / UID</p>
+        <p className="text-sm">Chọn hội thoại hoặc kết bạn bằng UID</p>
       </div>
     );
   }
 
   function onSend() {
     if (!text.trim()) return;
-    sendMessage(text);
+    void sendMessage(text);
     setText("");
     setEmojiOpen(false);
   }
@@ -71,11 +70,19 @@ export default function ChatWindow({
     if (!f) return;
     const url = URL.createObjectURL(f);
     const isImg = f.type.startsWith("image/");
-    sendMessage(isImg ? "" : `Tệp: ${f.name}`, [
+    void sendMessage(isImg ? "" : `Tệp: ${f.name}`, [
       { id: `a_${Date.now()}`, type: isImg ? "image" : "file", url, name: f.name },
     ]);
     e.target.value = "";
   }
+
+  const statusText = conversation.isGroup
+    ? `${conversation.participants.length} thành viên`
+    : peer?.uid
+    ? `UID ${peer.uid}`
+    : peer?.status === "online"
+    ? "Đang hoạt động"
+    : "Bạn bè";
 
   return (
     <div className="flex-1 min-w-0 flex flex-col bg-neutral-950">
@@ -96,17 +103,7 @@ export default function ChatWindow({
         )}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white truncate">{displayTitle(conversation)}</p>
-          <p className="text-[11px] text-zinc-500 truncate">
-            {typingIn === conversation.id
-              ? "Đang soạn tin..."
-              : conversation.isGroup
-              ? `${conversation.participants.length} thành viên`
-              : peer?.status === "online"
-              ? "Đang hoạt động"
-              : peer?.nickname
-              ? `@${peer.nickname}`
-              : "Ngoại tuyến"}
-          </p>
+          <p className="text-[11px] text-zinc-500 truncate">{statusText}</p>
         </div>
         <button
           type="button"
@@ -148,17 +145,6 @@ export default function ChatWindow({
             />
           );
         })}
-        {typingIn === conversation.id && (
-          <div className="flex justify-start mb-2">
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl rounded-bl-md px-4 py-2.5">
-              <span className="inline-flex gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" />
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0.15s]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0.3s]" />
-              </span>
-            </div>
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 
@@ -181,7 +167,7 @@ export default function ChatWindow({
                 key={e}
                 type="button"
                 className="text-xl p-1 hover:scale-125 transition"
-                onClick={() => setText((t) => t + e)}
+                onClick={() => setText((prev) => prev + e)}
               >
                 {e}
               </button>
@@ -230,12 +216,7 @@ export default function ChatWindow({
         </div>
       </div>
 
-      <CallModal
-        open={!!call}
-        mode={call || "audio"}
-        peer={peer}
-        onClose={() => setCall(null)}
-      />
+      <CallModal open={!!call} mode={call || "audio"} peer={peer} onClose={() => setCall(null)} />
     </div>
   );
 }

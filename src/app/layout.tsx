@@ -52,14 +52,14 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-[#0a0a0f] text-zinc-100 relative">
+      <body className="min-h-full min-h-[100dvh] flex flex-col bg-[#0a0a0f] text-zinc-100 relative overflow-x-clip overflow-y-auto">
         <AmbientBackdrop />
         <>
           <SyncBootstrap />
           <Navbar />
         <div className="flex flex-1 w-full max-w-[1920px] mx-auto">
           <Sidebar />
-          <main className="flex-1 min-w-0">{children}</main>
+          <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>
           <FloatingMiniPlayer />
           <SupportChatbot />
         </div>

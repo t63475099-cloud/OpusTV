@@ -52,10 +52,16 @@ export default function TinNhanPage() {
     if (activeId) setMobileChat(true);
   }, [activeId]);
 
-  // Ẩn scroll body trên mobile khi ở trang chat
+  // Chỉ khóa scroll body khi ở trang chat; luôn dọn class fullscreen cũ
   useEffect(() => {
     document.documentElement.classList.add("opus-chat-lock");
-    return () => document.documentElement.classList.remove("opus-chat-lock");
+    document.body.classList.remove("player-fs-lock");
+    document.documentElement.classList.remove("opus-hide-chrome", "player-fs-html-lock");
+    return () => {
+      document.documentElement.classList.remove("opus-chat-lock");
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
   }, []);
 
   if (!username) {

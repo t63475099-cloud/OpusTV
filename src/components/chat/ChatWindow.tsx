@@ -132,7 +132,7 @@ export default function ChatWindow({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 custom-scroll">
+      <div data-chat-scroll className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 custom-scroll overscroll-contain">
         {msgs.map((m) => {
           const reply = m.replyToId ? msgs.find((x) => x.id === m.replyToId) : null;
           return (

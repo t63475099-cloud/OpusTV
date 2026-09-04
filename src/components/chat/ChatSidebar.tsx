@@ -131,7 +131,7 @@ export default function ChatSidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5 custom-scroll">
+      <div data-chat-scroll className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5 custom-scroll overscroll-contain">
         {items.length === 0 ? (
           <p className="text-center text-sm text-zinc-600 py-10 px-4">
             Chưa có hội thoại. Bấm + để kết bạn bằng nickname hoặc UID.

@@ -13,6 +13,28 @@ export default function SyncBootstrap() {
     void refreshMe();
   }, [refreshMe]);
 
+  // Gỡ khóa scroll bị kẹt (fullscreen player / chat) khi vào lại trang thường
+  useEffect(() => {
+    const clearLocks = () => {
+      const path = window.location.pathname || "";
+      if (!path.startsWith("/tin-nhan")) {
+        document.documentElement.classList.remove("opus-chat-lock");
+      }
+      if (!document.querySelector(".player-shell:fullscreen, .player-fs-css")) {
+        document.body.classList.remove("player-fs-lock");
+        document.documentElement.classList.remove(
+          "opus-hide-chrome",
+          "player-fs-html-lock"
+        );
+        document.body.style.overflow = "";
+        document.documentElement.style.overflow = "";
+      }
+    };
+    clearLocks();
+    window.addEventListener("pageshow", clearLocks);
+    return () => window.removeEventListener("pageshow", clearLocks);
+  }, []);
+
   useEffect(() => {
     if (!username) return;
     const run = () => {

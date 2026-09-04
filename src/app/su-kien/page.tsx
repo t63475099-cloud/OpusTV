@@ -146,12 +146,13 @@ function AppleHello() {
         octx.setTransform(dpr, 0, 0, dpr, 0, 0);
         octx.clearRect(0, 0, cw, ch);
 
-        // Căn giữa tuyệt đối theo chiều ngang + dọc
-        const scale = Math.min((cw * 0.68) / vw, (ch * 0.5) / vh);
+        // Căn giữa vùng nền trên (nửa trên card)
+        const zoneH = ch * 0.48;
+        const scale = Math.min((cw * 0.7) / vw, (zoneH * 0.85) / vh);
         const dw = vw * scale;
         const dh = vh * scale;
         const dx = (cw - dw) / 2;
-        const dy = (ch - dh) / 2;
+        const dy = Math.max(4, (zoneH - dh) / 2);
 
         tmp.width = Math.max(1, Math.floor(dw * dpr));
         tmp.height = Math.max(1, Math.floor(dh * dpr));

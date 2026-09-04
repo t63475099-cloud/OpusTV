@@ -18,7 +18,6 @@ import {
   Music2,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
-import EventNavChip from "@/components/EventNavChip";
 import StreakBadge from "@/components/StreakBadge";
 import { NAV_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -73,7 +72,7 @@ export default function Navbar() {
   const drawerLinks = [
     { href: "/", name: "Trang chủ", icon: Home },
     { href: "/su-kien", name: "Sự kiện", icon: Gift },
-    { href: "/tin-nhan", name: "Tin nhắn", icon: MessageCircle },
+    { href: "/tin-nhan", name: "Opus Chat", icon: MessageCircle },
     { href: "/nhac", name: "Opus Music", icon: Music2 },
     { href: "/danh-sach/phim-moi-cap-nhat", name: "Mới cập nhật", icon: Flame },
     { href: "/yeu-thich", name: "Yêu thích", icon: Heart },
@@ -90,6 +89,8 @@ export default function Navbar() {
   ];
 
   if (pathname.startsWith("/admin")) return null;
+  // Ẩn toàn bộ menu trên khi vào Opus Chat
+  if (pathname.startsWith("/tin-nhan")) return null;
 
   return (
     <header
@@ -147,11 +148,7 @@ export default function Navbar() {
           )}
         </div>
         <div className="shrink-0 flex items-center gap-1 relative z-[95]">
-          {/* Sự kiện trên thanh: chỉ Laptop/PC */}
-          <div className="hidden lg:block">
-            <EventNavChip />
-          </div>
-          <StreakBadge />
+<StreakBadge />
         </div>
       </div>
 

@@ -55,10 +55,12 @@ export default function TinNhanPage() {
   // Chỉ khóa scroll body khi ở trang chat; luôn dọn class fullscreen cũ
   useEffect(() => {
     document.documentElement.classList.add("opus-chat-lock");
+    document.documentElement.classList.add("opus-chat-page");
     document.body.classList.remove("player-fs-lock");
     document.documentElement.classList.remove("opus-hide-chrome", "player-fs-html-lock");
     return () => {
       document.documentElement.classList.remove("opus-chat-lock");
+      document.documentElement.classList.remove("opus-chat-page");
       document.body.style.overflow = "";
       document.documentElement.style.overflow = "";
     };
@@ -66,8 +68,8 @@ export default function TinNhanPage() {
 
   if (!username) {
     return (
-      <div className="min-h-[100dvh] px-4 flex flex-col items-center justify-center bg-neutral-950 text-center pt-[calc(4.5rem+env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)]">
-        <p className="text-white font-semibold text-lg mb-2">Đăng nhập để nhắn tin</p>
+      <div className="min-h-[100dvh] px-4 flex flex-col items-center justify-center bg-neutral-950 text-center pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)]">
+        <p className="text-white font-semibold text-lg mb-2">Đăng nhập để dùng Opus Chat</p>
         <p className="text-sm text-zinc-500 max-w-sm mb-6">
           Kết bạn bằng UID trong Tài khoản. Mỗi người một tài khoản riêng.
         </p>
@@ -85,7 +87,7 @@ export default function TinNhanPage() {
     <div
       className="fixed inset-0 z-40 flex flex-col bg-neutral-950"
       style={{
-        paddingTop: "calc(3.25rem + env(safe-area-inset-top, 0px))",
+        paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >

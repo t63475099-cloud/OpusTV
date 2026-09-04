@@ -28,7 +28,7 @@ const ITEMS = [
   { href: "/yeu-thich", label: "Yêu thích", icon: Heart },
   { href: "/lich-su", label: "Đã xem", icon: History },
   { href: "/nhac", label: "Opus Music", icon: Music2 },
-  { href: "/tin-nhan", label: "Tin nhắn", icon: MessageCircle },
+  { href: "/tin-nhan", label: "Opus Chat", icon: MessageCircle },
   { href: "/su-kien", label: "Sự kiện", icon: Gift },
   { href: "/cai-dat", label: "Cài đặt", icon: Settings },
 ];
@@ -36,6 +36,7 @@ const ITEMS = [
 export default function Sidebar() {
   const path = usePathname() || "/";
   if (path.startsWith("/admin")) return null;
+  if (path.startsWith("/tin-nhan")) return null;
 
   return (
     <aside data-sidebar="1"

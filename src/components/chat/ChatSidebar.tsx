@@ -76,18 +76,18 @@ export default function ChatSidebar({
   const items = list();
 
   return (
-    <aside
+    <aside data-chat-root
       className={`w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-neutral-800 flex flex-col bg-neutral-950 min-h-0 h-full ${
         hiddenOnMobileChat ? "hidden md:flex" : "flex"
       }`}
     >
       <div className="px-3 pt-3 pb-2 flex items-center gap-2">
-        <Link href="/" className="md:hidden p-2 rounded-full hover:bg-neutral-800 text-zinc-400">
+        <Link href="/" className="p-2 rounded-full hover:bg-neutral-800 text-zinc-400" title="Về OpusFilm">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="flex-1 text-lg font-bold text-white flex items-center gap-2">
-          <MessageCircle className="w-5 h-5 text-rose-500" />
-          Tin nhắn
+        <h1 className="flex-1 text-lg font-bold text-white flex items-center gap-2 min-w-0">
+          <MessageCircle className="w-5 h-5 text-rose-500 shrink-0" />
+          <span className="truncate">Opus Chat</span>
         </h1>
         <button
           type="button"

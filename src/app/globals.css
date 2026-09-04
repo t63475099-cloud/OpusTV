@@ -2245,3 +2245,11 @@ html {
   max-width: 100%;
   overflow-x: clip;
 }
+
+
+/* Opus Chat: ẩn menu trên + sidebar film + footer */
+html.opus-chat-page header,
+html.opus-chat-page [data-sidebar],
+html.opus-chat-page footer {
+  display: none !important;
+}

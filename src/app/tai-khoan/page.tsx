@@ -1,4 +1,5 @@
 "use client";
+import { useEventStore } from "@/lib/eventCoins";
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -167,6 +168,12 @@ export default function AccountPage() {
   const [inviteKey, setInviteKey] = useState("");
 
   useEffect(() => {
+    try {
+      const u = useAccountStore.getState().username;
+      if (u) useEventStore.getState().addMissionProgress("login");
+    } catch {}
+  }, []);
+  useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const sp = new URLSearchParams(window.location.search);
@@ -198,6 +205,29 @@ export default function AccountPage() {
       setEditName(profile.name ?? "");
       setEditBio(profile.bio ?? "");
     }
+  }, [username]);
+
+  // Đồng bộ UID từ server vào hồ sơ (mỗi tài khoản một UID)
+  useEffect(() => {
+    if (!username) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (cancelled || !data?.ok || !data.user) return;
+        const uid = String(data.user.uid || "").trim();
+        if (uid) {
+          useSettingsStore.getState().updateProfile({
+            uid,
+            verified: !!data.user.verified,
+          });
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [username]);
 
   useEffect(() => {
@@ -436,23 +466,32 @@ export default function AccountPage() {
                 </h1>
                 <p className="text-sm text-zinc-400">@{username}</p>
                 {profile.uid ? (
-                  <button
-                    type="button"
-                    className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 font-mono px-2 py-0.5 rounded-full zalo-glass-soft"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(String(profile.uid));
-                        setUidCopied(true);
-                        setTimeout(() => setUidCopied(false), 1500);
-                      } catch {
-                        /* */
-                      }
-                    }}
-                  >
-                    UID {profile.uid}
-                    {uidCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  </button>
-                ) : null}
+                  <div className="mt-3 w-full max-w-xs rounded-2xl bg-black/30 border border-white/10 px-3 py-2.5 text-left">
+                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">UID kết bạn</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-sm font-mono text-rose-300 tracking-wider truncate">
+                        {profile.uid}
+                      </code>
+                      <button
+                        type="button"
+                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-[11px] font-semibold"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(String(profile.uid));
+                            setUidCopied(true);
+                            setTimeout(() => setUidCopied(false), 1500);
+                          } catch {}
+                        }}
+                      >
+                        {uidCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {uidCopied ? "Đã chép" : "Copy"}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-zinc-600 mt-1.5">Gửi UID này để người khác kết bạn trên Tin nhắn</p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] text-zinc-600">Đang lấy UID… bấm Đồng bộ nếu chưa hiện</p>
+                )}
                 {profile.bio ? (
                   <p className="mt-2 text-xs text-zinc-400 leading-relaxed line-clamp-3 max-w-sm">
                     {profile.bio}

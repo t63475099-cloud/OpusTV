@@ -146,12 +146,12 @@ function AppleHello() {
         octx.setTransform(dpr, 0, 0, dpr, 0, 0);
         octx.clearRect(0, 0, cw, ch);
 
-        // scale video fit contain, centered
-        const scale = Math.min((cw * 0.72) / vw, (ch * 0.55) / vh);
+        // Căn giữa tuyệt đối theo chiều ngang + dọc
+        const scale = Math.min((cw * 0.68) / vw, (ch * 0.5) / vh);
         const dw = vw * scale;
         const dh = vh * scale;
         const dx = (cw - dw) / 2;
-        const dy = (ch - dh) / 2 - ch * 0.02;
+        const dy = (ch - dh) / 2;
 
         tmp.width = Math.max(1, Math.floor(dw * dpr));
         tmp.height = Math.max(1, Math.floor(dh * dpr));

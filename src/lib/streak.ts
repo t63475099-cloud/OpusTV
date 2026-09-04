@@ -39,13 +39,10 @@ export const useStreakStore = create<StreakState>()(
         const today = todayKey();
         const s = get();
         if (s.lastActive === today) {
-          return { lit: false, current: s.current, best: s.best, already: true };
+          return { lit: true, current: s.current, best: s.best, already: true };
         }
-        const yest = yesterdayKey();
         let next = 1;
-        if (s.lastActive === yest) {
-          next = s.current + 1;
-        }
+        if (s.lastActive === yesterdayKey()) next = s.current + 1;
         const best = Math.max(s.best, next);
         set({ current: next, best, lastActive: today });
         return { lit: true, current: next, best, already: false };
@@ -53,12 +50,13 @@ export const useStreakStore = create<StreakState>()(
       status: () => {
         const s = get();
         const today = todayKey();
+        const yest = yesterdayKey();
         let current = s.current;
-        if (s.lastActive && s.lastActive !== today && s.lastActive !== yesterdayKey()) {
+        if (s.lastActive !== today && s.lastActive !== yest && s.lastActive) {
           current = 0;
         }
         return {
-          current,
+          current: s.lastActive === today || s.lastActive === yest ? current : 0,
           best: s.best,
           litToday: s.lastActive === today,
           lastActive: s.lastActive,
@@ -69,13 +67,8 @@ export const useStreakStore = create<StreakState>()(
   )
 );
 
-/** Gọi từ history / player khi user xem phim — tương thích history.ts */
-export function recordDailyStreak(): {
-  lit: boolean;
-  current: number;
-  best: number;
-  already: boolean;
-} {
+/** Gọi khi người dùng đang xem phim */
+export function recordDailyStreak() {
   try {
     return useStreakStore.getState().checkIn();
   } catch {

@@ -2248,7 +2248,8 @@ html {
 
 
 /* Opus Chat: ẩn menu trên + sidebar film + footer + canvas nền app */
-html.opus-chat-page header,
+/* Chỉ ẩn navbar/sidebar/footer app — KHÔNG ẩn header trong Opus Chat */
+html.opus-chat-page header[data-app-nav],
 html.opus-chat-page [data-sidebar],
 html.opus-chat-page footer {
   display: none !important;

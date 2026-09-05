@@ -121,7 +121,7 @@ export default function ChatWindow({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header + menu gọi */}
-      <header className="shrink-0 border-b border-[#2a2d34] bg-[#16181c]">
+      <header data-chat-header="1" className="shrink-0 border-b border-[#2a2d34] bg-[#16181c] relative z-20" style={{display:"flex",flexDirection:"column"}}>
         <div className="flex items-center gap-2 px-2 sm:px-3 h-14">
           <button
             type="button"

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAccountStore } from "@/lib/account";
 import { useChatStore } from "@/lib/chatStore";
+import IncomingCallBanner from "@/components/chat/IncomingCallBanner";
 
 export default function SyncBootstrap() {
   const username = useAccountStore((s) => s.username);
@@ -94,5 +95,5 @@ export default function SyncBootstrap() {
     return () => window.clearInterval(id);
   }, [username, isChat]);
 
-  return null;
+  return <IncomingCallBanner />;
 }

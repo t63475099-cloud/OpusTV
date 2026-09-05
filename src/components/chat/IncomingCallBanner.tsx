@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Video } from "lucide-react";
 import { useChatStore } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
@@ -13,17 +13,81 @@ interface IncomingRow {
   offer_sdp: string;
 }
 
+/** Chuông gọi đơn giản (Web Audio) — không dùng nhạc bản quyền */
+function useRingtone(active: boolean) {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!active) {
+      if (timerRef.current) window.clearInterval(timerRef.current);
+      timerRef.current = null;
+      try {
+        void ctxRef.current?.close();
+      } catch {}
+      ctxRef.current = null;
+      return;
+    }
+
+    let stopped = false;
+    const ring = () => {
+      if (stopped) return;
+      try {
+        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!Ctx) return;
+        if (!ctxRef.current || ctxRef.current.state === "closed") {
+          ctxRef.current = new Ctx();
+        }
+        const ctx = ctxRef.current;
+        if (ctx.state === "suspended") void ctx.resume();
+        const now = ctx.currentTime;
+        // 2 tone giống kiểu chuông điện thoại (không copy Zalo/Messenger)
+        for (const [i, freq] of [880, 988].entries()) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * 0.18);
+          osc.stop(now + 0.4 + i * 0.18);
+        }
+      } catch {
+        /* autoplay policy */
+      }
+    };
+
+    ring();
+    timerRef.current = window.setInterval(ring, 2200);
+    return () => {
+      stopped = true;
+      if (timerRef.current) window.clearInterval(timerRef.current);
+      timerRef.current = null;
+      try {
+        void ctxRef.current?.close();
+      } catch {}
+      ctxRef.current = null;
+    };
+  }, [active]);
+}
+
 export default function IncomingCallBanner() {
   const me = useChatStore((s) => s.me);
   const getUser = useChatStore((s) => s.getUser);
   const [incoming, setIncoming] = useState<IncomingRow | null>(null);
   const [accepting, setAccepting] = useState(false);
 
+  useRingtone(!!incoming && !accepting);
+
   useEffect(() => {
     if (!me) return;
     const tick = async () => {
       try {
         const r = await fetch("/api/chat/call?incoming=1");
+        if (!r.ok) return;
         const j = await r.json();
         const list = (j.incoming || []) as IncomingRow[];
         if (list.length && !accepting) {
@@ -50,11 +114,6 @@ export default function IncomingCallBanner() {
       });
     } catch {}
     setIncoming(null);
-  };
-
-  const accept = () => {
-    if (!incoming) return;
-    setAccepting(true);
   };
 
   if (!incoming && !accepting) return null;
@@ -88,29 +147,32 @@ export default function IncomingCallBanner() {
   }
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[95] w-[min(92vw,380px)]">
-      <div className="rounded-2xl bg-[#16181c] border border-[#2a2d34] shadow-2xl px-4 py-3 flex items-center gap-3">
+    <div
+      className="fixed top-[max(0.75rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[200] w-[min(94vw,400px)]"
+      data-incoming-call
+    >
+      <div className="rounded-2xl bg-[#16181c]/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-black/50 px-4 py-3 flex items-center gap-3 animate-pulse">
         <ChatAvatar user={peerUser} size="md" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white truncate">
             {peerUser.name || peerId}
           </p>
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-emerald-400">
             {mode === "video" ? "Cuộc gọi video đến…" : "Cuộc gọi thoại đến…"}
           </p>
         </div>
         <button
           type="button"
           onClick={() => void reject()}
-          className="p-2.5 rounded-full bg-red-600 text-white"
+          className="p-3 rounded-full bg-red-600 text-white shrink-0"
           title="Từ chối"
         >
           <PhoneOff className="w-5 h-5" />
         </button>
         <button
           type="button"
-          onClick={accept}
-          className="p-2.5 rounded-full bg-emerald-500 text-white"
+          onClick={() => setAccepting(true)}
+          className="p-3 rounded-full bg-emerald-500 text-white shrink-0"
           title="Nghe"
         >
           {mode === "video" ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}

@@ -7,6 +7,7 @@ import { useChatStore } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
 import CallModal from "./CallModal";
 import { startCallSound } from "@/lib/callSounds";
+import { postCallLog } from "@/lib/callLog";
 
 interface IncomingRow {
   id: string;
@@ -83,6 +84,8 @@ export default function IncomingCallBanner() {
 
   const reject = async () => {
     if (!incoming) return;
+    const from = incoming.from_user;
+    const mode = incoming.mode === "video" ? "video" : "audio";
     try {
       await fetch("/api/chat/call", {
         method: "POST",
@@ -90,6 +93,7 @@ export default function IncomingCallBanner() {
         body: JSON.stringify({ action: "reject", id: incoming.id }),
       });
     } catch {}
+    void postCallLog(from, mode, "rejected", 0);
     setIncoming(null);
   };
 

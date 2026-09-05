@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Reply, Check, CheckCheck } from "lucide-react";
+import { Reply, Check, CheckCheck, Phone, PhoneMissed, PhoneOff, Video } from "lucide-react";
 import type { ChatMessage } from "@/lib/chatStore";
 import { formatChatTime, useChatStore } from "@/lib/chatStore";
+import { parseCallLog, formatCallLogLabel } from "@/lib/callLog";
 
 const QUICK = ["❤️", "👍", "😂", "😮", "😢"];
 
@@ -21,6 +22,30 @@ export default function MessageBubble({
   const toggleReaction = useChatStore((s) => s.toggleReaction);
   const setReplyTo = useChatStore((s) => s.setReplyTo);
   const [showBar, setShowBar] = useState(false);
+
+  const call = parseCallLog(m.text || "");
+  if (call) {
+    const label = formatCallLogLabel(call.mode, call.kind, call.durationSec, mine);
+    const Icon =
+      call.kind === "ended"
+        ? call.mode === "video"
+          ? Video
+          : Phone
+        : call.kind === "missed"
+          ? PhoneMissed
+          : PhoneOff;
+    return (
+      <div className="flex justify-center my-3" onClick={(e) => e.stopPropagation()}>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2a2e36]/90 border border-[#3a3f4a] text-[12px] text-zinc-300 max-w-[90%]">
+          <Icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+          <span className="truncate">{label}</span>
+          <span className="text-[10px] text-zinc-500 shrink-0">
+            {formatChatTime(m.timestamp)}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

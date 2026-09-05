@@ -11,6 +11,7 @@ import {
 } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
 import ChatProfileModal from "./ChatProfileModal";
+import { parseCallLog, formatCallLogLabel } from "@/lib/callLog";
 
 function Row({
   c,
@@ -27,8 +28,11 @@ function Row({
   const title = displayTitle(c);
   const peer = peerOf(c);
   const last = c.lastMessage;
+  const call = last ? parseCallLog(last.text || "") : null;
   const preview = last
-    ? `${last.senderId === me ? "Bạn: " : ""}${last.text || "Đính kèm"}`
+    ? call
+      ? formatCallLogLabel(call.mode, call.kind, call.durationSec, last.senderId === me)
+      : `${last.senderId === me ? "Bạn: " : ""}${last.text || "Đính kèm"}`
     : peer
       ? formatLastSeen(peer) || "Chưa có tin nhắn"
       : "Chưa có tin nhắn";

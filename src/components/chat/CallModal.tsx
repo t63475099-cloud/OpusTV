@@ -5,6 +5,7 @@ import { Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
 import ChatAvatar from "./ChatAvatar";
 import type { ChatUser } from "@/lib/chatStore";
 import { startCallSound, stopSharedAudio } from "@/lib/callSounds";
+import { postCallLog } from "@/lib/callLog";
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
@@ -270,6 +271,9 @@ export default function CallModal({
                 setPhase("ended");
                 setErr(call.status === "rejected" ? "Đối phương từ chối" : "Cuộc gọi kết thúc");
                 void cleanup(false);
+                if (call.status === "rejected" && peer?.id) {
+                  void postCallLog(peer.id, mode, "missed", 0);
+                }
                 return;
               }
               if (call.answer_sdp && !remoteSetRef.current) {
@@ -348,9 +352,22 @@ export default function CallModal({
   }, [open, phase]);
 
   const hangup = async () => {
+    const peerId = peer?.id;
+    const wasConnected = phase === "connected";
+    const wasRinging = phase === "ringing" || phase === "starting" || phase === "connecting";
+    const duration = wasConnected ? sec : 0;
     await cleanup(true);
     stopSharedAudio();
     setPhase("ended");
+    if (peerId) {
+      if (wasConnected) {
+        void postCallLog(peerId, mode, "ended", duration);
+      } else if (role === "caller" && wasRinging) {
+        void postCallLog(peerId, mode, "cancelled", 0);
+      } else if (role === "callee") {
+        void postCallLog(peerId, mode, "rejected", 0);
+      }
+    }
     onClose();
   };
 

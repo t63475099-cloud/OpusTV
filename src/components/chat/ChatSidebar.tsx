@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Search, Plus, MessageCircle, Users } from "lucide-react";
+import { Search, Plus, Users, Home } from "lucide-react";
 import {
   useChatStore,
   formatChatTime,
@@ -14,12 +14,10 @@ function Row({
   c,
   active,
   onClick,
-  index,
 }: {
   c: Conversation;
   active: boolean;
   onClick: () => void;
-  index: number;
 }) {
   const displayTitle = useChatStore((s) => s.displayTitle);
   const peerOf = useChatStore((s) => s.peerOf);
@@ -29,42 +27,43 @@ function Row({
   const peer = peerOf(c);
   const last = c.lastMessage;
   const preview = last
-    ? `${last.senderId === me ? "Bạn" : getUser(last.senderId)?.name || ""}: ${last.text || "Đính kèm"}`
+    ? `${last.senderId === me ? "Bạn: " : ""}${last.text || "Đính kèm"}`
     : peer
-      ? formatLastSeen(peer)
+      ? formatLastSeen(peer) || "Chưa có tin nhắn"
       : "Chưa có tin nhắn";
 
   return (
     <button
       type="button"
-      onClick={onClick}
-      style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
-      className={`oc-row oc-bubble-in w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left ${
-        active
-          ? "oc-glass ring-1 ring-rose-500/25"
-          : "hover:bg-white/[0.04]"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+        active ? "bg-[#2a2e36]" : "hover:bg-[#1f2228]"
       }`}
     >
       {c.isGroup ? (
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-rose-500 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
+        <div className="w-12 h-12 rounded-full bg-[#0068ff] flex items-center justify-center shrink-0">
           <Users className="w-5 h-5 text-white" />
         </div>
       ) : (
         <ChatAvatar user={peer} />
       )}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 border-b border-[#2a2d34]/60 pb-2.5">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-white truncate">{title}</p>
+          <p className="text-[15px] font-medium text-white truncate">{title}</p>
           {last && (
-            <span className="text-[10px] text-zinc-500 shrink-0 tabular-nums">
+            <span className="text-[11px] text-zinc-500 shrink-0">
               {formatChatTime(last.timestamp)}
             </span>
           )}
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p className="text-xs text-zinc-400/90 truncate">{preview}</p>
+          <p className="text-[13px] text-zinc-400 truncate">{preview}</p>
           {c.unreadCount > 0 && (
-            <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[10px] font-bold text-white flex items-center justify-center shadow-md shadow-rose-500/30">
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#c11e33] text-[10px] font-bold text-white flex items-center justify-center">
               {c.unreadCount > 99 ? "99+" : c.unreadCount}
             </span>
           )}
@@ -76,101 +75,101 @@ function Row({
 
 export default function ChatSidebar({
   onOpenCreate,
-  hiddenOnMobileChat,
+  onSelectConversation,
 }: {
   onOpenCreate: () => void;
-  hiddenOnMobileChat?: boolean;
+  onSelectConversation: (id: string) => void;
 }) {
-  const list = useChatStore((s) => s.filteredConversations);
+  const conversations = useChatStore((s) => s.conversations || []);
   const activeId = useChatStore((s) => s.activeId);
-  const setActive = useChatStore((s) => s.setActive);
   const search = useChatStore((s) => s.search);
   const setSearch = useChatStore((s) => s.setSearch);
   const tab = useChatStore((s) => s.tab);
   const setTab = useChatStore((s) => s.setTab);
-  const items = list();
+  const filteredConversations = useChatStore((s) => s.filteredConversations);
+
+  let items: Conversation[] = conversations;
+  try {
+    items = typeof filteredConversations === "function" ? filteredConversations() : conversations;
+  } catch {
+    items = conversations;
+  }
+  if (!Array.isArray(items)) items = [];
 
   return (
-    <aside
-      data-chat-root
-      className={`w-full md:w-[340px] lg:w-[380px] shrink-0 flex flex-col min-h-0 h-full border-r border-white/[0.06] oc-glass ${
-        hiddenOnMobileChat ? "hidden md:flex" : "flex"
-      }`}
-    >
-      <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+    <aside className="flex flex-col h-full w-full min-h-0 bg-[#16181c]">
+      {/* Header Zalo-like */}
+      <div className="shrink-0 px-3 pt-3 pb-2 flex items-center gap-2">
         <Link
           href="/"
-          className="p-2.5 rounded-full oc-glass-soft text-zinc-300 hover:text-white transition active:scale-95"
+          className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-400"
           title="Về OpusFilm"
+          onClick={(e) => e.stopPropagation()}
         >
-          <ArrowLeft className="w-5 h-5" />
+          <Home className="w-5 h-5" />
         </Link>
-        <h1 className="flex-1 text-lg font-bold text-white flex items-center gap-2 min-w-0 tracking-tight">
-          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-violet-600 shadow-lg shadow-rose-500/25">
-            <MessageCircle className="w-4 h-4 text-white" />
-          </span>
-          <span className="truncate">Opus Chat</span>
-        </h1>
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#2a2e36] text-sm text-white placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-[#0068ff]/50"
+          />
+        </div>
         <button
           type="button"
-          onClick={onOpenCreate}
-          className="p-2.5 rounded-full bg-gradient-to-br from-rose-500/30 to-violet-500/20 text-rose-300 hover:from-rose-500/40 border border-white/10 transition active:scale-95"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenCreate();
+          }}
+          className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300"
           title="Kết bạn"
         >
           <Plus className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="px-3 pb-2 space-y-2">
-        <div className="relative oc-glass-input rounded-2xl">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm hội thoại..."
-            className="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-transparent text-sm text-white placeholder:text-zinc-600 outline-none"
-          />
-        </div>
-        <div className="flex gap-1 p-1 rounded-2xl oc-glass-soft">
-          {(
-            [
-              ["all", "Tất cả"],
-              ["groups", "Nhóm"],
-              ["unread", "Chưa đọc"],
-            ] as const
-          ).map(([k, label]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setTab(k)}
-              className={`flex-1 py-1.5 rounded-xl text-xs font-medium transition ${
-                tab === k ? "oc-tab-active" : "text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <div className="px-3 pb-2 flex gap-4 text-sm border-b border-[#2a2d34]">
+        {(
+          [
+            ["all", "Ưu tiên"],
+            ["unread", "Khác"],
+            ["groups", "Nhóm"],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setTab(k)}
+            className={`pb-2 border-b-2 transition ${
+              tab === k
+                ? "border-[#0068ff] text-[#5b9dff] font-semibold"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div
         data-chat-scroll
-        className="flex-1 overflow-y-auto px-2 pb-4 space-y-1 custom-scroll overscroll-contain"
+        className="flex-1 overflow-y-auto overscroll-contain min-h-0"
+        onClick={(e) => e.stopPropagation()}
       >
         {items.length === 0 ? (
-          <div className="mx-2 mt-6 oc-glass rounded-2xl p-8 text-center">
-            <MessageCircle className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-            <p className="text-sm text-zinc-400">Chưa có hội thoại</p>
+          <div className="px-6 py-16 text-center">
+            <p className="text-sm text-zinc-500">Chưa có hội thoại</p>
             <p className="text-xs text-zinc-600 mt-1">Bấm + để kết bạn bằng UID</p>
           </div>
         ) : (
-          items.map((c, i) => (
+          items.map((c) => (
             <Row
               key={c.id}
               c={c}
-              index={i}
               active={c.id === activeId}
-              onClick={() => setActive(c.id)}
+              onClick={() => onSelectConversation(c.id)}
             />
           ))
         )}

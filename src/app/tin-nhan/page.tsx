@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { useChatStore } from "@/lib/chatStore";
@@ -9,24 +9,33 @@ import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInfoPanel from "@/components/chat/ChatInfoPanel";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
-import ChatCanvas from "@/components/chat/ChatCanvas";
 
 export default function TinNhanPage() {
-  const activeId = useChatStore((s) => s.activeId);
-  const setActive = useChatStore((s) => s.setActive);
-  const conversations = useChatStore((s) => s.conversations);
-  const showInfo = useChatStore((s) => s.showInfo);
+  const username = useAccountStore((s) => s.username);
   const setMe = useChatStore((s) => s.setMe);
   const syncFromServer = useChatStore((s) => s.syncFromServer);
   const loadThread = useChatStore((s) => s.loadThread);
-  const me = useChatStore((s) => s.me);
+  const setActive = useChatStore((s) => s.setActive);
+  const activeId = useChatStore((s) => s.activeId);
+  const conversations = useChatStore((s) => s.conversations);
+  const showInfo = useChatStore((s) => s.showInfo);
+  const setShowInfo = useChatStore((s) => s.setShowInfo);
   const error = useChatStore((s) => s.error);
-  const username = useAccountStore((s) => s.username);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [mobileChat, setMobileChat] = useState(false);
+  /** Chỉ dùng cho mobile: đang xem thread hay đang xem list */
+  const [showThread, setShowThread] = useState(false);
 
   const active = conversations.find((c) => c.id === activeId) || null;
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem("opusfilm-chat-server-v1");
+      localStorage.removeItem("opusfilm-chat-server-v2");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (username) {
@@ -39,99 +48,117 @@ export default function TinNhanPage() {
 
   useEffect(() => {
     if (!username) return;
-    const t = setInterval(() => {
+    const tick = () => {
       try {
         void syncFromServer();
-        const c = useChatStore
-          .getState()
-          .conversations.find((x) => x.id === useChatStore.getState().activeId);
-        const peer = c?.peerUsername;
-        if (peer) void loadThread(peer);
+        const st = useChatStore.getState();
+        const c = st.conversations.find((x) => x.id === st.activeId);
+        if (c?.peerUsername) void loadThread(c.peerUsername);
       } catch {
         /* ignore */
       }
-    }, 2000);
-    return () => clearInterval(t);
+    };
+    const id = window.setInterval(tick, 6000);
+    return () => window.clearInterval(id);
   }, [username, syncFromServer, loadThread]);
 
+  // Khi activeId đổi (kết bạn / openDirect), mobile tự mở thread
   useEffect(() => {
-    if (activeId) setMobileChat(true);
+    if (!activeId) return;
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setShowThread(true);
+    }
   }, [activeId]);
 
   useEffect(() => {
-    document.documentElement.classList.add("opus-chat-lock");
-    document.documentElement.classList.add("opus-chat-page");
-    document.body.classList.remove("player-fs-lock");
-    document.documentElement.classList.remove("opus-hide-chrome", "player-fs-html-lock");
+    document.documentElement.classList.add("opus-chat-lock", "opus-chat-page");
     return () => {
-      document.documentElement.classList.remove("opus-chat-lock");
-      document.documentElement.classList.remove("opus-chat-page");
-      document.body.style.overflow = "";
-      document.documentElement.style.overflow = "";
+      document.documentElement.classList.remove("opus-chat-lock", "opus-chat-page");
     };
+  }, []);
+
+  const openChat = useCallback(
+    (id: string) => {
+      setActive(id);
+      setShowThread(true);
+    },
+    [setActive]
+  );
+
+  const backToList = useCallback(() => {
+    // Chỉ ẩn thread trên mobile — KHÔNG xóa activeId
+    setShowThread(false);
   }, []);
 
   if (!username) {
     return (
-      <div className="min-h-[100dvh] oc-shell relative flex flex-col items-center justify-center px-4 text-center pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)]">
-        <ChatCanvas />
-        <div className="relative z-10 oc-glass rounded-3xl p-8 max-w-sm w-full oc-bubble-in">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-rose-500 to-violet-600 flex items-center justify-center shadow-xl shadow-rose-500/30">
-            <MessageCircle className="w-7 h-7 text-white" />
-          </div>
-          <p className="text-white font-bold text-xl mb-1">Opus Chat</p>
-          <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
-            Đăng nhập để nhắn tin, kết bạn bằng UID và đồng bộ trên mọi thiết bị.
-          </p>
-          <Link
-            href="/tai-khoan"
-            className="inline-flex w-full items-center justify-center px-5 py-3 rounded-2xl text-sm font-semibold text-white oc-send-btn"
-          >
-            Đăng nhập / Đăng ký
-          </Link>
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#16181c] px-4 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-[#0068ff] flex items-center justify-center mb-4">
+          <MessageCircle className="w-7 h-7 text-white" />
         </div>
+        <p className="text-white font-semibold text-lg mb-1">Opus Chat</p>
+        <p className="text-sm text-zinc-400 mb-6 max-w-xs">
+          Đăng nhập để nhắn tin và kết bạn bằng UID.
+        </p>
+        <Link
+          href="/tai-khoan"
+          className="px-6 py-2.5 rounded-lg bg-[#0068ff] text-white text-sm font-semibold"
+        >
+          Đăng nhập
+        </Link>
       </div>
     );
   }
 
   return (
     <div
-      className="fixed inset-0 z-40 flex flex-col oc-shell"
+      className="fixed inset-0 z-40 flex bg-[#0e1012] text-zinc-100"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <ChatCanvas />
       {error && (
-        <div className="relative z-10 shrink-0 px-3 pt-2">
-          <p className="text-xs text-amber-200 oc-glass rounded-xl px-3 py-2 border border-amber-500/20">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[90%]">
+          <p className="text-xs text-amber-200 bg-amber-500/15 border border-amber-500/30 rounded-lg px-3 py-2 text-center">
             {error}
           </p>
         </div>
       )}
-      <div className="relative z-10 flex-1 min-h-0 flex w-full max-w-6xl mx-auto md:my-2 md:rounded-3xl md:overflow-hidden md:border md:border-white/10 md:shadow-2xl md:shadow-black/40">
+
+      {/* Trái: danh sách */}
+      <div
+        className={`h-full w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-[#2a2d34] flex-col bg-[#16181c] ${
+          showThread ? "hidden md:flex" : "flex"
+        }`}
+      >
         <ChatSidebar
           onOpenCreate={() => setCreateOpen(true)}
-          hiddenOnMobileChat={mobileChat}
+          onSelectConversation={openChat}
         />
-        <div className={`flex-1 min-w-0 min-h-0 flex ${mobileChat ? "flex" : "hidden md:flex"}`}>
-          <ChatWindow
-            conversation={active}
-            onBack={() => {
-              setMobileChat(false);
-              setActive(null);
-            }}
-          />
-          {active && showInfo && (
-            <div className="hidden lg:flex">
-              <ChatInfoPanel conversation={active} />
-            </div>
-          )}
-        </div>
       </div>
+
+      {/* Giữa: cửa sổ chat */}
+      <div
+        className={`h-full flex-1 min-w-0 flex-col bg-[#1a1d21] ${
+          showThread ? "flex" : "hidden md:flex"
+        }`}
+      >
+        <ChatWindow
+          conversation={active}
+          onBack={backToList}
+          onToggleInfo={() => setShowInfo(!showInfo)}
+        />
+      </div>
+
+      {/* Phải: thông tin hội thoại */}
+      {active && showInfo && (
+        <div className="hidden xl:flex h-full w-[300px] shrink-0 border-l border-[#2a2d34] bg-[#16181c]">
+          <ChatInfoPanel conversation={active} />
+        </div>
+      )}
+
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
-      <span className="sr-only">{me}</span>
     </div>
   );
 }

@@ -24,30 +24,37 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`group flex ${mine ? "justify-end" : "justify-start"} mb-2 relative oc-bubble-in`}
+      className={`group flex ${mine ? "justify-end" : "justify-start"} mb-1.5 relative`}
       onMouseEnter={() => setShowBar(true)}
       onMouseLeave={() => setShowBar(false)}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div className={`max-w-[82%] relative ${mine ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[78%] sm:max-w-[70%] relative`}>
         {showBar && (
           <div
-            className={`absolute -top-9 ${mine ? "right-0" : "left-0"} flex items-center gap-0.5 px-1.5 py-1 rounded-full oc-glass z-10 oc-bubble-in`}
+            className={`absolute -top-8 ${mine ? "right-0" : "left-0"} flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-[#2a2e36] border border-[#3a3f4a] z-10 shadow-lg`}
           >
             {QUICK.map((e) => (
               <button
                 key={e}
                 type="button"
-                className="text-sm px-1 hover:scale-125 transition-transform"
-                onClick={() => toggleReaction(m.id, e)}
+                className="text-sm px-1 hover:scale-110"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  toggleReaction(m.id, e);
+                }}
               >
                 {e}
               </button>
             ))}
             <button
               type="button"
-              className="p-1 rounded-full hover:bg-white/10 text-zinc-400"
+              className="p-1 text-zinc-400 hover:text-white"
               title="Trả lời"
-              onClick={() => setReplyTo(m)}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setReplyTo(m);
+              }}
             >
               <Reply className="w-3.5 h-3.5" />
             </button>
@@ -55,22 +62,21 @@ export default function MessageBubble({
         )}
 
         <div
-          className={`rounded-2xl px-3.5 py-2 shadow-lg ${
+          className={`rounded-2xl px-3 py-1.5 ${
             mine
-              ? "bg-gradient-to-br from-rose-500 via-rose-600 to-fuchsia-700 text-white rounded-br-md shadow-rose-600/20"
-              : "oc-glass text-zinc-100 rounded-bl-md"
+              ? "bg-[#0068ff] text-white rounded-br-md"
+              : "bg-[#2a2e36] text-zinc-100 rounded-bl-md"
           }`}
         >
           {!mine && name && (
-            <p className="text-[10px] text-rose-300/90 font-semibold mb-0.5">{name}</p>
+            <p className="text-[11px] text-[#5b9dff] font-medium mb-0.5">{name}</p>
           )}
           {replyPreview && (
             <div
-              className={`mb-1.5 pl-2 border-l-2 text-[11px] rounded-sm ${
-                mine ? "border-white/40 text-white/75 bg-white/10" : "border-rose-500/60 text-zinc-400 bg-black/20"
-              } py-1 pr-1`}
+              className={`mb-1 pl-2 border-l-2 text-[11px] ${
+                mine ? "border-white/40 text-white/80" : "border-[#0068ff] text-zinc-400"
+              }`}
             >
-              <p className="font-medium truncate">Chuỗi trả lời</p>
               <p className="truncate">{replyPreview.text || "Đính kèm"}</p>
             </div>
           )}
@@ -81,7 +87,7 @@ export default function MessageBubble({
                 key={a.id}
                 src={a.url}
                 alt={a.name || ""}
-                className="rounded-xl max-h-48 mb-1 object-cover ring-1 ring-white/10"
+                className="rounded-lg max-h-52 mb-1 object-cover"
               />
             ) : (
               <p key={a.id} className="text-xs underline mb-1">
@@ -89,18 +95,20 @@ export default function MessageBubble({
               </p>
             )
           )}
-          {m.text && (
-            <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{m.text}</p>
+          {m.text?.trim() && (
+            <p className="text-[14.5px] whitespace-pre-wrap break-words leading-snug">
+              {m.text}
+            </p>
           )}
           <p
-            className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${
-              mine ? "text-white/55" : "text-zinc-500"
+            className={`text-[10px] mt-0.5 flex items-center gap-0.5 justify-end ${
+              mine ? "text-white/70" : "text-zinc-500"
             }`}
           >
             {formatChatTime(m.timestamp)}
             {mine &&
               (m.status === "read" ? (
-                <CheckCheck className="w-3.5 h-3.5 text-sky-300" />
+                <CheckCheck className="w-3.5 h-3.5 text-sky-200" />
               ) : m.status === "delivered" ? (
                 <CheckCheck className="w-3.5 h-3.5" />
               ) : (
@@ -110,13 +118,13 @@ export default function MessageBubble({
         </div>
 
         {m.reactions && m.reactions.length > 0 && (
-          <div className={`flex flex-wrap gap-1 mt-1 ${mine ? "justify-end" : "justify-start"}`}>
+          <div className={`flex flex-wrap gap-1 mt-0.5 ${mine ? "justify-end" : "justify-start"}`}>
             {m.reactions.map((r) => (
               <button
                 key={r.emoji}
                 type="button"
                 onClick={() => toggleReaction(m.id, r.emoji)}
-                className="text-[11px] px-1.5 py-0.5 rounded-full oc-glass-soft"
+                className="text-[11px] px-1.5 py-0.5 rounded-full bg-[#2a2e36] border border-[#3a3f4a]"
               >
                 {r.emoji} {r.userIds.length}
               </button>

@@ -376,7 +376,8 @@ export const useChatStore = create<ChatState>()(
             conversations,
             loading: false,
             synced: true,
-            activeId: prevActive && conversations.some((c) => c.id === prevActive) ? prevActive : get().activeId,
+            // Không bao giờ xóa activeId khi sync (tránh mất đoạn chat khi click/poll)
+            activeId: prevActive || get().activeId,
           });
 
           // Đồng bộ thông báo tin nhắn → chuông + hòm thư
@@ -647,24 +648,10 @@ export const useChatStore = create<ChatState>()(
       },
     }),
     {
-      name: "opusfilm-chat-server-v1",
-      partialize: (s) => ({
-        conversations: s.conversations,
-        messages: s.messages,
-        friends: s.friends,
-        users: s.users,
-      }),
-      merge: (persisted, current) => {
-        const p = (persisted || {}) as Partial<typeof current>;
-        return {
-          ...current,
-          ...p,
-          typingPeers: {},
-          loading: false,
-          error: null,
-          replyTo: null,
-        };
-      },
+      // v3: không lưu messages/conversations (tránh OOM mobile khi hydrate)
+      name: "opusfilm-chat-server-v3",
+      partialize: () => ({}),
+      merge: (_persisted, current) => current,
     }
   )
 );

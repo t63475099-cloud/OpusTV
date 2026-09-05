@@ -17,11 +17,12 @@ function Row({
   const displayTitle = useChatStore((s) => s.displayTitle);
   const peerOf = useChatStore((s) => s.peerOf);
   const getUser = useChatStore((s) => s.getUser);
+  const me = useChatStore((s) => s.me);
   const title = displayTitle(c);
   const peer = peerOf(c);
   const last = c.lastMessage;
   const preview = last
-    ? `${last.senderId === useChatStore.getState().me ? "Bạn" : getUser(last.senderId)?.name || ""}: ${last.text || "Đính kèm"}`
+    ? `${last.senderId === me ? "Bạn" : getUser(last.senderId)?.name || ""}: ${last.text || "Đính kèm"}`
     : "Chưa có tin nhắn";
 
   return (

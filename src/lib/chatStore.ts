@@ -143,8 +143,8 @@ function mapServerMsg(
 export function formatLastSeen(user?: ChatUser | null): string {
   if (!user) return "";
   const now = Date.now();
-  const last = user.lastSeen || 0;
-  if (user.status === "online" || (last && now - last < 90_000)) {
+  const last = Number(user.lastSeen) || 0;
+  if (user.status === "online" || (last > 0 && now - last < 90_000)) {
     return "Đang hoạt động";
   }
   if (!last) return "Không hoạt động";
@@ -641,11 +641,31 @@ export const useChatStore = create<ChatState>()(
       },
 
       isPeerTyping: (peer) => {
-        const at = get().typingPeers[peer.toLowerCase()];
+        const map = get().typingPeers || {};
+        const at = map[peer.toLowerCase()];
         return !!(at && Date.now() - at < 6000);
       },
     }),
-    { name: "opusfilm-chat-server-v1" }
+    {
+      name: "opusfilm-chat-server-v1",
+      partialize: (s) => ({
+        conversations: s.conversations,
+        messages: s.messages,
+        friends: s.friends,
+        users: s.users,
+      }),
+      merge: (persisted, current) => {
+        const p = (persisted || {}) as Partial<typeof current>;
+        return {
+          ...current,
+          ...p,
+          typingPeers: {},
+          loading: false,
+          error: null,
+          replyTo: null,
+        };
+      },
+    }
   )
 );
 

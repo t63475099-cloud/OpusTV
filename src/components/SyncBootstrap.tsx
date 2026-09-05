@@ -61,8 +61,12 @@ export default function SyncBootstrap() {
     }
     useChatStore.getState().setMe(username);
     const tick = () => {
-      void useChatStore.getState().heartbeat();
-      void useChatStore.getState().syncFromServer();
+      try {
+        void useChatStore.getState().heartbeat();
+        void useChatStore.getState().syncFromServer();
+      } catch {
+        /* không làm sập trang */
+      }
     };
     tick();
     const id = window.setInterval(tick, 12_000);

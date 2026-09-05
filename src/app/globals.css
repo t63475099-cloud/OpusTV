@@ -2247,10 +2247,14 @@ html {
 }
 
 
-/* Opus Chat: ẩn menu trên + sidebar film + footer */
+/* Opus Chat: ẩn menu trên + sidebar film + footer + canvas nền app */
 html.opus-chat-page header,
 html.opus-chat-page [data-sidebar],
 html.opus-chat-page footer {
+  display: none !important;
+}
+html.opus-chat-page body > canvas,
+html.opus-chat-page canvas.pointer-events-none.fixed {
   display: none !important;
 }
 
@@ -2344,4 +2348,10 @@ html.opus-chat-page footer {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Ẩn chatbot hỗ trợ + mini player trên Opus Chat */
+html.opus-chat-page [data-support-chat],
+html.opus-chat-page [data-mini-player] {
+  display: none !important;
 }

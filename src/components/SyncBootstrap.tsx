@@ -1,34 +1,41 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAccountStore } from "@/lib/account";
 import { useChatStore } from "@/lib/chatStore";
 
-/** Đồng bộ định kỳ khi đã đăng nhập (cookie session + Neon) */
 export default function SyncBootstrap() {
   const username = useAccountStore((s) => s.username);
   const syncNow = useAccountStore((s) => s.syncNow);
   const refreshMe = useAccountStore((s) => s.refreshMe);
+  const pathname = usePathname();
+  const isChat = pathname?.startsWith("/tin-nhan");
 
   useEffect(() => {
-    void refreshMe();
+    try {
+      void refreshMe();
+    } catch {
+      /* ignore */
+    }
   }, [refreshMe]);
 
-  // Gỡ khóa scroll bị kẹt (fullscreen player / chat) khi vào lại trang thường
   useEffect(() => {
     const clearLocks = () => {
-      const path = window.location.pathname || "";
-      if (!path.startsWith("/tin-nhan")) {
-        document.documentElement.classList.remove("opus-chat-lock");
-      }
-      if (!document.querySelector(".player-shell:fullscreen, .player-fs-css")) {
-        document.body.classList.remove("player-fs-lock");
-        document.documentElement.classList.remove(
-          "opus-hide-chrome",
-          "player-fs-html-lock"
-        );
-        document.body.style.overflow = "";
-        document.documentElement.style.overflow = "";
+      try {
+        const path = window.location.pathname || "";
+        if (!path.startsWith("/tin-nhan")) {
+          document.documentElement.classList.remove("opus-chat-lock", "opus-chat-page");
+        }
+        if (!document.querySelector(".player-shell:fullscreen, .player-fs-css")) {
+          document.body.classList.remove("player-fs-lock");
+          document.documentElement.classList.remove(
+            "opus-hide-chrome",
+            "player-fs-html-lock"
+          );
+        }
+      } catch {
+        /* ignore */
       }
     };
     clearLocks();
@@ -39,7 +46,11 @@ export default function SyncBootstrap() {
   useEffect(() => {
     if (!username) return;
     const run = () => {
-      void syncNow();
+      try {
+        void syncNow();
+      } catch {
+        /* ignore */
+      }
     };
     run();
     const id = window.setInterval(run, 5 * 60 * 1000);
@@ -53,32 +64,34 @@ export default function SyncBootstrap() {
     };
   }, [username, syncNow]);
 
-  // Opus Chat: đồng bộ hộp thư + đẩy thông báo tin mới ra chuông / hòm thư
+  // Chat sync — chỉ khi đã đăng nhập; interval dài hơn trên trang không phải chat
   useEffect(() => {
     if (!username) {
-      useChatStore.getState().setMe(null);
+      try {
+        useChatStore.getState().setMe(null);
+      } catch {
+        /* ignore */
+      }
       return;
     }
-    useChatStore.getState().setMe(username);
+    try {
+      useChatStore.getState().setMe(username);
+    } catch {
+      /* ignore */
+    }
     const tick = () => {
       try {
         void useChatStore.getState().heartbeat();
         void useChatStore.getState().syncFromServer();
       } catch {
-        /* không làm sập trang */
+        /* ignore */
       }
     };
     tick();
-    const id = window.setInterval(tick, 12_000);
-    const onVis = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [username]);
+    const ms = isChat ? 8000 : 20000;
+    const id = window.setInterval(tick, ms);
+    return () => window.clearInterval(id);
+  }, [username, isChat]);
 
   return null;
 }

@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { useNotifStore } from "@/lib/notifications";
-import { persist } from "zustand/middleware";
 
 export type UserStatus = "online" | "offline" | "away";
 export type MessageStatus = "sent" | "delivered" | "read";
@@ -173,9 +172,7 @@ function statusFromLastSeen(lastSeen?: number): UserStatus {
   return "offline";
 }
 
-export const useChatStore = create<ChatState>()(
-  persist(
-    (set, get) => ({
+export const useChatStore = create<ChatState>()((set, get) => ({
       me: null,
       users: {},
       friends: [],
@@ -646,15 +643,8 @@ export const useChatStore = create<ChatState>()(
         const at = map[peer.toLowerCase()];
         return !!(at && Date.now() - at < 6000);
       },
-    }),
-    {
-      // v3: không lưu messages/conversations (tránh OOM mobile khi hydrate)
-      name: "opusfilm-chat-server-v3",
-      partialize: () => ({}),
-      merge: (_persisted, current) => current,
-    }
-  )
-);
+}));
+
 
 export function formatChatTime(ts: number) {
   const d = new Date(ts);

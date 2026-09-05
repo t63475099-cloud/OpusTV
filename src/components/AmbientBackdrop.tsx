@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
-/** Nền gradient chuyển màu theo thời gian + đốm sáng mờ */
+/** Nền gradient — tắt hoàn toàn trên Opus Chat để tránh crash renderer */
 export default function AmbientBackdrop() {
+  const pathname = usePathname();
   const ref = useRef<HTMLCanvasElement>(null);
+  const isChat = pathname?.startsWith("/tin-nhan");
 
   useEffect(() => {
+    if (isChat) return;
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -14,7 +18,7 @@ export default function AmbientBackdrop() {
     let raf = 0;
     let w = 0;
     let h = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 1.5);
     const t0 = performance.now();
 
     const resize = () => {
@@ -39,19 +43,6 @@ export default function AmbientBackdrop() {
       g.addColorStop(1, `hsla(${(hue + 80) % 360}, 28%, 7%, 1)`);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
-
-      for (let i = 0; i < 4; i++) {
-        const cx = w * (0.2 + 0.2 * i + 0.05 * Math.sin(t * 0.3 + i));
-        const cy = h * (0.25 + 0.15 * Math.cos(t * 0.25 + i * 1.2));
-        const r = Math.min(w, h) * (0.22 + 0.04 * Math.sin(t * 0.4 + i));
-        const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        rg.addColorStop(0, `hsla(${(hue + i * 50) % 360}, 70%, 45%, 0.14)`);
-        rg.addColorStop(1, "transparent");
-        ctx.fillStyle = rg;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
@@ -59,12 +50,13 @@ export default function AmbientBackdrop() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [isChat]);
 
+  if (isChat) return null;
   return (
     <canvas
       ref={ref}
-      className="pointer-events-none fixed inset-0 -z-10 opacity-90"
+      className="pointer-events-none fixed inset-0 -z-10"
       aria-hidden
     />
   );

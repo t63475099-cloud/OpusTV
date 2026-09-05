@@ -73,6 +73,8 @@ interface ChatState {
   typingPeers: Record<string, number>;
 
   setMe: (username: string | null) => void;
+  /** Avatar riêng Opus Chat — không ghi vào Opus Film */
+  setChatAvatar: (dataUrl: string) => void;
   syncMyAvatarFromFilm: () => void;
   setSearch: (q: string) => void;
   setTab: (t: "all" | "groups" | "unread") => void;
@@ -193,11 +195,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         const me = username ? username.toLowerCase() : null;
         set({ me });
         if (me) {
+          const chatAv = loadChatAvatar(me);
           try {
             void import("@/lib/settings").then(({ useSettingsStore }) => {
               const profile = useSettingsStore.getState().profile;
-              const av = (profile?.avatar || "").trim();
               const name = (profile?.name || me).trim();
+              // Ưu tiên avatar chat riêng; film chỉ là fallback
+              const av =
+                chatAv ||
+                (get().users[me]?.avatar || "").trim() ||
+                (profile?.avatar || "").trim() ||
+                "";
               set((s) => ({
                 users: {
                   ...s.users,
@@ -206,7 +214,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                     id: me,
                     name: name || s.users[me]?.name || me,
                     nickname: me,
-                    avatar: av || s.users[me]?.avatar || "",
+                    avatar: av,
                     status: "online" as const,
                     lastSeen: Date.now(),
                     verified: !!profile?.verified,
@@ -215,31 +223,87 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                 },
               }));
             });
-          } catch {}
+          } catch {
+            set((s) => ({
+              users: {
+                ...s.users,
+                [me]: {
+                  ...(s.users[me] || {}),
+                  id: me,
+                  name: s.users[me]?.name || me,
+                  nickname: me,
+                  avatar: chatAv || s.users[me]?.avatar || "",
+                  status: "online" as const,
+                  lastSeen: Date.now(),
+                },
+              },
+            }));
+          }
         }
       },
-      /** Gọi khi đổi avatar trong Cài đặt / Tài khoản */
+      /** Avatar chỉ cho Opus Chat — không đụng profile Film */
+      setChatAvatar: (dataUrl) => {
+        const me = get().me;
+        if (!me) return;
+        const url = (dataUrl || "").trim();
+        saveChatAvatar(me, url);
+        set((s) => ({
+          users: {
+            ...s.users,
+            [me]: {
+              ...(s.users[me] || {
+                id: me,
+                name: me,
+                nickname: me,
+                status: "online" as const,
+                lastSeen: Date.now(),
+              }),
+              id: me,
+              avatar: url,
+            },
+          },
+        }));
+      },
+      /** Chỉ điền avatar Film nếu CHƯA có avatar chat riêng */
       syncMyAvatarFromFilm: () => {
         const me = get().me;
         if (!me) return;
-        void import("@/lib/settings").then(({ useSettingsStore }) => {
-          const profile = useSettingsStore.getState().profile;
-          const av = (profile?.avatar || "").trim();
-          const name = (profile?.name || me).trim();
+        const chatAv = loadChatAvatar(me);
+        if (chatAv) {
           set((s) => ({
             users: {
               ...s.users,
               [me]: {
                 ...(s.users[me] || { id: me, nickname: me, status: "online" as const }),
                 id: me,
-                name: name || me,
-                nickname: me,
-                avatar: av || s.users[me]?.avatar || "",
-                status: "online" as const,
-                lastSeen: Date.now(),
+                avatar: chatAv,
               },
             },
           }));
+          return;
+        }
+        void import("@/lib/settings").then(({ useSettingsStore }) => {
+          const profile = useSettingsStore.getState().profile;
+          const av = (profile?.avatar || "").trim();
+          const name = (profile?.name || me).trim();
+          if (!av) return;
+          set((s) => {
+            if ((s.users[me]?.avatar || "").trim()) return s;
+            return {
+              users: {
+                ...s.users,
+                [me]: {
+                  ...(s.users[me] || { id: me, nickname: me, status: "online" as const }),
+                  id: me,
+                  name: name || me,
+                  nickname: me,
+                  avatar: av,
+                  status: "online" as const,
+                  lastSeen: Date.now(),
+                },
+              },
+            };
+          });
         });
       },
 

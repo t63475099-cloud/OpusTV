@@ -610,7 +610,14 @@ function NhacInner() {
             <h2 className="text-base font-semibold text-white line-clamp-2">
               {current?.title || "Đang phát"}
             </h2>
-            <p className="text-sm text-[#aaa]">{current?.artist || ""}</p>
+            <p className="text-sm text-[#aaa] flex flex-wrap items-center gap-2">
+              <span>{current?.artist || ""}</span>
+              {startSec > 5 ? (
+                <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 tabular-nums">
+                  Tiếp tục từ {Math.floor(startSec / 60)}:{String(Math.floor(startSec % 60)).padStart(2, "0")}
+                </span>
+              ) : null}
+            </p>
             <div className="mt-2">
               <FloatingReactions onReact={() => addXp({ type: "like" })} />
             </div>

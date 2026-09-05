@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useHistoryStore } from "@/lib/history";
 import { useActiveMediaStore } from "@/lib/activeMediaStore";
+import { saveFilmResume, loadFilmResume } from "@/lib/resumeStore";
 import { useSettingsStore } from "@/lib/settings";
 import type { Episode, Movie } from "@/lib/types";
 import { getImageUrl } from "@/lib/api";
@@ -161,26 +162,46 @@ export default function Player({
         best = af.currentTime;
       }
     } catch {}
+    try {
+      const ls = loadFilmResume(movie.slug, currentEpisode.slug);
+      if (ls > best) best = ls;
+    } catch {}
     return best > 10 ? best : 0;
   };
 
 
   useEffect(() => {
     const hist = useHistoryStore.getState().getBySlug(movie.slug);
-    const sameEp = hist && hist.episodeSlug === currentEpisode?.slug;
+    const active = useActiveMediaStore.getState().film;
+    const sameHist = hist && hist.episodeSlug === currentEpisode?.slug;
+    const sameActive =
+      active &&
+      active.slug === movie.slug &&
+      active.episodeSlug === currentEpisode?.slug;
+    const resumeT = Math.max(
+      sameHist ? hist!.currentTime || 0 : 0,
+      sameActive ? active!.currentTime || 0 : 0
+    );
+    const resumeD = Math.max(
+      sameHist ? hist!.duration || 0 : 0,
+      sameActive ? active!.duration || 0 : 0
+    );
     setActiveFilm({
       slug: movie.slug,
       name: movie.name || movie.slug,
-      poster: (typeof getImageUrl === "function" ? getImageUrl(movie.poster_url || movie.thumb_url) : movie.poster_url || movie.thumb_url) || "",
+      poster:
+        (typeof getImageUrl === "function"
+          ? getImageUrl(movie.poster_url || movie.thumb_url)
+          : movie.poster_url || movie.thumb_url) || "",
       episode: currentEpisode?.name,
       episodeSlug: currentEpisode?.slug,
       server: serverName,
-      currentTime: sameEp && hist ? hist.currentTime : 0,
-      duration: sameEp && hist ? hist.duration : 0,
-      m3u8: m3u8 || undefined,
+      currentTime: resumeT,
+      duration: resumeD,
+      m3u8: m3u8 || (sameActive ? active?.m3u8 : undefined),
     });
     if (m3u8) setFilmStream(m3u8);
-  }, [movie.slug, currentEpisode?.slug, serverName]);
+  }, [movie.slug, currentEpisode?.slug, serverName, m3u8]);
 
   // Resume từ query ?t= (playbox phóng to)
   useEffect(() => {
@@ -438,6 +459,13 @@ const showControls = useCallback(() => {
     const onTime = () => {
       if (!seeking) setCurrentTime(video.currentTime);
         updateFilmTime(video.currentTime, video.duration || 0);
+        saveFilmResume(movie.slug, currentEpisode?.slug, video.currentTime, video.duration || 0, {
+          name: movie.name,
+          poster: (typeof getImageUrl === "function" ? getImageUrl(movie.poster_url || movie.thumb_url) : movie.poster_url) || "",
+          episode: currentEpisode?.name,
+          server: serverName,
+          m3u8: m3u8 || undefined,
+        });
         if (video.duration > 30 && video.currentTime / video.duration > 0.99) {
           clearActiveFilm();
         }

@@ -130,6 +130,22 @@ export default function Player({
 
   const addOrUpdate = useHistoryStore((s) => s.addOrUpdate);
   const historyItem = useHistoryStore((s) => s.getBySlug(movie.slug));
+
+  // Resume từ query ?t= (playbox phóng to)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const t = Number(new URLSearchParams(window.location.search).get("t") || 0);
+      if (t > 10 && videoRef.current) {
+        const v = videoRef.current;
+        const apply = () => {
+          if (v.duration && t < v.duration - 2) v.currentTime = t;
+        };
+        if (v.readyState >= 1) apply();
+        else v.addEventListener("loadedmetadata", apply, { once: true });
+      }
+    } catch {}
+  }, [m3u8, currentEpisode?.slug]);
   const autoPlayNext = useSettingsStore((s) => s.settings.autoPlayNext);
   const defaultQuality = useSettingsStore((s) => s.settings.defaultQuality);
   const seekSeconds = useSettingsStore((s) => s.settings.seekSeconds) || 10;

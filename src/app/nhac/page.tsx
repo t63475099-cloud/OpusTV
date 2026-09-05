@@ -1,4 +1,5 @@
 "use client";
+import { useEventStore } from "@/lib/eventCoins";
 
 import { useSearchParams } from "next/navigation";
 
@@ -71,14 +72,31 @@ function NhacInner() {
   const setMiniTrack = useMusicPlayerStore((s) => s.setTrack);
 
   const searchParams = useSearchParams();
+  const [startSec, setStartSec] = useState(0);
   useEffect(() => {
     const v = searchParams?.get("v");
     if (!v || typeof v !== "string") return;
     const thumb = `https://i.ytimg.com/vi/${v}/hqdefault.jpg`;
+    const start = Number(searchParams?.get("t") || 0) || 0;
+    setStartSec(start > 5 ? start : 0);
+    const title =
+      useMusicPlayerStore.getState().track?.id === v
+        ? useMusicPlayerStore.getState().track?.title || "Đang phát"
+        : "Đang phát";
+    const artist =
+      useMusicPlayerStore.getState().track?.id === v
+        ? useMusicPlayerStore.getState().track?.artist || ""
+        : "";
     setCurrentId(v);
-    setCurrentTrack({ id: v, title: "Đang phát", artist: "", thumb });
+    setCurrentTrack({ id: v, title, artist, thumb });
     setPlaying(true);
-    setMiniTrack({ id: v, title: "Đang phát", artist: "", thumb });
+    setMiniTrack({ id: v, title, artist, thumb, currentTime: start > 5 ? start : undefined });
+    // Phóng to: cuộn tới khung phát
+    if (searchParams?.get("expand") === "1") {
+      requestAnimationFrame(() => {
+        document.getElementById("opus-music-player")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
   }, [searchParams, setMiniTrack]);
   const addXp = useXpStore((s) => s.add);
   const watchedIds = useMusicHistoryStore((s) => s.ids);
@@ -289,6 +307,7 @@ function NhacInner() {
   };
 
   const playTrack = (t: Track) => {
+    try { useEventStore.getState().addMissionProgress("music"); } catch {}
     if (!t?.id) return;
     const track: Track = {
       id: t.id,
@@ -576,11 +595,11 @@ function NhacInner() {
           className="mb-5"
         >
         <div className="rounded-2xl overflow-hidden bg-black border border-[#272727]">
-          <div className="relative w-full aspect-video">
+          <div id="opus-music-player" className="relative w-full aspect-video">
             <iframe
               key={currentId}
               title={current?.title || "Opus Music"}
-              src={`https://www.youtube.com/embed/${currentId}?autoplay=1&rel=0`}
+              src={`https://www.youtube.com/embed/${currentId}?autoplay=1&rel=0${startSec > 5 ? `&start=${startSec}` : ""}`}
               className="absolute inset-0 w-full h-full border-0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen

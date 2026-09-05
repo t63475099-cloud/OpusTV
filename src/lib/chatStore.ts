@@ -73,6 +73,7 @@ interface ChatState {
   typingPeers: Record<string, number>;
 
   setMe: (username: string | null) => void;
+  syncMyAvatarFromFilm: () => void;
   setSearch: (q: string) => void;
   setTab: (t: "all" | "groups" | "unread") => void;
   setShowInfo: (v: boolean) => void;
@@ -191,25 +192,25 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       setMe: (username) => {
         const me = username ? username.toLowerCase() : null;
         set({ me });
-        // Đồng bộ avatar OpusFilm (local settings) vào hồ sơ chat của mình
         if (me) {
           try {
-            // lazy import tránh vòng phụ thuộc lúc module load
             void import("@/lib/settings").then(({ useSettingsStore }) => {
               const profile = useSettingsStore.getState().profile;
-              const av = profile?.avatar || "";
+              const av = (profile?.avatar || "").trim();
               const name = (profile?.name || me).trim();
               set((s) => ({
                 users: {
                   ...s.users,
                   [me]: {
+                    ...(s.users[me] || {}),
                     id: me,
-                    name: name || me,
+                    name: name || s.users[me]?.name || me,
                     nickname: me,
                     avatar: av || s.users[me]?.avatar || "",
-                    status: "online",
+                    status: "online" as const,
                     lastSeen: Date.now(),
                     verified: !!profile?.verified,
+                    uid: s.users[me]?.uid || profile?.uid,
                   },
                 },
               }));
@@ -217,6 +218,31 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           } catch {}
         }
       },
+      /** Gọi khi đổi avatar trong Cài đặt / Tài khoản */
+      syncMyAvatarFromFilm: () => {
+        const me = get().me;
+        if (!me) return;
+        void import("@/lib/settings").then(({ useSettingsStore }) => {
+          const profile = useSettingsStore.getState().profile;
+          const av = (profile?.avatar || "").trim();
+          const name = (profile?.name || me).trim();
+          set((s) => ({
+            users: {
+              ...s.users,
+              [me]: {
+                ...(s.users[me] || { id: me, nickname: me, status: "online" as const }),
+                id: me,
+                name: name || me,
+                nickname: me,
+                avatar: av || s.users[me]?.avatar || "",
+                status: "online" as const,
+                lastSeen: Date.now(),
+              },
+            },
+          }));
+        });
+      },
+
       setSearch: (q) => set({ search: q }),
       setTab: (t) => set({ tab: t }),
       setShowInfo: (v) => set({ showInfo: v }),

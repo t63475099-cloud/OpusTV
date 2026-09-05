@@ -76,6 +76,7 @@ export default function SyncBootstrap() {
     }
     try {
       useChatStore.getState().setMe(username);
+      useChatStore.getState().syncMyAvatarFromFilm?.();
     } catch {
       /* ignore */
     }

@@ -14,7 +14,6 @@ import IncomingCallBanner from "@/components/chat/IncomingCallBanner";
 export default function TinNhanPage() {
   const username = useAccountStore((s) => s.username);
   const setMe = useChatStore((s) => s.setMe);
-  const syncMyAvatarFromFilm = useChatStore((s) => s.syncMyAvatarFromFilm);
   const syncFromServer = useChatStore((s) => s.syncFromServer);
   const loadThread = useChatStore((s) => s.loadThread);
   const setActive = useChatStore((s) => s.setActive);
@@ -43,13 +42,13 @@ export default function TinNhanPage() {
     if (username) {
       setMe(username);
       try {
-        syncMyAvatarFromFilm();
+        useChatStore.getState().syncMyAvatarFromFilm();
       } catch {}
       void syncFromServer();
     } else {
       setMe(null);
     }
-  }, [username, setMe, syncFromServer, syncMyAvatarFromFilm]);
+  }, [username, setMe, syncFromServer]);
 
   useEffect(() => {
     if (!username) return;

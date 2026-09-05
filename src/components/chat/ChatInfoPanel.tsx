@@ -1,6 +1,8 @@
 "use client";
 
-import { X, Bell, BellOff, Ban, Image as ImageIcon, Users } from "lucide-react";
+import { X, Bell, BellOff, Ban, Image as ImageIcon, Users, Phone, Video } from "lucide-react";
+import { useState } from "react";
+import CallModal from "./CallModal";
 import { useChatStore, formatLastSeen, type Conversation } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
 import type { ChatMessage } from "@/lib/chatStore";
@@ -17,6 +19,7 @@ export default function ChatInfoPanel({ conversation }: { conversation: Conversa
   const messages = useChatStore((s) => s.messages[convId] ?? EMPTY_MSGS);
 
   const peer = peerOf(conversation);
+  const [call, setCall] = useState<"audio" | "video" | null>(null);
   const images = messages.flatMap((m) => m.attachments || []).filter((a) => a.type === "image");
   const members = conversation.participants.map((id) => getUser(id)).filter(Boolean);
 
@@ -53,7 +56,23 @@ export default function ChatInfoPanel({ conversation }: { conversation: Conversa
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-1 p-3 border-b border-[#2a2d34]">
+        <div className="grid grid-cols-4 gap-1 p-3 border-b border-[#2a2d34]">
+          <button
+            type="button"
+            onClick={() => setCall("audio")}
+            className="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-[#2a2e36] text-[#5b9dff]"
+          >
+            <Phone className="w-5 h-5" />
+            <span className="text-[10px]">Gọi</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCall("video")}
+            className="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-[#2a2e36] text-[#5b9dff]"
+          >
+            <Video className="w-5 h-5" />
+            <span className="text-[10px]">Video</span>
+          </button>
           <button
             type="button"
             onClick={() => toggleMute(conversation.id)}
@@ -120,6 +139,14 @@ export default function ChatInfoPanel({ conversation }: { conversation: Conversa
           )}
         </div>
       </div>
+      <CallModal
+        open={!!call}
+        mode={call || "audio"}
+        peer={peer}
+        role="caller"
+        onClose={() => setCall(null)}
+      />
     </aside>
   );
 }
+

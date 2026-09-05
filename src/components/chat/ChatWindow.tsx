@@ -120,77 +120,85 @@ export default function ChatWindow({
       className="flex flex-col h-full min-h-0 bg-[#1a1d21]"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Header */}
-      <header className="shrink-0 flex items-center gap-2 px-2 sm:px-3 h-14 border-b border-[#2a2d34] bg-[#16181c]">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onBack();
-          }}
-          className="md:hidden p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300"
-          aria-label="Quay lại danh sách"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <ChatAvatar user={livePeer} size="sm" />
-        <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-semibold text-white truncate">
-            {displayTitle(conversation)}
-          </p>
-          <p className="text-[12px] truncate leading-tight">
-            {peerTyping ? (
-              <span className="text-[#5b9dff]">Đang soạn tin…</span>
-            ) : (
-              <span className="text-zinc-500">{formatLastSeen(livePeer)}</span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-center gap-0.5 shrink-0">
+      {/* Header + menu gọi */}
+      <header className="shrink-0 border-b border-[#2a2d34] bg-[#16181c]">
+        <div className="flex items-center gap-2 px-2 sm:px-3 h-14">
           <button
             type="button"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
-              setCall("audio");
+              onBack();
             }}
-            className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-200"
-            title="Gọi thoại"
-            aria-label="Gọi thoại"
+            className="md:hidden p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300"
+            aria-label="Quay lại danh sách"
           >
-            <Phone className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <button
             type="button"
+            className="flex items-center gap-2 min-w-0 flex-1 text-left"
             onClick={(e) => {
               e.stopPropagation();
-              setCall("video");
+              onToggleInfo?.();
             }}
-            className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-200"
-            title="Gọi video"
-            aria-label="Gọi video"
           >
-            <Video className="w-5 h-5" />
+            <ChatAvatar user={livePeer} size="sm" />
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold text-white truncate">
+                {displayTitle(conversation)}
+              </p>
+              <p className="text-[12px] truncate leading-tight">
+                {peerTyping ? (
+                  <span className="text-[#5b9dff]">Đang soạn tin…</span>
+                ) : (
+                  <span className="text-zinc-500">{formatLastSeen(livePeer)}</span>
+                )}
+              </p>
+            </div>
           </button>
+
+          {/* Menu gọi — luôn hiện trên mọi thiết bị */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setCall("audio");
+              }}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2a2e36] hover:bg-[#0068ff] text-white transition"
+              title="Gọi thoại"
+              aria-label="Gọi thoại"
+            >
+              <Phone className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setCall("video");
+              }}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2a2e36] hover:bg-[#0068ff] text-white transition"
+              title="Gọi video"
+              aria-label="Gọi video"
+            >
+              <Video className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleInfo?.();
+              }}
+              className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#2a2e36] text-zinc-300"
+              aria-label="Thông tin"
+            >
+              <Info className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300 hidden sm:inline-flex"
-          aria-label="Tìm kiếm"
-        >
-          <Search className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleInfo?.();
-          }}
-          className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300 hidden sm:inline-flex"
-          aria-label="Thông tin"
-        >
-          <Info className="w-5 h-5" />
-        </button>
       </header>
 
       {/* Messages */}

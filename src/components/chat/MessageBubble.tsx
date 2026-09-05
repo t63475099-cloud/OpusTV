@@ -24,20 +24,20 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`group flex ${mine ? "justify-end" : "justify-start"} mb-2 relative`}
+      className={`group flex ${mine ? "justify-end" : "justify-start"} mb-2 relative oc-bubble-in`}
       onMouseEnter={() => setShowBar(true)}
       onMouseLeave={() => setShowBar(false)}
     >
-      <div className={`max-w-[80%] relative ${mine ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[82%] relative ${mine ? "items-end" : "items-start"}`}>
         {showBar && (
           <div
-            className={`absolute -top-8 ${mine ? "right-0" : "left-0"} flex items-center gap-0.5 px-1.5 py-1 rounded-full bg-neutral-800 border border-neutral-700 shadow-lg z-10`}
+            className={`absolute -top-9 ${mine ? "right-0" : "left-0"} flex items-center gap-0.5 px-1.5 py-1 rounded-full oc-glass z-10 oc-bubble-in`}
           >
             {QUICK.map((e) => (
               <button
                 key={e}
                 type="button"
-                className="text-sm px-1 hover:scale-125 transition"
+                className="text-sm px-1 hover:scale-125 transition-transform"
                 onClick={() => toggleReaction(m.id, e)}
               >
                 {e}
@@ -55,24 +55,22 @@ export default function MessageBubble({
         )}
 
         <div
-          className={`rounded-2xl px-3.5 py-2 ${
+          className={`rounded-2xl px-3.5 py-2 shadow-lg ${
             mine
-              ? "bg-gradient-to-br from-rose-600 to-red-700 text-white rounded-br-md"
-              : "bg-neutral-900 border border-neutral-800 text-zinc-100 rounded-bl-md"
+              ? "bg-gradient-to-br from-rose-500 via-rose-600 to-fuchsia-700 text-white rounded-br-md shadow-rose-600/20"
+              : "oc-glass text-zinc-100 rounded-bl-md"
           }`}
         >
           {!mine && name && (
-            <p className="text-[10px] text-rose-300/90 font-medium mb-0.5">{name}</p>
+            <p className="text-[10px] text-rose-300/90 font-semibold mb-0.5">{name}</p>
           )}
           {replyPreview && (
             <div
-              className={`mb-1.5 pl-2 border-l-2 text-[11px] ${
-                mine ? "border-white/40 text-white/70" : "border-rose-500/50 text-zinc-400"
-              }`}
+              className={`mb-1.5 pl-2 border-l-2 text-[11px] rounded-sm ${
+                mine ? "border-white/40 text-white/75 bg-white/10" : "border-rose-500/60 text-zinc-400 bg-black/20"
+              } py-1 pr-1`}
             >
-              <p className="font-medium truncate">
-                {replyPreview.senderId === "me" ? "Bạn" : name || "Tin nhắn"}
-              </p>
+              <p className="font-medium truncate">Chuỗi trả lời</p>
               <p className="truncate">{replyPreview.text || "Đính kèm"}</p>
             </div>
           )}
@@ -83,7 +81,7 @@ export default function MessageBubble({
                 key={a.id}
                 src={a.url}
                 alt={a.name || ""}
-                className="rounded-lg max-h-44 mb-1 object-cover"
+                className="rounded-xl max-h-48 mb-1 object-cover ring-1 ring-white/10"
               />
             ) : (
               <p key={a.id} className="text-xs underline mb-1">
@@ -94,7 +92,11 @@ export default function MessageBubble({
           {m.text && (
             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{m.text}</p>
           )}
-          <p className={`text-[10px] mt-1 flex items-center gap-1 ${mine ? "text-white/55" : "text-zinc-500"}`}>
+          <p
+            className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${
+              mine ? "text-white/55" : "text-zinc-500"
+            }`}
+          >
             {formatChatTime(m.timestamp)}
             {mine &&
               (m.status === "read" ? (
@@ -114,7 +116,7 @@ export default function MessageBubble({
                 key={r.emoji}
                 type="button"
                 onClick={() => toggleReaction(m.id, r.emoji)}
-                className="text-[11px] px-1.5 py-0.5 rounded-full bg-neutral-900 border border-neutral-700"
+                className="text-[11px] px-1.5 py-0.5 rounded-full oc-glass-soft"
               >
                 {r.emoji} {r.userIds.length}
               </button>

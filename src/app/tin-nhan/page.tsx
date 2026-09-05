@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import { useChatStore } from "@/lib/chatStore";
 import { useAccountStore } from "@/lib/account";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInfoPanel from "@/components/chat/ChatInfoPanel";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
+import ChatCanvas from "@/components/chat/ChatCanvas";
 
 export default function TinNhanPage() {
   const activeId = useChatStore((s) => s.activeId);
@@ -38,12 +40,16 @@ export default function TinNhanPage() {
   useEffect(() => {
     if (!username) return;
     const t = setInterval(() => {
-      void syncFromServer();
-      const c = useChatStore
-        .getState()
-        .conversations.find((x) => x.id === useChatStore.getState().activeId);
-      const peer = c?.peerUsername;
-      if (peer) void loadThread(peer);
+      try {
+        void syncFromServer();
+        const c = useChatStore
+          .getState()
+          .conversations.find((x) => x.id === useChatStore.getState().activeId);
+        const peer = c?.peerUsername;
+        if (peer) void loadThread(peer);
+      } catch {
+        /* ignore */
+      }
     }, 2000);
     return () => clearInterval(t);
   }, [username, syncFromServer, loadThread]);
@@ -52,7 +58,6 @@ export default function TinNhanPage() {
     if (activeId) setMobileChat(true);
   }, [activeId]);
 
-  // Chỉ khóa scroll body khi ở trang chat; luôn dọn class fullscreen cũ
   useEffect(() => {
     document.documentElement.classList.add("opus-chat-lock");
     document.documentElement.classList.add("opus-chat-page");
@@ -68,37 +73,44 @@ export default function TinNhanPage() {
 
   if (!username) {
     return (
-      <div className="min-h-[100dvh] px-4 flex flex-col items-center justify-center bg-neutral-950 text-center pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)]">
-        <p className="text-white font-semibold text-lg mb-2">Đăng nhập để dùng Opus Chat</p>
-        <p className="text-sm text-zinc-500 max-w-sm mb-6">
-          Kết bạn bằng UID trong Tài khoản. Mỗi người một tài khoản riêng.
-        </p>
-        <Link
-          href="/tai-khoan"
-          className="px-5 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold active:scale-95"
-        >
-          Đăng nhập / Đăng ký
-        </Link>
+      <div className="min-h-[100dvh] oc-shell relative flex flex-col items-center justify-center px-4 text-center pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[env(safe-area-inset-bottom,0px)]">
+        <ChatCanvas />
+        <div className="relative z-10 oc-glass rounded-3xl p-8 max-w-sm w-full oc-bubble-in">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-rose-500 to-violet-600 flex items-center justify-center shadow-xl shadow-rose-500/30">
+            <MessageCircle className="w-7 h-7 text-white" />
+          </div>
+          <p className="text-white font-bold text-xl mb-1">Opus Chat</p>
+          <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
+            Đăng nhập để nhắn tin, kết bạn bằng UID và đồng bộ trên mọi thiết bị.
+          </p>
+          <Link
+            href="/tai-khoan"
+            className="inline-flex w-full items-center justify-center px-5 py-3 rounded-2xl text-sm font-semibold text-white oc-send-btn"
+          >
+            Đăng nhập / Đăng ký
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      className="fixed inset-0 z-40 flex flex-col bg-neutral-950"
+      className="fixed inset-0 z-40 flex flex-col oc-shell"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
+      <ChatCanvas />
       {error && (
-        <div className="shrink-0 px-3 pt-1">
-          <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+        <div className="relative z-10 shrink-0 px-3 pt-2">
+          <p className="text-xs text-amber-200 oc-glass rounded-xl px-3 py-2 border border-amber-500/20">
             {error}
           </p>
         </div>
       )}
-      <div className="flex-1 min-h-0 flex w-full max-w-6xl mx-auto border-x border-neutral-900/80">
+      <div className="relative z-10 flex-1 min-h-0 flex w-full max-w-6xl mx-auto md:my-2 md:rounded-3xl md:overflow-hidden md:border md:border-white/10 md:shadow-2xl md:shadow-black/40">
         <ChatSidebar
           onOpenCreate={() => setCreateOpen(true)}
           hiddenOnMobileChat={mobileChat}

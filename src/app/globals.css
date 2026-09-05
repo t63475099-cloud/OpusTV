@@ -2263,3 +2263,85 @@ html.opus-chat-page footer {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+
+/* ========== Opus Chat · Liquid Glass ========== */
+.oc-shell {
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(244, 63, 94, 0.12), transparent 55%),
+    radial-gradient(900px 500px at 100% 20%, rgba(99, 102, 241, 0.1), transparent 50%),
+    #07070c;
+}
+.oc-glass {
+  background: rgba(18, 18, 28, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.oc-glass-soft {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.oc-glass-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
+}
+.oc-glass-input:focus-within {
+  border-color: rgba(244, 63, 94, 0.45);
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
+}
+.oc-row {
+  transition: background 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.oc-row:active {
+  transform: scale(0.985);
+}
+.oc-bubble-in {
+  animation: oc-bubble-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes oc-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.oc-tab-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+.oc-send-btn {
+  background: linear-gradient(135deg, #f43f5e, #e11d48 50%, #c026d3);
+  box-shadow: 0 4px 20px rgba(244, 63, 94, 0.35);
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+.oc-send-btn:active {
+  transform: scale(0.92);
+}
+.oc-send-btn:disabled {
+  opacity: 0.4;
+  box-shadow: none;
+}
+.oc-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .oc-bubble-in,
+  .oc-row {
+    animation: none !important;
+    transition: none !important;
+  }
+}

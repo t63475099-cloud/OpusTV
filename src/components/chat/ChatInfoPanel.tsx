@@ -19,19 +19,19 @@ export default function ChatInfoPanel({ conversation }: { conversation: Conversa
     .filter(Boolean);
 
   return (
-    <aside className="hidden lg:flex w-[280px] shrink-0 border-l border-neutral-800 flex-col bg-neutral-950">
-      <div className="h-14 px-3 flex items-center justify-between border-b border-neutral-800">
+    <aside className="hidden lg:flex w-[280px] shrink-0 border-l border-white/[0.06] flex-col oc-glass">
+      <div className="h-14 px-3 flex items-center justify-between border-b border-white/10">
         <span className="text-sm font-semibold text-white">Chi tiết</span>
         <button
           type="button"
           onClick={() => setShowInfo(false)}
-          className="p-2 rounded-full hover:bg-neutral-800 text-zinc-400"
+          className="p-2 rounded-full hover:bg-white/10 text-zinc-400"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="p-4 flex flex-col items-center text-center border-b border-neutral-800">
+      <div className="p-4 flex flex-col items-center text-center border-b border-white/10">
         {conversation.isGroup ? (
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-rose-500 flex items-center justify-center mb-2">
             <Users className="w-7 h-7 text-white" />
@@ -50,7 +50,7 @@ export default function ChatInfoPanel({ conversation }: { conversation: Conversa
       </div>
 
       {conversation.isGroup && (
-        <div className="px-3 py-3 border-b border-neutral-800">
+        <div className="px-3 py-3 border-b border-white/10">
           <p className="text-xs text-zinc-500 mb-2">Thành viên ({members.length})</p>
           <ul className="space-y-2">
             {members.map(

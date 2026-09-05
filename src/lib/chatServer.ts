@@ -55,6 +55,23 @@ export async function ensureChatTables() {
       PRIMARY KEY (from_user, to_user)
     )
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_calls (
+      id TEXT PRIMARY KEY,
+      from_user TEXT NOT NULL,
+      to_user TEXT NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'audio',
+      status TEXT NOT NULL DEFAULT 'ringing',
+      offer_sdp TEXT,
+      answer_sdp TEXT,
+      caller_ice JSONB DEFAULT '[]'::jsonb,
+      callee_ice JSONB DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS chat_calls_to_status_idx ON chat_calls (to_user, status)`;
+  await sql`CREATE INDEX IF NOT EXISTS chat_calls_from_status_idx ON chat_calls (from_user, status)`;
 }
 
 function pairKey(u1: string, u2: string): [string, string] {
@@ -384,4 +401,113 @@ export async function getTypingFrom(peer: string, me: string) {
   const at = (rows as { updated_at: string }[])[0]?.updated_at;
   if (!at) return false;
   return Date.now() - new Date(at).getTime() < 6000;
+}
+
+
+/* ========== WebRTC signaling (Opus Call) ========== */
+
+export type CallStatus = "ringing" | "accepted" | "ended" | "rejected";
+
+export async function createCall(opts: {
+  id: string;
+  from: string;
+  to: string;
+  mode: "audio" | "video";
+  offerSdp: string;
+}) {
+  await ensureChatTables();
+  const sql = getSql();
+  const from = opts.from.toLowerCase();
+  const to = opts.to.toLowerCase();
+  // Kết thúc cuộc gọi ringing cũ giữa 2 người
+  await sql`
+    UPDATE chat_calls SET status = 'ended', updated_at = NOW()
+    WHERE status = 'ringing'
+      AND ((from_user = ${from} AND to_user = ${to}) OR (from_user = ${to} AND to_user = ${from}))
+  `;
+  await sql`
+    INSERT INTO chat_calls (id, from_user, to_user, mode, status, offer_sdp)
+    VALUES (${opts.id}, ${from}, ${to}, ${opts.mode}, 'ringing', ${opts.offerSdp})
+  `;
+  return { id: opts.id };
+}
+
+export async function getCall(id: string) {
+  await ensureChatTables();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT id, from_user, to_user, mode, status, offer_sdp, answer_sdp,
+           caller_ice, callee_ice, created_at, updated_at
+    FROM chat_calls WHERE id = ${id} LIMIT 1
+  `;
+  return (rows as Record<string, unknown>[])[0] || null;
+}
+
+export async function listIncomingCalls(username: string) {
+  await ensureChatTables();
+  const sql = getSql();
+  const u = username.toLowerCase();
+  const rows = await sql`
+    SELECT id, from_user, to_user, mode, status, offer_sdp, created_at
+    FROM chat_calls
+    WHERE to_user = ${u} AND status = 'ringing'
+      AND created_at > NOW() - INTERVAL '2 minutes'
+    ORDER BY created_at DESC
+    LIMIT 5
+  `;
+  return rows as Record<string, unknown>[];
+}
+
+export async function acceptCall(id: string, me: string, answerSdp: string) {
+  await ensureChatTables();
+  const sql = getSql();
+  const u = me.toLowerCase();
+  const rows = await sql`
+    UPDATE chat_calls
+    SET status = 'accepted', answer_sdp = ${answerSdp}, updated_at = NOW()
+    WHERE id = ${id} AND to_user = ${u} AND status = 'ringing'
+    RETURNING id
+  `;
+  if (!(rows as unknown[]).length) throw new Error("Cuộc gọi không còn hiệu lực");
+}
+
+export async function rejectOrEndCall(id: string, me: string, status: "rejected" | "ended") {
+  await ensureChatTables();
+  const sql = getSql();
+  const u = me.toLowerCase();
+  await sql`
+    UPDATE chat_calls
+    SET status = ${status}, updated_at = NOW()
+    WHERE id = ${id}
+      AND (from_user = ${u} OR to_user = ${u})
+      AND status IN ('ringing', 'accepted')
+  `;
+}
+
+export async function appendIce(
+  id: string,
+  me: string,
+  candidate: object
+) {
+  await ensureChatTables();
+  const sql = getSql();
+  const u = me.toLowerCase();
+  const call = await getCall(id);
+  if (!call) throw new Error("Call not found");
+  const from = String(call.from_user).toLowerCase();
+  const to = String(call.to_user).toLowerCase();
+  if (u !== from && u !== to) throw new Error("Forbidden");
+  const isCaller = u === from;
+  const col = isCaller ? "caller_ice" : "callee_ice";
+  const existing = (isCaller ? call.caller_ice : call.callee_ice) as object[] | null;
+  const arr = Array.isArray(existing) ? [...existing] : [];
+  arr.push(candidate);
+  // keep last 40
+  const trimmed = arr.slice(-40);
+  const json = JSON.stringify(trimmed);
+  if (isCaller) {
+    await sql`UPDATE chat_calls SET caller_ice = ${json}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+  } else {
+    await sql`UPDATE chat_calls SET callee_ice = ${json}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+  }
 }

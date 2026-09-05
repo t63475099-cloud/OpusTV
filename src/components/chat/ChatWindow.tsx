@@ -147,28 +147,32 @@ export default function ChatWindow({
             )}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCall("audio");
-          }}
-          className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300"
-          aria-label="Gọi thoại"
-        >
-          <Phone className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCall("video");
-          }}
-          className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300"
-          aria-label="Gọi video"
-        >
-          <Video className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCall("audio");
+            }}
+            className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-200"
+            title="Gọi thoại"
+            aria-label="Gọi thoại"
+          >
+            <Phone className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCall("video");
+            }}
+            className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-200"
+            title="Gọi video"
+            aria-label="Gọi video"
+          >
+            <Video className="w-5 h-5" />
+          </button>
+        </div>
         <button
           type="button"
           className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300 hidden sm:inline-flex"
@@ -312,6 +316,7 @@ export default function ChatWindow({
         open={!!call}
         mode={call || "audio"}
         peer={livePeer}
+        role="caller"
         onClose={() => setCall(null)}
       />
     </div>

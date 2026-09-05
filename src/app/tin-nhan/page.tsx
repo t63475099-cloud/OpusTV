@@ -9,10 +9,12 @@ import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInfoPanel from "@/components/chat/ChatInfoPanel";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
+import IncomingCallBanner from "@/components/chat/IncomingCallBanner";
 
 export default function TinNhanPage() {
   const username = useAccountStore((s) => s.username);
   const setMe = useChatStore((s) => s.setMe);
+  const syncMyAvatarFromFilm = useChatStore((s) => s.syncMyAvatarFromFilm);
   const syncFromServer = useChatStore((s) => s.syncFromServer);
   const loadThread = useChatStore((s) => s.loadThread);
   const setActive = useChatStore((s) => s.setActive);
@@ -40,11 +42,14 @@ export default function TinNhanPage() {
   useEffect(() => {
     if (username) {
       setMe(username);
+      try {
+        syncMyAvatarFromFilm();
+      } catch {}
       void syncFromServer();
     } else {
       setMe(null);
     }
-  }, [username, setMe, syncFromServer]);
+  }, [username, setMe, syncFromServer, syncMyAvatarFromFilm]);
 
   useEffect(() => {
     if (!username) return;
@@ -159,6 +164,7 @@ export default function TinNhanPage() {
       )}
 
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <IncomingCallBanner />
     </div>
   );
 }

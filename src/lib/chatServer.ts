@@ -451,7 +451,7 @@ export async function listIncomingCalls(username: string) {
     SELECT id, from_user, to_user, mode, status, offer_sdp, created_at
     FROM chat_calls
     WHERE to_user = ${u} AND status = 'ringing'
-      AND created_at > NOW() - INTERVAL '2 minutes'
+      AND created_at > NOW() - INTERVAL '3 minutes'
     ORDER BY created_at DESC
     LIMIT 5
   `;

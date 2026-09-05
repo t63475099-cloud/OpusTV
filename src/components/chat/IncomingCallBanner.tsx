@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Phone, PhoneOff, Video } from "lucide-react";
+import { useAccountStore } from "@/lib/account";
 import { useChatStore } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
 import CallModal from "./CallModal";
+import { startCallSound } from "@/lib/callSounds";
 
 interface IncomingRow {
   id: string;
@@ -13,85 +15,51 @@ interface IncomingRow {
   offer_sdp: string;
 }
 
-/** Chuông gọi đơn giản (Web Audio) — không dùng nhạc bản quyền */
-function useRingtone(active: boolean) {
-  const ctxRef = useRef<AudioContext | null>(null);
-  const timerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!active) {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      timerRef.current = null;
-      try {
-        void ctxRef.current?.close();
-      } catch {}
-      ctxRef.current = null;
-      return;
-    }
-
-    let stopped = false;
-    const ring = () => {
-      if (stopped) return;
-      try {
-        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        if (!Ctx) return;
-        if (!ctxRef.current || ctxRef.current.state === "closed") {
-          ctxRef.current = new Ctx();
-        }
-        const ctx = ctxRef.current;
-        if (ctx.state === "suspended") void ctx.resume();
-        const now = ctx.currentTime;
-        // 2 tone giống kiểu chuông điện thoại (không copy Zalo/Messenger)
-        for (const [i, freq] of [880, 988].entries()) {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.0001, now);
-          gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now + i * 0.18);
-          osc.stop(now + 0.4 + i * 0.18);
-        }
-      } catch {
-        /* autoplay policy */
-      }
-    };
-
-    ring();
-    timerRef.current = window.setInterval(ring, 2200);
-    return () => {
-      stopped = true;
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      timerRef.current = null;
-      try {
-        void ctxRef.current?.close();
-      } catch {}
-      ctxRef.current = null;
-    };
-  }, [active]);
-}
-
 export default function IncomingCallBanner() {
+  const username = useAccountStore((s) => s.username);
   const me = useChatStore((s) => s.me);
+  const setMe = useChatStore((s) => s.setMe);
   const getUser = useChatStore((s) => s.getUser);
   const [incoming, setIncoming] = useState<IncomingRow | null>(null);
   const [accepting, setAccepting] = useState(false);
 
-  useRingtone(!!incoming && !accepting);
+  // Đồng bộ me từ account (quan trọng trên mobile / mọi trang)
+  useEffect(() => {
+    if (username) setMe(username);
+  }, [username, setMe]);
+
+  // Chuông bên nhận
+  useEffect(() => {
+    if (!incoming || accepting) return;
+    const stop = startCallSound("callee-ring");
+    // Browser notification
+    try {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        const n = new Notification("Cuộc gọi đến — Opus Chat", {
+          body: `${incoming.from_user} đang gọi bạn`,
+          tag: `call-${incoming.id}`,
+        });
+        setTimeout(() => n.close(), 8000);
+      } else if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        void Notification.requestPermission();
+      }
+    } catch {}
+    return () => stop();
+  }, [incoming, accepting]);
 
   useEffect(() => {
-    if (!me) return;
+    if (!username && !me) return;
     const tick = async () => {
       try {
-        const r = await fetch("/api/chat/call?incoming=1");
+        const r = await fetch("/api/chat/call?incoming=1", { cache: "no-store" });
         if (!r.ok) return;
         const j = await r.json();
         const list = (j.incoming || []) as IncomingRow[];
         if (list.length && !accepting) {
-          setIncoming(list[0]);
+          setIncoming((prev) => {
+            if (prev?.id === list[0].id) return prev;
+            return list[0];
+          });
         } else if (!list.length && !accepting) {
           setIncoming(null);
         }
@@ -100,9 +68,18 @@ export default function IncomingCallBanner() {
       }
     };
     tick();
-    const id = window.setInterval(tick, 2000);
-    return () => window.clearInterval(id);
-  }, [me, accepting]);
+    const id = window.setInterval(tick, 1500);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
+  }, [username, me, accepting]);
 
   const reject = async () => {
     if (!incoming) return;
@@ -151,7 +128,7 @@ export default function IncomingCallBanner() {
       className="fixed top-[max(0.75rem,env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-[200] w-[min(94vw,400px)]"
       data-incoming-call
     >
-      <div className="rounded-2xl bg-[#16181c]/95 backdrop-blur-xl border border-emerald-500/30 shadow-2xl shadow-black/50 px-4 py-3 flex items-center gap-3 animate-pulse">
+      <div className="rounded-2xl bg-[#16181c]/95 backdrop-blur-xl border border-emerald-500/40 shadow-2xl px-4 py-3 flex items-center gap-3">
         <ChatAvatar user={peerUser} size="md" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white truncate">

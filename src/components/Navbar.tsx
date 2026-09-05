@@ -37,7 +37,8 @@ export default function Navbar() {
     pathname.startsWith("/phim/");
 
   /** Search luôn ngoài trên mobile (trừ trang form) */
-  const showSearch = !isMinimalChrome;
+  /** Ẩn ô tìm phim trên Opus Music để tránh nhầm */
+  const showSearch = !isMinimalChrome && !pathname.startsWith("/nhac");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);

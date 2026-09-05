@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, Search, Plus, MessageCircle, Users } from "lucide-react";
-import { useChatStore, formatChatTime, type Conversation } from "@/lib/chatStore";
+import { useChatStore, formatChatTime, formatLastSeen, type Conversation } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
 
 function Row({
@@ -21,7 +21,7 @@ function Row({
   const peer = peerOf(c);
   const last = c.lastMessage;
   const preview = last
-    ? `${last.senderId === "me" ? "Bạn" : getUser(last.senderId)?.name || ""}: ${last.text || "Đính kèm"}`
+    ? `${last.senderId === useChatStore.getState().me ? "Bạn" : getUser(last.senderId)?.name || ""}: ${last.text || "Đính kèm"}`
     : "Chưa có tin nhắn";
 
   return (
@@ -47,7 +47,9 @@ function Row({
           )}
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p className="text-xs text-zinc-500 truncate">{preview}</p>
+          <p className="text-xs text-zinc-500 truncate">
+            {last ? preview : peer ? formatLastSeen(peer) : preview}
+          </p>
           {c.unreadCount > 0 && (
             <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-[10px] font-bold text-white flex items-center justify-center">
               {c.unreadCount > 99 ? "99+" : c.unreadCount}
@@ -77,7 +79,7 @@ export default function ChatSidebar({
 
   return (
     <aside data-chat-root
-      className={`w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-neutral-800 flex flex-col bg-neutral-950 min-h-0 h-full ${
+      className={`w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-neutral-800 flex flex-col bg-neutral-950/95 backdrop-blur-xl min-h-0 h-full ${
         hiddenOnMobileChat ? "hidden md:flex" : "flex"
       }`}
     >

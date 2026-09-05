@@ -61,6 +61,7 @@ export default function SyncBootstrap() {
     }
     useChatStore.getState().setMe(username);
     const tick = () => {
+      void useChatStore.getState().heartbeat();
       void useChatStore.getState().syncFromServer();
     };
     tick();

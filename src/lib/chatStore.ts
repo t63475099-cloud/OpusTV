@@ -14,6 +14,8 @@ export interface ChatUser {
   uid?: string;
   avatar: string;
   status: UserStatus;
+  /** epoch ms — lần truy cập cuối (Zalo-style) */
+  lastSeen?: number;
   bio?: string;
   verified?: boolean;
 }
@@ -68,6 +70,8 @@ interface ChatState {
   loading: boolean;
   error: string | null;
   synced: boolean;
+  /** peer username đang soạn tin */
+  typingPeers: Record<string, number>;
 
   setMe: (username: string | null) => void;
   setSearch: (q: string) => void;
@@ -91,6 +95,10 @@ interface ChatState {
   toggleMute: (conversationId: string) => void;
   toggleReaction: (messageId: string, emoji: string) => void;
   createGroup: (title: string, memberIds: string[]) => string;
+  heartbeat: () => Promise<void>;
+  notifyTyping: (peer: string) => void;
+  pollTyping: (peer: string) => Promise<void>;
+  isPeerTyping: (peer: string) => boolean;
 }
 
 function convIdFor(me: string, peer: string) {
@@ -131,6 +139,40 @@ function mapServerMsg(
   };
 }
 
+/** Hiển thị trạng thái kiểu Zalo */
+export function formatLastSeen(user?: ChatUser | null): string {
+  if (!user) return "";
+  const now = Date.now();
+  const last = user.lastSeen || 0;
+  if (user.status === "online" || (last && now - last < 90_000)) {
+    return "Đang hoạt động";
+  }
+  if (!last) return "Không hoạt động";
+  const diff = now - last;
+  if (diff < 60_000) return "Vừa truy cập";
+  if (diff < 3600_000) return `Truy cập ${Math.floor(diff / 60_000)} phút trước`;
+  const d = new Date(last);
+  const today = new Date();
+  const sameDay =
+    d.getDate() === today.getDate() &&
+    d.getMonth() === today.getMonth() &&
+    d.getFullYear() === today.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  if (sameDay) return `Truy cập lúc ${hh}:${mm}`;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  return `Truy cập ${dd}/${mo} lúc ${hh}:${mm}`;
+}
+
+function statusFromLastSeen(lastSeen?: number): UserStatus {
+  if (!lastSeen) return "offline";
+  const diff = Date.now() - lastSeen;
+  if (diff < 90_000) return "online";
+  if (diff < 15 * 60_000) return "away";
+  return "offline";
+}
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set, get) => ({
@@ -147,8 +189,37 @@ export const useChatStore = create<ChatState>()(
       loading: false,
       error: null,
       synced: false,
+      typingPeers: {},
 
-      setMe: (username) => set({ me: username ? username.toLowerCase() : null }),
+      setMe: (username) => {
+        const me = username ? username.toLowerCase() : null;
+        set({ me });
+        // Đồng bộ avatar OpusFilm (local settings) vào hồ sơ chat của mình
+        if (me) {
+          try {
+            // lazy import tránh vòng phụ thuộc lúc module load
+            void import("@/lib/settings").then(({ useSettingsStore }) => {
+              const profile = useSettingsStore.getState().profile;
+              const av = profile?.avatar || "";
+              const name = (profile?.name || me).trim();
+              set((s) => ({
+                users: {
+                  ...s.users,
+                  [me]: {
+                    id: me,
+                    name: name || me,
+                    nickname: me,
+                    avatar: av || s.users[me]?.avatar || "",
+                    status: "online",
+                    lastSeen: Date.now(),
+                    verified: !!profile?.verified,
+                  },
+                },
+              }));
+            });
+          } catch {}
+        }
+      },
       setSearch: (q) => set({ search: q }),
       setTab: (t) => set({ tab: t }),
       setShowInfo: (v) => set({ showInfo: v }),
@@ -228,7 +299,8 @@ export const useChatStore = create<ChatState>()(
               nickname: f.username,
               uid: f.uid || undefined,
               avatar: f.avatar || users[id]?.avatar || "",
-              status: "online",
+              status: statusFromLastSeen(users[id]?.lastSeen),
+              lastSeen: users[id]?.lastSeen,
               bio: f.bio || undefined,
               verified: !!f.verified,
             };
@@ -277,6 +349,26 @@ export const useChatStore = create<ChatState>()(
           const conversations = Array.from(convMap.values()).sort(
             (a, b) => b.updatedAt - a.updatedAt
           );
+
+          // Presence Zalo-style
+          try {
+            await fetch("/api/chat/presence", { method: "POST" });
+            if (friendIds.length) {
+              const pr = await fetch(
+                `/api/chat/presence?users=${encodeURIComponent(friendIds.join(","))}`
+              ).then((r) => r.json());
+              const presence = (pr.presence || {}) as Record<string, number>;
+              for (const id of friendIds) {
+                if (!users[id]) continue;
+                const lastSeen = presence[id] || users[id].lastSeen;
+                users[id] = {
+                  ...users[id],
+                  lastSeen,
+                  status: statusFromLastSeen(lastSeen),
+                };
+              }
+            }
+          } catch {}
 
           set({
             users,
@@ -347,7 +439,7 @@ export const useChatStore = create<ChatState>()(
                 nickname: data.friend.username,
                 uid: data.friend.uid || undefined,
                 avatar: data.friend.avatar || "",
-                status: "online",
+                status: "offline",
                 bio: data.friend.bio || undefined,
                 verified: !!data.friend.verified,
               },
@@ -513,6 +605,44 @@ export const useChatStore = create<ChatState>()(
       createGroup: () => {
         // Nhóm server sẽ bổ sung sau — hiện chỉ DM đồng bộ Neon
         return "";
+      },
+
+      heartbeat: async () => {
+        try {
+          await fetch("/api/chat/presence", { method: "POST" });
+        } catch {}
+      },
+
+      notifyTyping: (peer) => {
+        if (!get().me || !peer) return;
+        void fetch("/api/chat/typing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: peer }),
+        }).catch(() => {});
+      },
+
+      pollTyping: async (peer) => {
+        if (!peer) return;
+        try {
+          const res = await fetch(
+            `/api/chat/typing?peer=${encodeURIComponent(peer)}`
+          );
+          const data = await res.json();
+          const on = !!data.typing;
+          set((s) => {
+            const next = { ...s.typingPeers };
+            const key = peer.toLowerCase();
+            if (on) next[key] = Date.now();
+            else delete next[key];
+            return { typingPeers: next };
+          });
+        } catch {}
+      },
+
+      isPeerTyping: (peer) => {
+        const at = get().typingPeers[peer.toLowerCase()];
+        return !!(at && Date.now() - at < 6000);
       },
     }),
     { name: "opusfilm-chat-server-v1" }

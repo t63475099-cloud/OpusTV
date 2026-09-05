@@ -41,6 +41,20 @@ export async function ensureChatTables() {
   await sql`CREATE INDEX IF NOT EXISTS chat_messages_from_idx ON chat_messages (from_user)`;
   await sql`CREATE INDEX IF NOT EXISTS chat_messages_to_idx ON chat_messages (to_user)`;
   await sql`CREATE INDEX IF NOT EXISTS chat_messages_pair_time_idx ON chat_messages (from_user, to_user, created_at DESC)`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_presence (
+      username TEXT PRIMARY KEY,
+      last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_typing (
+      from_user TEXT NOT NULL,
+      to_user TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (from_user, to_user)
+    )
+  `;
 }
 
 function pairKey(u1: string, u2: string): [string, string] {
@@ -311,4 +325,63 @@ export async function unreadCount(me: string, other: string) {
     WHERE from_user = ${o} AND to_user = ${m} AND read_at IS NULL
   `;
   return (rows as { n: number }[])[0]?.n || 0;
+}
+
+
+/** Heartbeat — cập nhật đang online */
+export async function touchPresence(username: string) {
+  await ensureChatTables();
+  const sql = getSql();
+  const u = username.toLowerCase();
+  await sql`
+    INSERT INTO chat_presence (username, last_seen)
+    VALUES (${u}, NOW())
+    ON CONFLICT (username) DO UPDATE SET last_seen = NOW()
+  `;
+}
+
+export async function getPresenceMap(usernames: string[]) {
+  await ensureChatTables();
+  if (!usernames.length) return {} as Record<string, number>;
+  const sql = getSql();
+  const names = usernames.map((x) => x.toLowerCase());
+  const rows = await sql`
+    SELECT username, last_seen
+    FROM chat_presence
+    WHERE username = ANY(${names})
+  `;
+  const out: Record<string, number> = {};
+  for (const r of rows as { username: string; last_seen: string }[]) {
+    out[r.username] = new Date(r.last_seen).getTime();
+  }
+  return out;
+}
+
+/** Báo đang soạn tin (TTL ~5s phía client) */
+export async function setTyping(from: string, to: string) {
+  await ensureChatTables();
+  const sql = getSql();
+  const f = from.toLowerCase();
+  const t = to.toLowerCase();
+  if (f === t) return;
+  await sql`
+    INSERT INTO chat_typing (from_user, to_user, updated_at)
+    VALUES (${f}, ${t}, NOW())
+    ON CONFLICT (from_user, to_user) DO UPDATE SET updated_at = NOW()
+  `;
+}
+
+export async function getTypingFrom(peer: string, me: string) {
+  await ensureChatTables();
+  const sql = getSql();
+  const p = peer.toLowerCase();
+  const m = me.toLowerCase();
+  const rows = await sql`
+    SELECT updated_at FROM chat_typing
+    WHERE from_user = ${p} AND to_user = ${m}
+    LIMIT 1
+  `;
+  const at = (rows as { updated_at: string }[])[0]?.updated_at;
+  if (!at) return false;
+  return Date.now() - new Date(at).getTime() < 6000;
 }

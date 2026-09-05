@@ -212,7 +212,7 @@ export default function CallModal({
         };
         pc.onconnectionstatechange = () => {
           const st = pc.connectionState;
-          if (st === "connected" || st === "completed") {
+          if (st === "connected") {
             setPhase("connected");
             stopSound();
           }

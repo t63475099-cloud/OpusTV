@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import SyncBootstrap from "@/components/SyncBootstrap";
+import ScrollNavFab from "@/components/ScrollNavFab";
 import Sidebar from "@/components/Sidebar";
 import FloatingMiniPlayer from "@/components/FloatingMiniPlayer";
 import SupportChatbot from "@/components/SupportChatbot";
@@ -56,6 +57,7 @@ export default function RootLayout({
         <AmbientBackdrop />
         <>
           <SyncBootstrap />
+          <ScrollNavFab />
           <Navbar />
         <div className="flex flex-1 w-full max-w-[1920px] mx-auto">
           <Sidebar />

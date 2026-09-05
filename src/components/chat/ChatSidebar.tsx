@@ -80,21 +80,33 @@ export default function ChatSidebar({
   onOpenCreate: () => void;
   onSelectConversation: (id: string) => void;
 }) {
-  const conversations = useChatStore((s) => s.conversations || []);
+  const conversations = useChatStore((s) => s.conversations);
   const activeId = useChatStore((s) => s.activeId);
   const search = useChatStore((s) => s.search);
   const setSearch = useChatStore((s) => s.setSearch);
   const tab = useChatStore((s) => s.tab);
   const setTab = useChatStore((s) => s.setTab);
-  const filteredConversations = useChatStore((s) => s.filteredConversations);
+  const displayTitle = useChatStore((s) => s.displayTitle);
 
-  let items: Conversation[] = conversations;
-  try {
-    items = typeof filteredConversations === "function" ? filteredConversations() : conversations;
-  } catch {
-    items = conversations;
-  }
-  if (!Array.isArray(items)) items = [];
+  const items = (() => {
+    let list = Array.isArray(conversations) ? [...conversations] : [];
+    list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (tab === "groups") list = list.filter((c) => c.isGroup);
+    if (tab === "unread") list = list.filter((c) => (c.unreadCount || 0) > 0);
+    const q = (search || "").trim().toLowerCase();
+    if (q) {
+      list = list.filter((c) => {
+        try {
+          const title = displayTitle(c).toLowerCase();
+          const last = c.lastMessage?.text?.toLowerCase() || "";
+          return title.includes(q) || last.includes(q);
+        } catch {
+          return true;
+        }
+      });
+    }
+    return list;
+  })();
 
   return (
     <aside className="flex flex-col h-full w-full min-h-0 bg-[#16181c]">

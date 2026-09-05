@@ -3,6 +3,9 @@
 import { X, Bell, BellOff, Ban, Image as ImageIcon, Users } from "lucide-react";
 import { useChatStore, formatLastSeen, type Conversation } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
+import type { ChatMessage } from "@/lib/chatStore";
+
+const EMPTY_MSGS: ChatMessage[] = [];
 
 export default function ChatInfoPanel({ conversation }: { conversation: Conversation }) {
   const setShowInfo = useChatStore((s) => s.setShowInfo);
@@ -10,7 +13,8 @@ export default function ChatInfoPanel({ conversation }: { conversation: Conversa
   const peerOf = useChatStore((s) => s.peerOf);
   const getUser = useChatStore((s) => s.getUser);
   const toggleMute = useChatStore((s) => s.toggleMute);
-  const messages = useChatStore((s) => s.messages[conversation.id] || []);
+  const convId = conversation.id;
+  const messages = useChatStore((s) => s.messages[convId] ?? EMPTY_MSGS);
 
   const peer = peerOf(conversation);
   const images = messages.flatMap((m) => m.attachments || []).filter((a) => a.type === "image");

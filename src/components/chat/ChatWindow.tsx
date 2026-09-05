@@ -21,6 +21,9 @@ import {
 import ChatAvatar from "./ChatAvatar";
 import MessageBubble from "./MessageBubble";
 import CallModal from "./CallModal";
+import type { ChatMessage } from "@/lib/chatStore";
+
+const EMPTY_MSGS: ChatMessage[] = [];
 
 const EMOJIS = ["😀", "😂", "😍", "🥰", "👍", "🔥", "😢", "😮", "🎉", "❤️", "🙏", "👏"];
 
@@ -36,9 +39,11 @@ export default function ChatWindow({
   const me = useChatStore((s) => s.me);
   const peerOf = useChatStore((s) => s.peerOf);
   const displayTitle = useChatStore((s) => s.displayTitle);
-  const messages = useChatStore((s) =>
-    conversation ? s.messages[conversation.id] || [] : []
-  );
+  const convId = conversation?.id ?? null;
+  const messages = useChatStore((s) => {
+    if (!convId) return EMPTY_MSGS;
+    return s.messages[convId] ?? EMPTY_MSGS;
+  });
   const sendMessage = useChatStore((s) => s.sendMessage);
   const loadThread = useChatStore((s) => s.loadThread);
   const replyTo = useChatStore((s) => s.replyTo);

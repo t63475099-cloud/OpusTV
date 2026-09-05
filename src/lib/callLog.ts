@@ -7,7 +7,6 @@ export type CallLogMode = "audio" | "video";
 
 const PREFIX = "__CALL__|";
 
-/** Tin hệ thống lịch sử gọi — đồng bộ qua sendMessage */
 export function encodeCallLog(
   mode: CallLogMode,
   kind: CallLogKind,
@@ -32,29 +31,29 @@ export function parseCallLog(text: string): {
   return { mode, kind, durationSec };
 }
 
+/** Tiêu đề dòng phụ (Zalo: Bạn đã hủy) */
+export function callLogTitle(kind: CallLogKind, mine: boolean): string {
+  if (kind === "cancelled") return mine ? "Bạn đã hủy" : "Đối phương đã hủy";
+  if (kind === "rejected") return mine ? "Bạn đã từ chối" : "Người nhận đã từ chối";
+  if (kind === "missed") return mine ? "Cuộc gọi đi" : "Cuộc gọi nhỡ";
+  return mine ? "Bạn đã gọi" : "Cuộc gọi đến";
+}
+
 export function formatCallLogLabel(
   mode: CallLogMode,
   kind: CallLogKind,
   durationSec: number,
   mine: boolean
 ): string {
-  const type = mode === "video" ? "Video" : "Thoại";
+  const type = mode === "video" ? "Cuộc gọi video" : "Cuộc gọi thoại";
   if (kind === "ended") {
     const mm = String(Math.floor(durationSec / 60)).padStart(2, "0");
     const ss = String(durationSec % 60).padStart(2, "0");
-    return `Cuộc gọi ${type.toLowerCase()} · ${mm}:${ss}`;
+    return `${type} · ${mm}:${ss}`;
   }
-  if (kind === "rejected") {
-    return mine ? `Đã từ chối cuộc gọi ${type.toLowerCase()}` : `Cuộc gọi ${type.toLowerCase()} bị từ chối`;
-  }
-  if (kind === "cancelled") {
-    return mine ? `Đã hủy cuộc gọi ${type.toLowerCase()}` : `Cuộc gọi ${type.toLowerCase()} đã hủy`;
-  }
-  // missed
-  return mine ? `Cuộc gọi ${type.toLowerCase()} đi` : `Cuộc gọi ${type.toLowerCase()} nhỡ`;
+  return type;
 }
 
-/** Gửi lịch sử gọi vào đoạn chat với peer (username) */
 export async function postCallLog(
   peerUsername: string | undefined | null,
   mode: CallLogMode,

@@ -1,10 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Reply, Check, CheckCheck, Phone, PhoneMissed, PhoneOff, Video } from "lucide-react";
+import {
+  Reply,
+  Check,
+  CheckCheck,
+  PhoneOutgoing,
+  PhoneIncoming,
+  PhoneMissed,
+  Video,
+} from "lucide-react";
 import type { ChatMessage } from "@/lib/chatStore";
 import { formatChatTime, useChatStore } from "@/lib/chatStore";
-import { parseCallLog, formatCallLogLabel } from "@/lib/callLog";
+import {
+  parseCallLog,
+  formatCallLogLabel,
+  callLogTitle,
+} from "@/lib/callLog";
 
 const QUICK = ["❤️", "👍", "😂", "😮", "😢"];
 
@@ -13,11 +25,13 @@ export default function MessageBubble({
   mine,
   name,
   replyPreview,
+  onCallBack,
 }: {
   m: ChatMessage;
   mine: boolean;
   name?: string;
   replyPreview?: ChatMessage | null;
+  onCallBack?: (mode: "audio" | "video") => void;
 }) {
   const toggleReaction = useChatStore((s) => s.toggleReaction);
   const setReplyTo = useChatStore((s) => s.setReplyTo);
@@ -25,23 +39,57 @@ export default function MessageBubble({
 
   const call = parseCallLog(m.text || "");
   if (call) {
-    const label = formatCallLogLabel(call.mode, call.kind, call.durationSec, mine);
+    const title = callLogTitle(call.kind, mine);
+    const sub = formatCallLogLabel(call.mode, call.kind, call.durationSec, mine);
     const Icon =
-      call.kind === "ended"
-        ? call.mode === "video"
+      call.kind === "missed"
+        ? PhoneMissed
+        : call.mode === "video"
           ? Video
-          : Phone
-        : call.kind === "missed"
-          ? PhoneMissed
-          : PhoneOff;
+          : mine
+            ? PhoneOutgoing
+            : PhoneIncoming;
+    const iconColor =
+      call.kind === "missed" || call.kind === "rejected" || call.kind === "cancelled"
+        ? "text-rose-400"
+        : "text-zinc-300";
+
     return (
-      <div className="flex justify-center my-3" onClick={(e) => e.stopPropagation()}>
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2a2e36]/90 border border-[#3a3f4a] text-[12px] text-zinc-300 max-w-[90%]">
-          <Icon className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-          <span className="truncate">{label}</span>
-          <span className="text-[10px] text-zinc-500 shrink-0">
+      <div
+        className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className={`max-w-[80%] rounded-2xl px-3 py-2.5 ${
+            mine ? "bg-[#0068ff] text-white rounded-br-md" : "bg-[#2a2e36] text-zinc-100 rounded-bl-md"
+          }`}
+        >
+          <p className={`text-[13px] mb-1 ${mine ? "text-white/90" : "text-zinc-300"}`}>
+            {title}
+          </p>
+          <div className="flex items-center gap-2">
+            <Icon className={`w-4 h-4 shrink-0 ${mine ? "text-white/80" : iconColor}`} />
+            <span className="text-[14px] font-medium">{sub}</span>
+          </div>
+          {onCallBack && (
+            <button
+              type="button"
+              onClick={() => onCallBack(call.mode)}
+              className={`mt-2 w-full text-center text-[13px] font-semibold py-1.5 rounded-lg ${
+                mine ? "bg-white/15 hover:bg-white/25" : "bg-[#3a3f4a] hover:bg-[#454b58]"
+              }`}
+            >
+              Gọi lại
+            </button>
+          )}
+          <p
+            className={`text-[10px] mt-1 flex items-center gap-0.5 justify-end ${
+              mine ? "text-white/70" : "text-zinc-500"
+            }`}
+          >
             {formatChatTime(m.timestamp)}
-          </span>
+            {mine && <Check className="w-3.5 h-3.5" />}
+          </p>
         </div>
       </div>
     );

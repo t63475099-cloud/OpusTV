@@ -228,6 +228,7 @@ export default function ChatWindow({
                 mine={mine}
                 name={mine ? undefined : livePeer?.name}
                 replyPreview={replyMsg}
+                onCallBack={(mode) => setCall(mode)}
               />
             </div>
           );

@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
-import ChatAvatar from "./ChatAvatar";
+import {
+  Mic,
+  MicOff,
+  PhoneOff,
+  Video,
+  VideoOff,
+  Settings,
+} from "lucide-react";
 import type { ChatUser } from "@/lib/chatStore";
 import { startCallSound, stopSharedAudio } from "@/lib/callSounds";
 import { postCallLog } from "@/lib/callLog";
@@ -10,8 +16,6 @@ import { postCallLog } from "@/lib/callLog";
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
-  { urls: "stun:stun2.l.google.com:19302" },
-  // TURN công khai (demo) — giúp NAT đối xứng kết nối media
   {
     urls: "turn:openrelay.metered.ca:80",
     username: "openrelayproject",
@@ -22,14 +26,15 @@ const ICE_SERVERS: RTCIceServer[] = [
     username: "openrelayproject",
     credential: "openrelayproject",
   },
-  {
-    urls: "turn:openrelay.metered.ca:443?transport=tcp",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
 ];
 
 type Phase = "starting" | "ringing" | "connecting" | "connected" | "ended" | "denied";
+
+function avatarUrl(peer?: ChatUser | null) {
+  const a = peer?.avatar || "";
+  if (a.startsWith("http") || a.startsWith("data:")) return a;
+  return "";
+}
 
 export default function CallModal({
   open,
@@ -59,12 +64,19 @@ export default function CallModal({
   const remoteSetRef = useRef(false);
   const pollRef = useRef<number | null>(null);
   const soundStopRef = useRef<(() => void) | null>(null);
+  const phaseRef = useRef<Phase>("starting");
+  const secRef = useRef(0);
 
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(mode === "audio");
   const [sec, setSec] = useState(0);
   const [phase, setPhase] = useState<Phase>("starting");
   const [err, setErr] = useState<string | null>(null);
+
+  const setPhaseBoth = (p: Phase) => {
+    phaseRef.current = p;
+    setPhase(p);
+  };
 
   const stopSound = useCallback(() => {
     soundStopRef.current?.();
@@ -132,26 +144,23 @@ export default function CallModal({
     }
   }, []);
 
-  const applyRemoteIce = useCallback(
-    async (list: unknown) => {
-      const pc = pcRef.current;
-      if (!pc || !Array.isArray(list)) return;
-      for (const c of list) {
-        const init = c as RTCIceCandidateInit;
-        const key = JSON.stringify(init);
-        if (seenIceRef.current.has(key)) continue;
-        if (!remoteSetRef.current) {
-          pendingIceRef.current.push(init);
-          continue;
-        }
-        seenIceRef.current.add(key);
-        try {
-          await pc.addIceCandidate(init);
-        } catch {}
+  const applyRemoteIce = useCallback(async (list: unknown) => {
+    const pc = pcRef.current;
+    if (!pc || !Array.isArray(list)) return;
+    for (const c of list) {
+      const init = c as RTCIceCandidateInit;
+      const key = JSON.stringify(init);
+      if (seenIceRef.current.has(key)) continue;
+      if (!remoteSetRef.current) {
+        pendingIceRef.current.push(init);
+        continue;
       }
-    },
-    []
-  );
+      seenIceRef.current.add(key);
+      try {
+        await pc.addIceCandidate(init);
+      } catch {}
+    }
+  }, []);
 
   const attachRemoteStream = useCallback((stream: MediaStream) => {
     if (remoteAudioRef.current) {
@@ -167,8 +176,9 @@ export default function CallModal({
   useEffect(() => {
     if (!open) {
       void cleanup(false);
-      setPhase("starting");
+      setPhaseBoth("starting");
       setSec(0);
+      secRef.current = 0;
       setErr(null);
       setMuted(false);
       setCamOff(mode === "audio");
@@ -178,12 +188,12 @@ export default function CallModal({
     let cancelled = false;
 
     const start = async () => {
-      setPhase("starting");
+      setPhaseBoth("starting");
       setErr(null);
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
-          setErr("Trình duyệt không hỗ trợ WebRTC");
-          setPhase("denied");
+          setErr("Trình duyệt không hỗ trợ cuộc gọi");
+          setPhaseBoth("denied");
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -214,27 +224,24 @@ export default function CallModal({
         pc.onconnectionstatechange = () => {
           const st = pc.connectionState;
           if (st === "connected") {
-            setPhase("connected");
+            setPhaseBoth("connected");
             stopSound();
           }
-          if (st === "failed") setErr("Kết nối media thất bại — thử lại / đổi mạng");
-          if (st === "closed") setPhase("ended");
+          if (st === "failed") setErr("Kết nối thất bại — thử lại");
+          if (st === "closed") setPhaseBoth("ended");
         };
         pc.ontrack = (ev) => {
           const remote = ev.streams[0];
           if (remote) attachRemoteStream(remote);
-          else if (ev.track) {
-            const ms = new MediaStream([ev.track]);
-            attachRemoteStream(ms);
-          }
-          setPhase("connected");
+          else if (ev.track) attachRemoteStream(new MediaStream([ev.track]));
+          setPhaseBoth("connected");
           stopSound();
         };
 
         if (role === "caller") {
           if (!peer?.id) {
             setErr("Không có người nhận");
-            setPhase("ended");
+            setPhaseBoth("ended");
             return;
           }
           const offer = await pc.createOffer({
@@ -257,7 +264,7 @@ export default function CallModal({
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Không tạo được cuộc gọi");
-          setPhase("ringing");
+          setPhaseBoth("ringing");
           stopSound();
           soundStopRef.current = startCallSound("caller-wait");
 
@@ -268,7 +275,7 @@ export default function CallModal({
               const call = j.call;
               if (!call) return;
               if (call.status === "rejected" || call.status === "ended") {
-                setPhase("ended");
+                setPhaseBoth("ended");
                 setErr(call.status === "rejected" ? "Đối phương từ chối" : "Cuộc gọi kết thúc");
                 void cleanup(false);
                 if (call.status === "rejected" && peer?.id) {
@@ -283,19 +290,17 @@ export default function CallModal({
                 });
                 remoteSetRef.current = true;
                 await flushPendingIce();
-                setPhase("connecting");
+                setPhaseBoth("connecting");
               }
               await applyRemoteIce(call.callee_ice);
-            } catch {
-              /* ignore */
-            }
+            } catch {}
           }, 800);
         } else {
           const id = existingCallId || "";
           const offerSdp = existingOfferSdp || "";
           if (!id || !offerSdp) {
             setErr("Thiếu thông tin cuộc gọi");
-            setPhase("ended");
+            setPhaseBoth("ended");
             return;
           }
           callIdRef.current = id;
@@ -315,7 +320,7 @@ export default function CallModal({
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Không nhận cuộc gọi");
-          setPhase("connecting");
+          setPhaseBoth("connecting");
 
           pollRef.current = window.setInterval(async () => {
             try {
@@ -324,7 +329,7 @@ export default function CallModal({
               const call = j.call;
               if (!call) return;
               if (call.status === "ended") {
-                setPhase("ended");
+                setPhaseBoth("ended");
                 void cleanup(false);
                 return;
               }
@@ -334,7 +339,7 @@ export default function CallModal({
         }
       } catch (e: unknown) {
         setErr(e instanceof Error ? e.message : "Không thể bắt đầu cuộc gọi");
-        setPhase("denied");
+        setPhaseBoth("denied");
       }
     };
 
@@ -347,26 +352,31 @@ export default function CallModal({
 
   useEffect(() => {
     if (!open || phase !== "connected") return;
-    const id = window.setInterval(() => setSec((s) => s + 1), 1000);
+    const id = window.setInterval(() => {
+      setSec((s) => {
+        const n = s + 1;
+        secRef.current = n;
+        return n;
+      });
+    }, 1000);
     return () => window.clearInterval(id);
   }, [open, phase]);
 
   const hangup = async () => {
     const peerId = peer?.id;
-    const wasConnected = phase === "connected";
-    const wasRinging = phase === "ringing" || phase === "starting" || phase === "connecting";
-    const duration = wasConnected ? sec : 0;
+    const wasConnected = phaseRef.current === "connected";
+    const wasRinging =
+      phaseRef.current === "ringing" ||
+      phaseRef.current === "starting" ||
+      phaseRef.current === "connecting";
+    const duration = wasConnected ? secRef.current : 0;
     await cleanup(true);
     stopSharedAudio();
-    setPhase("ended");
+    setPhaseBoth("ended");
     if (peerId) {
-      if (wasConnected) {
-        void postCallLog(peerId, mode, "ended", duration);
-      } else if (role === "caller" && wasRinging) {
-        void postCallLog(peerId, mode, "cancelled", 0);
-      } else if (role === "callee") {
-        void postCallLog(peerId, mode, "rejected", 0);
-      }
+      if (wasConnected) void postCallLog(peerId, mode, "ended", duration);
+      else if (role === "caller" && wasRinging) void postCallLog(peerId, mode, "cancelled", 0);
+      else if (role === "callee") void postCallLog(peerId, mode, "rejected", 0);
     }
     onClose();
   };
@@ -393,84 +403,127 @@ export default function CallModal({
   const ss = String(sec % 60).padStart(2, "0");
   const statusText =
     phase === "starting"
-      ? "Đang mở micro/camera…"
+      ? "Đang kết nối…"
       : phase === "ringing"
-        ? "Đang đổ chuông…"
+        ? "Đang đổ chuông ..."
         : phase === "connecting"
           ? "Đang kết nối…"
           : phase === "connected"
-            ? `${mode === "video" ? "Video" : "Thoại"} · ${mm}:${ss}`
+            ? `${mm}:${ss}`
             : phase === "denied"
               ? "Không truy cập được thiết bị"
               : "Đã kết thúc";
 
+  const bg = avatarUrl(peer);
+  const initial = (peer?.name || peer?.id || "?").slice(0, 1).toUpperCase();
+
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 p-4">
-      {/* Luôn có thẻ audio để nghe được khi gọi thoại */}
+    <div className="fixed inset-0 z-[90] flex flex-col bg-black text-white">
       <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
-      <div className="w-full max-w-md rounded-2xl bg-[#16181c] border border-[#2a2d34] p-5 text-center shadow-2xl">
-        <div className="flex justify-center mb-2">
-          <ChatAvatar user={peer} size="lg" />
-        </div>
-        <p className="text-white font-semibold text-lg">{peer?.name || "Cuộc gọi"}</p>
-        <p className="text-sm text-zinc-400 mt-1">{statusText}</p>
-        {err && <p className="text-xs text-red-400 mt-2">{err}</p>}
 
-        {mode === "video" && (
-          <div className="mt-4 relative aspect-video rounded-xl overflow-hidden bg-black">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`absolute bottom-2 right-2 w-28 aspect-video object-cover rounded-lg border border-white/20 bg-black ${
-                camOff ? "opacity-40" : ""
-              }`}
-            />
-          </div>
+      {/* Nền blur kiểu Zalo */}
+      <div className="absolute inset-0 overflow-hidden">
+        {bg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={bg} alt="" className="w-full h-full object-cover scale-110 blur-2xl opacity-60" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-b from-zinc-800 to-black" />
         )}
+        <div className="absolute inset-0 bg-black/45" />
+      </div>
 
-        <div className="mt-6 flex items-center justify-center gap-3">
-          {(phase === "connected" || phase === "connecting" || phase === "ringing") && (
-            <>
-              <button
-                type="button"
-                onClick={toggleMute}
-                className="p-3 rounded-full bg-[#2a2e36] text-white hover:bg-[#353a44]"
-                title={muted ? "Bật mic" : "Tắt mic"}
-              >
-                {muted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-              </button>
-              {mode === "video" && (
-                <button
-                  type="button"
-                  onClick={toggleCam}
-                  className="p-3 rounded-full bg-[#2a2e36] text-white hover:bg-[#353a44]"
-                  title={camOff ? "Bật camera" : "Tắt camera"}
-                >
-                  {camOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-                </button>
+      {/* Video remote full khi đã nối (video call) */}
+      {mode === "video" && phase === "connected" && (
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-[1]"
+        />
+      )}
+      {mode === "video" && (
+        <video
+          ref={localVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`absolute z-[5] rounded-xl object-cover border border-white/20 bg-black ${
+            phase === "connected"
+              ? "bottom-28 right-4 w-28 aspect-[3/4]"
+              : "opacity-0 pointer-events-none"
+          } ${camOff ? "opacity-30" : ""}`}
+        />
+      )}
+
+      {/* Nội dung giữa */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
+        {!(mode === "video" && phase === "connected") && (
+          <>
+            <div className="w-28 h-28 rounded-full overflow-hidden ring-2 ring-white/30 shadow-2xl bg-[#2a2e36] flex items-center justify-center">
+              {bg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={bg} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl font-semibold text-white">{initial}</span>
               )}
-            </>
-          )}
+            </div>
+            <p className="mt-5 text-xl font-semibold drop-shadow">
+              {peer?.name || peer?.id || "Cuộc gọi"}
+            </p>
+          </>
+        )}
+        {mode === "video" && phase === "connected" && (
+          <p className="absolute top-10 left-0 right-0 text-center text-lg font-medium drop-shadow">
+            {peer?.name || peer?.id}
+          </p>
+        )}
+        <p className="mt-2 text-sm text-white/80 drop-shadow">{statusText}</p>
+        {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+      </div>
+
+      {/* Thanh điều khiển dưới kiểu Zalo */}
+      <div
+        className="relative z-10 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 px-8"
+        style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.75))" }}
+      >
+        <div className="flex items-center justify-center gap-6 sm:gap-10">
+          <button
+            type="button"
+            onClick={toggleCam}
+            disabled={mode !== "video"}
+            className={`flex flex-col items-center gap-1 ${
+              mode !== "video" ? "opacity-30" : ""
+            }`}
+          >
+            <span className="w-12 h-12 rounded-full bg-white/15 flex items-center justify-center backdrop-blur">
+              {camOff || mode !== "video" ? (
+                <VideoOff className="w-5 h-5" />
+              ) : (
+                <Video className="w-5 h-5" />
+              )}
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => void hangup()}
-            className="p-3 rounded-full bg-red-600 text-white hover:bg-red-500"
+            className="w-16 h-16 rounded-full bg-[#e11d48] hover:bg-[#f43f5e] flex items-center justify-center shadow-lg shadow-rose-900/40"
             title="Kết thúc"
           >
-            <PhoneOff className="w-5 h-5" />
+            <PhoneOff className="w-7 h-7" />
+          </button>
+
+          <button type="button" onClick={toggleMute} className="flex flex-col items-center gap-1">
+            <span className="w-12 h-12 rounded-full bg-white/15 flex items-center justify-center backdrop-blur">
+              {muted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </span>
           </button>
         </div>
-        <p className="text-[11px] text-zinc-600 mt-4">
-          Hai bên cần cho phép micro · Nên dùng Chrome/Safari bản mới
-        </p>
+        <div className="flex justify-end mt-2 pr-2">
+          <span className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center opacity-60">
+            <Settings className="w-4 h-4" />
+          </span>
+        </div>
       </div>
     </div>
   );

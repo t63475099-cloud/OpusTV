@@ -55,6 +55,29 @@ export interface Conversation {
   peerUsername?: string;
 }
 
+
+const CHAT_AVATAR_PREFIX = "opus_chat_avatar_";
+
+function loadChatAvatar(username: string): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem(CHAT_AVATAR_PREFIX + username.toLowerCase()) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveChatAvatar(username: string, url: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const key = CHAT_AVATAR_PREFIX + username.toLowerCase();
+    if (url) localStorage.setItem(key, url);
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
 interface ChatState {
   me: string | null;
   users: Record<string, ChatUser>;

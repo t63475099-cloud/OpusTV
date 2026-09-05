@@ -19,6 +19,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { useHistoryStore } from "@/lib/history";
+import { useActiveMediaStore } from "@/lib/activeMediaStore";
 import { useSettingsStore } from "@/lib/settings";
 import type { Episode, Movie } from "@/lib/types";
 import { getImageUrl } from "@/lib/api";
@@ -130,6 +131,25 @@ export default function Player({
 
   const addOrUpdate = useHistoryStore((s) => s.addOrUpdate);
   const historyItem = useHistoryStore((s) => s.getBySlug(movie.slug));
+
+  const setActiveFilm = useActiveMediaStore((s) => s.setFilm);
+  const updateFilmTime = useActiveMediaStore((s) => s.updateFilmTime);
+  const clearActiveFilm = useActiveMediaStore((s) => s.clearFilm);
+
+  useEffect(() => {
+    const hist = useHistoryStore.getState().getBySlug(movie.slug);
+    const sameEp = hist && hist.episodeSlug === currentEpisode?.slug;
+    setActiveFilm({
+      slug: movie.slug,
+      name: movie.name || movie.slug,
+      poster: (typeof getImageUrl === "function" ? getImageUrl(movie.poster_url || movie.thumb_url) : movie.poster_url || movie.thumb_url) || "",
+      episode: currentEpisode?.name,
+      episodeSlug: currentEpisode?.slug,
+      server: serverName,
+      currentTime: sameEp && hist ? hist.currentTime : 0,
+      duration: sameEp && hist ? hist.duration : 0,
+    });
+  }, [movie.slug, currentEpisode?.slug, serverName]);
 
   // Resume từ query ?t= (playbox phóng to)
   useEffect(() => {
@@ -392,6 +412,10 @@ const showControls = useCallback(() => {
     };
     const onTime = () => {
       if (!seeking) setCurrentTime(video.currentTime);
+        updateFilmTime(video.currentTime, video.duration || 0);
+        if (video.duration > 30 && video.currentTime / video.duration > 0.99) {
+          clearActiveFilm();
+        }
       {
         const sec = Math.floor(video.currentTime);
         if (sec > 0 && sec - lastMissionTick.current >= 5 && !video.paused) {

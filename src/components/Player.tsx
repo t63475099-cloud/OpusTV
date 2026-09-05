@@ -135,6 +135,35 @@ export default function Player({
   const setActiveFilm = useActiveMediaStore((s) => s.setFilm);
   const updateFilmTime = useActiveMediaStore((s) => s.updateFilmTime);
   const clearActiveFilm = useActiveMediaStore((s) => s.clearFilm);
+  const setFilmStream = useActiveMediaStore((s) => s.setFilmStream);
+
+  const resolveResumeTime = () => {
+    let best = 0;
+    try {
+      const t = Number(new URLSearchParams(window.location.search).get("t") || 0);
+      if (t > best) best = t;
+    } catch {}
+    if (
+      historyItem &&
+      historyItem.episodeSlug === currentEpisode.slug &&
+      historyItem.currentTime > best
+    ) {
+      best = historyItem.currentTime;
+    }
+    try {
+      const af = useActiveMediaStore.getState().film;
+      if (
+        af &&
+        af.slug === movie.slug &&
+        af.episodeSlug === currentEpisode.slug &&
+        af.currentTime > best
+      ) {
+        best = af.currentTime;
+      }
+    } catch {}
+    return best > 10 ? best : 0;
+  };
+
 
   useEffect(() => {
     const hist = useHistoryStore.getState().getBySlug(movie.slug);
@@ -148,7 +177,9 @@ export default function Player({
       server: serverName,
       currentTime: sameEp && hist ? hist.currentTime : 0,
       duration: sameEp && hist ? hist.duration : 0,
+      m3u8: m3u8 || undefined,
     });
+    if (m3u8) setFilmStream(m3u8);
   }, [movie.slug, currentEpisode?.slug, serverName]);
 
   // Resume từ query ?t= (playbox phóng to)
@@ -329,12 +360,9 @@ const showControls = useCallback(() => {
           }
         }
 
-        if (
-          historyItem &&
-          historyItem.episodeSlug === currentEpisode.slug &&
-          historyItem.currentTime > 10
-        ) {
-          video.currentTime = historyItem.currentTime;
+        {
+          const resumeAt = resolveResumeTime();
+          if (resumeAt > 10) video.currentTime = resumeAt;
         }
         video.play().catch(() => {});
       });
@@ -360,12 +388,9 @@ const showControls = useCallback(() => {
       };
       video.addEventListener("error", onErr);
       video.addEventListener("loadedmetadata", () => {
-        if (
-          historyItem &&
-          historyItem.episodeSlug === currentEpisode.slug &&
-          historyItem.currentTime > 10
-        ) {
-          video.currentTime = historyItem.currentTime;
+        {
+          const resumeAt = resolveResumeTime();
+          if (resumeAt > 10) video.currentTime = resumeAt;
         }
         video.play().catch(() => {});
       });

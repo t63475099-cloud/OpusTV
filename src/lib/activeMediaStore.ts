@@ -3,8 +3,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-/** Phiên phát Film — persist để reload vẫn hiện playbox + mốc thời gian */
-
 export interface ActiveFilm {
   slug: string;
   name: string;
@@ -14,6 +12,9 @@ export interface ActiveFilm {
   server?: string;
   currentTime: number;
   duration: number;
+  /** link phát để playbox phát tại chỗ */
+  m3u8?: string;
+  embed?: string;
 }
 
 export interface ActiveMusic {
@@ -29,6 +30,7 @@ interface ActiveMediaState {
   music: ActiveMusic | null;
   setFilm: (f: ActiveFilm | null) => void;
   updateFilmTime: (currentTime: number, duration?: number) => void;
+  setFilmStream: (m3u8?: string, embed?: string) => void;
   setMusic: (m: ActiveMusic | null) => void;
   clearFilm: () => void;
   clearMusic: () => void;
@@ -44,13 +46,22 @@ export const useActiveMediaStore = create<ActiveMediaState>()(
       updateFilmTime: (currentTime, duration) => {
         const film = get().film;
         if (!film) return;
-        // Chỉ ghi khi đang cùng slug (tránh ghi đè khi đã clear)
         set({
           film: {
             ...film,
             currentTime: Math.max(0, currentTime),
-            duration:
-              duration && duration > 0 ? duration : film.duration,
+            duration: duration && duration > 0 ? duration : film.duration,
+          },
+        });
+      },
+      setFilmStream: (m3u8, embed) => {
+        const film = get().film;
+        if (!film) return;
+        set({
+          film: {
+            ...film,
+            m3u8: m3u8 || film.m3u8,
+            embed: embed || film.embed,
           },
         });
       },
@@ -61,10 +72,7 @@ export const useActiveMediaStore = create<ActiveMediaState>()(
     }),
     {
       name: "opus-active-media",
-      partialize: (s) => ({
-        film: s.film,
-        music: s.music,
-      }),
+      partialize: (s) => ({ film: s.film, music: s.music }),
     }
   )
 );

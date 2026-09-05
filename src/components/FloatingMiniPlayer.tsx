@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Maximize2, Pause, Play, X } from "lucide-react";
+import Hls from "hls.js";
 import { useMusicPlayerStore } from "@/lib/musicPlayerStore";
 import { useActiveMediaStore } from "@/lib/activeMediaStore";
+import { useHistoryStore } from "@/lib/history";
 
-function filmHref(item: {
+function filmPageHref(item: {
   slug: string;
   episodeSlug?: string;
   server?: string;
@@ -16,7 +18,6 @@ function filmHref(item: {
   if (item.episodeSlug) qs.set("ep", item.episodeSlug);
   if (item.server) qs.set("server", item.server);
   if (item.currentTime > 5) qs.set("t", String(Math.floor(item.currentTime)));
-  qs.set("autoplay", "1");
   const q = qs.toString();
   return `/phim/${item.slug}${q ? `?${q}` : ""}`;
 }
@@ -28,10 +29,6 @@ function formatTime(s: number) {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-/**
- * 1 playbox Film (persist) + 1 playbox Music (persist), độc lập.
- * Reload: vẫn hiện, pause; bấm Play / phóng to → tiếp tục đúng mốc, không về 0.
- */
 export default function FloatingMiniPlayer() {
   const path = usePathname() || "/";
   const router = useRouter();
@@ -40,29 +37,108 @@ export default function FloatingMiniPlayer() {
   const track = useMusicPlayerStore((s) => s.track);
   const playing = useMusicPlayerStore((s) => s.playing);
   const setPlaying = useMusicPlayerStore((s) => s.setPlaying);
-  const setExpanded = useMusicPlayerStore((s) => s.setExpanded);
+  const setProgress = useMusicPlayerStore((s) => s.setProgress);
   const stopMusic = useMusicPlayerStore((s) => s.stop);
 
   const film = useActiveMediaStore((s) => s.film);
+  const updateFilmTime = useActiveMediaStore((s) => s.updateFilmTime);
   const clearFilm = useActiveMediaStore((s) => s.clearFilm);
+  const addOrUpdate = useHistoryStore((s) => s.addOrUpdate);
+
+  const [filmPlaying, setFilmPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const appliedResume = useRef(false);
 
   useEffect(() => setMounted(true), []);
+
+  // --- Film HLS trong playbox ---
+  useEffect(() => {
+    if (!mounted || !film?.m3u8) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    appliedResume.current = false;
+    const src = film.m3u8;
+    const resumeAt = film.currentTime > 5 ? film.currentTime : 0;
+
+    const applyResume = () => {
+      if (appliedResume.current) return;
+      if (resumeAt > 0 && video.duration && resumeAt < video.duration - 1) {
+        video.currentTime = resumeAt;
+        appliedResume.current = true;
+      } else if (resumeAt > 0 && video.readyState >= 1) {
+        video.currentTime = resumeAt;
+        appliedResume.current = true;
+      }
+    };
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true, maxBufferLength: 30 });
+      hlsRef.current = hls;
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => applyResume());
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = src;
+      video.addEventListener("loadedmetadata", applyResume, { once: true });
+    }
+
+    const onTime = () => {
+      if (!video.duration) return;
+      updateFilmTime(video.currentTime, video.duration);
+      if (film.slug && video.currentTime > 3) {
+        addOrUpdate({
+          slug: film.slug,
+          name: film.name,
+          poster: film.poster,
+          episode: film.episode || "",
+          episodeSlug: film.episodeSlug || "",
+          server: film.server || "",
+          currentTime: video.currentTime,
+          duration: video.duration,
+          updatedAt: Date.now(),
+        });
+      }
+    };
+    const onPlay = () => setFilmPlaying(true);
+    const onPause = () => setFilmPlaying(false);
+
+    video.addEventListener("timeupdate", onTime);
+    video.addEventListener("play", onPlay);
+    video.addEventListener("pause", onPause);
+
+    return () => {
+      video.removeEventListener("timeupdate", onTime);
+      video.removeEventListener("play", onPlay);
+      video.removeEventListener("pause", onPause);
+      try {
+        hlsRef.current?.destroy();
+      } catch {}
+      hlsRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, film?.slug, film?.episodeSlug, film?.m3u8]);
+
+  // Pause film mini when on film page
+  useEffect(() => {
+    if (film && path.startsWith(`/phim/${film.slug}`)) {
+      videoRef.current?.pause();
+      setFilmPlaying(false);
+    }
+  }, [path, film?.slug]);
 
   if (!mounted) return null;
   if (path.startsWith("/tin-nhan") || path.startsWith("/bao-tri")) return null;
 
   const onMusicPage = path.startsWith("/nhac");
-  const onFilmPage = film ? path.startsWith(`/phim/${film.slug}`) : path.startsWith("/phim/");
+  const onFilmPage = film ? path.startsWith(`/phim/${film.slug}`) : false;
 
   const showMusic = !!track && !onMusicPage;
   const showFilm = !!film && !onFilmPage;
 
-  // Cùng lúc có thể có 2 trạng thái lưu; ưu tiên hiện đúng ngữ cảnh trang
-  // Trang Film/home: hiện film nếu có, không thì music
-  // Không hiện cả hai chồng lên nhau — 1 box
-  const mode: "music" | "film" | null = showMusic && !showFilm
-    ? "music"
-    : showFilm && !showMusic
+  const mode: "music" | "film" | null =
+    showFilm && showMusic
       ? "film"
       : showFilm
         ? "film"
@@ -72,16 +148,18 @@ export default function FloatingMiniPlayer() {
 
   if (!mode) return null;
 
+  // ===== MUSIC: phát ngay trong playbox =====
   if (mode === "music" && track) {
     const start = Math.floor(track.currentTime || 0);
-    const expand = (andPlay: boolean) => {
-      setExpanded(true);
-      if (andPlay) setPlaying(true);
+    const togglePlay = () => {
+      const next = !playing;
+      setPlaying(next);
+    };
+    const expand = () => {
       const q = new URLSearchParams();
       q.set("v", track.id);
       if (start > 5) q.set("t", String(start));
       q.set("expand", "1");
-      if (andPlay) q.set("play", "1");
       router.push(`/nhac?${q.toString()}`);
     };
 
@@ -91,49 +169,57 @@ export default function FloatingMiniPlayer() {
         data-mini-player="music"
       >
         <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-[#0c0c12]/92 backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => expand(true)}
-            className="relative w-full aspect-video bg-black block text-left"
-            aria-label="Phát tiếp bài nhạc"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={track.thumb || `https://i.ytimg.com/vi/${track.id}/hqdefault.jpg`}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover opacity-80"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-              </div>
-            </div>
-            {start > 0 && (
-              <span className="absolute bottom-2 right-2 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded">
-                {formatTime(start)}
-              </span>
+          <div className="relative w-full aspect-video bg-black">
+            {playing ? (
+              <iframe
+                key={`${track.id}-${start}`}
+                title={track.title}
+                src={`https://www.youtube.com/embed/${track.id}?autoplay=1&rel=0${
+                  start > 5 ? `&start=${start}` : ""
+                }`}
+                className="absolute inset-0 w-full h-full border-0"
+                allow="autoplay; encrypted-media; picture-in-picture"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={togglePlay}
+                className="absolute inset-0 w-full h-full"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={track.thumb || `https://i.ytimg.com/vi/${track.id}/hqdefault.jpg`}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover opacity-80"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                    <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                  </div>
+                </div>
+              </button>
             )}
-          </button>
+          </div>
           <div className="flex items-center gap-2 p-2.5">
-            <button type="button" onClick={() => expand(true)} className="min-w-0 flex-1 text-left">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-white line-clamp-1">{track.title}</p>
               <p className="text-[11px] text-zinc-400 line-clamp-1">
                 {track.artist}
                 {start > 0 ? ` · ${formatTime(start)}` : ""}
               </p>
-            </button>
+            </div>
             <button
               type="button"
               className="p-2 rounded-full hover:bg-white/10 text-white"
-              onClick={() => expand(true)}
-              aria-label="Phát tiếp"
+              onClick={togglePlay}
+              aria-label={playing ? "Tạm dừng" : "Phát tiếp"}
             >
               {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
             <button
               type="button"
               className="p-2 rounded-full hover:bg-white/10 text-white"
-              onClick={() => expand(true)}
+              onClick={expand}
               aria-label="Phóng to"
             >
               <Maximize2 className="w-4 h-4" />
@@ -152,12 +238,44 @@ export default function FloatingMiniPlayer() {
     );
   }
 
+  // ===== FILM: phát ngay trong playbox, resume currentTime =====
   if (mode === "film" && film) {
     const progress =
       film.duration > 0
         ? Math.min(100, Math.round((film.currentTime / film.duration) * 100))
         : 0;
-    const expand = () => router.push(filmHref(film));
+
+    const togglePlay = async () => {
+      const v = videoRef.current;
+      if (!v) {
+        // không có stream → chỉ mở trang với ?t=
+        router.push(filmPageHref(film));
+        return;
+      }
+      if (v.paused) {
+        // đảm bảo resume
+        if (film.currentTime > 5 && Math.abs(v.currentTime - film.currentTime) > 2) {
+          try {
+            v.currentTime = film.currentTime;
+          } catch {}
+        }
+        try {
+          await v.play();
+          setFilmPlaying(true);
+        } catch {
+          router.push(filmPageHref(film));
+        }
+      } else {
+        v.pause();
+        setFilmPlaying(false);
+      }
+    };
+
+    const expand = () => {
+      videoRef.current?.pause();
+      setFilmPlaying(false);
+      router.push(filmPageHref(film));
+    };
 
     return (
       <div
@@ -165,63 +283,69 @@ export default function FloatingMiniPlayer() {
         data-mini-player="film"
       >
         <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-[#0c0c12]/92 backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={expand}
-            className="relative w-full aspect-video bg-black block text-left"
-            aria-label="Xem tiếp phim"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={film.poster || "/placeholder.svg"}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+          <div className="relative w-full aspect-video bg-black">
+            <video
+              ref={videoRef}
+              className="absolute inset-0 w-full h-full object-contain bg-black"
+              playsInline
+              preload="metadata"
+              poster={film.poster || undefined}
             />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <div className="w-12 h-12 rounded-full bg-red-600/90 flex items-center justify-center">
-                <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-              </div>
-            </div>
+            {!filmPlaying && (
+              <button
+                type="button"
+                onClick={() => void togglePlay()}
+                className="absolute inset-0 flex items-center justify-center bg-black/35 z-10"
+                aria-label="Phát tiếp"
+              >
+                <div className="w-12 h-12 rounded-full bg-red-600/90 flex items-center justify-center">
+                  <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                </div>
+              </button>
+            )}
             {progress > 0 && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700">
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700 z-20">
                 <div className="h-full bg-red-500" style={{ width: `${progress}%` }} />
               </div>
             )}
             {film.currentTime > 0 && (
-              <span className="absolute bottom-2 right-2 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded">
+              <span className="absolute bottom-2 right-2 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded z-20">
                 {formatTime(film.currentTime)}
                 {film.duration > 0 ? ` / ${formatTime(film.duration)}` : ""}
               </span>
             )}
-          </button>
+          </div>
           <div className="flex items-center gap-2 p-2.5">
-            <button type="button" onClick={expand} className="min-w-0 flex-1 text-left">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-white line-clamp-1">{film.name}</p>
               <p className="text-[11px] text-zinc-400 line-clamp-1">
                 {film.episode || "Xem tiếp"}
                 {progress > 0 ? ` · ${progress}%` : ""}
               </p>
-            </button>
+            </div>
             <button
               type="button"
               className="p-2 rounded-full hover:bg-white/10 text-white"
-              onClick={expand}
-              aria-label="Phát tiếp"
+              onClick={() => void togglePlay()}
+              aria-label={filmPlaying ? "Tạm dừng" : "Phát tiếp"}
             >
-              <Play className="w-4 h-4" />
+              {filmPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
             <button
               type="button"
               className="p-2 rounded-full hover:bg-white/10 text-white"
               onClick={expand}
-              aria-label="Phóng to"
+              aria-label="Phóng to trang xem"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
             <button
               type="button"
               className="p-2 rounded-full hover:bg-white/10 text-zinc-400"
-              onClick={() => clearFilm()}
+              onClick={() => {
+                videoRef.current?.pause();
+                clearFilm();
+              }}
               aria-label="Đóng"
             >
               <X className="w-4 h-4" />

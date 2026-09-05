@@ -145,7 +145,6 @@ export default function FloatingMiniPlayer() {
       hls.loadSource(film.m3u8);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, seekResume);
-      hls.on(Hls.Events.LEVEL_LOADED, seekResume);
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = film.m3u8;
       video.addEventListener("loadedmetadata", seekResume);

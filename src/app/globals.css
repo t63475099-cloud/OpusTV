@@ -2226,7 +2226,7 @@ html.opus-chat-lock body {
   height: 100%;
   height: 100dvh;
   overscroll-behavior: none;
-  touch-action: none;
+  /* KHÔNG dùng touch-action:none — dễ kẹt trắng/không vuốt nếu class sót lại */
 }
 html.opus-chat-lock footer {
   display: none !important;

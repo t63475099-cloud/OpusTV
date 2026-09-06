@@ -111,7 +111,7 @@ function emptyMeta(): ChatLocalMeta {
   return {
     deletedMessageIds: [],
     hiddenMessageIds: [],
-    blockedUsers: typeof window !== "undefined" ? loadMeta().blockedUsers : [],
+    blockedUsers: [],
     groupTitles: {},
     groupAnnouncements: {},
     pinned: {},
@@ -351,11 +351,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       error: null,
       synced: false,
       typingPeers: {},
-      blockedUsers: typeof window !== "undefined" ? loadMeta().blockedUsers : [],
+      blockedUsers: [],
 
       setMe: (username) => {
         const me = username ? username.toLowerCase() : null;
-        set({ me });
+        let blockedUsers: string[] = [];
+        try {
+          blockedUsers = loadMeta().blockedUsers || [];
+        } catch {
+          blockedUsers = [];
+        }
+        set({ me, blockedUsers });
         if (me) {
           const chatAv = loadChatAvatar(me);
           try {

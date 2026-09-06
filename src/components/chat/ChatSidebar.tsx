@@ -9,7 +9,7 @@ import {
   formatLastSeen,
   type Conversation,
 } from "@/lib/chatStore";
-import ChatAvatar from "./ChatAvatar";
+import ChatAvatar, { GroupAvatar } from "./ChatAvatar";
 import ChatProfileModal from "./ChatProfileModal";
 import { parseCallLog, formatCallLogLabel } from "@/lib/callLog";
 
@@ -24,6 +24,7 @@ function Row({
 }) {
   const displayTitle = useChatStore((s) => s.displayTitle);
   const peerOf = useChatStore((s) => s.peerOf);
+  const getUser = useChatStore((s) => s.getUser);
   const me = useChatStore((s) => s.me);
   const title = displayTitle(c);
   const peer = peerOf(c);
@@ -50,11 +51,11 @@ function Row({
       }`}
     >
       {c.isGroup ? (
-        <div className="relative w-12 h-12 shrink-0">
-          <div className="w-12 h-12 rounded-full bg-[#0068ff] flex items-center justify-center">
-            <Users className="w-5 h-5 text-white" />
-          </div>
-        </div>
+        <GroupAvatar
+          members={c.participants.map((id) => getUser(id))}
+          size="md"
+          title={title}
+        />
       ) : (
         <ChatAvatar user={peer || undefined} size="md" showStatus />
       )}

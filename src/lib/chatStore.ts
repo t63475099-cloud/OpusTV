@@ -12,6 +12,8 @@ export interface ChatUser {
   nickname: string;
   uid?: string;
   avatar: string;
+  /** id khung viền avatar (tùy chọn) */
+  frame?: string;
   status: UserStatus;
   /** epoch ms — lần truy cập cuối (Zalo-style) */
   lastSeen?: number;
@@ -266,6 +268,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                     name: name || s.users[me]?.name || me,
                     nickname: me,
                     avatar: av,
+                    frame: profile?.avatarFrame || s.users[me]?.frame,
                     status: "online" as const,
                     lastSeen: Date.now(),
                     verified: !!profile?.verified,
@@ -1126,12 +1129,33 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 export function formatChatTime(ts: number) {
   const d = new Date(ts);
   const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (sameDay) {
-    return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startThat = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dayDiff = Math.round((startToday - startThat) / 86400000);
+  const hhmm = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  if (dayDiff === 0) return hhmm;
+  if (dayDiff === 1) return `Hôm qua ${hhmm}`;
+  if (dayDiff < 7 && dayDiff > 1) {
+    const wd = d.toLocaleDateString("vi-VN", { weekday: "short" });
+    return `${wd} ${hhmm}`;
   }
-  return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}-${mo} ${hhmm}`;
+}
+
+/** Nhãn ngày cho separator trong luồng chat */
+export function formatChatDayLabel(ts: number) {
+  const d = new Date(ts);
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startThat = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dayDiff = Math.round((startToday - startThat) / 86400000);
+  if (dayDiff === 0) return "Hôm nay";
+  if (dayDiff === 1) return "Hôm qua";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = d.getFullYear();
+  if (yy === now.getFullYear()) return `${dd}-${mo}`;
+  return `${dd}-${mo}-${yy}`;
 }

@@ -15,11 +15,12 @@ import {
 import {
   useChatStore,
   formatLastSeen,
+  formatChatDayLabel,
   type Conversation,
   type ChatAttachment,
   type ChatMessage,
 } from "@/lib/chatStore";
-import ChatAvatar from "./ChatAvatar";
+import ChatAvatar, { GroupAvatar } from "./ChatAvatar";
 import MessageBubble from "./MessageBubble";
 import CallModal from "./CallModal";
 import VoiceRecorder from "./VoiceRecorder";
@@ -173,9 +174,11 @@ export default function ChatWindow({
           className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
         >
           {conversation.isGroup ? (
-            <div className="w-9 h-9 rounded-full bg-[#0068ff] flex items-center justify-center text-white font-semibold">
-              {(title || "N").slice(0, 1).toUpperCase()}
-            </div>
+            <GroupAvatar
+              members={conversation.participants.map((id) => getUser(id))}
+              size="sm"
+              title={title}
+            />
           ) : (
             <ChatAvatar user={livePeer} size="sm" />
           )}
@@ -249,21 +252,36 @@ export default function ChatWindow({
         data-chat-scroll
         className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 min-h-0"
       >
-        {filtered.map((m) => (
-          <MessageBubble
-            key={m.id}
-            m={m}
-            mine={m.senderId === me}
-            name={
-              conversation.isGroup && m.senderId !== me
-                ? getUser(m.senderId)?.name || m.senderId
-                : undefined
-            }
-            replyPreview={m.replyToId ? msgMap.get(m.replyToId) : null}
-            onCallBack={!conversation.isGroup ? (mode) => setCall(mode) : undefined}
-            onForward={(id) => setForwardId(id)}
-          />
-        ))}
+        {filtered.map((m, i) => {
+          const prev = filtered[i - 1];
+          const showDay =
+            !prev ||
+            new Date(prev.timestamp).toDateString() !==
+              new Date(m.timestamp).toDateString();
+          return (
+            <div key={m.id}>
+              {showDay && (
+                <div className="flex justify-center my-3">
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-[#2a2e36] text-zinc-400">
+                    {formatChatDayLabel(m.timestamp)}
+                  </span>
+                </div>
+              )}
+              <MessageBubble
+                m={m}
+                mine={m.senderId === me}
+                name={
+                  conversation.isGroup && m.senderId !== me
+                    ? getUser(m.senderId)?.name || m.senderId
+                    : undefined
+                }
+                replyPreview={m.replyToId ? msgMap.get(m.replyToId) : null}
+                onCallBack={!conversation.isGroup ? (mode) => setCall(mode) : undefined}
+                onForward={(id) => setForwardId(id)}
+              />
+            </div>
+          );
+        })}
         {peerTyping && (
           <p className="text-[12px] text-zinc-500 px-2 py-1 animate-pulse">Đang soạn tin...</p>
         )}

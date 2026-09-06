@@ -158,7 +158,7 @@ export default function TinNhanPage() {
       {/* Phải: thông tin hội thoại */}
       {active && showInfo && (
         <div className="hidden xl:flex h-full w-[300px] shrink-0 border-l border-[#2a2d34] bg-[#16181c]">
-          <ChatInfoPanel conversation={active} />
+          <ChatInfoPanel conversation={active} onClose={() => setShowInfo(false)} />
         </div>
       )}
 

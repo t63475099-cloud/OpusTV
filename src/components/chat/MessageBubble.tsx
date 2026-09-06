@@ -293,13 +293,35 @@ export default function MessageBubble({
               </button>
               <button
                 type="button"
-                className="p-1 text-zinc-400 hover:text-rose-400"
-                title="Xóa"
-                onClick={() => deleteMessage(m.id)}
+                className="p-1 text-zinc-400 hover:text-rose-300"
+                title="Xóa chỉ mình tôi"
+                onClick={() => deleteMessage(m.id, "me")}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
+              <button
+                type="button"
+                className="p-1 text-zinc-400 hover:text-rose-400"
+                title="Thu hồi với mọi người"
+                onClick={() => {
+                  if (window.confirm("Thu hồi tin nhắn với mọi người?")) {
+                    deleteMessage(m.id, "everyone");
+                  }
+                }}
+              >
+                <span className="text-[10px] font-bold leading-none">↩</span>
+              </button>
             </>
+          )}
+          {!mine && (
+            <button
+              type="button"
+              className="p-1 text-zinc-400 hover:text-rose-300"
+              title="Ẩn tin này"
+              onClick={() => deleteMessage(m.id, "me")}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
         </div>
       )}

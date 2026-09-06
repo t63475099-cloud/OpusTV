@@ -240,6 +240,12 @@ export default function ChatWindow({
         </div>
       )}
 
+      {(conversation.blocked) && !conversation.isGroup ? (
+        <div className="shrink-0 px-3 py-2 bg-rose-500/10 border-b border-rose-500/20 text-[12px] text-rose-200 text-center">
+          Bạn đã chặn người dùng này. Không thể gửi hoặc nhận tin nhắn mới.
+        </div>
+      ) : null}
+
       {conversation.isGroup && conversation.announcement ? (
         <div className="shrink-0 px-3 py-2 bg-amber-500/10 border-b border-amber-500/20 text-[12px] text-amber-100/90">
           <span className="font-semibold text-amber-300">Ghim: </span>
@@ -340,13 +346,18 @@ export default function ChatWindow({
               }
             }}
             rows={1}
-            placeholder={`Nhập tin nhắn với ${title}`}
-            className="flex-1 min-w-0 max-h-28 resize-none rounded-lg bg-[#2a2e36] px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-[#0068ff]/40"
+            placeholder={
+              conversation.blocked
+                ? "Bạn đã chặn người dùng này"
+                : `Nhập tin nhắn với ${title}`
+            }
+            disabled={!!conversation.blocked}
+            className="flex-1 min-w-0 max-h-28 resize-none rounded-lg bg-[#2a2e36] px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-[#0068ff]/40 disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => void onSend()}
-            disabled={!text.trim() && !pending.length}
+            disabled={!!conversation.blocked || (!text.trim() && !pending.length)}
             className="p-2.5 rounded-full bg-[#0068ff] text-white disabled:opacity-40 disabled:bg-[#2a2e36]"
           >
             <Send className="w-5 h-5" />

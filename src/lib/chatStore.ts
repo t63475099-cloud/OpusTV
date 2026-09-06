@@ -94,6 +94,115 @@ function saveChatAvatar(username: string, url: string) {
   }
 }
 
+/** Meta chat lưu LocalStorage — không bị sync server ghi đè */
+const CHAT_META_KEY = "opus_chat_local_meta_v1";
+
+export interface ChatLocalMeta {
+  deletedMessageIds: string[];
+  hiddenMessageIds: string[];
+  blockedUsers: string[];
+  groupTitles: Record<string, string>;
+  groupAnnouncements: Record<string, string>;
+  pinned: Record<string, { pinned: boolean; pinOrder: number }>;
+  muted: Record<string, { muted: boolean; mutedUntil?: number | null }>;
+}
+
+function emptyMeta(): ChatLocalMeta {
+  return {
+    deletedMessageIds: [],
+    hiddenMessageIds: [],
+    blockedUsers: typeof window !== "undefined" ? loadMeta().blockedUsers : [],
+    groupTitles: {},
+    groupAnnouncements: {},
+    pinned: {},
+    muted: {},
+  };
+}
+
+function loadMeta(): ChatLocalMeta {
+  if (typeof window === "undefined") return emptyMeta();
+  try {
+    const raw = localStorage.getItem(CHAT_META_KEY);
+    if (!raw) return emptyMeta();
+    const parsed = JSON.parse(raw) as Partial<ChatLocalMeta>;
+    return {
+      ...emptyMeta(),
+      ...parsed,
+      deletedMessageIds: Array.isArray(parsed.deletedMessageIds)
+        ? parsed.deletedMessageIds
+        : [],
+      hiddenMessageIds: Array.isArray(parsed.hiddenMessageIds)
+        ? parsed.hiddenMessageIds
+        : [],
+      blockedUsers: Array.isArray(parsed.blockedUsers) ? parsed.blockedUsers : [],
+      groupTitles: parsed.groupTitles || {},
+      groupAnnouncements: parsed.groupAnnouncements || {},
+      pinned: parsed.pinned || {},
+      muted: parsed.muted || {},
+    };
+  } catch {
+    return emptyMeta();
+  }
+}
+
+function saveMeta(meta: ChatLocalMeta) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CHAT_META_KEY, JSON.stringify(meta));
+  } catch {}
+}
+
+function patchMeta(patch: Partial<ChatLocalMeta> | ((m: ChatLocalMeta) => ChatLocalMeta)) {
+  const cur = loadMeta();
+  const next = typeof patch === "function" ? patch(cur) : { ...cur, ...patch };
+  saveMeta(next);
+  return next;
+}
+
+function applyMsgLocalFlags(list: ChatMessage[]): ChatMessage[] {
+  const meta = loadMeta();
+  const deleted = new Set(meta.deletedMessageIds);
+  const hidden = new Set(meta.hiddenMessageIds);
+  return list
+    .filter((m) => !hidden.has(m.id))
+    .map((m) =>
+      deleted.has(m.id)
+        ? { ...m, deleted: true, text: "", attachments: [] }
+        : m
+    );
+}
+
+function applyConversationMeta(c: Conversation): Conversation {
+  const meta = loadMeta();
+  const pin = meta.pinned[c.id];
+  const mute = meta.muted[c.id];
+  let next = { ...c };
+  if (c.isGroup && meta.groupTitles[c.id]) {
+    next.title = meta.groupTitles[c.id];
+  }
+  if (c.isGroup && meta.groupAnnouncements[c.id] !== undefined) {
+    next.announcement = meta.groupAnnouncements[c.id];
+  }
+  if (pin) {
+    next.pinned = pin.pinned;
+    next.pinOrder = pin.pinOrder;
+  }
+  if (mute) {
+    next.muted = mute.muted;
+    next.mutedUntil = mute.mutedUntil ?? null;
+  }
+  if (
+    !c.isGroup &&
+    c.peerUsername &&
+    meta.blockedUsers.includes(c.peerUsername.toLowerCase())
+  ) {
+    next.blocked = true;
+  }
+  return next;
+}
+
+
+
 interface ChatState {
   me: string | null;
   users: Record<string, ChatUser>;
@@ -139,7 +248,7 @@ interface ChatState {
   togglePin: (conversationId: string) => void;
   toggleReaction: (messageId: string, emoji: string) => void;
   editMessage: (messageId: string, text: string) => void;
-  deleteMessage: (messageId: string) => void;
+  deleteMessage: (messageId: string, scope?: "me" | "everyone") => void;
   forwardMessage: (messageId: string, toConversationId: string) => Promise<void>;
   markConversationRead: (conversationId: string) => void;
   setGroupAnnouncement: (conversationId: string, text: string) => void;
@@ -242,7 +351,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       error: null,
       synced: false,
       typingPeers: {},
-      blockedUsers: [],
+      blockedUsers: typeof window !== "undefined" ? loadMeta().blockedUsers : [],
 
       setMe: (username) => {
         const me = username ? username.toLowerCase() : null;
@@ -550,10 +659,15 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             }
           } catch {}
 
+          const meta = loadMeta();
+          const conversationsWithMeta = conversations.map((c) =>
+            applyConversationMeta(c)
+          );
           set({
             users,
             friends: friendIds,
-            conversations,
+            conversations: conversationsWithMeta,
+            blockedUsers: meta.blockedUsers,
             loading: false,
             synced: true,
             // Không bao giờ xóa activeId khi sync (tránh mất đoạn chat khi click/poll)
@@ -675,15 +789,27 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           const list = (data.messages || []).map((row: Parameters<typeof mapServerMsg>[0]) =>
             mapServerMsg(row, me)
           );
+          const meta = loadMeta();
+          const peerBlocked =
+            meta.blockedUsers.includes(peer.toLowerCase()) ||
+            get().blockedUsers.includes(peer.toLowerCase());
+          let finalList = applyMsgLocalFlags(list);
+          if (peerBlocked) {
+            // Ẩn tin đến từ người đã chặn (vẫn giữ tin mình gửi)
+            finalList = finalList.filter((m) => m.senderId === me);
+          }
           set((s) => ({
-            messages: { ...s.messages, [id]: list },
+            messages: { ...s.messages, [id]: finalList },
             conversations: s.conversations.map((c) =>
               c.id === id
                 ? {
                     ...c,
+                    blocked: peerBlocked || c.blocked,
                     unreadCount: 0,
-                    lastMessage: list[list.length - 1] || c.lastMessage,
-                    updatedAt: list[list.length - 1]?.timestamp || c.updatedAt,
+                    lastMessage:
+                      finalList[finalList.length - 1] || c.lastMessage,
+                    updatedAt:
+                      finalList[finalList.length - 1]?.timestamp || c.updatedAt,
                   }
                 : c
             ),
@@ -722,16 +848,19 @@ export const useChatStore = create<ChatState>()((set, get) => ({
               attachments: m.attachments,
             })
           );
+          const finalList = applyMsgLocalFlags(list);
           set((s) => ({
-            messages: { ...s.messages, [groupId]: list },
+            messages: { ...s.messages, [groupId]: finalList },
             conversations: s.conversations.map((c) =>
               c.id === groupId
-                ? {
+                ? applyConversationMeta({
                     ...c,
                     unreadCount: 0,
-                    lastMessage: list[list.length - 1] || c.lastMessage,
-                    updatedAt: list[list.length - 1]?.timestamp || c.updatedAt,
-                  }
+                    lastMessage:
+                      finalList[finalList.length - 1] || c.lastMessage,
+                    updatedAt:
+                      finalList[finalList.length - 1]?.timestamp || c.updatedAt,
+                  })
                 : c
             ),
           }));
@@ -743,13 +872,23 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
       sendMessage: async (text, attachments) => {
         const me = get().me;
-        const { activeId, conversations, replyTo } = get();
+        const { activeId, conversations, replyTo, blockedUsers } = get();
         if (!me || !activeId) return;
         const conv = conversations.find((c) => c.id === activeId);
         if (!conv) return;
         const isGroup = !!conv.isGroup;
         const peer = conv.peerUsername || conv.participants.find((p) => p !== me);
         if (!isGroup && !peer) return;
+        if (!isGroup && peer) {
+          const blocked =
+            conv.blocked ||
+            blockedUsers.includes(peer.toLowerCase()) ||
+            loadMeta().blockedUsers.includes(peer.toLowerCase());
+          if (blocked) {
+            set({ error: "Bạn đã chặn người dùng này" });
+            return;
+          }
+        }
         const trimmed = text.trim();
         if (!trimmed && !attachments?.length) return;
 
@@ -832,12 +971,20 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       muteFor: (conversationId, hours) => {
         const until =
           hours === null ? null : Date.now() + hours * 60 * 60 * 1000;
+        const muted = hours !== null;
+        patchMeta((m) => ({
+          ...m,
+          muted: {
+            ...m.muted,
+            [conversationId]: { muted, mutedUntil: until },
+          },
+        }));
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === conversationId
               ? {
                   ...c,
-                  muted: hours !== null,
+                  muted,
                   mutedUntil: until,
                 }
               : c
@@ -853,13 +1000,21 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             (m, c) => Math.max(m, c.pinOrder || 0),
             0
           );
+          const pinOrder = willPin ? maxOrder + 1 : 0;
+          patchMeta((m) => ({
+            ...m,
+            pinned: {
+              ...m.pinned,
+              [conversationId]: { pinned: willPin, pinOrder },
+            },
+          }));
           return {
             conversations: s.conversations.map((c) =>
               c.id === conversationId
                 ? {
                     ...c,
                     pinned: willPin,
-                    pinOrder: willPin ? maxOrder + 1 : 0,
+                    pinOrder,
                   }
                 : c
             ),
@@ -884,14 +1039,44 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         }));
       },
 
-      deleteMessage: (messageId) => {
+      deleteMessage: (messageId, scope = "everyone") => {
         const { activeId, me } = get();
         if (!activeId || !me) return;
+        const list = get().messages[activeId] || [];
+        const target = list.find((m) => m.id === messageId);
+        if (!target) return;
+        // Chỉ chủ tin mới thu hồi với mọi người
+        if (scope === "everyone" && target.senderId !== me) {
+          scope = "me";
+        }
+        if (scope === "me") {
+          patchMeta((m) => ({
+            ...m,
+            hiddenMessageIds: m.hiddenMessageIds.includes(messageId)
+              ? m.hiddenMessageIds
+              : [...m.hiddenMessageIds, messageId],
+          }));
+          set((s) => ({
+            messages: {
+              ...s.messages,
+              [activeId]: (s.messages[activeId] || []).filter(
+                (m) => m.id !== messageId
+              ),
+            },
+          }));
+          return;
+        }
+        patchMeta((m) => ({
+          ...m,
+          deletedMessageIds: m.deletedMessageIds.includes(messageId)
+            ? m.deletedMessageIds
+            : [...m.deletedMessageIds, messageId],
+        }));
         set((s) => ({
           messages: {
             ...s.messages,
             [activeId]: (s.messages[activeId] || []).map((m) =>
-              m.id === messageId && m.senderId === me
+              m.id === messageId
                 ? { ...m, deleted: true, text: "", attachments: [] }
                 : m
             ),
@@ -948,21 +1133,30 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       },
 
       setGroupAnnouncement: (conversationId, text) => {
+        const ann = text.trim().slice(0, 500);
+        patchMeta((m) => ({
+          ...m,
+          groupAnnouncements: { ...m.groupAnnouncements, [conversationId]: ann },
+        }));
         set((s) => ({
           conversations: s.conversations.map((c) =>
             c.id === conversationId && c.isGroup
-              ? { ...c, announcement: text.trim().slice(0, 500) }
+              ? { ...c, announcement: ann }
               : c
           ),
         }));
       },
 
       setGroupTitle: (conversationId, title) => {
-        const t = title.trim().slice(0, 80);
-        if (!t) return;
+        const name = title.trim().slice(0, 80);
+        if (!name) return;
+        patchMeta((m) => ({
+          ...m,
+          groupTitles: { ...m.groupTitles, [conversationId]: name },
+        }));
         set((s) => ({
           conversations: s.conversations.map((c) =>
-            c.id === conversationId && c.isGroup ? { ...c, title: t } : c
+            c.id === conversationId && c.isGroup ? { ...c, title: name } : c
           ),
         }));
       },
@@ -982,6 +1176,12 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
       blockUser: (username) => {
         const id = username.toLowerCase();
+        patchMeta((m) => ({
+          ...m,
+          blockedUsers: m.blockedUsers.includes(id)
+            ? m.blockedUsers
+            : [...m.blockedUsers, id],
+        }));
         set((s) => ({
           blockedUsers: s.blockedUsers.includes(id)
             ? s.blockedUsers
@@ -997,6 +1197,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
       unblockUser: (username) => {
         const id = username.toLowerCase();
+        patchMeta((m) => ({
+          ...m,
+          blockedUsers: m.blockedUsers.filter((x) => x !== id),
+        }));
         set((s) => ({
           blockedUsers: s.blockedUsers.filter((x) => x !== id),
           conversations: s.conversations.map((c) =>

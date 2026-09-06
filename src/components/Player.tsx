@@ -178,9 +178,11 @@ export default function Player({
       active &&
       active.slug === movie.slug &&
       active.episodeSlug === currentEpisode?.slug;
+    const lsT = loadFilmResume(movie.slug, currentEpisode?.slug);
     const resumeT = Math.max(
       sameHist ? hist!.currentTime || 0 : 0,
-      sameActive ? active!.currentTime || 0 : 0
+      sameActive ? active!.currentTime || 0 : 0,
+      lsT || 0
     );
     const resumeD = Math.max(
       sameHist ? hist!.duration || 0 : 0,
@@ -202,6 +204,32 @@ export default function Player({
     });
     if (m3u8) setFilmStream(m3u8);
   }, [movie.slug, currentEpisode?.slug, serverName, m3u8]);
+  useEffect(() => {
+    const flush = () => {
+      const v = videoRef.current;
+      if (!v || !movie?.slug) return;
+      if (v.currentTime < 3) return;
+      saveFilmResume(movie.slug, currentEpisode?.slug, v.currentTime, v.duration || 0, {
+        name: movie.name,
+        poster: getImageUrl(movie.poster_url || movie.thumb_url) || "",
+        episode: currentEpisode?.name,
+        server: serverName,
+        m3u8: m3u8 || undefined,
+      });
+      updateFilmTime(v.currentTime, v.duration || 0);
+    };
+    const onVis = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVis);
+      flush();
+    };
+  }, [movie.slug, currentEpisode?.slug, serverName, m3u8]);
+
 
   // Resume từ query ?t= (playbox phóng to)
   useEffect(() => {
@@ -242,7 +270,17 @@ export default function Player({
       duration: video.duration || 0,
       updatedAt: Date.now(),
     });
-  }, [movie, currentEpisode, serverName, addOrUpdate]);
+    if (video.currentTime > 3) {
+      saveFilmResume(movie.slug, currentEpisode.slug, video.currentTime, video.duration || 0, {
+        name: movie.name,
+        poster: getImageUrl(movie.poster_url || movie.thumb_url) || "",
+        episode: currentEpisode.name,
+        server: serverName,
+        m3u8: m3u8 || undefined,
+      });
+      updateFilmTime(video.currentTime, video.duration || 0);
+    }
+  }, [movie, currentEpisode, serverName, addOrUpdate, m3u8, updateFilmTime]);
 
   const scheduleHide = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);

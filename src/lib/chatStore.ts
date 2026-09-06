@@ -286,6 +286,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             },
           },
         }));
+        // Đồng bộ avatar lên server để bạn bè thấy ảnh thật
+        if (url) {
+          void fetch("/api/auth/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile: { avatar: url } }),
+          }).catch(() => {});
+        }
       },
       /** Chỉ điền avatar Film nếu CHƯA có avatar chat riêng */
       syncMyAvatarFromFilm: () => {

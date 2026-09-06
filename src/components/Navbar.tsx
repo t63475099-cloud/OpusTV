@@ -16,6 +16,7 @@ import {
   Flame,
   Clapperboard,
   Music2,
+  Bell,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import StreakBadge from "@/components/StreakBadge";

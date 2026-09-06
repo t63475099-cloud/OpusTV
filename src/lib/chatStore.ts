@@ -49,6 +49,8 @@ export interface ChatMessage {
   editedAt?: number;
   deleted?: boolean;
   forwardedFrom?: string;
+  /** Tin hệ thống (thêm/rời nhóm…) — căn giữa */
+  system?: boolean;
 }
 
 export interface Conversation {
@@ -103,6 +105,11 @@ export interface ChatLocalMeta {
   blockedUsers: string[];
   groupTitles: Record<string, string>;
   groupAnnouncements: Record<string, string>;
+  groupMembers: Record<string, string[]>;
+  /** username admin theo group id */
+  groupAdmins: Record<string, string[]>;
+  /** tin hệ thống theo conversationId */
+  systemMessages: Record<string, ChatMessage[]>;
   pinned: Record<string, { pinned: boolean; pinOrder: number }>;
   muted: Record<string, { muted: boolean; mutedUntil?: number | null }>;
 }
@@ -114,6 +121,9 @@ function emptyMeta(): ChatLocalMeta {
     blockedUsers: [],
     groupTitles: {},
     groupAnnouncements: {},
+    groupMembers: {},
+    groupAdmins: {},
+    systemMessages: {},
     pinned: {},
     muted: {},
   };
@@ -137,6 +147,9 @@ function loadMeta(): ChatLocalMeta {
       blockedUsers: Array.isArray(parsed.blockedUsers) ? parsed.blockedUsers : [],
       groupTitles: parsed.groupTitles || {},
       groupAnnouncements: parsed.groupAnnouncements || {},
+      groupMembers: parsed.groupMembers || {},
+      groupAdmins: parsed.groupAdmins || {},
+      systemMessages: parsed.systemMessages || {},
       pinned: parsed.pinned || {},
       muted: parsed.muted || {},
     };
@@ -182,6 +195,14 @@ function applyConversationMeta(c: Conversation): Conversation {
   }
   if (c.isGroup && meta.groupAnnouncements[c.id] !== undefined) {
     next.announcement = meta.groupAnnouncements[c.id];
+  }
+  if (c.isGroup && meta.groupMembers[c.id]?.length) {
+    next.participants = Array.from(
+      new Set([...(meta.groupMembers[c.id] || []), ...c.participants])
+    );
+  }
+  if (c.isGroup && meta.groupAdmins[c.id]?.length) {
+    next.admins = meta.groupAdmins[c.id].map((x) => x.toLowerCase());
   }
   if (pin) {
     next.pinned = pin.pinned;
@@ -254,6 +275,11 @@ interface ChatState {
   setGroupAnnouncement: (conversationId: string, text: string) => void;
   setGroupTitle: (conversationId: string, title: string) => void;
   addGroupMembers: (conversationId: string, memberIds: string[]) => void;
+  leaveGroup: (conversationId: string) => void;
+  removeGroupMember: (conversationId: string, memberId: string) => void;
+  promoteAdmin: (conversationId: string, memberId: string) => void;
+  demoteAdmin: (conversationId: string, memberId: string) => void;
+  isGroupAdmin: (conversationId: string, userId?: string | null) => boolean;
   blockUser: (username: string) => void;
   unblockUser: (username: string) => void;
   blockedUsers: string[];
@@ -334,6 +360,19 @@ function statusFromLastSeen(lastSeen?: number): UserStatus {
   if (diff < 90_000) return "online";
   if (diff < 15 * 60_000) return "away";
   return "offline";
+}
+
+function mergeSystemMessages(convId: string, list: ChatMessage[]): ChatMessage[] {
+  try {
+    const meta = loadMeta();
+    const sys = meta.systemMessages[convId] || [];
+    if (!sys.length) return list;
+    const seen = new Set(list.map((m) => m.id));
+    const extra = sys.filter((m) => !seen.has(m.id) && m.system);
+    return [...list, ...extra].sort((a, b) => a.timestamp - b.timestamp);
+  } catch {
+    return list;
+  }
 }
 
 export const useChatStore = create<ChatState>()((set, get) => ({
@@ -799,7 +838,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           const peerBlocked =
             meta.blockedUsers.includes(peer.toLowerCase()) ||
             get().blockedUsers.includes(peer.toLowerCase());
-          let finalList = applyMsgLocalFlags(list);
+          let finalList = mergeSystemMessages(id, applyMsgLocalFlags(list));
           if (peerBlocked) {
             // Ẩn tin đến từ người đã chặn (vẫn giữ tin mình gửi)
             finalList = finalList.filter((m) => m.senderId === me);
@@ -854,7 +893,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
               attachments: m.attachments,
             })
           );
-          const finalList = applyMsgLocalFlags(list);
+          const finalList = mergeSystemMessages(
+            groupId,
+            applyMsgLocalFlags(list)
+          );
           set((s) => ({
             messages: { ...s.messages, [groupId]: finalList },
             conversations: s.conversations.map((c) =>
@@ -1139,6 +1181,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       },
 
       setGroupAnnouncement: (conversationId, text) => {
+        const me = get().me;
+        if (!me || !get().isGroupAdmin(conversationId, me)) return;
         const ann = text.trim().slice(0, 500);
         patchMeta((m) => ({
           ...m,
@@ -1154,6 +1198,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       },
 
       setGroupTitle: (conversationId, title) => {
+        const me = get().me;
+        if (!me || !get().isGroupAdmin(conversationId, me)) return;
         const name = title.trim().slice(0, 80);
         if (!name) return;
         patchMeta((m) => ({
@@ -1168,15 +1214,330 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       },
 
       addGroupMembers: (conversationId, memberIds) => {
+        const me = get().me;
+        if (!me) return;
+        if (!get().isGroupAdmin(conversationId, me)) {
+          set({ error: "Chỉ admin mới được thêm thành viên" });
+          return;
+        }
+        const ids = memberIds.map((x) => x.toLowerCase()).filter(Boolean);
+        if (!ids.length) return;
+        const conv = get().conversations.find((c) => c.id === conversationId);
+        if (!conv?.isGroup) return;
+
+        const before = new Set(conv.participants.map((p) => p.toLowerCase()));
+        const added = ids.filter((id) => !before.has(id));
+        if (!added.length) return;
+
+        const nextParticipants = Array.from(
+          new Set([...conv.participants, ...added])
+        );
+
+        patchMeta((m) => ({
+          ...m,
+          groupMembers: { ...m.groupMembers, [conversationId]: nextParticipants },
+        }));
+
+        const actor =
+          get().users[me]?.name || get().users[me]?.nickname || me;
+        const names = added.map(
+          (id) => get().users[id]?.name || get().users[id]?.nickname || id
+        );
+        const text =
+          added.length === 1
+            ? `${actor} đã thêm ${names[0]} vào nhóm`
+            : `${actor} đã thêm ${names.join(", ")} vào nhóm`;
+
+        const sysMsg: ChatMessage = {
+          id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          conversationId,
+          senderId: "system",
+          text,
+          timestamp: Date.now(),
+          status: "read",
+          system: true,
+        };
+
+        patchMeta((m) => ({
+          ...m,
+          systemMessages: {
+            ...m.systemMessages,
+            [conversationId]: [
+              ...(m.systemMessages[conversationId] || []),
+              sysMsg,
+            ].slice(-200),
+          },
+        }));
+
         set((s) => ({
-          conversations: s.conversations.map((c) => {
-            if (c.id !== conversationId || !c.isGroup) return c;
-            const setIds = new Set([
-              ...c.participants,
-              ...memberIds.map((x) => x.toLowerCase()),
-            ]);
-            return { ...c, participants: Array.from(setIds) };
-          }),
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId && c.isGroup
+              ? {
+                  ...c,
+                  participants: nextParticipants,
+                  lastMessage: sysMsg,
+                  updatedAt: sysMsg.timestamp,
+                }
+              : c
+          ),
+          messages: {
+            ...s.messages,
+            [conversationId]: [
+              ...(s.messages[conversationId] || []),
+              sysMsg,
+            ],
+          },
+        }));
+      },
+
+      removeGroupMember: (conversationId, memberId) => {
+        const me = get().me;
+        if (!me) return;
+        const id = memberId.toLowerCase();
+        const conv = get().conversations.find((c) => c.id === conversationId);
+        if (!conv?.isGroup) return;
+        if (!conv.participants.includes(id)) return;
+        if (id === me) {
+          get().leaveGroup(conversationId);
+          return;
+        }
+        if (!get().isGroupAdmin(conversationId, me)) {
+          set({ error: "Chỉ admin mới được xóa thành viên" });
+          return;
+        }
+        // Không cho xóa admin khác nếu không phải admin (đã check); có thể xóa admin khác
+
+        const nextParticipants = conv.participants.filter(
+          (p) => p.toLowerCase() !== id
+        );
+        patchMeta((m) => ({
+          ...m,
+          groupMembers: { ...m.groupMembers, [conversationId]: nextParticipants },
+        }));
+        const actor =
+          get().users[me]?.name || get().users[me]?.nickname || me;
+        const target =
+          get().users[id]?.name || get().users[id]?.nickname || id;
+        const sysMsg: ChatMessage = {
+          id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          conversationId,
+          senderId: "system",
+          text: `${actor} đã xóa ${target} khỏi nhóm`,
+          timestamp: Date.now(),
+          status: "read",
+          system: true,
+        };
+        patchMeta((m) => ({
+          ...m,
+          systemMessages: {
+            ...m.systemMessages,
+            [conversationId]: [
+              ...(m.systemMessages[conversationId] || []),
+              sysMsg,
+            ].slice(-200),
+          },
+        }));
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  participants: nextParticipants,
+                  lastMessage: sysMsg,
+                  updatedAt: sysMsg.timestamp,
+                }
+              : c
+          ),
+          messages: {
+            ...s.messages,
+            [conversationId]: [
+              ...(s.messages[conversationId] || []),
+              sysMsg,
+            ],
+          },
+        }));
+      },
+
+      leaveGroup: (conversationId) => {
+        const me = get().me;
+        if (!me) return;
+        const conv = get().conversations.find((c) => c.id === conversationId);
+        if (!conv?.isGroup) return;
+        const name =
+          get().users[me]?.name || get().users[me]?.nickname || me;
+        const sysMsg: ChatMessage = {
+          id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          conversationId,
+          senderId: "system",
+          text: `${name} đã rời nhóm`,
+          timestamp: Date.now(),
+          status: "read",
+          system: true,
+        };
+        const nextParticipants = conv.participants.filter(
+          (p) => p.toLowerCase() !== me
+        );
+        const curAdmins = (
+          conv.admins ||
+          loadMeta().groupAdmins[conversationId] ||
+          []
+        ).map((x) => x.toLowerCase());
+        let nextAdmins = curAdmins.filter((x) => x !== me);
+        if (nextParticipants.length && nextAdmins.length === 0) {
+          nextAdmins = [nextParticipants[0].toLowerCase()];
+        }
+        patchMeta((m) => ({
+          ...m,
+          groupMembers: { ...m.groupMembers, [conversationId]: nextParticipants },
+          groupAdmins: { ...m.groupAdmins, [conversationId]: nextAdmins },
+          systemMessages: {
+            ...m.systemMessages,
+            [conversationId]: [
+              ...(m.systemMessages[conversationId] || []),
+              sysMsg,
+            ].slice(-200),
+          },
+        }));
+        set((s) => {
+          const msgs = [...(s.messages[conversationId] || []), sysMsg];
+          return {
+            conversations: s.conversations
+              .map((c) =>
+                c.id === conversationId
+                  ? {
+                      ...c,
+                      participants: nextParticipants,
+                      lastMessage: sysMsg,
+                      updatedAt: sysMsg.timestamp,
+                    }
+                  : c
+              )
+              .filter((c) => {
+                // Ẩn nhóm khỏi list nếu mình đã rời
+                if (c.id !== conversationId) return true;
+                return false;
+              }),
+            messages: { ...s.messages, [conversationId]: msgs },
+            activeId: s.activeId === conversationId ? null : s.activeId,
+          };
+        });
+      },
+
+
+      isGroupAdmin: (conversationId, userId) => {
+        const uid = (userId || get().me || "").toLowerCase();
+        if (!uid) return false;
+        const conv = get().conversations.find((c) => c.id === conversationId);
+        if (!conv?.isGroup) return false;
+        const meta = loadMeta();
+        const fromMeta = meta.groupAdmins[conversationId] || [];
+        const admins = (conv.admins?.length ? conv.admins : fromMeta).map((x) =>
+          x.toLowerCase()
+        );
+        if (admins.length === 0) {
+          // Fallback: người đầu trong participants
+          return conv.participants[0]?.toLowerCase() === uid;
+        }
+        return admins.includes(uid);
+      },
+
+      promoteAdmin: (conversationId, memberId) => {
+        const me = get().me;
+        if (!me || !get().isGroupAdmin(conversationId, me)) return;
+        const id = memberId.toLowerCase();
+        const conv = get().conversations.find((c) => c.id === conversationId);
+        if (!conv?.isGroup || !conv.participants.includes(id)) return;
+        const cur = (conv.admins || loadMeta().groupAdmins[conversationId] || []).map(
+          (x) => x.toLowerCase()
+        );
+        if (cur.includes(id)) return;
+        const next = [...cur, id];
+        patchMeta((m) => ({
+          ...m,
+          groupAdmins: { ...m.groupAdmins, [conversationId]: next },
+        }));
+        const actor =
+          get().users[me]?.name || get().users[me]?.nickname || me;
+        const target =
+          get().users[id]?.name || get().users[id]?.nickname || id;
+        const sysMsg: ChatMessage = {
+          id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          conversationId,
+          senderId: "system",
+          text: `${actor} đã bổ nhiệm ${target} làm admin`,
+          timestamp: Date.now(),
+          status: "read",
+          system: true,
+        };
+        patchMeta((m) => ({
+          ...m,
+          systemMessages: {
+            ...m.systemMessages,
+            [conversationId]: [
+              ...(m.systemMessages[conversationId] || []),
+              sysMsg,
+            ].slice(-200),
+          },
+        }));
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId ? { ...c, admins: next, lastMessage: sysMsg, updatedAt: sysMsg.timestamp } : c
+          ),
+          messages: {
+            ...s.messages,
+            [conversationId]: [...(s.messages[conversationId] || []), sysMsg],
+          },
+        }));
+      },
+
+      demoteAdmin: (conversationId, memberId) => {
+        const me = get().me;
+        if (!me || !get().isGroupAdmin(conversationId, me)) return;
+        const id = memberId.toLowerCase();
+        if (id === me) return; // không tự bỏ admin qua demote — dùng rời nhóm
+        const conv = get().conversations.find((c) => c.id === conversationId);
+        if (!conv?.isGroup) return;
+        const cur = (conv.admins || loadMeta().groupAdmins[conversationId] || []).map(
+          (x) => x.toLowerCase()
+        );
+        if (!cur.includes(id)) return;
+        const next = cur.filter((x) => x !== id);
+        if (next.length === 0) return; // giữ ít nhất 1 admin
+        patchMeta((m) => ({
+          ...m,
+          groupAdmins: { ...m.groupAdmins, [conversationId]: next },
+        }));
+        const actor =
+          get().users[me]?.name || get().users[me]?.nickname || me;
+        const target =
+          get().users[id]?.name || get().users[id]?.nickname || id;
+        const sysMsg: ChatMessage = {
+          id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          conversationId,
+          senderId: "system",
+          text: `${actor} đã gỡ quyền admin của ${target}`,
+          timestamp: Date.now(),
+          status: "read",
+          system: true,
+        };
+        patchMeta((m) => ({
+          ...m,
+          systemMessages: {
+            ...m.systemMessages,
+            [conversationId]: [
+              ...(m.systemMessages[conversationId] || []),
+              sysMsg,
+            ].slice(-200),
+          },
+        }));
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId ? { ...c, admins: next, lastMessage: sysMsg, updatedAt: sysMsg.timestamp } : c
+          ),
+          messages: {
+            ...s.messages,
+            [conversationId]: [...(s.messages[conversationId] || []), sysMsg],
+          },
         }));
       },
 
@@ -1251,15 +1612,59 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           isGroup: true,
           title: (title || "Nhóm mới").trim().slice(0, 80),
           participants: members,
+          admins: [me],
           lastMessage: undefined,
           unreadCount: 0,
           updatedAt: Date.now(),
           muted: false,
         };
+        const creatorName =
+          get().users[me]?.name || get().users[me]?.nickname || me;
+        const otherNames = members
+          .filter((x) => x !== me)
+          .map((x) => get().users[x]?.name || get().users[x]?.nickname || x);
+        const sysCreate: ChatMessage = {
+          id: `sys_${Date.now()}_c`,
+          conversationId: id,
+          senderId: "system",
+          text: `${creatorName} đã tạo nhóm`,
+          timestamp: Date.now(),
+          status: "read",
+          system: true,
+        };
+        const sysJoin: ChatMessage | null =
+          otherNames.length > 0
+            ? {
+                id: `sys_${Date.now()}_j`,
+                conversationId: id,
+                senderId: "system",
+                text:
+                  otherNames.length === 1
+                    ? `${creatorName} đã thêm ${otherNames[0]} vào nhóm`
+                    : `${creatorName} đã thêm ${otherNames.join(", ")} vào nhóm`,
+                timestamp: Date.now() + 1,
+                status: "read",
+                system: true,
+              }
+            : null;
+        const initialSys = sysJoin ? [sysCreate, sysJoin] : [sysCreate];
+        patchMeta((m) => ({
+          ...m,
+          groupTitles: { ...m.groupTitles, [id]: conv.title || "Nhóm mới" },
+          groupMembers: { ...m.groupMembers, [id]: members },
+          groupAdmins: { ...m.groupAdmins, [id]: [me] },
+          systemMessages: {
+            ...m.systemMessages,
+            [id]: initialSys,
+          },
+        }));
         set((s) => ({
-          conversations: [conv, ...s.conversations.filter((c) => c.id !== id)],
+          conversations: [
+            { ...conv, lastMessage: initialSys[initialSys.length - 1] },
+            ...s.conversations.filter((c) => c.id !== id),
+          ],
           activeId: id,
-          messages: { ...s.messages, [id]: s.messages[id] || [] },
+          messages: { ...s.messages, [id]: initialSys },
         }));
         void (async () => {
           try {
@@ -1271,6 +1676,41 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Tạo nhóm thất bại");
             const gid = String(data.group.id);
+            patchMeta((m) => {
+              const titles = { ...m.groupTitles };
+              const mems = { ...m.groupMembers };
+              const ads = { ...m.groupAdmins };
+              const sys = { ...m.systemMessages };
+              if (titles[id]) {
+                titles[gid] = titles[id];
+                delete titles[id];
+              }
+              if (mems[id]) {
+                mems[gid] = mems[id];
+                delete mems[id];
+              }
+              if (ads[id]) {
+                ads[gid] = ads[id];
+                delete ads[id];
+              }
+              if (sys[id]) {
+                sys[gid] = sys[id].map((x) => ({
+                  ...x,
+                  conversationId: gid,
+                }));
+                delete sys[id];
+              }
+              titles[gid] = data.group.title || titles[gid] || conv.title || "Nhóm";
+              mems[gid] = data.group.members || members;
+              ads[gid] = ads[gid] || [me];
+              return {
+                ...m,
+                groupTitles: titles,
+                groupMembers: mems,
+                groupAdmins: ads,
+                systemMessages: sys,
+              };
+            });
             set((s) => ({
               conversations: s.conversations.map((c) =>
                 c.id === id
@@ -1279,13 +1719,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                       id: gid,
                       participants: data.group.members || members,
                       title: data.group.title || c.title,
+                      admins: c.admins?.length ? c.admins : [me],
                     }
                   : c
               ),
               activeId: s.activeId === id ? gid : s.activeId,
               messages: {
                 ...s.messages,
-                [gid]: s.messages[id] || [],
+                [gid]: (s.messages[id] || []).map((x) => ({
+                  ...x,
+                  conversationId: gid,
+                })),
               },
             }));
           } catch (e: unknown) {

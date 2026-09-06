@@ -116,6 +116,7 @@ interface ChatState {
   addFriendByQuery: (query: string) => Promise<{ ok: boolean; message: string }>;
   openDirect: (username: string) => void;
   loadThread: (username: string) => Promise<void>;
+  loadGroupThread: (groupId: string) => Promise<void>;
   sendMessage: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   toggleMute: (conversationId: string) => void;
   toggleReaction: (messageId: string, emoji: string) => void;
@@ -464,7 +465,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             });
           }
 
-          const conversations = Array.from(convMap.values()).sort(
+          let conversations = Array.from(convMap.values()).sort(
             (a, b) => b.updatedAt - a.updatedAt
           );
 
@@ -485,6 +486,33 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                   status: statusFromLastSeen(lastSeen),
                 };
               }
+            }
+          } catch {}
+
+          try {
+            const gr = await fetch("/api/chat/groups").then((r) => r.json());
+            if (Array.isArray(gr.groups)) {
+              for (const g of gr.groups) {
+                const gid = String(g.id);
+                const members = (g.members || []).map((x: string) =>
+                  String(x).toLowerCase()
+                );
+                conversations = [
+                  {
+                    id: gid,
+                    isGroup: true,
+                    title: String(g.title || "Nhóm"),
+                    participants: members,
+                    unreadCount: 0,
+                    updatedAt: Date.now(),
+                    muted: false,
+                  },
+                  ...conversations.filter((c) => c.id !== gid),
+                ];
+              }
+              conversations = conversations.sort(
+                (a, b) => b.updatedAt - a.updatedAt
+              );
             }
           } catch {}
 
@@ -630,14 +658,64 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           set({ error: e instanceof Error ? e.message : "Lỗi tải tin" });
         }
       },
+      loadGroupThread: async (groupId) => {
+        const me = get().me;
+        if (!me || !groupId) return;
+        try {
+          const res = await fetch(
+            `/api/chat/groups/messages?groupId=${encodeURIComponent(groupId)}`
+          );
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Lỗi tải tin nhóm");
+          const list = (data.messages || []).map(
+            (m: {
+              id: string;
+              conversationId: string;
+              senderId: string;
+              text: string;
+              timestamp: number;
+              status: string;
+              replyToId?: string;
+              attachments?: ChatAttachment[];
+            }) => ({
+              id: m.id,
+              conversationId: m.conversationId || groupId,
+              senderId: m.senderId,
+              text: m.text || "",
+              timestamp: m.timestamp || Date.now(),
+              status: (m.status as ChatMessage["status"]) || "delivered",
+              replyToId: m.replyToId,
+              attachments: m.attachments,
+            })
+          );
+          set((s) => ({
+            messages: { ...s.messages, [groupId]: list },
+            conversations: s.conversations.map((c) =>
+              c.id === groupId
+                ? {
+                    ...c,
+                    unreadCount: 0,
+                    lastMessage: list[list.length - 1] || c.lastMessage,
+                    updatedAt: list[list.length - 1]?.timestamp || c.updatedAt,
+                  }
+                : c
+            ),
+          }));
+        } catch (e: unknown) {
+          set({ error: e instanceof Error ? e.message : "Lỗi tải tin nhóm" });
+        }
+      },
+
 
       sendMessage: async (text, attachments) => {
         const me = get().me;
         const { activeId, conversations, replyTo } = get();
         if (!me || !activeId) return;
         const conv = conversations.find((c) => c.id === activeId);
-        const peer = conv?.peerUsername || conv?.participants.find((p) => p !== me);
-        if (!peer) return;
+        if (!conv) return;
+        const isGroup = !!conv.isGroup;
+        const peer = conv.peerUsername || conv.participants.find((p) => p !== me);
+        if (!isGroup && !peer) return;
         const trimmed = text.trim();
         if (!trimmed && !attachments?.length) return;
 
@@ -666,16 +744,28 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         }));
 
         try {
-          const res = await fetch("/api/chat/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: peer,
-              text: trimmed,
-              replyTo: replyTo?.id,
-              attachments: attachments || [],
-            }),
-          });
+          const res = await fetch(
+            isGroup ? "/api/chat/groups/messages" : "/api/chat/messages",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(
+                isGroup
+                  ? {
+                      groupId: activeId,
+                      text: trimmed,
+                      replyTo: replyTo?.id,
+                      attachments: attachments || [],
+                    }
+                  : {
+                      to: peer,
+                      text: trimmed,
+                      replyTo: replyTo?.id,
+                      attachments: attachments || [],
+                    }
+              ),
+            }
+          );
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Gửi thất bại");
           set((s) => ({
@@ -721,9 +811,59 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         });
       },
 
-      createGroup: () => {
-        // Nhóm server sẽ bổ sung sau — hiện chỉ DM đồng bộ Neon
-        return "";
+      createGroup: (title, memberIds) => {
+        const me = get().me;
+        if (!me) return "";
+        const id = `local_g_${Date.now()}`;
+        // optimistic local; bootstrap/API will replace id
+        const members = Array.from(new Set([me, ...memberIds.map((x) => x.toLowerCase())]));
+        const conv: Conversation = {
+          id,
+          isGroup: true,
+          title: (title || "Nhóm mới").trim().slice(0, 80),
+          participants: members,
+          lastMessage: undefined,
+          unreadCount: 0,
+          updatedAt: Date.now(),
+          muted: false,
+        };
+        set((s) => ({
+          conversations: [conv, ...s.conversations.filter((c) => c.id !== id)],
+          activeId: id,
+          messages: { ...s.messages, [id]: s.messages[id] || [] },
+        }));
+        void (async () => {
+          try {
+            const res = await fetch("/api/chat/groups", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: conv.title, members: memberIds }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Tạo nhóm thất bại");
+            const gid = String(data.group.id);
+            set((s) => ({
+              conversations: s.conversations.map((c) =>
+                c.id === id
+                  ? {
+                      ...c,
+                      id: gid,
+                      participants: data.group.members || members,
+                      title: data.group.title || c.title,
+                    }
+                  : c
+              ),
+              activeId: s.activeId === id ? gid : s.activeId,
+              messages: {
+                ...s.messages,
+                [gid]: s.messages[id] || [],
+              },
+            }));
+          } catch (e: unknown) {
+            set({ error: e instanceof Error ? e.message : "Tạo nhóm thất bại" });
+          }
+        })();
+        return id;
       },
 
       heartbeat: async () => {

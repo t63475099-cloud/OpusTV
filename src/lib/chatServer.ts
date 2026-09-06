@@ -511,3 +511,135 @@ export async function appendIce(
     await sql`UPDATE chat_calls SET callee_ice = ${json}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   }
 }
+
+/* ========== Groups (Zalo-style) ========== */
+
+export async function ensureGroupTables() {
+  await ensureChatTables();
+  const sql = getSql();
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_groups (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      owner TEXT NOT NULL,
+      avatar TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_group_members (
+      group_id TEXT NOT NULL,
+      username TEXT NOT NULL,
+      PRIMARY KEY (group_id, username)
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS chat_group_messages (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      from_user TEXT NOT NULL,
+      body TEXT,
+      reply_to TEXT,
+      attachments JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS chat_group_members_user_idx ON chat_group_members (username)`;
+  await sql`CREATE INDEX IF NOT EXISTS chat_group_msg_gid_idx ON chat_group_messages (group_id, created_at DESC)`;
+}
+
+export async function createGroup(owner: string, title: string, members: string[]) {
+  await ensureGroupTables();
+  const sql = getSql();
+  const o = owner.toLowerCase();
+  const id = `g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const t = title.trim().slice(0, 80) || "Nhóm mới";
+  const set = new Set<string>([o, ...members.map((m) => m.toLowerCase().trim()).filter(Boolean)]);
+  await sql`
+    INSERT INTO chat_groups (id, title, owner) VALUES (${id}, ${t}, ${o})
+  `;
+  for (const u of set) {
+    await sql`
+      INSERT INTO chat_group_members (group_id, username) VALUES (${id}, ${u})
+      ON CONFLICT DO NOTHING
+    `;
+  }
+  return { id, title: t, owner: o, members: Array.from(set) };
+}
+
+export async function listGroups(username: string) {
+  await ensureGroupTables();
+  const sql = getSql();
+  const u = username.toLowerCase();
+  const rows = await sql`
+    SELECT g.id, g.title, g.owner, g.avatar, g.created_at
+    FROM chat_groups g
+    INNER JOIN chat_group_members m ON m.group_id = g.id
+    WHERE m.username = ${u}
+    ORDER BY g.created_at DESC
+    LIMIT 100
+  `;
+  const out: {
+    id: string;
+    title: string;
+    owner: string;
+    avatar?: string;
+    members: string[];
+  }[] = [];
+  for (const g of rows as { id: string; title: string; owner: string; avatar: string | null }[]) {
+    const mem = await sql`
+      SELECT username FROM chat_group_members WHERE group_id = ${g.id}
+    `;
+    out.push({
+      id: g.id,
+      title: g.title,
+      owner: g.owner,
+      avatar: g.avatar || undefined,
+      members: (mem as { username: string }[]).map((x) => x.username),
+    });
+  }
+  return out;
+}
+
+export async function sendGroupMessage(opts: {
+  groupId: string;
+  from: string;
+  text: string;
+  replyTo?: string;
+  attachments?: unknown[];
+}) {
+  await ensureGroupTables();
+  const sql = getSql();
+  const from = opts.from.toLowerCase();
+  const gid = opts.groupId;
+  const mem = await sql`
+    SELECT 1 FROM chat_group_members WHERE group_id = ${gid} AND username = ${from} LIMIT 1
+  `;
+  if (!(mem as unknown[]).length) throw new Error("Bạn không thuộc nhóm này");
+  const id = `gm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const body = (opts.text || "").slice(0, 4000);
+  const att = JSON.stringify(opts.attachments || []);
+  await sql`
+    INSERT INTO chat_group_messages (id, group_id, from_user, body, reply_to, attachments)
+    VALUES (${id}, ${gid}, ${from}, ${body}, ${opts.replyTo || null}, ${att}::jsonb)
+  `;
+  return { id, createdAt: Date.now() };
+}
+
+export async function listGroupMessages(groupId: string, username: string, limit = 80) {
+  await ensureGroupTables();
+  const sql = getSql();
+  const u = username.toLowerCase();
+  const mem = await sql`
+    SELECT 1 FROM chat_group_members WHERE group_id = ${groupId} AND username = ${u} LIMIT 1
+  `;
+  if (!(mem as unknown[]).length) throw new Error("Bạn không thuộc nhóm này");
+  const rows = await sql`
+    SELECT id, group_id, from_user, body, reply_to, attachments, created_at
+    FROM chat_group_messages
+    WHERE group_id = ${groupId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+  return (rows as Record<string, unknown>[]).reverse();
+}

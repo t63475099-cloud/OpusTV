@@ -72,7 +72,7 @@ export default function Navbar() {
 
   const drawerLinks = [
     { href: "/", name: "Trang chủ", icon: Home },
-    { href: "/su-kien", name: "Sự kiện", icon: Gift },
+    { href: "/su-kien", name: "Chuỗi & sự kiện", icon: Gift },
     { href: "/tin-nhan", name: "Opus Chat", icon: MessageCircle },
     { href: "/nhac", name: "Opus Music", icon: Music2 },
     { href: "/danh-sach/phim-moi-cap-nhat", name: "Mới cập nhật", icon: Flame },
@@ -110,9 +110,10 @@ export default function Navbar() {
       }}
     >
       {/* Chuông tách riêng — góc phải trên, z cao, không bị search/chip đè */}
+      {/* Chuông: chỉ Laptop/PC — ẩn Android/iPhone */}
       <div
         data-bell-fixed
-        className="absolute top-[max(0.4rem,env(safe-area-inset-top))] right-1.5 sm:right-3 z-[120]"
+        className="hidden lg:block absolute top-[max(0.4rem,env(safe-area-inset-top))] right-1.5 sm:right-3 z-[120]"
       >
         <NotificationBell />
       </div>
@@ -149,8 +150,9 @@ export default function Navbar() {
             </div>
           )}
         </div>
-        <div className="shrink-0 flex items-center gap-1 relative z-[95]">
-<StreakBadge />
+        {/* Chuỗi: chỉ Laptop/PC — mobile vào menu 3 gạch */}
+        <div className="hidden lg:flex shrink-0 items-center gap-1 relative z-[95]">
+          <StreakBadge />
         </div>
       </div>
 
@@ -198,7 +200,19 @@ export default function Navbar() {
                 <span className="truncate">{item.name}</span>
               </Link>
             ))}
-
+            <Link
+              href="/hop-thu"
+              onClick={() => setMenuOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 active:scale-[0.98]",
+                pathname.startsWith("/hop-thu")
+                  ? "bg-[#272727] text-white font-medium"
+                  : "text-zinc-200 hover:bg-white/10"
+              )}
+            >
+              <Bell className="w-5 h-5 text-zinc-400 shrink-0" />
+              <span className="truncate">Thông báo & hòm thư</span>
+            </Link>
           </nav>
         </div>
       )}

@@ -46,6 +46,8 @@ export default function ChatWindow({
   });
   const sendMessage = useChatStore((s) => s.sendMessage);
   const loadThread = useChatStore((s) => s.loadThread);
+  const loadGroupThread = useChatStore((s) => s.loadGroupThread);
+  const activeId = useChatStore((s) => s.activeId);
   const replyTo = useChatStore((s) => s.replyTo);
   const setReplyTo = useChatStore((s) => s.setReplyTo);
   const notifyTyping = useChatStore((s) => s.notifyTyping);
@@ -69,9 +71,14 @@ export default function ChatWindow({
   const livePeer = peerId ? getUser(peerId) || peer : peer;
 
   useEffect(() => {
-    if (!peerId) return;
-    void loadThread(peerId);
-  }, [peerId, loadThread]);
+    if (!activeId) return;
+    const conv = useChatStore.getState().conversations.find((c) => c.id === activeId);
+    if (conv?.isGroup) {
+      void loadGroupThread(activeId);
+    } else if (peerId) {
+      void loadThread(peerId);
+    }
+  }, [activeId, peerId, loadThread, loadGroupThread]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

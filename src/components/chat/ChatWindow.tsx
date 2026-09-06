@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
   Info,
@@ -8,24 +8,25 @@ import {
   Video,
   Send,
   Smile,
-  Paperclip,
   X,
   Search,
+  Pin,
 } from "lucide-react";
 import {
   useChatStore,
   formatLastSeen,
-  formatChatTime,
   type Conversation,
+  type ChatAttachment,
+  type ChatMessage,
 } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
 import MessageBubble from "./MessageBubble";
 import CallModal from "./CallModal";
-import type { ChatMessage } from "@/lib/chatStore";
+import VoiceRecorder from "./VoiceRecorder";
+import StickerEmojiPicker from "./StickerEmojiPicker";
+import AttachmentBar from "./AttachmentBar";
 
 const EMPTY_MSGS: ChatMessage[] = [];
-
-const EMOJIS = ["😀", "😂", "😍", "🥰", "👍", "🔥", "😢", "😮", "🎉", "❤️", "🙏", "👏"];
 
 export default function ChatWindow({
   conversation,
@@ -54,10 +55,17 @@ export default function ChatWindow({
   const pollTyping = useChatStore((s) => s.pollTyping);
   const typingPeers = useChatStore((s) => s.typingPeers);
   const getUser = useChatStore((s) => s.getUser);
+  const markConversationRead = useChatStore((s) => s.markConversationRead);
+  const forwardMessage = useChatStore((s) => s.forwardMessage);
+  const conversations = useChatStore((s) => s.conversations);
 
   const [text, setText] = useState("");
-  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [call, setCall] = useState<"audio" | "video" | null>(null);
+  const [pending, setPending] = useState<ChatAttachment[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
+  const [forwardId, setForwardId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -73,40 +81,56 @@ export default function ChatWindow({
   useEffect(() => {
     if (!activeId) return;
     const conv = useChatStore.getState().conversations.find((c) => c.id === activeId);
-    if (conv?.isGroup) {
-      void loadGroupThread(activeId);
-    } else if (peerId) {
-      void loadThread(peerId);
-    }
-  }, [activeId, peerId, loadThread, loadGroupThread]);
+    if (conv?.isGroup) void loadGroupThread(activeId);
+    else if (peerId) void loadThread(peerId);
+    markConversationRead(activeId);
+  }, [activeId, peerId, loadThread, loadGroupThread, markConversationRead]);
+
+  useEffect(() => {
+    if (!peerId || conversation?.isGroup) return;
+    const id = window.setInterval(() => void pollTyping(peerId), 2500);
+    return () => clearInterval(id);
+  }, [peerId, pollTyping, conversation?.isGroup]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, peerTyping]);
 
-  useEffect(() => {
-    if (!peerId) return;
-    const id = window.setInterval(() => void pollTyping(peerId), 2500);
-    return () => window.clearInterval(id);
-  }, [peerId, pollTyping]);
-
   const onType = useCallback(
     (value: string) => {
       setText(value);
-      if (!peerId || !value.trim()) return;
+      if (!peerId || !value.trim() || conversation?.isGroup) return;
       notifyTyping(peerId);
     },
-    [peerId, notifyTyping]
+    [peerId, notifyTyping, conversation?.isGroup]
   );
+
+  const filtered = useMemo(() => {
+    const q = searchQ.trim().toLowerCase();
+    if (!q) return messages;
+    return messages.filter(
+      (m) =>
+        (m.text || "").toLowerCase().includes(q) ||
+        (m.attachments || []).some((a) => (a.name || "").toLowerCase().includes(q))
+    );
+  }, [messages, searchQ]);
 
   const onSend = async () => {
     const v = text.trim();
-    if (!v || !conversation) return;
+    if ((!v && !pending.length) || !conversation) return;
     setText("");
-    setEmojiOpen(false);
-    await sendMessage(v);
+    setPickerOpen(false);
+    const atts = [...pending];
+    setPending([]);
+    await sendMessage(v || (atts.length ? " " : ""), atts.length ? atts : undefined);
     inputRef.current?.focus();
   };
+
+  const msgMap = useMemo(() => {
+    const m = new Map<string, ChatMessage>();
+    for (const x of messages) m.set(x.id, x);
+    return m;
+  }, [messages]);
 
   if (!conversation) {
     return (
@@ -114,152 +138,145 @@ export default function ChatWindow({
         <div className="w-16 h-16 rounded-2xl bg-[#0068ff]/20 flex items-center justify-center mb-4">
           <Send className="w-7 h-7 text-[#5b9dff]" />
         </div>
-        <p className="text-white font-medium text-base mb-1">Chọn một hội thoại</p>
-        <p className="text-sm text-zinc-500 max-w-xs">
+        <p className="text-white font-medium">Chọn một hội thoại</p>
+        <p className="text-sm text-zinc-500 mt-1 max-w-xs">
           Chọn bạn bè bên trái hoặc bấm + để kết bạn bằng UID
         </p>
       </div>
     );
   }
 
-  return (
-    <div
-      className="flex flex-col h-full min-h-0 bg-[#1a1d21]"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header + menu gọi */}
-      <header data-chat-header="1" className="shrink-0 border-b border-[#2a2d34] bg-[#16181c] relative z-20" style={{display:"flex",flexDirection:"column"}}>
-        <div className="flex items-center gap-2 px-2 sm:px-3 h-14">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onBack();
-            }}
-            className="md:hidden p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300"
-            aria-label="Quay lại danh sách"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            className="flex items-center gap-2 min-w-0 flex-1 text-left"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleInfo?.();
-            }}
-          >
-            <ChatAvatar user={livePeer} size="sm" />
-            <div className="min-w-0">
-              <p className="text-[15px] font-semibold text-white truncate">
-                {displayTitle(conversation)}
-              </p>
-              <p className="text-[12px] truncate leading-tight">
-                {peerTyping ? (
-                  <span className="text-[#5b9dff]">Đang soạn tin…</span>
-                ) : (
-                  <span className="text-zinc-500">{formatLastSeen(livePeer)}</span>
-                )}
-              </p>
-            </div>
-          </button>
+  const title = displayTitle(conversation);
+  const subtitle = conversation.isGroup
+    ? `${conversation.participants.length} thành viên`
+    : peerTyping
+      ? "Đang soạn tin..."
+      : formatLastSeen(livePeer);
 
-          {/* Menu gọi — luôn hiện trên mọi thiết bị */}
-          <div className="flex items-center gap-1 shrink-0">
+  return (
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#1a1d21]">
+      {/* Header */}
+      <header
+        data-chat-header
+        className="shrink-0 flex items-center gap-2 px-2 sm:px-3 h-14 border-b border-[#2a2d34] bg-[#16181c]"
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          className="lg:hidden p-2 rounded-full hover:bg-white/10 text-zinc-300"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleInfo}
+          className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+        >
+          {conversation.isGroup ? (
+            <div className="w-9 h-9 rounded-full bg-[#0068ff] flex items-center justify-center text-white font-semibold">
+              {(title || "N").slice(0, 1).toUpperCase()}
+            </div>
+          ) : (
+            <ChatAvatar user={livePeer} size="sm" />
+          )}
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold text-white truncate flex items-center gap-1">
+              {title}
+              {conversation.pinned ? <Pin className="w-3 h-3 text-amber-400" /> : null}
+            </p>
+            <p className="text-[12px] text-zinc-400 truncate">{subtitle}</p>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSearchOpen((v) => !v)}
+          className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+          title="Tìm trong chat"
+        >
+          <Search className="w-5 h-5" />
+        </button>
+        {!conversation.isGroup && (
+          <>
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setCall("audio");
-              }}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2a2e36] hover:bg-[#0068ff] text-white transition"
+              onClick={() => setCall("audio")}
+              className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
               title="Gọi thoại"
-              aria-label="Gọi thoại"
             >
               <Phone className="w-5 h-5" />
             </button>
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setCall("video");
-              }}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2a2e36] hover:bg-[#0068ff] text-white transition"
+              onClick={() => setCall("video")}
+              className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
               title="Gọi video"
-              aria-label="Gọi video"
             >
               <Video className="w-5 h-5" />
             </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleInfo?.();
-              }}
-              className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#2a2e36] text-zinc-300"
-              aria-label="Thông tin"
-            >
-              <Info className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={onToggleInfo}
+          className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+          title="Thông tin"
+        >
+          <Info className="w-5 h-5" />
+        </button>
       </header>
+
+      {searchOpen && (
+        <div className="shrink-0 px-3 py-2 border-b border-[#2a2d34] bg-[#16181c]">
+          <input
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Tìm tin nhắn trong hội thoại..."
+            className="w-full rounded-xl bg-[#2a2e36] px-3 py-2 text-sm text-white outline-none"
+            autoFocus
+          />
+        </div>
+      )}
+
+      {conversation.isGroup && conversation.announcement ? (
+        <div className="shrink-0 px-3 py-2 bg-amber-500/10 border-b border-amber-500/20 text-[12px] text-amber-100/90">
+          <span className="font-semibold text-amber-300">Ghim: </span>
+          {conversation.announcement}
+        </div>
+      ) : null}
 
       {/* Messages */}
       <div
         data-chat-scroll
-        className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 min-h-0 overscroll-contain"
-        onClick={(e) => e.stopPropagation()}
+        className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 min-h-0"
       >
-        {messages.map((m, i) => {
-          const mine = m.senderId === me;
-          const prev = messages[i - 1];
-          const showTime = !prev || m.timestamp - prev.timestamp > 5 * 60 * 1000;
-          const replyMsg = m.replyToId
-            ? messages.find((x) => x.id === m.replyToId)
-            : undefined;
-          return (
-            <div key={m.id}>
-              {showTime && (
-                <div className="flex justify-center my-3">
-                  <span className="text-[11px] text-zinc-400 bg-[#2a2e36] px-3 py-0.5 rounded-full">
-                    {formatChatTime(m.timestamp)}
-                  </span>
-                </div>
-              )}
-              <MessageBubble
-                m={m}
-                mine={mine}
-                name={mine ? undefined : livePeer?.name}
-                replyPreview={replyMsg}
-                onCallBack={(mode) => setCall(mode)}
-              />
-            </div>
-          );
-        })}
+        {filtered.map((m) => (
+          <MessageBubble
+            key={m.id}
+            m={m}
+            mine={m.senderId === me}
+            name={
+              conversation.isGroup && m.senderId !== me
+                ? getUser(m.senderId)?.name || m.senderId
+                : undefined
+            }
+            replyPreview={m.replyToId ? msgMap.get(m.replyToId) : null}
+            onCallBack={!conversation.isGroup ? (mode) => setCall(mode) : undefined}
+            onForward={(id) => setForwardId(id)}
+          />
+        ))}
         {peerTyping && (
-          <div className="flex items-center gap-2 mt-1 mb-2">
-            <ChatAvatar user={livePeer} size="sm" showStatus={false} />
-            <div className="rounded-2xl rounded-bl-md bg-[#2a2e36] px-3 py-2 flex gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" />
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
-            </div>
-          </div>
+          <p className="text-[12px] text-zinc-500 px-2 py-1 animate-pulse">Đang soạn tin...</p>
         )}
         <div ref={bottomRef} />
       </div>
 
       {replyTo && (
-        <div className="shrink-0 mx-3 mb-1 px-3 py-2 rounded-lg bg-[#2a2e36] flex items-start gap-2 border-l-2 border-[#0068ff]">
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-[#5b9dff] font-semibold">Trả lời</p>
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-[#16181c] border-t border-[#2a2d34]">
+          <div className="flex-1 min-w-0 border-l-2 border-[#0068ff] pl-2">
+            <p className="text-[11px] text-[#5b9dff]">Trả lời</p>
             <p className="text-xs text-zinc-400 truncate">{replyTo.text || "Đính kèm"}</p>
           </div>
-          <button type="button" onClick={() => setReplyTo(null)} className="text-zinc-500">
+          <button type="button" onClick={() => setReplyTo(null)} className="p-1 text-zinc-500">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -267,42 +284,33 @@ export default function ChatWindow({
 
       {/* Input */}
       <div className="shrink-0 border-t border-[#2a2d34] bg-[#16181c] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        {emojiOpen && (
-          <div className="flex flex-wrap gap-1 mb-2 px-1">
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                className="text-xl p-1 hover:scale-110 transition-transform"
-                onClick={() => setText((t) => t + e)}
-              >
-                {e}
-              </button>
-            ))}
+        {pickerOpen && (
+          <div className="mb-2">
+            <StickerEmojiPicker
+              onPickEmoji={(e) => setText((t) => t + e)}
+              onPickSticker={(s) => {
+                void sendMessage("", [
+                  { id: `st_${Date.now()}`, type: "sticker", url: s, name: "sticker" },
+                ]);
+                setPickerOpen(false);
+              }}
+            />
           </div>
         )}
+        <AttachmentBar pending={pending} setPending={setPending} />
         <div className="flex items-end gap-1">
           <button
             type="button"
-            onClick={() => setEmojiOpen((v) => !v)}
+            onClick={() => setPickerOpen((v) => !v)}
             className="p-2 text-zinc-400 hover:text-white"
           >
             <Smile className="w-5 h-5" />
           </button>
-          <button
-            type="button"
-            className="p-2 text-zinc-400 hover:text-white"
-            onClick={() => {
-              const url = window.prompt("Dán link ảnh");
-              if (url?.trim()) {
-                void sendMessage(" ", [
-                  { id: `a_${Date.now()}`, type: "image", url: url.trim() },
-                ]);
-              }
+          <VoiceRecorder
+            onSend={(att) => {
+              void sendMessage("", [att]);
             }}
-          >
-            <Paperclip className="w-5 h-5" />
-          </button>
+          />
           <textarea
             ref={inputRef}
             value={text}
@@ -314,19 +322,51 @@ export default function ChatWindow({
               }
             }}
             rows={1}
-            placeholder={`Nhập tin nhắn với ${displayTitle(conversation)}`}
+            placeholder={`Nhập tin nhắn với ${title}`}
             className="flex-1 min-w-0 max-h-28 resize-none rounded-lg bg-[#2a2e36] px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-[#0068ff]/40"
           />
           <button
             type="button"
             onClick={() => void onSend()}
-            disabled={!text.trim()}
+            disabled={!text.trim() && !pending.length}
             className="p-2.5 rounded-full bg-[#0068ff] text-white disabled:opacity-40 disabled:bg-[#2a2e36]"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
       </div>
+
+      {forwardId && (
+        <div className="fixed inset-0 z-[180] flex items-end sm:items-center justify-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setForwardId(null)}
+          />
+          <div className="relative w-full sm:max-w-sm max-h-[70vh] rounded-t-2xl sm:rounded-2xl bg-neutral-900 border border-neutral-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-neutral-800 font-semibold text-white">
+              Chuyển tiếp tới
+            </div>
+            <div className="overflow-y-auto max-h-[50vh]">
+              {conversations
+                .filter((c) => c.id !== conversation.id)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-white border-b border-neutral-800/60"
+                    onClick={() => {
+                      void forwardMessage(forwardId, c.id);
+                      setForwardId(null);
+                    }}
+                  >
+                    {displayTitle(c)}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <CallModal
         open={!!call}

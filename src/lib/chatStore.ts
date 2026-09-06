@@ -21,9 +21,12 @@ export interface ChatUser {
 
 export interface ChatAttachment {
   id: string;
-  type: "image" | "file";
+  type: "image" | "file" | "audio" | "sticker";
   url: string;
   name?: string;
+  size?: number;
+  duration?: number;
+  mime?: string;
 }
 
 export interface ChatReaction {
@@ -41,6 +44,9 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
   replyToId?: string;
   reactions?: ChatReaction[];
+  editedAt?: number;
+  deleted?: boolean;
+  forwardedFrom?: string;
 }
 
 export interface Conversation {
@@ -51,8 +57,16 @@ export interface Conversation {
   lastMessage?: ChatMessage;
   unreadCount: number;
   muted?: boolean;
+  /** epoch ms — tắt thông báo đến khi */
+  mutedUntil?: number | null;
+  pinned?: boolean;
+  pinOrder?: number;
   updatedAt: number;
   peerUsername?: string;
+  groupAvatar?: string;
+  announcement?: string;
+  admins?: string[];
+  blocked?: boolean;
 }
 
 
@@ -119,7 +133,19 @@ interface ChatState {
   loadGroupThread: (groupId: string) => Promise<void>;
   sendMessage: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   toggleMute: (conversationId: string) => void;
+  muteFor: (conversationId: string, hours: number | null) => void;
+  togglePin: (conversationId: string) => void;
   toggleReaction: (messageId: string, emoji: string) => void;
+  editMessage: (messageId: string, text: string) => void;
+  deleteMessage: (messageId: string) => void;
+  forwardMessage: (messageId: string, toConversationId: string) => Promise<void>;
+  markConversationRead: (conversationId: string) => void;
+  setGroupAnnouncement: (conversationId: string, text: string) => void;
+  setGroupTitle: (conversationId: string, title: string) => void;
+  addGroupMembers: (conversationId: string, memberIds: string[]) => void;
+  blockUser: (username: string) => void;
+  unblockUser: (username: string) => void;
+  blockedUsers: string[];
   createGroup: (title: string, memberIds: string[]) => string;
   heartbeat: () => Promise<void>;
   notifyTyping: (peer: string) => void;
@@ -214,6 +240,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       error: null,
       synced: false,
       typingPeers: {},
+      blockedUsers: [],
 
       setMe: (username) => {
         const me = username ? username.toLowerCase() : null;
@@ -373,7 +400,11 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
       filteredConversations: () => {
         const { conversations, search, tab } = get();
-        let list = [...conversations].sort((a, b) => b.updatedAt - a.updatedAt);
+        let list = [...conversations].sort((a, b) => {
+          if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+          if (a.pinned && b.pinned) return (b.pinOrder || 0) - (a.pinOrder || 0);
+          return b.updatedAt - a.updatedAt;
+        });
         if (tab === "groups") list = list.filter((c) => c.isGroup);
         if (tab === "unread") list = list.filter((c) => c.unreadCount > 0);
         const q = search.trim().toLowerCase();
@@ -784,7 +815,192 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       toggleMute: (conversationId) => {
         set((s) => ({
           conversations: s.conversations.map((c) =>
-            c.id === conversationId ? { ...c, muted: !c.muted } : c
+            c.id === conversationId
+              ? {
+                  ...c,
+                  muted: !c.muted,
+                  mutedUntil: !c.muted ? null : c.mutedUntil,
+                }
+              : c
+          ),
+        }));
+      },
+
+      muteFor: (conversationId, hours) => {
+        const until =
+          hours === null ? null : Date.now() + hours * 60 * 60 * 1000;
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId
+              ? {
+                  ...c,
+                  muted: hours !== null,
+                  mutedUntil: until,
+                }
+              : c
+          ),
+        }));
+      },
+
+      togglePin: (conversationId) => {
+        set((s) => {
+          const target = s.conversations.find((c) => c.id === conversationId);
+          const willPin = !target?.pinned;
+          const maxOrder = s.conversations.reduce(
+            (m, c) => Math.max(m, c.pinOrder || 0),
+            0
+          );
+          return {
+            conversations: s.conversations.map((c) =>
+              c.id === conversationId
+                ? {
+                    ...c,
+                    pinned: willPin,
+                    pinOrder: willPin ? maxOrder + 1 : 0,
+                  }
+                : c
+            ),
+          };
+        });
+      },
+
+      editMessage: (messageId, text) => {
+        const { activeId, me } = get();
+        if (!activeId || !me) return;
+        const t = text.trim();
+        if (!t) return;
+        set((s) => ({
+          messages: {
+            ...s.messages,
+            [activeId]: (s.messages[activeId] || []).map((m) =>
+              m.id === messageId && m.senderId === me
+                ? { ...m, text: t, editedAt: Date.now() }
+                : m
+            ),
+          },
+        }));
+      },
+
+      deleteMessage: (messageId) => {
+        const { activeId, me } = get();
+        if (!activeId || !me) return;
+        set((s) => ({
+          messages: {
+            ...s.messages,
+            [activeId]: (s.messages[activeId] || []).map((m) =>
+              m.id === messageId && m.senderId === me
+                ? { ...m, deleted: true, text: "", attachments: [] }
+                : m
+            ),
+          },
+        }));
+      },
+
+      forwardMessage: async (messageId, toConversationId) => {
+        const { activeId, me, messages, conversations } = get();
+        if (!me || !activeId) return;
+        const src = (messages[activeId] || []).find((m) => m.id === messageId);
+        if (!src || src.deleted) return;
+        const dest = conversations.find((c) => c.id === toConversationId);
+        if (!dest) return;
+        const prevActive = activeId;
+        set({ activeId: toConversationId });
+        await get().sendMessage(
+          src.text ? `↪ ${src.text}` : "",
+          src.attachments
+        );
+        set((s) => {
+          const list = s.messages[toConversationId] || [];
+          const last = list[list.length - 1];
+          if (!last) return s;
+          return {
+            activeId: prevActive,
+            messages: {
+              ...s.messages,
+              [toConversationId]: list.map((m) =>
+                m.id === last.id
+                  ? { ...m, forwardedFrom: src.senderId }
+                  : m
+              ),
+            },
+          };
+        });
+      },
+
+      markConversationRead: (conversationId) => {
+        const me = get().me;
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId ? { ...c, unreadCount: 0 } : c
+          ),
+          messages: {
+            ...s.messages,
+            [conversationId]: (s.messages[conversationId] || []).map((m) =>
+              m.senderId !== me && m.status !== "read"
+                ? { ...m, status: "read" as const }
+                : m
+            ),
+          },
+        }));
+      },
+
+      setGroupAnnouncement: (conversationId, text) => {
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId && c.isGroup
+              ? { ...c, announcement: text.trim().slice(0, 500) }
+              : c
+          ),
+        }));
+      },
+
+      setGroupTitle: (conversationId, title) => {
+        const t = title.trim().slice(0, 80);
+        if (!t) return;
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId && c.isGroup ? { ...c, title: t } : c
+          ),
+        }));
+      },
+
+      addGroupMembers: (conversationId, memberIds) => {
+        set((s) => ({
+          conversations: s.conversations.map((c) => {
+            if (c.id !== conversationId || !c.isGroup) return c;
+            const setIds = new Set([
+              ...c.participants,
+              ...memberIds.map((x) => x.toLowerCase()),
+            ]);
+            return { ...c, participants: Array.from(setIds) };
+          }),
+        }));
+      },
+
+      blockUser: (username) => {
+        const id = username.toLowerCase();
+        set((s) => ({
+          blockedUsers: s.blockedUsers.includes(id)
+            ? s.blockedUsers
+            : [...s.blockedUsers, id],
+          conversations: s.conversations.map((c) =>
+            !c.isGroup &&
+            (c.peerUsername === id || c.participants.includes(id))
+              ? { ...c, blocked: true }
+              : c
+          ),
+        }));
+      },
+
+      unblockUser: (username) => {
+        const id = username.toLowerCase();
+        set((s) => ({
+          blockedUsers: s.blockedUsers.filter((x) => x !== id),
+          conversations: s.conversations.map((c) =>
+            !c.isGroup &&
+            (c.peerUsername === id || c.participants.includes(id))
+              ? { ...c, blocked: false }
+              : c
           ),
         }));
       },

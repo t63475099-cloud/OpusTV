@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Users, Home, UserCircle } from "lucide-react";
+import { Search, Plus, Users, Home, UserCircle, Pin } from "lucide-react";
 import {
   useChatStore,
   formatChatTime,
@@ -60,7 +60,10 @@ function Row({
       )}
       <div className="flex-1 min-w-0 border-b border-[#2a2d34]/60 pb-2.5">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[15px] font-medium text-white truncate">{title}</p>
+          <p className="text-[15px] font-medium text-white truncate flex items-center gap-1">
+            {c.pinned ? <Pin className="w-3 h-3 text-amber-400 shrink-0" /> : null}
+            {title}
+          </p>
           {last && (
             <span className="text-[11px] text-zinc-500 shrink-0">
               {formatChatTime(last.timestamp)}

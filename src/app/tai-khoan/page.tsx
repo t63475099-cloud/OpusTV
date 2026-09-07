@@ -110,38 +110,41 @@ function FloatingField({
 }) {
   const filled = value.length > 0;
   return (
-    <div className="relative mb-5">
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        placeholder=" "
-        className={`peer w-full rounded-2xl border bg-white/[0.04] px-4 pb-2.5 pt-6 text-sm text-white outline-none transition-all duration-300 ${
-          rightSlot ? "pr-12" : ""
-        } ${
-          error
-            ? "border-red-500/50 focus:border-red-400"
-            : "border-white/10 focus:border-rose-400/60 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
-        }`}
-      />
-      <label
-        htmlFor={id}
-        className={`pointer-events-none absolute left-4 transition-all duration-300 ${
-          filled
-            ? "top-2 text-[10px] font-medium text-rose-300/90"
-            : "top-1/2 -translate-y-1/2 text-sm text-zinc-500 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-medium peer-focus:text-rose-300/90"
-        }`}
-      >
-        {label}
-      </label>
-      {rightSlot}
+    <div className="relative mb-4">
+      <div className="relative">
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          autoComplete={autoComplete}
+          inputMode={inputMode}
+          placeholder=" "
+          className={`peer block w-full h-[52px] rounded-2xl border bg-white/[0.05] pl-4 ${
+            rightSlot ? "pr-11" : "pr-4"
+          } pt-[18px] pb-2 text-[15px] leading-none text-white outline-none transition-all duration-300 ${
+            error
+              ? "border-red-500/50 focus:border-red-400"
+              : "border-white/12 focus:border-rose-400/60 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+          }`}
+        />
+        <label
+          htmlFor={id}
+          className={`pointer-events-none absolute left-4 right-10 origin-left transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            filled
+              ? "top-[7px] text-[10px] leading-none font-medium text-rose-300/90 translate-y-0"
+              : "top-1/2 -translate-y-1/2 text-[14px] leading-none text-zinc-500 peer-focus:top-[7px] peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-medium peer-focus:text-rose-300/90"
+          }`}
+        >
+          {label}
+        </label>
+        {rightSlot}
+      </div>
       {error && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-red-400">
-          <X className="h-3 w-3 shrink-0" /> {error}
+        <p className="mt-1.5 flex items-center gap-1.5 pl-1 text-xs leading-snug text-red-400">
+          <X className="h-3 w-3 shrink-0" />
+          <span>{error}</span>
         </p>
       )}
     </div>
@@ -404,7 +407,7 @@ export default function AccountPage() {
     <button
       type="button"
       onClick={toggle}
-      className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
+      className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/10 hover:text-white transition"
       tabIndex={-1}
       aria-label={show ? "Ẩn" : "Hiện"}
     >
@@ -761,15 +764,16 @@ export default function AccountPage() {
   return (
     <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
       <AuroraBg />
-      <div className={`relative z-10 mx-auto w-full max-w-[420px] px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
+      <div className={`relative z-10 mx-auto w-full max-w-[420px] px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-[0_8px_32px_rgba(244,63,94,0.45)] ring-1 ring-white/25">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-[0_8px_32px_rgba(244,63,94,0.45)] ring-1 ring-white/25 transition-transform duration-500 hover:scale-105">
             <Shield className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">{titles[mode]}</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-white">{titles[mode]}</h1>
+          <p className="mt-1.5 text-xs leading-none text-zinc-500">OpusFilm</p>
         </div>
 
-        <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-black/40 p-1 backdrop-blur-xl">
+        <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-white/12 bg-white/[0.04] p-1 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden">
           {(
             [
               ["login", "Đăng nhập", LogIn],
@@ -781,17 +785,17 @@ export default function AccountPage() {
               key={m}
               type="button"
               onClick={() => switchMode(m)}
-              className={`flex items-center justify-center gap-1 rounded-xl py-2.5 text-xs font-semibold transition-all duration-300 sm:text-sm ${
+              className={`flex h-10 items-center justify-center gap-1.5 rounded-xl px-1 text-xs font-semibold leading-none transition-all duration-300 sm:text-sm ${
                 mode === m ? "bg-white text-black shadow-lg" : "text-zinc-400 hover:bg-white/5 hover:text-white"
               }`}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{label}</span>
+              <span className="truncate leading-none">{label}</span>
             </button>
           ))}
         </div>
 
-        <GlassCard className="rounded-3xl p-5 sm:p-7 lg-shimmer">
+        <GlassCard className="auth-glass rounded-3xl p-5 sm:p-7 lg-shimmer overflow-hidden">
           <form onSubmit={onSubmit} noValidate>
             {mode === "register" && (
               <FloatingField
@@ -842,8 +846,8 @@ export default function AccountPage() {
                 rightSlot={<EyeBtn show={showPass} toggle={() => setShowPass(!showPass)} />}
               />
               {(mode === "register" || mode === "recover") && pass && (
-                <div className="-mt-3 mb-4">
-                  <div className="mb-1 flex gap-1">
+                <div className="-mt-2 mb-4 px-0.5">
+                  <div className="mb-1.5 flex gap-1.5">
                     {[1, 2, 3].map((i) => (
                       <div
                         key={i}
@@ -851,7 +855,7 @@ export default function AccountPage() {
                       />
                     ))}
                   </div>
-                  <p className="text-[10px] text-zinc-500">{strength.label}</p>
+                  <p className="text-[10px] leading-none text-zinc-500">{strength.label}</p>
                 </div>
               )}
             </div>
@@ -870,8 +874,9 @@ export default function AccountPage() {
               />
             )}
             {!errors.pass2 && pass2 && pass === pass2 && (mode === "register" || mode === "recover") && (
-              <p className="-mt-3 mb-4 flex items-center gap-1 text-xs text-emerald-400">
-                <Check className="h-3 w-3" /> Khớp
+              <p className="-mt-2 mb-4 flex items-center gap-1.5 pl-0.5 text-xs leading-none text-emerald-400">
+                <Check className="h-3.5 w-3.5 shrink-0" />
+                <span>Khớp</span>
               </p>
             )}
 
@@ -890,37 +895,37 @@ export default function AccountPage() {
             )}
 
             {mode === "login" && (
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
+              <div className="mb-5 flex items-center justify-between gap-3 px-0.5">
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm leading-none text-zinc-300">
                   <input
                     type="checkbox"
                     checked={remember}
                     onChange={(e) => setRemember(e.target.checked)}
-                    className="h-4 w-4 rounded border-white/20 bg-black/40 text-rose-600"
+                    className="h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600 align-middle"
                   />
-                  Ghi nhớ
+                  <span className="leading-none">Ghi nhớ</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => switchMode("recover")}
-                  className="text-sm font-medium text-rose-400 hover:text-rose-300"
+                  className="text-sm font-medium leading-none text-rose-400 hover:text-rose-300"
                 >
                   Quên mật khẩu?
                 </button>
               </div>
             )}
 
-                        {mode === "register" && (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="block text-xs font-medium text-zinc-400">
-                    Mã kích hoạt (Key) <span className="text-rose-400">*</span>
+            {mode === "register" && (
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center justify-between gap-2 px-0.5">
+                  <label className="text-xs font-medium leading-none text-zinc-400">
+                    Mã kích hoạt <span className="text-rose-400">*</span>
                   </label>
                   <Link
                     href="/get-key"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-300 hover:text-amber-200 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 transition"
+                    className="inline-flex h-7 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 text-xs font-semibold leading-none text-amber-300 hover:text-amber-200 transition"
                   >
-                    <KeyRound className="w-3.5 h-3.5" />
+                    <KeyRound className="w-3.5 h-3.5 shrink-0" />
                     Get Key
                   </Link>
                 </div>
@@ -932,25 +937,27 @@ export default function AccountPage() {
                   }}
                   onBlur={() => setTouched((t) => ({ ...t, key: true }))}
                   placeholder="OF-XXXX-XXXX-XXXX"
-                  className={`lg-input w-full font-mono tracking-wider ${
-                    errors.key ? "border-red-500/60 focus:border-red-500" : ""
+                  className={`block w-full h-[48px] rounded-2xl border bg-white/[0.05] px-4 text-[15px] leading-none font-mono tracking-wider text-white outline-none transition-all duration-300 placeholder:text-zinc-600 ${
+                    errors.key
+                      ? "border-red-500/60 focus:border-red-400"
+                      : "border-white/12 focus:border-rose-400/60 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
                   }`}
                   autoComplete="off"
                   spellCheck={false}
                 />
                 {errors.key ? (
-                  <p className="text-xs text-red-400">{errors.key}</p>
+                  <p className="flex items-center gap-1.5 pl-1 text-xs leading-snug text-red-400">{errors.key}</p>
                 ) : (
-                  <p className="text-[11px] text-zinc-500">
-                    Chưa có key? Bấm <strong className="text-amber-300">Get Key</strong> để nhận mã ngẫu nhiên.
+                  <p className="pl-0.5 text-[11px] leading-snug text-zinc-500">
+                    Chưa có key? Bấm <strong className="text-amber-300">Get Key</strong> để nhận mã.
                   </p>
                 )}
               </div>
             )}
 
 {mode === "register" && (
-              <div className="mb-5">
-                <label className="flex cursor-pointer items-start gap-2.5 text-sm text-zinc-300">
+              <div className="mb-5 px-0.5">
+                <label className="flex cursor-pointer items-start gap-2.5 text-sm leading-snug text-zinc-300">
                   <input
                     type="checkbox"
                     checked={terms}
@@ -958,9 +965,9 @@ export default function AccountPage() {
                       setTerms(e.target.checked);
                       setTouched((t) => ({ ...t, terms: true }));
                     }}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600"
+                    className="mt-[3px] h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600"
                   />
-                  <span>
+                  <span className="leading-snug">
                     Đồng ý{" "}
                     <Link href="/dieu-khoan" className="text-sky-400 hover:underline" target="_blank">
                       Điều khoản
@@ -971,14 +978,14 @@ export default function AccountPage() {
                     </Link>
                   </span>
                 </label>
-                {errors.terms && <p className="mt-1 text-xs text-red-400">{errors.terms}</p>}
+                {errors.terms && <p className="mt-1.5 pl-6 text-xs leading-snug text-red-400">{errors.terms}</p>}
               </div>
             )}
 
             <button
               type="submit"
               disabled={busy || !formValid}
-              className="auth-btn-primary auth-btn-shimmer relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-3.5 text-sm font-bold text-white disabled:opacity-40"
+              className="auth-btn-primary auth-btn-shimmer relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl text-sm font-bold leading-none text-white disabled:opacity-40"
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1028,8 +1035,9 @@ function AuthStyles() {
         position: absolute;
         border-radius: 50%;
         filter: blur(80px);
-        opacity: 0.5;
+        opacity: 0.55;
         animation: auth-float 18s ease-in-out infinite;
+        will-change: transform;
       }
       .auth-orb-1 {
         width: 420px;
@@ -1055,40 +1063,36 @@ function AuthStyles() {
         animation-delay: -11s;
       }
       @keyframes auth-float {
-        0%,
-        100% {
-          transform: translate3d(0, 0, 0);
-        }
-        50% {
-          transform: translate3d(3%, 5%, 0);
-        }
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(3%, 5%, 0) scale(1.05); }
       }
       .auth-glass {
-        background: rgba(15, 23, 42, 0.55);
-        backdrop-filter: blur(20px) saturate(1.4);
-        -webkit-backdrop-filter: blur(20px) saturate(1.4);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-      }
-      .auth-glass-border {
-        border-radius: inherit;
-        padding: 1px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.35), transparent 45%, rgba(244, 63, 94, 0.2));
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
+        background: rgba(12, 12, 16, 0.55) !important;
+        backdrop-filter: blur(24px) saturate(1.5) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(1.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        box-shadow:
+          0 24px 64px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08),
+          0 0 0 1px rgba(255, 255, 255, 0.03) !important;
+        transition: box-shadow 0.5s ease, border-color 0.5s ease, transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
       }
       .auth-btn-primary {
         background: linear-gradient(135deg, #e11d48, #f43f5e 45%, #fb7185);
         box-shadow: 0 8px 28px rgba(244, 63, 94, 0.35);
-        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s;
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s, box-shadow 0.25s;
       }
       .auth-btn-primary:hover:not(:disabled) {
         filter: brightness(1.08);
+        box-shadow: 0 12px 36px rgba(244, 63, 94, 0.45);
       }
       .auth-btn-primary:active:not(:disabled) {
         transform: scale(0.96);
+      }
+      .auth-btn-shimmer {
+        position: relative;
+        overflow: hidden;
       }
       .auth-btn-shimmer::after {
         content: "";
@@ -1101,22 +1105,18 @@ function AuthStyles() {
         animation: auth-shimmer 0.8s cubic-bezier(0.4, 0, 0.2, 1);
       }
       @keyframes auth-shimmer {
-        to {
-          transform: translateX(120%);
-        }
+        to { transform: translateX(120%); }
       }
       .auth-enter {
-        animation: auth-rise 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+        animation: auth-rise 0.55s cubic-bezier(0.4, 0, 0.2, 1) both;
       }
       @keyframes auth-rise {
-        from {
-          opacity: 0;
-          transform: translate3d(0, 16px, 0);
-        }
-        to {
-          opacity: 1;
-          transform: none;
-        }
+        from { opacity: 0; transform: translate3d(0, 18px, 0); }
+        to { opacity: 1; transform: none; }
+      }
+      .opus-search-shell:focus-within {
+        border-color: rgba(255, 255, 255, 0.28) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(244, 63, 94, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
       }
     `}</style>
   );

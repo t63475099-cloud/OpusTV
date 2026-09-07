@@ -39,11 +39,28 @@ export default function Sidebar() {
   if (path.startsWith("/tin-nhan")) return null;
 
   return (
-    <aside data-sidebar="1"
-      className="hidden lg:flex flex-col w-[72px] xl:w-[220px] shrink-0 sticky top-14 h-[calc(100dvh-3.5rem)] overflow-y-auto scrollbar-hide py-3 px-2 border-r border-[#272727] glass-sidebar"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    <aside
+      data-sidebar="1"
+      className={cn(
+        "hidden lg:flex flex-col shrink-0 sticky top-14",
+        "h-[calc(100dvh-3.5rem)]",
+        "w-[72px] xl:w-[220px]",
+        "border-r border-white/10",
+        "bg-neutral-950/55 backdrop-blur-2xl",
+        "shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)]",
+        "transition-[width,background-color,box-shadow] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+        "overflow-hidden"
+      )}
+      style={{
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        transition: "width 0.5s ease, background-color 0.5s ease",
+        overflow: "hidden",
+      }}
     >
-      <nav className="space-y-0.5">
+      <nav
+        className="flex-1 space-y-0.5 py-3 px-2 overflow-y-auto overflow-x-hidden scrollbar-hide"
+        style={{ overflowX: "hidden" }}
+      >
         {ITEMS.map((item) => {
           const active =
             item.href === "/"
@@ -55,20 +72,51 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "side-link flex items-center gap-4 rounded-xl px-3 py-2.5 text-sm",
+                "group relative flex items-center gap-4 rounded-xl px-3 py-2.5 text-sm",
+                "overflow-hidden",
+                "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                "border border-transparent",
                 active
-                  ? "bg-[#272727] text-white font-medium"
-                  : "text-[#f1f1f1] hover:bg-[#272727]/80"
+                  ? "bg-white/12 text-white font-medium border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.1)]"
+                  : "text-zinc-300 hover:bg-white/8 hover:text-white hover:border-white/8"
               )}
               title={item.label}
+              style={{ overflow: "hidden" }}
             >
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="hidden xl:inline truncate">{item.label}</span>
+              {/* glow hover */}
+              <span
+                className={cn(
+                  "pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                  "bg-gradient-to-r from-rose-500/10 via-transparent to-violet-500/10"
+                )}
+              />
+              <Icon
+                className={cn(
+                  "w-5 h-5 shrink-0 relative z-[1] transition-transform duration-500",
+                  active ? "text-rose-400 scale-105" : "text-zinc-400 group-hover:text-white group-hover:scale-105"
+                )}
+              />
+              <span
+                className={cn(
+                  "hidden xl:inline truncate relative z-[1] leading-none",
+                  "transition-[opacity,max-width,transform] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                  "opacity-100 max-w-[10rem]"
+                )}
+                style={{ overflow: "hidden" }}
+              >
+                {item.label}
+              </span>
             </Link>
           );
         })}
       </nav>
-      <div className="hidden xl:block mt-6 px-3 text-[11px] text-[#717171] leading-relaxed">
+      <div
+        className={cn(
+          "hidden xl:block px-3 pb-4 text-[11px] text-zinc-600 leading-relaxed",
+          "overflow-hidden transition-opacity duration-500"
+        )}
+        style={{ overflow: "hidden" }}
+      >
         OpusFilm
       </div>
     </aside>

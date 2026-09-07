@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -27,6 +27,7 @@ import SearchBox from "./SearchBox";
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const pathname = usePathname() || "/";
 
   const isMinimalChrome =
@@ -37,9 +38,10 @@ export default function Navbar() {
     pathname.startsWith("/nhac") ||
     pathname.startsWith("/phim/");
 
-  /** Search luôn ngoài trên mobile (trừ trang form) */
-  /** Ẩn ô tìm phim trên Opus Music để tránh nhầm */
   const showSearch = !isMinimalChrome && !pathname.startsWith("/nhac");
+
+  /** Mobile: ẩn chữ OpusFilm khi search mở rộng & menu đóng */
+  const hideLogoTextMobile = showSearch && searchExpanded && !menuOpen;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -49,6 +51,7 @@ export default function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false);
+    setSearchExpanded(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -58,7 +61,6 @@ export default function Navbar() {
     };
   }, [menuOpen]);
 
-  /** Chiều cao header → content không bị đè */
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.navChips = hideChips ? "0" : "1";
@@ -68,6 +70,10 @@ export default function Navbar() {
       root.dataset.navMinimal = "0";
     };
   }, [hideChips, isMinimalChrome]);
+
+  const onExpandChange = useCallback((v: boolean) => {
+    setSearchExpanded(v);
+  }, []);
 
   const mainNav = NAV_CATEGORIES.filter((i) => i.href !== "/cai-dat");
 
@@ -91,27 +97,26 @@ export default function Navbar() {
   ];
 
   if (pathname.startsWith("/admin")) return null;
-  // Ẩn toàn bộ menu trên khi vào Opus Chat
   if (pathname.startsWith("/tin-nhan")) return null;
 
   return (
     <header
       data-app-nav="1"
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
+        "fixed top-0 left-0 right-0 z-50",
+        "backdrop-blur-2xl bg-neutral-950/70",
+        "transition-[background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
         scrolled || menuOpen
-          ? "glass-nav border-b border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.35)]"
-          : "glass-nav border-b border-transparent",
-        "overflow-visible"
+          ? "border-b border-white/12 shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+          : "border-b border-transparent"
       )}
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingLeft: "env(safe-area-inset-left, 0px)",
         paddingRight: "env(safe-area-inset-right, 0px)",
+        overflow: "visible",
       }}
     >
-      {/* Chuông tách riêng — góc phải trên, z cao, không bị search/chip đè */}
-      {/* Chuông: chỉ Laptop/PC — ẩn Android/iPhone */}
       <div
         data-bell-fixed
         className="hidden lg:block absolute top-[max(0.4rem,env(safe-area-inset-top))] right-1.5 sm:right-3 z-[120]"
@@ -119,47 +124,85 @@ export default function Navbar() {
         <NotificationBell />
       </div>
 
-      {/* Hàng 1: logo + search ngoài (mobile & desktop) */}
-      <div className="flex items-center gap-1.5 sm:gap-2 h-12 sm:h-14 px-2.5 sm:px-4 pr-12 sm:pr-14">
+      <div className="flex items-center gap-1.5 sm:gap-2 h-12 sm:h-14 px-2.5 sm:px-4 pr-3 lg:pr-14">
+        {/* Hamburger — mobile */}
         <button
           type="button"
-          className="lg:hidden p-2 -ml-0.5 rounded-full text-zinc-200 hover:bg-white/10 shrink-0"
+          className="lg:hidden p-2 -ml-0.5 rounded-full text-zinc-200 hover:bg-white/10 shrink-0 transition-all duration-300 active:scale-95"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
         >
           {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
 
+        {/* Logo — chữ ẩn khi search mở rộng trên mobile */}
         <Link
           href="/"
-          className="flex items-center gap-1.5 shrink-0"
+          className="flex items-center gap-1.5 shrink-0 min-w-0"
           onClick={() => setMenuOpen(false)}
         >
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 flex items-center justify-center shrink-0 shadow-lg shadow-red-600/40 ring-1 ring-white/20">
             <PlayCircle className="w-5 h-5 text-white fill-white/30" />
           </div>
-          <span className="hidden xs:inline text-base sm:text-lg font-bold tracking-tight text-white whitespace-nowrap min-[380px]:inline">
+          <span
+            className={cn(
+              "inline-flex items-center font-bold tracking-tight text-white whitespace-nowrap text-base sm:text-lg leading-none",
+              "overflow-hidden transition-[max-width,opacity,margin] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              "lg:inline-flex lg:max-w-[10rem] lg:opacity-100 lg:ml-0",
+              hideLogoTextMobile
+                ? "max-w-0 opacity-0 ml-0 pointer-events-none"
+                : "max-w-[7.5rem] opacity-100 ml-0"
+            )}
+            style={{
+              transition: "max-width 0.5s ease, opacity 0.5s ease, margin 0.5s ease",
+              overflow: "hidden",
+            }}
+          >
             Opus<span className="font-semibold">Film</span>
           </span>
         </Link>
 
-        {/* Search ngoài — mobile + desktop */}
-        <div className="relative z-[90] flex-1 min-w-0 flex justify-center px-1 overflow-visible">
+        {/* Search */}
+        <div
+          className={cn(
+            "relative z-[90] flex-1 min-w-0 flex justify-end sm:justify-center px-1",
+            "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          )}
+          style={{ overflow: "visible" }}
+        >
           {showSearch && (
-            <div className="w-full max-w-[640px]">
-              <SearchBox variant="desktop" />
+            <div
+              className={cn(
+                "w-full transition-[max-width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                menuOpen ? "max-w-[3rem] sm:max-w-[3rem]" : "max-w-[640px]",
+                searchExpanded && !menuOpen ? "max-w-full" : ""
+              )}
+            >
+              <SearchBox
+                variant="desktop"
+                forceCollapse={menuOpen}
+                onExpandChange={onExpandChange}
+                onNavigate={() => setMenuOpen(false)}
+              />
             </div>
           )}
         </div>
-        {/* Chuỗi: chỉ Laptop/PC — mobile vào menu 3 gạch */}
+
         <div className="hidden lg:flex shrink-0 items-center gap-1 relative z-[95]">
           <StreakBadge />
         </div>
       </div>
 
-      {/* Hàng 2: chip — chỉ mobile, không đè form */}
+      {/* Chip categories — mobile */}
       {!hideChips && (
-        <div className="flex lg:hidden items-center gap-2 px-3 pb-2 overflow-x-auto scrollbar-hide h-10">
+        <div
+          className={cn(
+            "flex lg:hidden items-center gap-2 px-3 pb-2 overflow-x-auto scrollbar-hide h-10",
+            "transition-[max-height,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            menuOpen ? "max-h-0 opacity-0 overflow-hidden pb-0 h-0" : "max-h-10 opacity-100"
+          )}
+          style={{ overflowX: menuOpen ? "hidden" : "auto", overflowY: "hidden" }}
+        >
           <Link
             href="/"
             className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-white to-zinc-100 text-black text-sm font-semibold shadow-sm"
@@ -178,45 +221,60 @@ export default function Navbar() {
         </div>
       )}
 
-      {menuOpen && (
-        <div
-          className="lg:hidden border-t border-white/10 glass-strong px-3 py-3 space-y-1 max-h-[min(70vh,calc(100dvh-3.5rem))] overflow-y-auto overscroll-contain"
-          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      {/* Drawer menu — mobile, transition 0.5s overflow hidden */}
+      <div
+        className={cn(
+          "lg:hidden border-t border-white/10",
+          "bg-neutral-950/85 backdrop-blur-2xl",
+          "transition-[max-height,opacity,padding] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+          menuOpen
+            ? "max-h-[min(70vh,calc(100dvh-3.5rem))] opacity-100"
+            : "max-h-0 opacity-0 pointer-events-none"
+        )}
+        style={{
+          overflow: "hidden",
+          transition: "max-height 0.5s ease, opacity 0.5s ease, padding 0.5s ease",
+          paddingBottom: menuOpen ? "max(1rem, env(safe-area-inset-bottom))" : 0,
+        }}
+      >
+        <nav
+          className="space-y-0.5 px-3 py-3 overflow-y-auto overscroll-contain max-h-[min(65vh,calc(100dvh-4rem))]"
+          aria-label="Menu chính"
         >
-          <nav className="space-y-0.5" aria-label="Menu chính">
-            {drawerLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMenuOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 active:scale-[0.98]",
-                  pathname === item.href ||
-                    (item.href !== "/" && pathname.startsWith(item.href.split("?")[0]))
-                    ? "bg-[#272727] text-white font-medium"
-                    : "text-zinc-200 hover:bg-white/10"
-                )}
-              >
-                <item.icon className="w-5 h-5 text-zinc-400 shrink-0" />
-                <span className="truncate">{item.name}</span>
-              </Link>
-            ))}
+          {drawerLinks.map((item) => (
             <Link
-              href="/hop-thu"
+              key={item.href}
+              href={item.href}
               onClick={() => setMenuOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 active:scale-[0.98]",
-                pathname.startsWith("/hop-thu")
-                  ? "bg-[#272727] text-white font-medium"
-                  : "text-zinc-200 hover:bg-white/10"
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
+                "transition-all duration-300 active:scale-[0.98]",
+                "border border-transparent hover:border-white/10",
+                pathname === item.href ||
+                  (item.href !== "/" && pathname.startsWith(item.href.split("?")[0]))
+                  ? "bg-white/10 text-white font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                  : "text-zinc-200 hover:bg-white/8"
               )}
             >
-              <Bell className="w-5 h-5 text-zinc-400 shrink-0" />
-              <span className="truncate">Thông báo & hòm thư</span>
+              <item.icon className="w-5 h-5 text-zinc-400 shrink-0" />
+              <span className="truncate">{item.name}</span>
             </Link>
-          </nav>
-        </div>
-      )}
+          ))}
+          <Link
+            href="/hop-thu"
+            onClick={() => setMenuOpen(false)}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-300 active:scale-[0.98]",
+              pathname.startsWith("/hop-thu")
+                ? "bg-white/10 text-white font-medium"
+                : "text-zinc-200 hover:bg-white/8"
+            )}
+          >
+            <Bell className="w-5 h-5 text-zinc-400 shrink-0" />
+            <span className="truncate leading-none">Thông báo & hòm thư</span>
+          </Link>
+        </nav>
+      </div>
     </header>
   );
 }

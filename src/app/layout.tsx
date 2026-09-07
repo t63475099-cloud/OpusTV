@@ -6,7 +6,6 @@ import SyncBootstrap from "@/components/SyncBootstrap";
 import ScrollNavFab from "@/components/ScrollNavFab";
 import Sidebar from "@/components/Sidebar";
 import FloatingMiniPlayer from "@/components/FloatingMiniPlayer";
-import SupportChatbot from "@/components/SupportChatbot";
 import AmbientBackdrop from "@/components/AmbientBackdrop";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
@@ -63,7 +62,6 @@ export default function RootLayout({
           <Sidebar />
           <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>
           <FloatingMiniPlayer />
-          <SupportChatbot />
         </div>
         <footer className="border-t border-white/10 py-8 px-4 text-center text-zinc-500 text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))] bg-black/20 backdrop-blur-md">
           <p className="font-semibold text-zinc-300">{APP_NAME}</p>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Maximize2, Pause, Play, X } from "lucide-react";
+import { Maximize, Maximize2, Pause, Play, X } from "lucide-react";
 import Hls from "hls.js";
 import { useMusicPlayerStore } from "@/lib/musicPlayerStore";
 import { useActiveMediaStore } from "@/lib/activeMediaStore";
@@ -15,6 +15,7 @@ import {
   saveFilmResume,
   saveMusicResume,
 } from "@/lib/resumeStore";
+import { cn } from "@/lib/utils";
 
 function formatTime(s: number) {
   if (!isFinite(s) || s < 0) return "0:00";
@@ -38,10 +39,22 @@ function filmPageHref(item: {
   return `/phim/${item.slug}${q ? `?${q}` : ""}`;
 }
 
+async function requestFs(el: HTMLElement) {
+  const anyEl = el as any;
+  try {
+    if (el.requestFullscreen) await el.requestFullscreen();
+    else if (anyEl.webkitRequestFullscreen) await anyEl.webkitRequestFullscreen();
+    else if (anyEl.webkitEnterFullscreen) await anyEl.webkitEnterFullscreen();
+  } catch {
+    /* user gesture / policy */
+  }
+}
+
 export default function FloatingMiniPlayer() {
   const path = usePathname() || "/";
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
 
   const track = useMusicPlayerStore((s) => s.track);
   const setTrack = useMusicPlayerStore((s) => s.setTrack);
@@ -58,12 +71,12 @@ export default function FloatingMiniPlayer() {
   const [filmPlaying, setFilmPlaying] = useState(false);
   const [displayTime, setDisplayTime] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const streamKeyRef = useRef("");
 
   useEffect(() => setMounted(true), []);
 
-  // Khôi phục phiên Film/Music từ localStorage nếu store trống sau reload
   useEffect(() => {
     if (!mounted) return;
     if (!useActiveMediaStore.getState().film) {
@@ -113,7 +126,6 @@ export default function FloatingMiniPlayer() {
     return Math.max(a, b, displayTime);
   }, [film, displayTime]);
 
-  // Gắn HLS một lần theo slug+ep+m3u8 (không reload khi currentTime đổi)
   useEffect(() => {
     if (!mounted || !film?.m3u8) return;
     const video = videoRef.current;
@@ -127,15 +139,11 @@ export default function FloatingMiniPlayer() {
     } catch {}
     hlsRef.current = null;
 
-    const resumeAt = getResumeSec();
-
     const seekResume = () => {
       const t = getResumeSec();
       if (t <= 5) return;
       try {
-        if (Math.abs(video.currentTime - t) > 1.5) {
-          video.currentTime = t;
-        }
+        if (Math.abs(video.currentTime - t) > 1.5) video.currentTime = t;
       } catch {}
     };
 
@@ -195,6 +203,18 @@ export default function FloatingMiniPlayer() {
     }
   }, [path, film?.slug]);
 
+  useEffect(() => {
+    if (!mounted) return;
+    const show =
+      (!!film && !path.startsWith(`/phim/${film.slug}`)) ||
+      (!!track && !path.startsWith("/nhac"));
+    if (show) {
+      const id = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(id);
+    }
+    setVisible(false);
+  }, [mounted, film, track, path]);
+
   if (!mounted) return null;
   if (path.startsWith("/tin-nhan") || path.startsWith("/bao-tri")) return null;
 
@@ -202,18 +222,21 @@ export default function FloatingMiniPlayer() {
   const onFilmPage = film ? path.startsWith(`/phim/${film.slug}`) : false;
   const showMusic = !!track && !onMusicPage;
   const showFilm = !!film && !onFilmPage;
-  const mode: "music" | "film" | null = showFilm
-    ? "film"
-    : showMusic
-      ? "music"
-      : null;
+  const mode: "music" | "film" | null = showFilm ? "film" : showMusic ? "music" : null;
   if (!mode) return null;
 
+  const shellClass = cn(
+    "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-[60]",
+    "w-[min(92vw,320px)]",
+    "transition-all duration-300 ease-in-out",
+    visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-3 scale-95 pointer-events-none"
+  );
+
+  const cardClass =
+    "rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-[#0c0c12]/92 backdrop-blur-xl transition-all duration-300 ease-in-out";
+
   if (mode === "music" && track) {
-    const start = Math.max(
-      Math.floor(track.currentTime || 0),
-      loadMusicResume(track.id)
-    );
+    const start = Math.max(Math.floor(track.currentTime || 0), loadMusicResume(track.id));
     const togglePlay = () => {
       const next = !playing;
       setPlaying(next);
@@ -234,11 +257,8 @@ export default function FloatingMiniPlayer() {
     };
 
     return (
-      <div
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-[60] w-[min(92vw,300px)]"
-        data-mini-player="music"
-      >
-        <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-[#0c0c12]/92 backdrop-blur-xl">
+      <div className={shellClass} data-mini-player="music">
+        <div className={cardClass}>
           <div className="relative w-full aspect-video bg-black">
             {playing ? (
               <iframe
@@ -259,7 +279,7 @@ export default function FloatingMiniPlayer() {
                   className="absolute inset-0 w-full h-full object-cover opacity-80"
                 />
                 <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center transition-transform duration-300 hover:scale-105">
                     <Play className="w-6 h-6 text-white fill-white ml-0.5" />
                   </div>
                 </div>
@@ -271,21 +291,26 @@ export default function FloatingMiniPlayer() {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2 p-2.5">
-            <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 p-2.5">
+            <button
+              type="button"
+              className="min-w-0 flex-1 text-left"
+              onClick={expand}
+              title="Mở Opus Music"
+            >
               <p className="text-xs font-semibold text-white line-clamp-1">{track.title}</p>
               <p className="text-[11px] text-zinc-400 line-clamp-1">
                 {track.artist}
-                {start > 0 ? ` · còn lại từ ${formatTime(start)}` : ""}
+                {start > 0 ? ` · từ ${formatTime(start)}` : ""}
               </p>
-            </div>
-            <button type="button" className="p-2 rounded-full hover:bg-white/10 text-white" onClick={togglePlay}>
+            </button>
+            <button type="button" className="p-2 rounded-full hover:bg-white/10 text-white transition-colors duration-300" onClick={togglePlay}>
               {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
-            <button type="button" className="p-2 rounded-full hover:bg-white/10 text-white" onClick={expand}>
+            <button type="button" className="p-2 rounded-full hover:bg-white/10 text-white transition-colors duration-300" onClick={expand} title="Phóng to">
               <Maximize2 className="w-4 h-4" />
             </button>
-            <button type="button" className="p-2 rounded-full hover:bg-white/10 text-zinc-400" onClick={() => stopMusic()}>
+            <button type="button" className="p-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors duration-300" onClick={() => stopMusic()}>
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -318,7 +343,6 @@ export default function FloatingMiniPlayer() {
         try {
           await v.play();
           setFilmPlaying(true);
-          // seek lại sau play (một số trình duyệt reset)
           requestAnimationFrame(() => {
             doSeek();
             setTimeout(doSeek, 200);
@@ -345,13 +369,34 @@ export default function FloatingMiniPlayer() {
       }
     };
 
+    const goDetail = () => {
+      videoRef.current?.pause();
+      setFilmPlaying(false);
+      router.push(filmPageHref({ ...film, currentTime: getResumeSec() }));
+    };
+
+    const goFullscreen = async () => {
+      const v = videoRef.current;
+      const box = boxRef.current;
+      if (v) {
+        if (v.paused) {
+          try {
+            const t = getResumeSec();
+            if (t > 5) v.currentTime = t;
+            await v.play();
+            setFilmPlaying(true);
+          } catch {}
+        }
+        await requestFs(v);
+        return;
+      }
+      if (box) await requestFs(box);
+    };
+
     return (
-      <div
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-[60] w-[min(92vw,300px)]"
-        data-mini-player="film"
-      >
-        <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/15 bg-[#0c0c12]/92 backdrop-blur-xl">
-          <div className="relative w-full aspect-video bg-black">
+      <div className={shellClass} data-mini-player="film" ref={boxRef}>
+        <div className={cardClass}>
+          <div className="relative w-full aspect-video bg-black group">
             <video
               ref={videoRef}
               className="absolute inset-0 w-full h-full object-contain bg-black"
@@ -363,56 +408,70 @@ export default function FloatingMiniPlayer() {
               <button
                 type="button"
                 onClick={() => void togglePlay()}
-                className="absolute inset-0 flex items-center justify-center bg-black/35 z-10"
+                className="absolute inset-0 flex items-center justify-center bg-black/40 z-10 transition-opacity duration-300"
               >
-                <div className="w-12 h-12 rounded-full bg-red-600/90 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-red-600/95 flex items-center justify-center shadow-lg shadow-red-600/30 transition-transform duration-300 hover:scale-105">
                   <Play className="w-6 h-6 text-white fill-white ml-0.5" />
                 </div>
               </button>
             )}
-            {(progress > 0 || resumeSec > 0) && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700 z-20">
-                <div
-                  className="h-full bg-red-500"
-                  style={{ width: `${progress || Math.min(100, resumeSec / 60)}%` }}
-                />
-              </div>
-            )}
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800/90 z-20">
+              <div
+                className="h-full bg-red-500 transition-[width] duration-300 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
             {resumeSec > 0 && (
-              <span className="absolute bottom-2 right-2 text-[10px] bg-black/70 text-white px-1.5 py-0.5 rounded z-20">
+              <span className="absolute bottom-2 right-2 text-[10px] bg-black/75 text-white px-1.5 py-0.5 rounded z-20 tabular-nums">
                 {formatTime(resumeSec)}
                 {film.duration > 0 ? ` / ${formatTime(film.duration)}` : ""}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 p-2.5">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white line-clamp-1">{film.name}</p>
+          <div className="flex items-center gap-1 p-2.5">
+            <button type="button" className="min-w-0 flex-1 text-left" onClick={goDetail} title="Xem chi tiết">
+              <p className="text-xs font-semibold text-white line-clamp-1 hover:text-rose-200 transition-colors duration-300">
+                {film.name}
+              </p>
               <p className="text-[11px] text-zinc-400 line-clamp-1">
                 {film.episode || "Xem tiếp"}
                 {resumeSec > 0 ? ` · ${formatTime(resumeSec)}` : ""}
               </p>
-            </div>
-            <button type="button" className="p-2 rounded-full hover:bg-white/10 text-white" onClick={() => void togglePlay()}>
+            </button>
+            <button
+              type="button"
+              className="p-2 rounded-full hover:bg-white/10 text-white transition-colors duration-300"
+              onClick={() => void togglePlay()}
+              aria-label={filmPlaying ? "Tạm dừng" : "Phát tiếp"}
+            >
               {filmPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
             <button
               type="button"
-              className="p-2 rounded-full hover:bg-white/10 text-white"
-              onClick={() => {
-                videoRef.current?.pause();
-                router.push(filmPageHref({ ...film, currentTime: getResumeSec() }));
-              }}
+              className="p-2 rounded-full hover:bg-white/10 text-white transition-colors duration-300"
+              onClick={() => void goFullscreen()}
+              aria-label="Toàn màn hình"
+              title="Toàn màn hình"
+            >
+              <Maximize className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="p-2 rounded-full hover:bg-white/10 text-white transition-colors duration-300"
+              onClick={goDetail}
+              aria-label="Mở trang xem"
+              title="Trang xem phim"
             >
               <Maximize2 className="w-4 h-4" />
             </button>
             <button
               type="button"
-              className="p-2 rounded-full hover:bg-white/10 text-zinc-400"
+              className="p-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors duration-300"
               onClick={() => {
                 videoRef.current?.pause();
                 clearFilm();
               }}
+              aria-label="Đóng"
             >
               <X className="w-4 h-4" />
             </button>

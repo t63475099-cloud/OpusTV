@@ -6,28 +6,25 @@ import { cn } from "@/lib/utils";
 interface VoiceWaveformProps {
   active: boolean;
   className?: string;
-  /** Chiều cao canvas */
   height?: number;
+  stream?: MediaStream | null;
 }
 
-/**
- * Sóng âm neon (cyan / magenta / violet) phản ứng realtime theo giọng nói.
- * Dùng AnalyserNode + getUserMedia khi active === true.
- */
 export default function VoiceWaveform({
   active,
   className,
   height = 72,
+  stream: externalStream = null,
 }: VoiceWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef(0);
   const audioRef = useRef<{
     ctx: AudioContext;
     analyser: AnalyserNode;
-    stream: MediaStream;
     source: MediaStreamAudioSourceNode;
+    ownStream: boolean;
+    stream: MediaStream;
   } | null>(null);
-  const levelsRef = useRef<Float32Array | null>(null);
   const smoothRef = useRef(0.15);
 
   useEffect(() => {
@@ -41,20 +38,41 @@ export default function VoiceWaveform({
         try {
           a.source.disconnect();
           a.analyser.disconnect();
-          a.stream.getTracks().forEach((t) => t.stop());
+          if (a.ownStream) a.stream.getTracks().forEach((t) => t.stop());
           void a.ctx.close();
         } catch {
           /* ignore */
         }
         audioRef.current = null;
       }
-      levelsRef.current = null;
     };
 
-    const startAudio = async () => {
+    const bindStream = async (stream: MediaStream, own: boolean) => {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioCtx();
+      if (ctx.state === "suspended") {
+        try {
+          await ctx.resume();
+        } catch {
+          /* ignore */
+        }
+      }
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.72;
+      source.connect(analyser);
+      audioRef.current = { ctx, analyser, source, ownStream: own, stream };
+    };
+
+    const start = async () => {
       stopAudio();
       if (!active || cancelled) return;
       try {
+        if (externalStream && externalStream.active) {
+          await bindStream(externalStream, false);
+          return;
+        }
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
@@ -67,28 +85,18 @@ export default function VoiceWaveform({
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        const AudioCtx =
-          window.AudioContext || (window as any).webkitAudioContext;
-        const ctx = new AudioCtx();
-        const source = ctx.createMediaStreamSource(stream);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.72;
-        source.connect(analyser);
-        audioRef.current = { ctx, analyser, stream, source };
-        levelsRef.current = new Float32Array(analyser.frequencyBinCount);
+        await bindStream(stream, true);
       } catch {
-        /* mic denied — still animate idle wave */
         audioRef.current = null;
       }
     };
 
-    void startAudio();
+    void start();
     return () => {
       cancelled = true;
       stopAudio();
     };
-  }, [active]);
+  }, [active, externalStream]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -99,6 +107,7 @@ export default function VoiceWaveform({
     let w = 0;
     let h = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const levels = new Float32Array(128);
 
     const resize = () => {
       w = canvas.clientWidth;
@@ -123,29 +132,23 @@ export default function VoiceWaveform({
       t += 0.016;
       ctx.clearRect(0, 0, w, h);
 
-      // energy from mic
       let energy = 0.12;
       const a = audioRef.current;
-      if (a && levelsRef.current) {
-        a.analyser.getFloatFrequencyData(levelsRef.current as any);
-        // convert dB-ish to 0..1
+      if (a) {
+        a.analyser.getFloatFrequencyData(levels as any);
         let sum = 0;
-        const n = levelsRef.current.length;
-        for (let i = 2; i < Math.min(n, 48); i++) {
-          const v = (levelsRef.current[i] + 100) / 70;
+        for (let i = 2; i < 48; i++) {
+          const v = (levels[i] + 100) / 70;
           sum += Math.max(0, Math.min(1, v));
         }
         energy = Math.max(0.08, Math.min(1, sum / 28));
       } else {
-        // idle breathing
         energy = 0.12 + 0.06 * Math.sin(t * 2.2);
       }
       smoothRef.current += (energy - smoothRef.current) * 0.18;
       const e = smoothRef.current;
-
       const mid = h * 0.5;
 
-      // base glow line
       const baseGrad = ctx.createLinearGradient(0, 0, w, 0);
       baseGrad.addColorStop(0, "rgba(0,255,255,0)");
       baseGrad.addColorStop(0.2, "rgba(0,255,255,0.35)");
@@ -185,33 +188,10 @@ export default function VoiceWaveform({
         ctx.strokeStyle = g;
         ctx.lineWidth = rib.thick + e * 1.5;
         ctx.lineCap = "round";
-        ctx.lineJoin = "round";
         ctx.shadowColor = `hsla(${rib.hue}, 100%, 60%, 0.55)`;
         ctx.shadowBlur = 12 + e * 18;
         ctx.stroke();
-
-        // soft reflection under midline
-        ctx.save();
-        ctx.globalAlpha = 0.25 + e * 0.2;
-        ctx.beginPath();
-        for (let x = 0; x <= w; x += 3) {
-          const nx = x / w;
-          const wave =
-            Math.sin(nx * Math.PI * 4 + t * rib.speed * 3 + rib.phase) *
-              amp *
-              (0.35 + 0.65 * Math.sin(nx * Math.PI)) *
-              0.55;
-          const y = mid + Math.abs(wave) * 0.85;
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.strokeStyle = `hsla(${rib.hue}, 90%, 55%, 0.35)`;
-        ctx.lineWidth = 1;
-        ctx.shadowBlur = 8;
-        ctx.stroke();
-        ctx.restore();
       }
-
       ctx.shadowBlur = 0;
       rafRef.current = requestAnimationFrame(draw);
     };
@@ -233,11 +213,7 @@ export default function VoiceWaveform({
       )}
       aria-hidden
     >
-      <canvas
-        ref={canvasRef}
-        className="block w-full max-w-md"
-        style={{ height }}
-      />
+      <canvas ref={canvasRef} className="block w-full max-w-md" style={{ height }} />
     </div>
   );
 }

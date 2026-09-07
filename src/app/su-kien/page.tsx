@@ -304,14 +304,14 @@ export default function SuKienPage() {
 
   if (!ready) {
     return (
-      <div className="min-h-[50vh] pt-20 text-center text-zinc-500 text-sm">
+      <div className="min-h-[50vh] pt-[calc(var(--nav-h,3.5rem)+var(--nav-chips-h,2.5rem)+env(safe-area-inset-top,0px)+1rem)] text-center text-zinc-500 text-sm">
         Đang tải sự kiện…
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] pt-14 pb-28 px-3 sm:px-4 max-w-lg mx-auto relative">
+    <div className="min-h-[100dvh] pt-[calc(var(--nav-h,3.5rem)+var(--nav-chips-h,2.5rem)+env(safe-area-inset-top,0px)+0.5rem)] lg:pt-[calc(var(--nav-h,3.5rem)+env(safe-area-inset-top,0px)+0.75rem)] pb-28 px-3 sm:px-4 max-w-lg mx-auto relative">
       <div className="flex items-center gap-3 py-3 relative z-10">
         <Link href="/" className="p-2 rounded-full hover:bg-white/10 text-zinc-300 bounce-press">
           <ArrowLeft className="w-5 h-5" />

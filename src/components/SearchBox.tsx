@@ -13,6 +13,7 @@ import {
   clearFilmSearchHistory,
 } from "@/lib/searchHistory";
 import { cn } from "@/lib/utils";
+import VoiceWaveform from "@/components/VoiceWaveform";
 
 interface SuggestItem {
   slug: string;
@@ -390,8 +391,20 @@ export default function SearchBox({
         </div>
       </form>
 
+      {/* Sóng âm neon realtime — căn giữa dưới ô tìm */}
+      {listening && (
+        <div className="absolute left-1/2 top-full z-[95] mt-2 w-[min(100%,20rem)] -translate-x-1/2 px-2">
+          <div className="rounded-2xl border border-white/10 bg-black/70 px-2 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+            <VoiceWaveform active={listening} height={64} />
+            <p className="mt-1 text-center text-[11px] leading-none text-cyan-300/80">
+              Đang nghe… nói tên phim
+            </p>
+          </div>
+        </div>
+      )}
+
       {voiceError && (
-        <p className="absolute left-0 right-0 top-full mt-1 text-[11px] text-amber-400 px-1">{voiceError}</p>
+        <p className="absolute left-0 right-0 top-full mt-1 text-center text-[11px] text-amber-400 px-1">{voiceError}</p>
       )}
 
       {showDropdown && (

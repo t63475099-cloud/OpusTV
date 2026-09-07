@@ -19,7 +19,12 @@ import { t } from "@/lib/i18n";
 import { useSettingsStore } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 
-const ITEM_DEFS = [
+const ITEM_DEFS: {
+  href: string;
+  key: string;
+  icon: typeof Home;
+  expandable?: boolean;
+}[] = [
   { href: "/", key: "home", icon: Home, expandable: true },
   { href: "/yeu-thich", key: "favorites", icon: Heart },
   { href: "/lich-su", key: "history", icon: History },
@@ -27,7 +32,7 @@ const ITEM_DEFS = [
   { href: "/tin-nhan", key: "chat", icon: MessageCircle },
   { href: "/su-kien", key: "events", icon: Gift },
   { href: "/cai-dat", key: "settings", icon: Settings },
-] as const;
+];
 
 export default function Sidebar() {
   const path = usePathname() || "/";

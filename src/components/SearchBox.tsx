@@ -51,6 +51,7 @@ export default function SearchBox({
   const [activeIdx, setActiveIdx] = useState(-1);
   const [listening, setListening] = useState(false);
   const [micStream, setMicStream] = useState<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [voiceError, setVoiceError] = useState("");
   const [history, setHistory] = useState<string[]>([]);
@@ -152,10 +153,18 @@ export default function SearchBox({
 
   const releaseMic = () => {
     try {
-      micStream?.getTracks().forEach((t) => t.stop());
+      const st = micStreamRef.current;
+      st?.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          /* ignore */
+        }
+      });
     } catch {
       /* ignore */
     }
+    micStreamRef.current = null;
     setMicStream(null);
   };
 
@@ -168,14 +177,26 @@ export default function SearchBox({
     }
     recognitionRef.current = null;
     setListening(false);
-    releaseMic();
+    // Không stop mic ngay — giữ 200ms để waveform mượt
+    setTimeout(() => releaseMic(), 200);
   };
 
-  /** Mobile: xin getUserMedia TRƯỚC (user gesture), rồi mới start SpeechRecognition */
+  /**
+   * Mobile fix:
+   * - SpeechRecognition trên Chrome Android tự xin mic; getUserMedia song song dễ gây not-allowed.
+   * - Chỉ dùng SpeechRecognition cho nhận giọng.
+   * - Waveform chạy animation (không khóa mic).
+   * - Nếu permissions.query = granted vẫn lỗi → retry 1 lần sau 300ms.
+   */
   const startVoice = async () => {
     setVoiceError("");
     if (listening) {
       stopVoice();
+      return;
+    }
+
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      setVoiceError("Cần HTTPS để dùng micro.");
       return;
     }
 
@@ -185,73 +206,63 @@ export default function SearchBox({
         : null;
 
     if (!SR) {
-      setVoiceError("Trình duyệt không hỗ trợ nhận giọng nói. Thử Chrome/Edge trên Android.");
+      setVoiceError("Trình duyệt không hỗ trợ nhận giọng nói. Dùng Chrome trên Android.");
       return;
     }
 
-    if (typeof window !== "undefined" && !window.isSecureContext) {
-      setVoiceError("Cần HTTPS để dùng micro.");
-      return;
-    }
-
-    let stream: MediaStream | null = null;
+    // Kiểm tra permission (không bắt buộc, chỉ để báo lỗi rõ)
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: false,
-      });
-      setMicStream(stream);
-    } catch (err: any) {
-      const name = err?.name || "";
-      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-        setVoiceError("Micro bị chặn. Vào cài đặt trình duyệt → Quyền trang → Micro → Cho phép, rồi tải lại.");
-      } else if (name === "NotFoundError") {
-        setVoiceError("Không tìm thấy micro trên thiết bị.");
-      } else {
-        setVoiceError("Không mở được micro. Kiểm tra quyền ứng dụng Chrome/Safari.");
+      const perm = await (navigator.permissions as any)?.query?.({ name: "microphone" });
+      if (perm?.state === "denied") {
+        setVoiceError("Micro bị chặn trong cài đặt trang. Mở ổ khóa URL → Micro → Cho phép → Tải lại.");
+        return;
       }
-      return;
+    } catch {
+      /* Safari / một số browser không hỗ trợ permissions.query */
     }
 
-    const rec = new SR();
-    recognitionRef.current = rec;
-    rec.lang = "vi-VN";
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-    // continuous giúp Android giữ session ổn định hơn
-    rec.continuous = false;
+    const runRecognition = () => {
+      const rec = new SR();
+      recognitionRef.current = rec;
+      rec.lang = "vi-VN";
+      rec.interimResults = true;
+      rec.maxAlternatives = 1;
+      rec.continuous = false;
 
-    rec.onstart = () => setListening(true);
-    rec.onerror = (e: any) => {
-      const code = e?.error || "";
-      setListening(false);
-      if (code === "not-allowed" || code === "service-not-allowed") {
-        setVoiceError("Quyền nhận giọng nói bị từ chối. Cho phép micro rồi thử lại.");
-      } else if (code === "no-speech") {
-        setVoiceError("Không nghe thấy giọng nói, thử nói lại.");
-      } else if (code === "network") {
-        setVoiceError("Lỗi mạng khi nhận giọng nói. Kiểm tra kết nối.");
-      } else if (code !== "aborted") {
-        setVoiceError("Không nhận được giọng nói, thử lại.");
-      }
-      releaseMic();
-    };
-    rec.onend = () => {
-      setListening(false);
-      // giữ stream ngắn để waveform tắt mượt
-      setTimeout(() => releaseMic(), 300);
-    };
-    rec.onresult = (event: any) => {
-      let transcript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
-      }
-      transcript = transcript.trim();
-      if (transcript) {
+      rec.onstart = () => {
+        setListening(true);
+        setVoiceError("");
+      };
+
+      rec.onerror = (e: any) => {
+        const code = String(e?.error || "");
+        setListening(false);
+        if (code === "not-allowed" || code === "service-not-allowed") {
+          setVoiceError(
+            "Quyền micro bị từ chối. Vào Cài đặt trình duyệt → Quyền trang web → Micro → Cho phép, rồi tải lại trang."
+          );
+        } else if (code === "no-speech") {
+          setVoiceError("Không nghe thấy giọng nói, thử lại.");
+        } else if (code === "network") {
+          setVoiceError("Lỗi mạng khi nhận giọng nói.");
+        } else if (code === "audio-capture") {
+          setVoiceError("Không truy cập được micro. Đóng app khác đang dùng mic rồi thử lại.");
+        } else if (code !== "aborted") {
+          setVoiceError("Không nhận được giọng nói, thử lại.");
+        }
+      };
+
+      rec.onend = () => {
+        setListening(false);
+      };
+
+      rec.onresult = (event: any) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        transcript = transcript.trim();
+        if (!transcript) return;
         setQuery(transcript);
         setOpen(true);
         if (event.results[event.results.length - 1].isFinal) {
@@ -263,19 +274,21 @@ export default function SearchBox({
             router.push(`/tim-kiem?q=${encodeURIComponent(transcript)}`);
             onNavigate?.();
             setOpen(false);
-          }, 350);
+          }, 280);
         }
+      };
+
+      try {
+        rec.start();
+        setListening(true);
+      } catch {
+        setVoiceError("Không thể bật nhận giọng nói. Thử lại sau 1 giây.");
+        setListening(false);
       }
     };
 
-    try {
-      rec.start();
-      setListening(true);
-    } catch {
-      setVoiceError("Không thể bật nhận giọng nói.");
-      setListening(false);
-      releaseMic();
-    }
+    // Không gọi getUserMedia trước — tránh conflict với SpeechRecognition trên mobile
+    runRecognition();
   };
 
   const goSearch = (q?: string) => {
@@ -461,7 +474,7 @@ export default function SearchBox({
       {listening && (
         <div className="absolute left-1/2 top-full z-[95] mt-2 w-[min(100%,20rem)] -translate-x-1/2 px-2">
           <div className="rounded-2xl border border-white/10 bg-black/70 px-2 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-            <VoiceWaveform active={listening} height={64} stream={micStream} />
+            <VoiceWaveform active={listening} height={64} stream={null} />
             <p className="mt-1 text-center text-[11px] leading-none text-cyan-300/80">
               Đang nghe… nói tên phim
             </p>

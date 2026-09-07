@@ -36,8 +36,17 @@ export const FEATURED_PICKS = [
 /** @deprecated dùng FEATURED_PICKS */
 export const FEATURED_XIANXIA = FEATURED_PICKS;
 
+/** Menu chính gọn — thể loại nằm trong dropdown Trang chủ */
 export const NAV_CATEGORIES = [
   { name: "Trang chủ", href: "/" },
+  { name: "Yêu thích", href: "/yeu-thich" },
+  { name: "Lịch sử", href: "/lich-su" },
+  { name: "Opus Music", href: "/nhac" },
+  { name: "Cài đặt", href: "/cai-dat" },
+];
+
+/** Thể loại / quốc gia — chỉ hiện khi mở mũi tên dưới Trang chủ */
+export const GENRE_LINKS = [
   { name: "Mới cập nhật", href: "/danh-sach/phim-moi-cap-nhat" },
   { name: "Phim Việt", href: "/quoc-gia/viet-nam" },
   { name: "Phim bộ", href: "/danh-sach/phim-bo" },
@@ -53,9 +62,6 @@ export const NAV_CATEGORIES = [
   { name: "Hài", href: "/the-loai/hai-huoc" },
   { name: "Cổ trang", href: "/the-loai/co-trang" },
   { name: "Hoạt hình", href: "/danh-sach/hoathinh" },
-  { name: "Lịch sử", href: "/lich-su" },
-  { name: "Opus Music", href: "/nhac" },
-  { name: "Cài đặt", href: "/cai-dat" },
 ];
 
 export const API_BASE = "https://phimapi.com";

@@ -1,30 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
-  Flame,
-  Clapperboard,
   Heart,
   History,
   Settings,
-  Film,
-  Ghost,
-  Sparkles,
   Music2,
   MessageCircle,
   Gift,
+  ChevronDown,
+  Clapperboard,
 } from "lucide-react";
+import { GENRE_LINKS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
-  { href: "/", label: "Trang chủ", icon: Home },
-  { href: "/danh-sach/phim-moi-cap-nhat", label: "Thịnh hành", icon: Flame },
-  { href: "/danh-sach/phim-bo", label: "Phim bộ", icon: Clapperboard },
-  { href: "/quoc-gia/han-quoc", label: "Phim Hàn", icon: Film },
-  { href: "/the-loai/kinh-di", label: "Kinh dị", icon: Ghost },
-  { href: "/the-loai/co-trang", label: "Cổ trang", icon: Sparkles },
+  { href: "/", label: "Trang chủ", icon: Home, expandable: true },
   { href: "/yeu-thich", label: "Yêu thích", icon: Heart },
   { href: "/lich-su", label: "Đã xem", icon: History },
   { href: "/nhac", label: "Opus Music", icon: Music2 },
@@ -35,6 +29,8 @@ const ITEMS = [
 
 export default function Sidebar() {
   const path = usePathname() || "/";
+  const [genresOpen, setGenresOpen] = useState(false);
+
   if (
     path.startsWith("/admin") ||
     path.startsWith("/tin-nhan") ||
@@ -61,7 +57,6 @@ export default function Sidebar() {
       )}
       style={{
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        transition: "width 0.5s ease, background-color 0.5s ease",
         overflow: "hidden",
       }}
     >
@@ -75,6 +70,78 @@ export default function Sidebar() {
               ? path === "/"
               : path === item.href || path.startsWith(item.href + "/");
           const Icon = item.icon;
+
+          if (item.expandable) {
+            return (
+              <div key={item.href} className="space-y-0.5">
+                <div className="flex items-center gap-0.5">
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "group relative flex flex-1 items-center gap-4 rounded-xl px-3 py-2.5 text-sm min-w-0",
+                      "overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                      "border border-transparent",
+                      active
+                        ? "bg-white/12 text-white font-medium border-white/10"
+                        : "text-zinc-300 hover:bg-white/8 hover:text-white"
+                    )}
+                    title={item.label}
+                  >
+                    <Icon className="w-5 h-5 shrink-0" />
+                    <span className="hidden xl:inline truncate">{item.label}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setGenresOpen((v) => !v)}
+                    className={cn(
+                      "hidden xl:flex p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10",
+                      "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                      genresOpen && "bg-white/10 text-white"
+                    )}
+                    aria-label="Thể loại"
+                    aria-expanded={genresOpen}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                        genresOpen && "rotate-180"
+                      )}
+                    />
+                  </button>
+                </div>
+                <div
+                  className={cn(
+                    "hidden xl:block overflow-hidden transition-[max-height,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                    genresOpen ? "max-h-[32rem] opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  <div className="pl-3 ml-3 border-l border-white/10 space-y-0.5 pb-1">
+                    {GENRE_LINKS.map((g) => {
+                      const gActive =
+                        path === g.href || path.startsWith(g.href + "/");
+                      return (
+                        <Link
+                          key={g.href}
+                          href={g.href}
+                          className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs",
+                            "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                            gActive
+                              ? "bg-white/10 text-white"
+                              : "text-zinc-500 hover:text-zinc-200 hover:bg-white/6"
+                          )}
+                        >
+                          <Clapperboard className="w-3 h-3 shrink-0 opacity-60" />
+                          <span className="truncate">{g.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.href}
@@ -89,42 +156,20 @@ export default function Sidebar() {
                   : "text-zinc-300 hover:bg-white/8 hover:text-white hover:border-white/8"
               )}
               title={item.label}
-              style={{ overflow: "hidden" }}
             >
-              {/* glow hover */}
               <span
                 className={cn(
                   "pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
                   "bg-gradient-to-r from-rose-500/10 via-transparent to-violet-500/10"
                 )}
               />
-              <Icon
-                className={cn(
-                  "w-5 h-5 shrink-0 relative z-[1] transition-transform duration-500",
-                  active ? "text-rose-400 scale-105" : "text-zinc-400 group-hover:text-white group-hover:scale-105"
-                )}
-              />
-              <span
-                className={cn(
-                  "hidden xl:inline truncate relative z-[1] leading-none",
-                  "transition-[opacity,max-width,transform] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
-                  "opacity-100 max-w-[10rem]"
-                )}
-                style={{ overflow: "hidden" }}
-              >
-                {item.label}
-              </span>
+              <Icon className="w-5 h-5 shrink-0 relative z-[1]" />
+              <span className="hidden xl:inline truncate relative z-[1]">{item.label}</span>
             </Link>
           );
         })}
       </nav>
-      <div
-        className={cn(
-          "hidden xl:block px-3 pb-4 text-[11px] text-zinc-600 leading-relaxed",
-          "overflow-hidden transition-opacity duration-500"
-        )}
-        style={{ overflow: "hidden" }}
-      >
+      <div className="hidden xl:block mt-auto px-3 py-3 text-[11px] text-zinc-600 leading-relaxed border-t border-white/5">
         OpusFilm
       </div>
     </aside>

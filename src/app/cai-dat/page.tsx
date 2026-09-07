@@ -35,6 +35,7 @@ import {
   Clock,
   Lock,
   Info,
+  HelpCircle,
 } from "lucide-react";
 
 type Section =
@@ -68,23 +69,31 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition text-left border-b border-[#272727]"
+      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.06] text-left border-b border-white/[0.06] transition-colors duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
     >
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] text-white">{label}</p>
-        {desc && <p className="text-xs text-[#aaa] mt-0.5 leading-snug">{desc}</p>}
+      <div className="flex-1 min-w-0 pr-2">
+        <p className="text-[15px] text-white leading-snug">{label}</p>
+        {desc && (
+          <p className="text-xs text-zinc-500 mt-0.5 leading-snug line-clamp-2">{desc}</p>
+        )}
       </div>
-      <div
-        className={`w-11 h-6 rounded-full relative shrink-0 transition ${
-          checked ? "bg-blue-500" : "bg-[#3f3f3f]"
-        }`}
+      <span
+        role="switch"
+        aria-checked={checked}
+        className={[
+          "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5",
+          "transition-colors duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+          checked ? "bg-blue-500" : "bg-zinc-600",
+        ].join(" ")}
       >
         <span
-          className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0.5"
-          }`}
+          className={[
+            "pointer-events-none block h-6 w-6 rounded-full bg-white shadow-md",
+            "transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            checked ? "translate-x-5" : "translate-x-0",
+          ].join(" ")}
         />
-      </div>
+      </span>
     </button>
   );
 }
@@ -104,14 +113,14 @@ function RowLink({
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-white/5 transition text-left border-b border-[#272727]"
+      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.06] text-left border-b border-white/[0.06] transition-colors duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.99]"
     >
-      <span className="text-[#f1f1f1] shrink-0 w-6 flex justify-center">{icon}</span>
+      <span className="text-zinc-200 shrink-0 w-6 h-6 flex items-center justify-center">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] text-white">{label}</p>
-        {desc && <p className="text-xs text-[#aaa] mt-0.5">{desc}</p>}
+        <p className="text-[15px] text-white leading-snug">{label}</p>
+        {desc && <p className="text-xs text-zinc-500 mt-0.5 leading-snug line-clamp-2">{desc}</p>}
       </div>
-      <ChevronRight className="w-5 h-5 text-[#717171] shrink-0" />
+      <ChevronRight className="w-5 h-5 text-zinc-600 shrink-0 transition-transform duration-500 group-hover:translate-x-0.5" />
     </button>
   );
 }
@@ -367,6 +376,19 @@ function SettingsInner() {
               label="Chính sách & Điều khoản"
               onClick={() => go("legal")}
             />
+            <Link
+              href="/ho-tro"
+              className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-white/5 transition text-left border-b border-[#272727]"
+            >
+              <span className="text-[#f1f1f1] shrink-0 w-6 flex justify-center">
+                <HelpCircle className="w-5 h-5" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm text-white">Hỗ trợ & FAQ</span>
+                <span className="block text-xs text-[#aaa] mt-0.5">Câu hỏi thường gặp</span>
+              </span>
+              <ChevronRight className="w-5 h-5 text-[#717171] shrink-0" />
+            </Link>
             <RowLink
               icon={<Info className="w-5 h-5" />}
               label="Giới thiệu"
@@ -561,6 +583,13 @@ function SettingsInner() {
 
         {section === "legal" && (
           <div className="px-2 py-2 space-y-1">
+            <Link
+              href="/ho-tro"
+              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/5 text-sm text-white"
+            >
+              Hỗ trợ & FAQ
+              <span className="text-[#717171]">›</span>
+            </Link>
             <Link
               href="/dieu-khoan"
               className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/5 text-sm text-white"

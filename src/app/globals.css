@@ -2356,3 +2356,31 @@ html.opus-chat-page [data-support-chat],
 html.opus-chat-page [data-mini-player] {
   display: none !important;
 }
+
+/* === GLOBAL UI TRANSITION 0.5s === */
+:root {
+  --ui-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ui-dur: 0.5s;
+}
+a, button, [role="button"], input, select, textarea, summary {
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform, filter;
+  transition-duration: var(--ui-dur);
+  transition-timing-function: var(--ui-ease);
+}
+.ui-expand {
+  overflow: hidden;
+  transition: max-height var(--ui-dur) var(--ui-ease), opacity var(--ui-dur) var(--ui-ease), padding var(--ui-dur) var(--ui-ease);
+}
+.toggle-track {
+  transition: background-color var(--ui-dur) var(--ui-ease);
+}
+.toggle-thumb {
+  transition: transform var(--ui-dur) var(--ui-ease);
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  a, button, [role="button"], input, select, textarea, summary,
+  .ui-expand, .toggle-track, .toggle-thumb {
+    transition-duration: 0.01ms !important;
+  }
+}

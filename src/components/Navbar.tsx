@@ -96,8 +96,17 @@ export default function Navbar() {
     { href: "/cai-dat", name: "Cài đặt", icon: Settings },
   ];
 
-  if (pathname.startsWith("/admin")) return null;
-  if (pathname.startsWith("/tin-nhan")) return null;
+  /** Ẩn toàn bộ thanh menu trên các trang form / pháp lý / chat — tránh đè UI */
+  const hideEntireNav =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/tin-nhan") ||
+    pathname.startsWith("/tai-khoan") ||
+    pathname.startsWith("/get-key") ||
+    pathname.startsWith("/dieu-khoan") ||
+    pathname.startsWith("/chinh-sach") ||
+    pathname.startsWith("/bao-tri");
+
+  if (hideEntireNav) return null;
 
   return (
     <header
@@ -165,17 +174,24 @@ export default function Navbar() {
         {/* Search */}
         <div
           className={cn(
-            "relative z-[90] flex-1 min-w-0 flex justify-end sm:justify-center px-1",
-            "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            "relative z-[90] flex-1 min-w-0 px-1",
+            "flex justify-center max-lg:justify-end"
           )}
           style={{ overflow: "visible" }}
         >
           {showSearch && (
             <div
               className={cn(
-                "w-full transition-[max-width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
-                menuOpen ? "max-w-[3rem] sm:max-w-[3rem]" : "max-w-[640px]",
-                searchExpanded && !menuOpen ? "max-w-full" : ""
+                "w-full",
+                /* PC: luôn max 560px, không đổi khi hover */
+                "lg:max-w-[560px] lg:transition-none",
+                /* Mobile: thu khi mở menu / nở khi search */
+                menuOpen
+                  ? "max-lg:max-w-[2.75rem]"
+                  : searchExpanded
+                    ? "max-lg:max-w-full"
+                    : "max-lg:max-w-[2.75rem]",
+                "max-lg:transition-[max-width] max-lg:duration-500 max-lg:ease-[cubic-bezier(0.4,0,0.2,1)]"
               )}
             >
               <SearchBox

@@ -67,20 +67,102 @@ function validatePassword(pw: string): string | undefined {
   return undefined;
 }
 
-function AuroraBg() {
+function AuthCanvas() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    let raf = 0;
+    let w = 0;
+    let h = 0;
+    const particles: { x: number; y: number; r: number; vx: number; vy: number; a: number; hue: number }[] = [];
+    const resize = () => {
+      w = c.width = window.innerWidth;
+      h = c.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    for (let i = 0; i < 48; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: 1 + Math.random() * 2.2,
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: (Math.random() - 0.5) * 0.35,
+        a: 0.15 + Math.random() * 0.35,
+        hue: [340, 280, 210, 25][i % 4],
+      });
+    }
+    const orbs = [
+      { x: 0.2, y: 0.25, r: 180, hue: 340 },
+      { x: 0.8, y: 0.3, r: 160, hue: 280 },
+      { x: 0.5, y: 0.75, r: 140, hue: 25 },
+    ];
+    let t = 0;
+    const draw = () => {
+      t += 0.004;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#050508";
+      ctx.fillRect(0, 0, w, h);
+      for (const o of orbs) {
+        const ox = o.x * w + Math.sin(t + o.hue) * 40;
+        const oy = o.y * h + Math.cos(t * 0.8 + o.hue) * 30;
+        const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, o.r);
+        g.addColorStop(0, `hsla(${o.hue}, 90%, 55%, 0.22)`);
+        g.addColorStop(1, "transparent");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(ox, oy, o.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = w;
+        if (p.x > w) p.x = 0;
+        if (p.y < 0) p.y = h;
+        if (p.y > h) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 85%, 65%, ${p.a})`;
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
   return (
-    <div className="lg-orbs" aria-hidden>
-      <span />
-      <span />
-      <span />
-    </div>
+    <canvas
+      ref={ref}
+      className="pointer-events-none fixed inset-0 z-0 h-full w-full"
+      aria-hidden
+    />
   );
 }
 
 function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`lg-card lg-border-spin relative overflow-hidden ${className}`}>
-      {children}
+    <div
+      className={`relative overflow-hidden rounded-3xl border border-white/15 bg-white/[0.06] shadow-[0_24px_64px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-2xl ${className}`}
+      style={{
+        WebkitBackdropFilter: "blur(24px) saturate(1.4)",
+        backdropFilter: "blur(24px) saturate(1.4)",
+      }}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(244,63,94,0.15), transparent 50%), radial-gradient(ellipse 60% 40% at 90% 100%, rgba(168,85,247,0.12), transparent 50%)",
+        }}
+      />
+      <div className="relative z-[1]">{children}</div>
     </div>
   );
 }
@@ -111,7 +193,7 @@ function FloatingField({
   const filled = value.length > 0;
   return (
     <div className="relative mb-4">
-      <div className="relative">
+      <div className="relative group/field">
         <input
           id={id}
           type={type}
@@ -121,28 +203,34 @@ function FloatingField({
           autoComplete={autoComplete}
           inputMode={inputMode}
           placeholder=" "
-          className={`peer block w-full h-[52px] rounded-2xl border bg-white/[0.05] pl-4 ${
+          className={`peer block w-full h-[54px] rounded-2xl border bg-white/[0.06] backdrop-blur-md pl-4 ${
             rightSlot ? "pr-11" : "pr-4"
-          } pt-[18px] pb-2 text-[15px] leading-none text-white outline-none transition-all duration-300 ${
+          } pt-[20px] pb-2 text-[15px] leading-none text-white outline-none transition-[border-color,box-shadow,background-color] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
             error
               ? "border-red-500/50 focus:border-red-400"
-              : "border-white/12 focus:border-rose-400/60 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+              : "border-white/12 focus:border-rose-400/70 focus:bg-white/[0.08] focus:shadow-[0_0_0_3px_rgba(244,63,94,0.2)]"
           }`}
         />
         <label
           htmlFor={id}
-          className={`pointer-events-none absolute left-4 right-10 origin-left transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          className={`pointer-events-none absolute left-4 z-[1] origin-left will-change-transform ${
             filled
-              ? "top-[7px] text-[10px] leading-none font-medium text-rose-300/90 translate-y-0"
-              : "top-1/2 -translate-y-1/2 text-[14px] leading-none text-zinc-500 peer-focus:top-[7px] peer-focus:translate-y-0 peer-focus:text-[10px] peer-focus:font-medium peer-focus:text-rose-300/90"
+              ? "top-[8px] translate-y-0 scale-[0.72] text-rose-300/95 font-medium"
+              : "top-1/2 -translate-y-1/2 scale-100 text-zinc-500 peer-focus:top-[8px] peer-focus:translate-y-0 peer-focus:scale-[0.72] peer-focus:text-rose-300/95 peer-focus:font-medium"
           }`}
+          style={{
+            transition:
+              "top 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease, font-weight 0.5s ease",
+            fontSize: "14px",
+            lineHeight: 1,
+          }}
         >
           {label}
         </label>
         {rightSlot}
       </div>
       {error && (
-        <p className="mt-1.5 flex items-center gap-1.5 pl-1 text-xs leading-snug text-red-400">
+        <p className="mt-1.5 flex items-center gap-1.5 pl-1 text-xs leading-snug text-red-400 animate-[auth-rise_0.35s_ease]">
           <X className="h-3 w-3 shrink-0" />
           <span>{error}</span>
         </p>
@@ -695,7 +783,7 @@ export default function AccountPage() {
             <p className="text-xs font-medium text-zinc-400">Bảo mật</p>
             <FloatingField
               id="newpin"
-              label="Mã PIN khôi phục"
+              label="Recovery PIN"
               value={newPin}
               onChange={(v) => setNewPin(v.replace(/\D/g, "").slice(0, 8))}
               type={showPin ? "text" : "password"}
@@ -763,7 +851,8 @@ export default function AccountPage() {
 
   return (
     <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
-      <AuroraBg />
+      <AuthCanvas />
+      <div className="pointer-events-none fixed inset-0 z-[1] bg-neutral-950/40 backdrop-blur-[2px]" aria-hidden />
       <div className={`relative z-10 mx-auto w-full max-w-[420px] px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-[0_8px_32px_rgba(244,63,94,0.45)] ring-1 ring-white/25 transition-transform duration-500 hover:scale-105">
@@ -785,7 +874,7 @@ export default function AccountPage() {
               key={m}
               type="button"
               onClick={() => switchMode(m)}
-              className={`flex h-10 items-center justify-center gap-1.5 rounded-xl px-1 text-xs font-semibold leading-none transition-all duration-300 sm:text-sm ${
+              className={`flex h-10 items-center justify-center gap-1.5 rounded-xl px-1 text-xs font-semibold leading-none transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] sm:text-sm ${
                 mode === m ? "bg-white text-black shadow-lg" : "text-zinc-400 hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -800,7 +889,7 @@ export default function AccountPage() {
             {mode === "register" && (
               <FloatingField
                 id="displayName"
-                label="Họ và tên"
+                label="Họ và tên / Display name"
                 value={displayName}
                 onChange={setDisplayName}
                 onBlur={() => setTouched((t) => ({ ...t, displayName: true }))}
@@ -811,7 +900,7 @@ export default function AccountPage() {
 
             <FloatingField
               id="username"
-              label="Tên tài khoản"
+              label="Username"
               value={user}
               onChange={setUser}
               onBlur={() => setTouched((t) => ({ ...t, user: true }))}
@@ -822,7 +911,7 @@ export default function AccountPage() {
             {mode === "recover" && (
               <FloatingField
                 id="pin"
-                label="Mã PIN"
+                label="PIN"
                 value={pin}
                 onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 8))}
                 onBlur={() => setTouched((t) => ({ ...t, pin: true }))}
@@ -836,7 +925,7 @@ export default function AccountPage() {
             <div className="mb-1">
               <FloatingField
                 id="password"
-                label={mode === "recover" ? "Mật khẩu mới" : "Mật khẩu"}
+                label={mode === "recover" ? "New Password" : "Password"}
                 value={pass}
                 onChange={setPass}
                 onBlur={() => setTouched((t) => ({ ...t, pass: true }))}
@@ -863,7 +952,7 @@ export default function AccountPage() {
             {(mode === "register" || mode === "recover") && (
               <FloatingField
                 id="pass2"
-                label="Xác nhận mật khẩu"
+                label="Confirm Password"
                 value={pass2}
                 onChange={setPass2}
                 onBlur={() => setTouched((t) => ({ ...t, pass2: true }))}
@@ -883,7 +972,7 @@ export default function AccountPage() {
             {mode === "register" && (
               <FloatingField
                 id="regpin"
-                label="Mã PIN khôi phục"
+                label="Recovery PIN"
                 value={pin}
                 onChange={(v) => setPin(v.replace(/\D/g, "").slice(0, 8))}
                 onBlur={() => setTouched((t) => ({ ...t, pin: true }))}

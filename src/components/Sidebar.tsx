@@ -35,8 +35,16 @@ const ITEMS = [
 
 export default function Sidebar() {
   const path = usePathname() || "/";
-  if (path.startsWith("/admin")) return null;
-  if (path.startsWith("/tin-nhan")) return null;
+  if (
+    path.startsWith("/admin") ||
+    path.startsWith("/tin-nhan") ||
+    path.startsWith("/tai-khoan") ||
+    path.startsWith("/get-key") ||
+    path.startsWith("/dieu-khoan") ||
+    path.startsWith("/chinh-sach") ||
+    path.startsWith("/bao-tri")
+  )
+    return null;
 
   return (
     <aside

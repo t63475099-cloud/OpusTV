@@ -15,20 +15,23 @@ import {
   Clapperboard,
 } from "lucide-react";
 import { GENRE_LINKS } from "@/lib/constants";
+import { t } from "@/lib/i18n";
+import { useSettingsStore } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 
-const ITEMS = [
-  { href: "/", label: "Trang chủ", icon: Home, expandable: true },
-  { href: "/yeu-thich", label: "Yêu thích", icon: Heart },
-  { href: "/lich-su", label: "Đã xem", icon: History },
-  { href: "/nhac", label: "Opus Music", icon: Music2 },
-  { href: "/tin-nhan", label: "Opus Chat", icon: MessageCircle },
-  { href: "/su-kien", label: "Sự kiện", icon: Gift },
-  { href: "/cai-dat", label: "Cài đặt", icon: Settings },
-];
+const ITEM_DEFS = [
+  { href: "/", key: "home", icon: Home, expandable: true },
+  { href: "/yeu-thich", key: "favorites", icon: Heart },
+  { href: "/lich-su", key: "history", icon: History },
+  { href: "/nhac", key: "music", icon: Music2 },
+  { href: "/tin-nhan", key: "chat", icon: MessageCircle },
+  { href: "/su-kien", key: "events", icon: Gift },
+  { href: "/cai-dat", key: "settings", icon: Settings },
+] as const;
 
 export default function Sidebar() {
   const path = usePathname() || "/";
+  const lang = useSettingsStore((s) => s.settings.language) || "vi";
   const [genresOpen, setGenresOpen] = useState(false);
 
   if (
@@ -64,7 +67,7 @@ export default function Sidebar() {
         className="flex-1 space-y-0.5 py-3 px-2 overflow-y-auto overflow-x-hidden scrollbar-hide"
         style={{ overflowX: "hidden" }}
       >
-        {ITEMS.map((item) => {
+        {ITEM_DEFS.map((item) => {
           const active =
             item.href === "/"
               ? path === "/"
@@ -85,10 +88,10 @@ export default function Sidebar() {
                         ? "bg-white/12 text-white font-medium border-white/10"
                         : "text-zinc-300 hover:bg-white/8 hover:text-white"
                     )}
-                    title={item.label}
+                    title={t(lang, item.key)}
                   >
                     <Icon className="w-5 h-5 shrink-0" />
-                    <span className="hidden xl:inline truncate">{item.label}</span>
+                    <span className="hidden xl:inline truncate">{t(lang, item.key)}</span>
                   </Link>
                   <button
                     type="button"
@@ -155,7 +158,7 @@ export default function Sidebar() {
                   ? "bg-white/12 text-white font-medium border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.1)]"
                   : "text-zinc-300 hover:bg-white/8 hover:text-white hover:border-white/8"
               )}
-              title={item.label}
+              title={t(lang, item.key)}
             >
               <span
                 className={cn(
@@ -164,7 +167,7 @@ export default function Sidebar() {
                 )}
               />
               <Icon className="w-5 h-5 shrink-0 relative z-[1]" />
-              <span className="hidden xl:inline truncate relative z-[1]">{item.label}</span>
+              <span className="hidden xl:inline truncate relative z-[1]">{t(lang, item.key)}</span>
             </Link>
           );
         })}

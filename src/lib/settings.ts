@@ -70,7 +70,7 @@ export interface AppSettings {
   bottomProgress: boolean;
   volumeRemember: boolean;
   // Misc
-  language: "vi" | "en";
+  language: "vi" | "en" | "zh" | "ko" | "ja" | "th" | "fr" | "es" | "id" | "pt";
   openInNewTab: boolean;
   prefetchRows: boolean;
   offlineHint: boolean;
@@ -370,14 +370,21 @@ export const useSettingsStore = create<SettingsState>()(
       logout: () => set({ profile: { ...defaultProfile } }),
       updateProfile: (partial) =>
         set((s) => ({ profile: { ...s.profile, ...partial } })),
-      setAvatar: (avatar, position) =>
+      setAvatar: (avatar, position) => {
         set((s) => ({
           profile: {
             ...s.profile,
             avatar,
             avatarPosition: position || s.profile.avatarPosition || "50% 50%",
           },
-        })),
+        }));
+        // Đồng bộ ngay sang Opus Chat
+        try {
+          void import("@/lib/chatStore").then((m) => {
+            m.useChatStore.getState().syncMyAvatarFromFilm?.();
+          });
+        } catch {}
+      },
       setAvatarPosition: (pos) =>
         set((s) => ({ profile: { ...s.profile, avatarPosition: pos } })),
       updateSettings: (partial) =>

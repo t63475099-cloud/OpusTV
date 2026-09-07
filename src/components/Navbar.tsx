@@ -21,6 +21,8 @@ import {
 import NotificationBell from "@/components/NotificationBell";
 import StreakBadge from "@/components/StreakBadge";
 import { NAV_CATEGORIES, GENRE_LINKS } from "@/lib/constants";
+import { t } from "@/lib/i18n";
+import { useSettingsStore } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import SearchBox from "./SearchBox";
 
@@ -29,16 +31,14 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [genresOpen, setGenresOpen] = useState(false);
-  const [chipGenresOpen, setChipGenresOpen] = useState(false);
   const pathname = usePathname() || "/";
+  const lang = useSettingsStore((s) => s.settings.language) || "vi";
 
   const isMinimalChrome =
     pathname.startsWith("/cai-dat") || pathname.startsWith("/tai-khoan");
 
-  const hideChips =
-    isMinimalChrome ||
-    pathname.startsWith("/nhac") ||
-    pathname.startsWith("/phim/");
+  /** Không hiện hàng chip Tất cả / Thể loại trên mobile */
+  const hideChips = true;
 
   const showSearch = !isMinimalChrome && !pathname.startsWith("/nhac");
 
@@ -54,7 +54,6 @@ export default function Navbar() {
     setMenuOpen(false);
     setSearchExpanded(false);
     setGenresOpen(false);
-    setChipGenresOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -79,13 +78,13 @@ export default function Navbar() {
   }, []);
 
   const drawerCore = [
-    { href: "/", name: "Trang chủ", icon: Home },
-    { href: "/su-kien", name: "Chuỗi & sự kiện", icon: Gift },
-    { href: "/tin-nhan", name: "Opus Chat", icon: MessageCircle },
-    { href: "/nhac", name: "Opus Music", icon: Music2 },
-    { href: "/yeu-thich", name: "Yêu thích", icon: Heart },
-    { href: "/lich-su", name: "Lịch sử xem", icon: History },
-    { href: "/cai-dat", name: "Cài đặt", icon: Settings },
+    { href: "/", name: t(lang, "home"), icon: Home },
+    { href: "/su-kien", name: t(lang, "streakEvents"), icon: Gift },
+    { href: "/tin-nhan", name: t(lang, "chat"), icon: MessageCircle },
+    { href: "/nhac", name: t(lang, "music"), icon: Music2 },
+    { href: "/yeu-thich", name: t(lang, "favorites"), icon: Heart },
+    { href: "/lich-su", name: t(lang, "historyWatch"), icon: History },
+    { href: "/cai-dat", name: t(lang, "settings"), icon: Settings },
   ];
 
   const hideEntireNav =
@@ -192,67 +191,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Chip row mobile: chỉ Tất cả + nút mũi tên thể loại */}
-      {!hideChips && (
-        <div className="lg:hidden">
-          <div
-            className={cn(
-              "flex items-center gap-2 px-3 pb-2 h-10",
-              "transition-[max-height,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
-              menuOpen ? "max-h-0 opacity-0 overflow-hidden pb-0 h-0" : "max-h-10 opacity-100"
-            )}
-            style={{ overflowX: menuOpen ? "hidden" : "auto", overflowY: "hidden" }}
-          >
-            <Link
-              href="/"
-              className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-white to-zinc-100 text-black text-sm font-semibold shadow-sm transition-transform duration-500 active:scale-95"
-            >
-              Tất cả
-            </Link>
-            <button
-              type="button"
-              onClick={() => setChipGenresOpen((v) => !v)}
-              className={cn(
-                "shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm",
-                "bg-white/10 hover:bg-white/20 text-white border border-white/10",
-                "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
-              )}
-              aria-expanded={chipGenresOpen}
-            >
-              Thể loại
-              <ChevronDown
-                className={cn(
-                  "w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
-                  chipGenresOpen && "rotate-180"
-                )}
-              />
-            </button>
-          </div>
-
-          <div
-            className={cn(
-              "overflow-hidden transition-[max-height,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
-              chipGenresOpen && !menuOpen
-                ? "max-h-40 opacity-100"
-                : "max-h-0 opacity-0 pointer-events-none"
-            )}
-          >
-            <div className="flex items-center gap-2 px-3 pb-2 overflow-x-auto scrollbar-hide">
-              {GENRE_LINKS.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setChipGenresOpen(false)}
-                  className="shrink-0 px-3 py-1.5 rounded-full bg-white/8 hover:bg-white/16 text-zinc-100 text-sm border border-white/8 transition-all duration-500"
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Drawer mobile */}
       <div
         className={cn(
@@ -289,7 +227,7 @@ export default function Navbar() {
                       )}
                     >
                       <Home className="w-5 h-5 text-zinc-400 shrink-0" />
-                      <span className="truncate">Trang chủ</span>
+                      <span className="truncate">{t(lang, "home")}</span>
                     </Link>
                     <button
                       type="button"
@@ -370,7 +308,7 @@ export default function Navbar() {
             )}
           >
             <Bell className="w-5 h-5 text-zinc-400 shrink-0" />
-            <span className="truncate leading-none">Thông báo & hòm thư</span>
+            <span className="truncate leading-none">{t(lang, "notifications")}</span>
           </Link>
         </nav>
       </div>

@@ -237,10 +237,21 @@ function SettingsInner() {
     else router.replace(`/cai-dat?tab=${s}`);
   };
 
-  const set = updateSettings;
+  const set = (partial: Partial<AppSettings>) => {
+    updateSettings(partial);
+    // Áp dụng ngay (DOM + lang) — tránh toggle “không hoạt động”
+    const next = { ...useSettingsStore.getState().settings, ...partial };
+    applyDomFlags(next);
+    if (partial.language) {
+      try {
+        document.documentElement.lang = partial.language;
+        document.documentElement.dataset.lang = partial.language;
+      } catch {}
+    }
+  };
 
   if (!mounted) {
-    return <div className="min-h-screen pt-[7.25rem] lg:pt-20" />;
+    return <div className="min-h-screen pt-[calc(3.25rem+env(safe-area-inset-top,0px))] lg:pt-16" />;
   }
 
   const titleMap: Record<Section, string> = {
@@ -262,7 +273,7 @@ function SettingsInner() {
   };
 
   return (
-    <div className="min-h-screen pt-[6.5rem] lg:pt-16 pb-24 max-w-xl mx-auto animate-fade-up">
+    <div className="min-h-screen pt-[calc(3.25rem+env(safe-area-inset-top,0px))] lg:pt-16 pb-24 max-w-xl mx-auto animate-fade-up">
       {/* Header như YouTube */}
       <div className="sticky top-14 lg:top-16 z-30 flex items-center gap-3 px-3 py-3 glass-nav border-b border-white/10">
         {section !== "root" ? (
@@ -411,6 +422,53 @@ function SettingsInner() {
           </div>
         )}
 
+
+        {section === "playback" && (
+          <>
+            <Toggle label="Tự phát khi mở tập" checked={settings.autoPlayStart !== false} onChange={(v) => set({ autoPlayStart: v })} />
+            <Toggle label="Tự chuyển tập tiếp theo" checked={settings.autoPlayNext !== false} onChange={(v) => set({ autoPlayNext: v })} />
+            <Toggle label="Chạm đôi để tua" checked={settings.doubleTapSeek !== false} onChange={(v) => set({ doubleTapSeek: v })} />
+            <Toggle label="Tắt tiếng lúc bắt đầu" checked={!!settings.muteOnStart} onChange={(v) => set({ muteOnStart: v })} />
+            <Toggle label="Nhớ tốc độ phát" checked={settings.rememberSpeed !== false} onChange={(v) => set({ rememberSpeed: v })} />
+            <ChipGroup
+              label="Thời gian tua"
+              value={settings.seekSeconds ?? 10}
+              options={[1, 5, 10, 20, 30].map((n) => ({ value: n as 1 | 5 | 10 | 20 | 30, label: `${n}s` }))}
+              onChange={(v) => set({ seekSeconds: v })}
+            />
+            <ChipGroup
+              label="Chất lượng mặc định"
+              value={settings.defaultQuality || "auto"}
+              options={[
+                { value: "auto" as const, label: "Tự động" },
+                { value: "1080" as const, label: "1080p" },
+                { value: "720" as const, label: "720p" },
+                { value: "480" as const, label: "480p" },
+              ]}
+              onChange={(v) => set({ defaultQuality: v })}
+            />
+            <ChipGroup
+              label="Tốc độ phát mặc định"
+              value={settings.defaultSpeed ?? 1}
+              options={[0.75, 1, 1.25, 1.5, 2].map((n) => ({ value: n, label: `${n}x` }))}
+              onChange={(v) => set({ defaultSpeed: v })}
+            />
+            <ChipGroup
+              label="Khung hình fullscreen"
+              value={settings.fillMode || "cover"}
+              options={[
+                { value: "cover" as const, label: "Lấp đầy" },
+                { value: "contain" as const, label: "Giữ tỷ lệ" },
+              ]}
+              onChange={(v) => set({ fillMode: v })}
+            />
+            <Toggle label="Tự bỏ qua intro" checked={!!settings.autoSkipIntro} onChange={(v) => set({ autoSkipIntro: v })} />
+            <Toggle label="Tự bỏ qua outro" checked={!!settings.autoSkipOutro} onChange={(v) => set({ autoSkipOutro: v })} />
+            <Toggle label="Hỏi tiếp tục xem dở" checked={settings.resumePrompt !== false} onChange={(v) => set({ resumePrompt: v })} />
+            <Toggle label="Chuyển server tự động khi lỗi" checked={settings.serverAutoSwitch !== false} onChange={(v) => set({ serverAutoSwitch: v })} />
+          </>
+        )}
+
         {section === "player" && (
           <>
             <Toggle label="Tự phát khi mở tập" checked={settings.autoPlayStart} onChange={(v) => set({ autoPlayStart: v })} />
@@ -485,15 +543,48 @@ function SettingsInner() {
         )}
 
         {section === "language" && (
-          <ChipGroup
-            label="Ngôn ngữ giao diện"
-            value={settings.language || "vi"}
-            options={[
-              { value: "vi" as const, label: "Tiếng Việt" },
-              { value: "en" as const, label: "English" },
-            ]}
-            onChange={(v) => set({ language: v })}
-          />
+          <div className="px-4 py-3 space-y-3">
+            <p className="text-sm text-zinc-400">Chọn ngôn ngữ giao diện. Áp dụng ngay trên toàn site.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  { value: "vi", label: "Tiếng Việt" },
+                  { value: "en", label: "English" },
+                  { value: "zh", label: "中文" },
+                  { value: "ko", label: "한국어" },
+                  { value: "ja", label: "日本語" },
+                  { value: "th", label: "ไทย" },
+                  { value: "fr", label: "Français" },
+                  { value: "es", label: "Español" },
+                  { value: "id", label: "Indonesia" },
+                  { value: "pt", label: "Português" },
+                ] as const
+              ).map((o) => {
+                const active = (settings.language || "vi") === o.value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => {
+                      set({ language: o.value });
+                      try {
+                        document.documentElement.lang = o.value;
+                        document.documentElement.dataset.lang = o.value;
+                      } catch {}
+                    }}
+                    className={
+                      "rounded-xl px-3 py-3 text-sm text-left border transition-all duration-500 " +
+                      (active
+                        ? "bg-white text-black border-white font-semibold"
+                        : "bg-white/5 text-white border-white/10 hover:bg-white/10")
+                    }
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {section === "notify" && (

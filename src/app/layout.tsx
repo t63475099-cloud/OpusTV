@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import LanguageSync from "@/components/LanguageSync";
 import SyncBootstrap from "@/components/SyncBootstrap";
 import ScrollNavFab from "@/components/ScrollNavFab";
 import Sidebar from "@/components/Sidebar";
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body className="min-h-full min-h-[100dvh] flex flex-col bg-[#0a0a0f] text-zinc-100 relative overflow-x-clip overflow-y-auto">
         <AmbientBackdrop />
         <>
+          <LanguageSync />
           <SyncBootstrap />
           <ScrollNavFab />
           <Navbar />

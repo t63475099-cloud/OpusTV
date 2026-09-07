@@ -1,0 +1,323 @@
+"use client";
+
+export type AppLang =
+  | "vi"
+  | "en"
+  | "zh"
+  | "ko"
+  | "ja"
+  | "th"
+  | "fr"
+  | "es"
+  | "id"
+  | "pt";
+
+export const LANG_OPTIONS: { value: AppLang; label: string; native: string }[] = [
+  { value: "vi", label: "Tiếng Việt", native: "Tiếng Việt" },
+  { value: "en", label: "English", native: "English" },
+  { value: "zh", label: "Chinese", native: "中文" },
+  { value: "ko", label: "Korean", native: "한국어" },
+  { value: "ja", label: "Japanese", native: "日本語" },
+  { value: "th", label: "Thai", native: "ไทย" },
+  { value: "fr", label: "French", native: "Français" },
+  { value: "es", label: "Spanish", native: "Español" },
+  { value: "id", label: "Indonesian", native: "Bahasa Indonesia" },
+  { value: "pt", label: "Portuguese", native: "Português" },
+];
+
+type Dict = Record<string, string>;
+
+const vi: Dict = {
+  home: "Trang chủ",
+  favorites: "Yêu thích",
+  history: "Đã xem",
+  historyWatch: "Lịch sử xem",
+  music: "Opus Music",
+  chat: "Opus Chat",
+  events: "Sự kiện",
+  settings: "Cài đặt",
+  search: "Tìm phim, diễn viên...",
+  genres: "Thể loại",
+  account: "Tài khoản",
+  notifications: "Thông báo & hòm thư",
+  continueWatching: "Tiếp tục xem",
+  watchNow: "Xem ngay",
+  details: "Chi tiết",
+  login: "Đăng nhập",
+  register: "Đăng ký",
+  language: "Ngôn ngữ",
+  playback: "Phát video",
+  playerUi: "Giao diện player",
+  display: "Giao diện",
+  common: "Chung",
+  save: "Lưu",
+  cancel: "Hủy",
+  back: "Quay lại",
+  loading: "Đang tải...",
+  noResults: "Không có kết quả",
+  streakEvents: "Chuỗi & sự kiện",
+};
+
+const en: Dict = {
+  home: "Home",
+  favorites: "Favorites",
+  history: "Watched",
+  historyWatch: "Watch history",
+  music: "Opus Music",
+  chat: "Opus Chat",
+  events: "Events",
+  settings: "Settings",
+  search: "Search movies, actors...",
+  genres: "Genres",
+  account: "Account",
+  notifications: "Notifications & inbox",
+  continueWatching: "Continue watching",
+  watchNow: "Watch now",
+  details: "Details",
+  login: "Sign in",
+  register: "Sign up",
+  language: "Language",
+  playback: "Playback",
+  playerUi: "Player UI",
+  display: "Display",
+  common: "General",
+  save: "Save",
+  cancel: "Cancel",
+  back: "Back",
+  loading: "Loading...",
+  noResults: "No results",
+  streakEvents: "Streak & events",
+};
+
+const zh: Dict = {
+  ...en,
+  home: "首页",
+  favorites: "收藏",
+  history: "已观看",
+  historyWatch: "观看记录",
+  settings: "设置",
+  search: "搜索电影、演员...",
+  genres: "类型",
+  account: "账户",
+  continueWatching: "继续观看",
+  watchNow: "立即观看",
+  details: "详情",
+  login: "登录",
+  register: "注册",
+  language: "语言",
+  playback: "播放",
+  playerUi: "播放器界面",
+  display: "显示",
+  common: "通用",
+  back: "返回",
+  loading: "加载中...",
+  notifications: "通知与收件箱",
+  streakEvents: "连续与活动",
+};
+
+const ko: Dict = {
+  ...en,
+  home: "홈",
+  favorites: "즐겨찾기",
+  history: "시청 기록",
+  historyWatch: "시청 기록",
+  settings: "설정",
+  search: "영화, 배우 검색...",
+  genres: "장르",
+  account: "계정",
+  continueWatching: "이어보기",
+  watchNow: "지금 시청",
+  details: "상세",
+  login: "로그인",
+  register: "회원가입",
+  language: "언어",
+  playback: "재생",
+  playerUi: "플레이어 UI",
+  display: "디스플레이",
+  common: "일반",
+  back: "뒤로",
+  loading: "로딩 중...",
+  notifications: "알림 및 받은함",
+  streakEvents: "연속 & 이벤트",
+};
+
+const ja: Dict = {
+  ...en,
+  home: "ホーム",
+  favorites: "お気に入り",
+  history: "視聴済み",
+  historyWatch: "視聴履歴",
+  settings: "設定",
+  search: "映画・俳優を検索...",
+  genres: "ジャンル",
+  account: "アカウント",
+  continueWatching: "続きを見る",
+  watchNow: "今すぐ見る",
+  details: "詳細",
+  login: "ログイン",
+  register: "登録",
+  language: "言語",
+  playback: "再生",
+  playerUi: "プレーヤーUI",
+  display: "表示",
+  common: "一般",
+  back: "戻る",
+  loading: "読み込み中...",
+  notifications: "通知と受信箱",
+  streakEvents: "連続＆イベント",
+};
+
+const th: Dict = {
+  ...en,
+  home: "หน้าแรก",
+  favorites: "รายการโปรด",
+  history: "ดูแล้ว",
+  historyWatch: "ประวัติการดู",
+  settings: "การตั้งค่า",
+  search: "ค้นหาภาพยนตร์ นักแสดง...",
+  genres: "หมวดหมู่",
+  account: "บัญชี",
+  continueWatching: "ดูต่อ",
+  watchNow: "ดูเลย",
+  details: "รายละเอียด",
+  login: "เข้าสู่ระบบ",
+  register: "สมัคร",
+  language: "ภาษา",
+  playback: "การเล่น",
+  playerUi: "UI เครื่องเล่น",
+  display: "การแสดงผล",
+  common: "ทั่วไป",
+  back: "กลับ",
+  loading: "กำลังโหลด...",
+  notifications: "การแจ้งเตือนและกล่องข้อความ",
+  streakEvents: "สตรีคและกิจกรรม",
+};
+
+const fr: Dict = {
+  ...en,
+  home: "Accueil",
+  favorites: "Favoris",
+  history: "Vus",
+  historyWatch: "Historique",
+  settings: "Réglages",
+  search: "Rechercher films, acteurs...",
+  genres: "Genres",
+  account: "Compte",
+  continueWatching: "Reprendre",
+  watchNow: "Regarder",
+  details: "Détails",
+  login: "Connexion",
+  register: "S'inscrire",
+  language: "Langue",
+  playback: "Lecture",
+  playerUi: "Interface lecteur",
+  display: "Affichage",
+  common: "Général",
+  back: "Retour",
+  loading: "Chargement...",
+  notifications: "Notifications et boîte de réception",
+  streakEvents: "Série et événements",
+};
+
+const es: Dict = {
+  ...en,
+  home: "Inicio",
+  favorites: "Favoritos",
+  history: "Vistos",
+  historyWatch: "Historial",
+  settings: "Ajustes",
+  search: "Buscar películas, actores...",
+  genres: "Géneros",
+  account: "Cuenta",
+  continueWatching: "Continuar viendo",
+  watchNow: "Ver ahora",
+  details: "Detalles",
+  login: "Iniciar sesión",
+  register: "Registrarse",
+  language: "Idioma",
+  playback: "Reproducción",
+  playerUi: "Interfaz del reproductor",
+  display: "Pantalla",
+  common: "General",
+  back: "Atrás",
+  loading: "Cargando...",
+  notifications: "Notificaciones y bandeja",
+  streakEvents: "Racha y eventos",
+};
+
+const id: Dict = {
+  ...en,
+  home: "Beranda",
+  favorites: "Favorit",
+  history: "Ditonton",
+  historyWatch: "Riwayat tontonan",
+  settings: "Pengaturan",
+  search: "Cari film, aktor...",
+  genres: "Genre",
+  account: "Akun",
+  continueWatching: "Lanjutkan menonton",
+  watchNow: "Tonton sekarang",
+  details: "Detail",
+  login: "Masuk",
+  register: "Daftar",
+  language: "Bahasa",
+  playback: "Pemutaran",
+  playerUi: "UI pemutar",
+  display: "Tampilan",
+  common: "Umum",
+  back: "Kembali",
+  loading: "Memuat...",
+  notifications: "Notifikasi & kotak masuk",
+  streakEvents: "Streak & acara",
+};
+
+const pt: Dict = {
+  ...en,
+  home: "Início",
+  favorites: "Favoritos",
+  history: "Assistidos",
+  historyWatch: "Histórico",
+  settings: "Configurações",
+  search: "Buscar filmes, atores...",
+  genres: "Gêneros",
+  account: "Conta",
+  continueWatching: "Continuar assistindo",
+  watchNow: "Assistir agora",
+  details: "Detalhes",
+  login: "Entrar",
+  register: "Cadastrar",
+  language: "Idioma",
+  playback: "Reprodução",
+  playerUi: "Interface do player",
+  display: "Exibição",
+  common: "Geral",
+  back: "Voltar",
+  loading: "Carregando...",
+  notifications: "Notificações e caixa de entrada",
+  streakEvents: "Sequência e eventos",
+};
+
+const TABLES: Record<AppLang, Dict> = {
+  vi,
+  en,
+  zh,
+  ko,
+  ja,
+  th,
+  fr,
+  es,
+  id,
+  pt,
+};
+
+export function t(lang: string | undefined, key: string): string {
+  const L = (lang as AppLang) in TABLES ? (lang as AppLang) : "vi";
+  return TABLES[L][key] || TABLES.en[key] || TABLES.vi[key] || key;
+}
+
+export function applyDocumentLang(lang: string | undefined) {
+  if (typeof document === "undefined") return;
+  const L = (lang as AppLang) in TABLES ? (lang as AppLang) : "vi";
+  document.documentElement.lang = L;
+  document.documentElement.dataset.lang = L;
+}

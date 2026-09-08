@@ -104,8 +104,8 @@ export async function runCode(
     lines.push({
       kind: "info",
       text: turtle
-        ? "Phát hiện turtle — mở Canvas Preview (Skulpt)."
-        : "Chạy Python bằng Skulpt trong trình duyệt.",
+        ? "Turtle / canvas."
+        : "Python.",
     });
     return {
       lines,
@@ -159,10 +159,9 @@ export async function runCode(
     return { lines, durationMs: Math.round(performance.now() - t0), display: "terminal" as const };
   }
 
-  lines.push({ kind: "info", text: `Đang biên dịch ${meta.label}…` });
+  lines.push({ kind: "info", text: `${meta.label}…` });
   await new Promise((r) => setTimeout(r, 280 + Math.random() * 200));
-  lines.push({ kind: "info", text: "Biên dịch thành công." });
-  lines.push({ kind: "info", text: "Đang chạy…" });
+  lines.push({ kind: "info", text: "OK" });
   await new Promise((r) => setTimeout(r, 80));
 
   const prints = extractPrintfC(code);

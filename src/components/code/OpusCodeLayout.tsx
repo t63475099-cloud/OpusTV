@@ -10,6 +10,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Play,
+  Square,
   SquareTerminal,
   Trash2,
   Lightbulb,
@@ -112,6 +113,15 @@ export default function OpusCodeLayout() {
     ed?.setValue?.("");
     updateContent(file.id, "");
   }, [activeId, getFile, updateContent]);
+
+
+  const onStop = useCallback(() => {
+    setRunning(false);
+    setTurtleCode(null);
+    setCanvasVisible(false);
+    setPreviewHtml(null);
+    addTermLine({ kind: "info", text: "Đã dừng." });
+  }, [setRunning, setTurtleCode, setCanvasVisible, setPreviewHtml, addTermLine]);
 
   const onRun = useCallback(async () => {
     const file = activeId ? getFile(activeId) : null;
@@ -269,19 +279,31 @@ export default function OpusCodeLayout() {
             <SquareTerminal className="h-4 w-4" />
             <span className="hidden sm:inline">Terminal</span>
           </button>
-          <button
-            type="button"
-            onClick={() => void onRun()}
-            disabled={running}
-            className={cn(
-              "flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-white shadow",
-              "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-500",
-              "disabled:opacity-60 disabled:pointer-events-none"
-            )}
-          >
-            <Play className="h-4 w-4 fill-white" />
-            {running ? "Running…" : "Run"}
-          </button>
+          {running ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className={cn(
+                "flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-white shadow",
+                "bg-rose-600 hover:bg-rose-500 active:scale-[0.98] transition-all duration-500"
+              )}
+            >
+              <Square className="h-3.5 w-3.5 fill-white" />
+              Dừng
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void onRun()}
+              className={cn(
+                "flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-white shadow",
+                "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-500"
+              )}
+            >
+              <Play className="h-4 w-4 fill-white" />
+              Chạy
+            </button>
+          )}
         </div>
       </header>
 

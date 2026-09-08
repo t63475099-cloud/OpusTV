@@ -122,7 +122,7 @@ export const useCodeStore = create<CodeState>()(
         {
           id: "boot",
           kind: "info",
-          text: "Opus Code terminal sẵn sàng. Mở file và bấm Run.",
+          text: "Terminal.",
           ts: Date.now(),
         },
       ],

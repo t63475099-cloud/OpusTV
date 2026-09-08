@@ -704,7 +704,7 @@ function SettingsInner() {
         {section === "about" && (
           <div className="px-4 py-6 text-sm text-[#aaa] space-y-2">
             <p className="text-white font-medium text-base">OpusFilm</p>
-            <p className="text-xs text-zinc-500">Phiên bản web</p>
+            <p className="text-xs text-zinc-500">Version: 1.0.1</p>
           </div>
         )}
       </div>

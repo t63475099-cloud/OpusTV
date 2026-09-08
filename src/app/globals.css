@@ -608,6 +608,12 @@ html[data-nav-chips="1"] .app-content-offset {
 html[data-nav-minimal="1"] .app-content-offset {
   padding-top: calc(var(--nav-h) + var(--nav-safe) + 0.25rem);
 }
+html[data-nav-hidden="1"] .app-content-offset {
+  padding-top: 0 !important;
+}
+html[data-nav-hidden="1"] main {
+  padding-top: 0;
+}
 
 /* Avatar frames */
 .avatar-frame-rainbow {
@@ -2513,4 +2519,124 @@ html.lenis, html.lenis body {
 }
 [data-gsap-reveal] {
   will-change: transform, opacity, filter;
+}
+
+
+/* ========== Performance / mượt toàn site ========== */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 0.35s;
+  --dur-fast: 0.2s;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* GPU layer cho UI cố định */
+[data-navbar],
+[data-sidebar],
+.glass-sidebar,
+.player-video {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Card / hàng phim: paint ít hơn khi offscreen */
+[data-movie-card],
+[data-gsap-card],
+.movie-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 160px 240px;
+  contain: layout style;
+}
+
+.row-scroll,
+[data-gsap-row] {
+  contain: layout;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ảnh: decode async giúp scroll mượt */
+img {
+  image-rendering: auto;
+}
+img[loading="lazy"] {
+  content-visibility: auto;
+}
+
+/* Glass nhẹ hơn trên mobile (blur nặng) */
+@media (max-width: 768px) {
+  .glass,
+  .glass-strong,
+  .glass-soft,
+  .glass-sidebar {
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  }
+  [data-gsap-reveal] {
+    will-change: auto;
+  }
+  /* Tắt parallax-heavy animation loops nếu có */
+  .float-soft {
+    animation: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .glass,
+  .glass-strong {
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  }
+}
+
+/* Transition chuẩn site */
+a, button, [role="button"],
+input, select, textarea {
+  transition:
+    color var(--dur-fast) var(--ease-std),
+    background-color var(--dur-fast) var(--ease-std),
+    border-color var(--dur-fast) var(--ease-std),
+    opacity var(--dur-fast) var(--ease-std),
+    transform var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-std);
+}
+
+/* Hover lift chỉ desktop */
+@media (hover: hover) and (pointer: fine) {
+  .card-lift:hover {
+    transform: translate3d(0, -4px, 0) scale(1.02);
+  }
+}
+
+/* Page main fade nhẹ */
+main {
+  animation: opus-page-in 0.35s var(--ease-out) both;
+}
+@keyframes opus-page-in {
+  from { opacity: 0.92; transform: translate3d(0, 4px, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main { animation: none; }
+  a, button, [role="button"] {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbars mảnh, ít gây reflow */
+.custom-scroll {
+  scrollbar-gutter: stable;
+}
+
+/* Tránh jank khi mở modal */
+body.modal-open {
+  overflow: hidden;
+  touch-action: none;
 }

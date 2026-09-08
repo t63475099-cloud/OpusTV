@@ -164,6 +164,11 @@ export default function FloatingMiniPlayer() {
       video.removeEventListener("timeupdate", onTime);
       video.removeEventListener("loadedmetadata", seekResume);
       video.removeEventListener("canplay", seekResume);
+      try {
+        hlsRef.current?.destroy();
+      } catch {}
+      hlsRef.current = null;
+      streamKeyRef.current = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted, film?.slug, film?.episodeSlug, film?.m3u8]);

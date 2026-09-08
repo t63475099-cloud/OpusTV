@@ -94,10 +94,24 @@ export default function Navbar() {
     pathname.startsWith("/tin-nhan") ||
     pathname.startsWith("/code") ||
     pathname.startsWith("/tai-khoan") ||
+    pathname.startsWith("/hop-thu") ||
     pathname.startsWith("/get-key") ||
     pathname.startsWith("/dieu-khoan") ||
     pathname.startsWith("/chinh-sach") ||
     pathname.startsWith("/bao-tri");
+
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.navHidden = hideEntireNav ? "1" : "0";
+    root.dataset.navChips = hideChips ? "0" : "1";
+    root.dataset.navMinimal = isMinimalChrome ? "1" : "0";
+    return () => {
+      root.dataset.navHidden = "0";
+      root.dataset.navChips = "0";
+      root.dataset.navMinimal = "0";
+    };
+  }, [hideEntireNav, hideChips, isMinimalChrome]);
 
   if (hideEntireNav) return null;
 

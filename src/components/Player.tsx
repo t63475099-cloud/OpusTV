@@ -324,7 +324,7 @@ export default function Player({
     return () => {
       cancelled = true;
     };
-  }, [m3u8, movie.slug, movie.name, currentEpisode?.slug, currentEpisode?.name]);
+  }, [m3u8, movie.slug, movie.name, (movie as { content?: string }).content, currentEpisode?.slug, currentEpisode?.name]);
 
   // Cập nhật soft-subs khi biết đúng duration
   useEffect(() => {

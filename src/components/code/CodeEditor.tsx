@@ -131,8 +131,8 @@ export default function CodeEditor() {
         }
       };
       editor.onDidChangeCursorPosition(kill);
-      editor.onDidType?.(kill as never);
       editor.onKeyDown(kill);
+      editor.onDidChangeModelContent(kill);
     }
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {

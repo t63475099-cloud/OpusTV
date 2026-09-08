@@ -1,6 +1,6 @@
 "use client";
 
-/** Load Skulpt (Python-in-browser) + run with optional Turtle canvas */
+/** Load Skulpt (Python-in-browser) + Turtle canvas, tương thích API CPython */
 
 declare global {
   interface Window {
@@ -57,9 +57,35 @@ export function usesTurtle(code: string): boolean {
   );
 }
 
+/**
+ * Skulpt turtle thiếu một số API CPython 3 — map sang API hỗ trợ.
+ * - onkeypress / onkeyrelease → onkey
+ * - listen() giữ nguyên
+ */
+export function sanitizePythonForSkulpt(code: string): string {
+  let c = code;
+  // Screen.onkeypress(fn, key) → onkey
+  c = c.replace(/\.onkeypress\s*\(/g, ".onkey(");
+  c = c.replace(/\.onkeyrelease\s*\(/g, ".onkey(");
+  // turtle.onkeypress(...)
+  c = c.replace(/\bturtle\.onkeypress\s*\(/g, "turtle.onkey(");
+  c = c.replace(/\bturtle\.onkeyrelease\s*\(/g, "turtle.onkey(");
+  // from turtle import onkeypress
+  c = c.replace(/\bonkeypress\b/g, "onkey");
+  c = c.replace(/\bonkeyrelease\b/g, "onkey");
+
+  // mainloop / done — Skulpt thường không cần; giữ done()
+  c = c.replace(/\.mainloop\s*\(\s*\)/g, ".done()");
+  c = c.replace(/\bturtle\.mainloop\s*\(\s*\)/g, "turtle.done()");
+
+  // bgcolor có thể là bg color string
+  // setup(width=600, height=600) — Skulpt hỗ trợ một phần
+
+  return c;
+}
+
 export interface SkulptRunOptions {
   code: string;
-  /** DOM id of turtle target (div). Required for turtle graphics. */
   turtleTargetId?: string;
   onOutput?: (text: string) => void;
   onError?: (text: string) => void;
@@ -73,9 +99,8 @@ export async function runPythonWithSkulpt(
   const Sk = window.Sk;
   if (!Sk) throw new Error("Skulpt missing");
 
-  const outChunks: string[] = [];
+  const source = sanitizePythonForSkulpt(opts.code);
 
-  // Clear previous turtle canvas children
   if (opts.turtleTargetId) {
     const el = document.getElementById(opts.turtleTargetId);
     if (el) {
@@ -83,15 +108,16 @@ export async function runPythonWithSkulpt(
       el.style.position = "relative";
       el.style.background = "#0a0a0a";
     }
+    const w = Math.max(200, elWidth(opts.turtleTargetId) || 400);
+    const h = Math.max(160, elHeight(opts.turtleTargetId) || 300);
     Sk.TurtleGraphics = Sk.TurtleGraphics || {};
     Sk.TurtleGraphics.target = opts.turtleTargetId;
-    Sk.TurtleGraphics.width = elWidth(opts.turtleTargetId) || 400;
-    Sk.TurtleGraphics.height = elHeight(opts.turtleTargetId) || 300;
+    Sk.TurtleGraphics.width = w;
+    Sk.TurtleGraphics.height = h;
   }
 
   Sk.configure({
     output: (text: string) => {
-      outChunks.push(text);
       opts.onOutput?.(text);
     },
     read: (x: string) => {
@@ -108,7 +134,7 @@ export async function runPythonWithSkulpt(
 
   try {
     await Sk.misceval.asyncToPromise(() =>
-      Sk.importMainWithBody("<stdin>", false, opts.code, true)
+      Sk.importMainWithBody("<stdin>", false, source, true)
     );
     return { ok: true, durationMs: Math.round(performance.now() - t0) };
   } catch (e: unknown) {
@@ -117,6 +143,11 @@ export async function runPythonWithSkulpt(
       msg = String((e as { toString: () => string }).toString());
     } else {
       msg = e instanceof Error ? e.message : String(e);
+    }
+    // Gợi ý nếu còn lỗi API turtle
+    if (/onkeypress|has no attribute/i.test(msg)) {
+      msg +=
+        "\n(Gợi ý: Skulpt dùng onkey thay vì onkeypress — đã tự chuyển; kiểm tra API turtle khác.)";
     }
     opts.onError?.(msg);
     return { ok: false, durationMs: Math.round(performance.now() - t0) };
@@ -130,31 +161,49 @@ function elHeight(id: string) {
   return document.getElementById(id)?.clientHeight || 0;
 }
 
-/** Gửi phím ảo cho Turtle onkey / listen() */
+/** Phím ảo: gửi cả tên Turtle ("Up") và DOM ("ArrowUp") */
 export function dispatchArrowKey(
   direction: "up" | "down" | "left" | "right",
   phase: "down" | "up" = "down"
 ) {
   const map = {
-    up: { key: "ArrowUp", code: "ArrowUp", keyCode: 38 },
-    down: { key: "ArrowDown", code: "ArrowDown", keyCode: 40 },
-    left: { key: "ArrowLeft", code: "ArrowLeft", keyCode: 37 },
-    right: { key: "ArrowRight", code: "ArrowRight", keyCode: 39 },
+    up: {
+      keys: ["ArrowUp", "Up", "w", "W"],
+      code: "ArrowUp",
+      keyCode: 38,
+    },
+    down: {
+      keys: ["ArrowDown", "Down", "s", "S"],
+      code: "ArrowDown",
+      keyCode: 40,
+    },
+    left: {
+      keys: ["ArrowLeft", "Left", "a", "A"],
+      code: "ArrowLeft",
+      keyCode: 37,
+    },
+    right: {
+      keys: ["ArrowRight", "Right", "d", "D"],
+      code: "ArrowRight",
+      keyCode: 39,
+    },
   } as const;
   const m = map[direction];
   const type = phase === "down" ? "keydown" : "keyup";
-  const init: KeyboardEventInit = {
-    key: m.key,
-    code: m.code,
-    keyCode: m.keyCode,
-    which: m.keyCode,
-    bubbles: true,
-    cancelable: true,
-  };
-  const ev = new KeyboardEvent(type, init);
-  // Skulpt listen() gắn trên document
-  document.dispatchEvent(ev);
-  window.dispatchEvent(ev);
   const target = document.getElementById("opus-turtle-canvas");
-  target?.dispatchEvent(new KeyboardEvent(type, init));
+
+  for (const key of m.keys) {
+    const init: KeyboardEventInit = {
+      key,
+      code: m.code,
+      keyCode: m.keyCode,
+      which: m.keyCode,
+      bubbles: true,
+      cancelable: true,
+    };
+    const ev = new KeyboardEvent(type, init);
+    document.dispatchEvent(ev);
+    window.dispatchEvent(ev);
+    target?.dispatchEvent(new KeyboardEvent(type, init));
+  }
 }

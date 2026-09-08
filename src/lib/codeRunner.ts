@@ -4,16 +4,29 @@ function usesTurtle(code: string): boolean {
   return (
     /\bimport\s+turtle\b/.test(code) ||
     /\bfrom\s+turtle\s+import\b/.test(code) ||
-    /\bturtle\./.test(code)
+    /\bturtle\./.test(code) ||
+    /\bTurtle\s*\(/.test(code)
   );
+}
+
+function isPythonFile(langId: CodeLangId, fileName: string, code: string): boolean {
+  if (langId === "python") return true;
+  if (/\.py$/i.test(fileName)) return true;
+  if (usesTurtle(code)) return true;
+  if (
+    /^\s*import\s+\w+/m.test(code) &&
+    /def\s+\w+\s*\(/.test(code) &&
+    !/function\s|const\s|let\s|var\s/.test(code)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export interface RunResult {
   lines: { kind: "out" | "err" | "info"; text: string }[];
   htmlPreview?: string;
-  /** Chạy Python/Turtle qua Skulpt trên Canvas */
   turtleMode?: boolean;
-  /** Code Python cần chạy sau khi Canvas mount */
   turtleCode?: string;
   durationMs: number;
 }
@@ -84,8 +97,8 @@ export async function runCode(
     text: `$ run ${fileName} (${meta.label})`,
   });
 
-  // Python → Skulpt (Turtle nếu có import turtle)
-  if (langId === "python") {
+  // Python / Turtle → luôn Skulpt (không mô phỏng text)
+  if (isPythonFile(langId, fileName, code)) {
     const turtle = usesTurtle(code);
     lines.push({
       kind: "info",
@@ -106,11 +119,12 @@ export async function runCode(
     if (langId === "css") {
       html = `<!DOCTYPE html><html><head><style>${code}</style></head><body><div class="hero"><h1>CSS Preview</h1><p>Style sheet applied.</p></div></body></html>`;
     }
-    if (looksLikeHtmlGame(html) || langId === "html") {
-      lines.push({ kind: "info", text: "Mở Live Preview / Canvas game (HTML)." });
-    } else {
-      lines.push({ kind: "info", text: "Mở Live Preview (HTML)." });
-    }
+    lines.push({
+      kind: "info",
+      text: looksLikeHtmlGame(html)
+        ? "Mở Live Preview / Canvas game (HTML)."
+        : "Mở Live Preview (HTML).",
+    });
     return {
       lines,
       htmlPreview: html,
@@ -119,7 +133,6 @@ export async function runCode(
   }
 
   if (meta.runnable === "js") {
-    // JS thuần: nếu có canvas game pattern → bọc HTML preview
     if (looksLikeHtmlGame(code) && !code.trim().startsWith("<")) {
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>html,body{margin:0;background:#111;height:100%;overflow:hidden}canvas{display:block;margin:0 auto;background:#000}</style></head><body><script>${code}<\/script></body></html>`;
       lines.push({
@@ -142,7 +155,6 @@ export async function runCode(
     return { lines, durationMs: Math.round(performance.now() - t0) };
   }
 
-  // C/C++/C#/Rust — mô phỏng
   lines.push({ kind: "info", text: `Đang biên dịch ${meta.label}…` });
   await new Promise((r) => setTimeout(r, 280 + Math.random() * 200));
   lines.push({ kind: "info", text: "Biên dịch thành công." });

@@ -62,7 +62,9 @@ export default function OpusCodeLayout() {
       setTerminalOpen(true);
       return;
     }
-    const langId = file.langId || "javascript";
+    // Ưu tiên đuôi file .py → python (tránh langId sai / file cũ)
+    const langId =
+      /\.py$/i.test(file.name) ? "python" : file.langId || "javascript";
     setTerminalOpen(true);
     setPreviewHtml(null);
     setCanvasVisible(false);
@@ -70,7 +72,7 @@ export default function OpusCodeLayout() {
     addTermLine({ kind: "cmd", text: `run ${file.name}` });
     setRunning(true);
     try {
-      const result = await runCode(langId, file.content || "", file.name);
+      const result = await runCode(langId as any, file.content || "", file.name);
       for (const line of result.lines) {
         addTermLine(line);
       }

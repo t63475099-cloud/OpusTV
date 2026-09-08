@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
+  ClipboardPaste,
   Code2,
   Files,
   PanelLeft,
   PanelLeftClose,
   Play,
   SquareTerminal,
+  Trash2,
 } from "lucide-react";
 import { useCodeStore } from "@/lib/codeStore";
 import { getLangMeta } from "@/lib/codeLanguages";
@@ -41,6 +43,7 @@ export default function OpusCodeLayout() {
   const setTurtleCode = useCodeStore((s) => s.setTurtleCode);
   const setTerminalHeight = useCodeStore((s) => s.setTerminalHeight);
   const markSaved = useCodeStore((s) => s.markSaved);
+  const updateContent = useCodeStore((s) => s.updateContent);
 
   useEffect(() => {
     setMounted(true);
@@ -54,6 +57,47 @@ export default function OpusCodeLayout() {
   useEffect(() => {
     if (isMobile && activeId) setSidebarOpen(false);
   }, [activeId, isMobile, setSidebarOpen]);
+
+
+  const onPasteMobile = useCallback(async () => {
+    const file = activeId ? getFile(activeId) : null;
+    if (!file || file.kind !== "file") return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return;
+      const ed = (window as unknown as { __opusCodeEditor?: { getSelection?: () => unknown; executeEdits?: (s: string, e: unknown[]) => void; getModel?: () => { getValue: () => string } | null; focus?: () => void } }).__opusCodeEditor;
+      if (ed?.executeEdits && ed.getSelection) {
+        const sel = ed.getSelection();
+        ed.executeEdits("opus-paste", [{ range: sel as never, text, forceMoveMarkers: true }]);
+        const model = ed.getModel?.();
+        if (model) updateContent(file.id, model.getValue());
+        ed.focus?.();
+      } else {
+        updateContent(file.id, (file.content || "") + text);
+      }
+    } catch {
+      // Fallback prompt if clipboard denied
+      const text = window.prompt("Dán nội dung vào đây:");
+      if (text != null) {
+        const ed = (window as unknown as { __opusCodeEditor?: { getValue?: () => string; setValue?: (v: string) => void } }).__opusCodeEditor;
+        if (ed?.setValue && ed.getValue) {
+          ed.setValue(ed.getValue() + text);
+          updateContent(file.id, ed.getValue());
+        } else {
+          updateContent(file.id, (file.content || "") + text);
+        }
+      }
+    }
+  }, [activeId, getFile, updateContent]);
+
+  const onClearMobile = useCallback(() => {
+    const file = activeId ? getFile(activeId) : null;
+    if (!file || file.kind !== "file") return;
+    if (!window.confirm("Xóa toàn bộ nội dung file này?")) return;
+    const ed = (window as unknown as { __opusCodeEditor?: { setValue?: (v: string) => void } }).__opusCodeEditor;
+    ed?.setValue?.("");
+    updateContent(file.id, "");
+  }, [activeId, getFile, updateContent]);
 
   const onRun = useCallback(async () => {
     const file = activeId ? getFile(activeId) : null;
@@ -158,7 +202,27 @@ export default function OpusCodeLayout() {
         <span className="hidden text-xs text-zinc-400 sm:inline truncate max-w-[40vw]">
           {active ? getPath(active.id) : "workspace"}
         </span>
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"
+            onClick={() => void onPasteMobile()}
+            title="Dán"
+            aria-label="Dán"
+          >
+            <ClipboardPaste className="h-4 w-4" />
+            <span className="text-[11px]">Dán</span>
+          </button>
+          <button
+            type="button"
+            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"
+            onClick={onClearMobile}
+            title="Xóa nội dung"
+            aria-label="Xóa"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="text-[11px]">Xóa</span>
+          </button>
           <button
             type="button"
             onClick={() => setTerminalOpen(!terminalOpen)}

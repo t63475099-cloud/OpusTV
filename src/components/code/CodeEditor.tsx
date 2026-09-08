@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
@@ -17,6 +17,15 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ),
 });
 
+function isTouchMobile() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.innerWidth < 768 ||
+    "ontouchstart" in window ||
+    navigator.maxTouchPoints > 0
+  );
+}
+
 export default function CodeEditor() {
   const activeId = useCodeStore((s) => s.activeId);
   const nodes = useCodeStore((s) => s.nodes);
@@ -27,6 +36,24 @@ export default function CodeEditor() {
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mobile, setMobile] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setMobile(isTouchMobile());
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, []);
+
+  // Expose editor API cho thanh công cụ mobile (paste / clear)
+  useEffect(() => {
+    (window as unknown as { __opusCodeEditor?: Monaco.editor.IStandaloneCodeEditor | null }).__opusCodeEditor =
+      editorRef.current;
+    return () => {
+      (window as unknown as { __opusCodeEditor?: Monaco.editor.IStandaloneCodeEditor | null }).__opusCodeEditor =
+        null;
+    };
+  }, [active?.id]);
 
   const applyMarkers = useCallback((content: string, langId: string) => {
     const monaco = monacoRef.current;
@@ -50,6 +77,9 @@ export default function CodeEditor() {
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    (window as unknown as { __opusCodeEditor?: Monaco.editor.IStandaloneCodeEditor }).__opusCodeEditor =
+      editor;
+
     monaco.editor.defineTheme("opus-dark", {
       base: "vs-dark",
       inherit: true,
@@ -71,25 +101,48 @@ export default function CodeEditor() {
     });
     monaco.editor.setTheme("opus-dark");
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
     });
     monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
     });
-    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ES2020,
-      allowNonTsExtensions: true,
-      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monaco.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      esModuleInterop: true,
-      jsx: monaco.languages.typescript.JsxEmit.React,
-      strict: true,
-    });
+
+    // Mobile: tắt widget gợi ý / spam accept
+    if (isTouchMobile()) {
+      editor.updateOptions({
+        quickSuggestions: false,
+        suggestOnTriggerCharacters: false,
+        acceptSuggestionOnEnter: "off",
+        acceptSuggestionOnCommitCharacter: false,
+        wordBasedSuggestions: "off",
+        parameterHints: { enabled: false },
+        snippetSuggestions: "none",
+        tabCompletion: "off",
+        suggest: {
+          showWords: false,
+          showSnippets: false,
+          preview: false,
+          selectionMode: "never",
+        },
+      });
+      // Đóng suggest nếu lỡ mở
+      editor.onDidChangeCursorSelection(() => {
+        try {
+          const suggest = editor.getContribution?.("editor.contrib.suggestController") as
+            | { cancelSuggestWidget?: () => void }
+            | undefined;
+          suggest?.cancelSuggestWidget?.();
+        } catch {
+          /* ignore */
+        }
+      });
+    }
+
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      if (activeId) markSaved(activeId);
+      const id = useCodeStore.getState().activeId;
+      if (id) markSaved(id);
     });
     if (active) applyMarkers(active.content || "", active.langId || "javascript");
   };
@@ -102,6 +155,47 @@ export default function CodeEditor() {
     );
     return () => clearTimeout(t);
   }, [active?.id, active?.langId, applyMarkers, active]);
+
+  const editorOptions = useMemo(() => {
+    const base = {
+      fontSize: mobile ? 15 : 14,
+      fontFamily: "Consolas, 'Courier New', monospace",
+      minimap: { enabled: !mobile },
+      scrollBeyondLastLine: false,
+      automaticLayout: true,
+      tabSize: 2,
+      wordWrap: "on" as const,
+      lineNumbers: "on" as const,
+      renderLineHighlight: "line" as const,
+      smoothScrolling: true,
+      bracketPairColorization: { enabled: true },
+      guides: { bracketPairs: true, indentation: true },
+      padding: { top: 8 },
+      formatOnPaste: false,
+      matchBrackets: "always" as const,
+      // Mobile: tắt auto-suggest / auto-close gây spam ký tự
+      quickSuggestions: mobile
+        ? false
+        : { other: true, comments: false, strings: false },
+      suggestOnTriggerCharacters: !mobile,
+      acceptSuggestionOnEnter: mobile ? ("off" as const) : ("on" as const),
+      acceptSuggestionOnCommitCharacter: !mobile,
+      wordBasedSuggestions: mobile ? ("off" as const) : ("currentDocument" as const),
+      parameterHints: { enabled: !mobile },
+      snippetSuggestions: mobile ? ("none" as const) : ("inline" as const),
+      tabCompletion: mobile ? ("off" as const) : ("on" as const),
+      autoClosingBrackets: mobile ? ("never" as const) : ("languageDefined" as const),
+      autoClosingQuotes: mobile ? ("never" as const) : ("languageDefined" as const),
+      autoSurround: mobile ? ("never" as const) : ("languageDefined" as const),
+      autoClosingDelete: "never" as const,
+      autoClosingOvertype: "never" as const,
+      hover: { enabled: !mobile },
+      links: !mobile,
+      contextmenu: true,
+      accessibilitySupport: "off" as const,
+    };
+    return base;
+  }, [mobile]);
 
   if (!active) {
     return (
@@ -126,31 +220,16 @@ export default function CodeEditor() {
         onMount={onMount}
         onChange={(v) => {
           if (v === undefined) return;
+          // Chặn content spam quá dài bất thường trên 1 dòng (mobile glitch)
+          if (mobile && v.length > 200_000) return;
           updateContent(active.id, v);
           if (timer.current) clearTimeout(timer.current);
-          timer.current = setTimeout(() => applyMarkers(v, active.langId || "javascript"), 250);
+          timer.current = setTimeout(
+            () => applyMarkers(v, active.langId || "javascript"),
+            300
+          );
         }}
-        options={{
-          fontSize: 14,
-          fontFamily: "Consolas, 'Courier New', monospace",
-          minimap: { enabled: typeof window !== "undefined" && window.innerWidth >= 768 },
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          tabSize: 2,
-          wordWrap: "on",
-          lineNumbers: "on",
-          renderLineHighlight: "line",
-          smoothScrolling: true,
-          bracketPairColorization: { enabled: true },
-          guides: { bracketPairs: true, indentation: true },
-          padding: { top: 8 },
-          quickSuggestions: true,
-          suggestOnTriggerCharacters: true,
-          autoClosingBrackets: "always",
-          autoClosingQuotes: "always",
-          formatOnPaste: true,
-          matchBrackets: "always",
-        }}
+        options={editorOptions}
       />
     </div>
   );

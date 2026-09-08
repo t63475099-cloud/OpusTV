@@ -13,9 +13,8 @@ export default function BaoTriPage() {
         <strong className="text-white">06:00</strong> (giờ Việt Nam).
       </p>
       <p className="text-zinc-500 text-sm max-w-md mb-8">
-        Vui lòng quay lại sau 6:00 sáng.
+        Vui lòng quay lại sau 6:00 sáng. Cảm ơn bạn đã sử dụng Opus Film!
       </p>
-      <p className="text-xs text-zinc-600">Lịch tự động · Giờ Asia/Ho_Chi_Minh</p>
     </div>
   );
 }

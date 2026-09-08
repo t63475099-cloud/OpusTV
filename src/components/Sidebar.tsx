@@ -13,6 +13,7 @@ import {
   Gift,
   ChevronDown,
   Clapperboard,
+  Code2,
 } from "lucide-react";
 import { GENRE_LINKS } from "@/lib/constants";
 import { t } from "@/lib/i18n";
@@ -29,6 +30,7 @@ const ITEM_DEFS: {
   { href: "/yeu-thich", key: "favorites", icon: Heart },
   { href: "/lich-su", key: "history", icon: History },
   { href: "/nhac", key: "music", icon: Music2 },
+  { href: "/code", key: "code", icon: Code2 },
   { href: "/tin-nhan", key: "chat", icon: MessageCircle },
   { href: "/su-kien", key: "events", icon: Gift },
   { href: "/cai-dat", key: "settings", icon: Settings },

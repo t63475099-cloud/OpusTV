@@ -56,6 +56,7 @@ const vi: Dict = {
   loading: "Đang tải...",
   noResults: "Không có kết quả",
   streakEvents: "Chuỗi & sự kiện",
+  code: "Opus Code",
 };
 
 const en: Dict = {
@@ -87,6 +88,7 @@ const en: Dict = {
   loading: "Loading...",
   noResults: "No results",
   streakEvents: "Streak & events",
+  code: "Opus Code",
 };
 
 const zh: Dict = {

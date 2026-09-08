@@ -17,6 +17,7 @@ import {
   Bell,
   ChevronDown,
   Clapperboard,
+  Code2,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import StreakBadge from "@/components/StreakBadge";
@@ -40,7 +41,7 @@ export default function Navbar() {
   /** Không hiện hàng chip Tất cả / Thể loại trên mobile */
   const hideChips = true;
 
-  const showSearch = !isMinimalChrome && !pathname.startsWith("/nhac");
+  const showSearch = !isMinimalChrome && !pathname.startsWith("/nhac") && !pathname.startsWith("/code");
 
   const hideLogoTextMobile = showSearch && searchExpanded && !menuOpen;
 
@@ -82,6 +83,7 @@ export default function Navbar() {
     { href: "/su-kien", name: t(lang, "streakEvents"), icon: Gift },
     { href: "/tin-nhan", name: t(lang, "chat"), icon: MessageCircle },
     { href: "/nhac", name: t(lang, "music"), icon: Music2 },
+    { href: "/code", name: t(lang, "code"), icon: Code2 },
     { href: "/yeu-thich", name: t(lang, "favorites"), icon: Heart },
     { href: "/lich-su", name: t(lang, "historyWatch"), icon: History },
     { href: "/cai-dat", name: t(lang, "settings"), icon: Settings },

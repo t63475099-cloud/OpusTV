@@ -42,11 +42,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  themeColor: "#0a0a0f",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,
+  maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#050505",
 };
 
 export default function RootLayout({
@@ -56,24 +56,22 @@ export default function RootLayout({
     <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full min-h-[100dvh] flex flex-col bg-[#0a0a0f] text-zinc-100 relative overflow-x-clip overflow-y-auto">
         <AmbientBackdrop />
-        <>
+        <GsapScrollProvider>
           <LanguageSync />
-          <GsapScrollProvider>
-            <SyncBootstrap />
+          <SyncBootstrap />
           <ScrollNavFab />
           <Navbar />
-        <div className="flex flex-1 w-full max-w-[1920px] mx-auto">
-          <Sidebar />
-          <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>
+          <div className="flex flex-1 w-full max-w-[1920px] mx-auto">
+            <Sidebar />
+            <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>
+          </div>
           <FloatingMiniPlayer />
-            </GsapScrollProvider>
-        </div>
-        <footer className="border-t border-white/10 py-8 px-4 text-center text-zinc-500 text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))] bg-black/20 backdrop-blur-md">
-          <p className="font-semibold text-zinc-300">{APP_NAME}</p>
-          <p className="mt-1">{APP_TAGLINE}</p>
-          <p className="mt-2 text-xs">OpusFilm</p>
-        </footer>
-                </>
+          <footer className="border-t border-white/10 py-8 px-4 text-center text-zinc-500 text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))] bg-black/20 backdrop-blur-md">
+            <p className="font-semibold text-zinc-300">{APP_NAME}</p>
+            <p className="mt-1">{APP_TAGLINE}</p>
+            <p className="mt-2 text-xs">OpusFilm</p>
+          </footer>
+        </GsapScrollProvider>
       </body>
     </html>
   );

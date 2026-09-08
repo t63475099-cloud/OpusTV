@@ -9,9 +9,7 @@ import { useActiveMediaStore } from "@/lib/activeMediaStore";
 import { useHistoryStore } from "@/lib/history";
 import {
   loadFilmResume,
-  loadLastFilmResume,
   loadMusicResume,
-  loadLastMusicResume,
   saveFilmResume,
   saveMusicResume,
 } from "@/lib/resumeStore";
@@ -57,13 +55,11 @@ export default function FloatingMiniPlayer() {
   const [visible, setVisible] = useState(false);
 
   const track = useMusicPlayerStore((s) => s.track);
-  const setTrack = useMusicPlayerStore((s) => s.setTrack);
   const playing = useMusicPlayerStore((s) => s.playing);
   const setPlaying = useMusicPlayerStore((s) => s.setPlaying);
   const stopMusic = useMusicPlayerStore((s) => s.stop);
 
   const film = useActiveMediaStore((s) => s.film);
-  const setFilm = useActiveMediaStore((s) => s.setFilm);
   const updateFilmTime = useActiveMediaStore((s) => s.updateFilmTime);
   const clearFilm = useActiveMediaStore((s) => s.clearFilm);
   const addOrUpdate = useHistoryStore((s) => s.addOrUpdate);
@@ -75,49 +71,25 @@ export default function FloatingMiniPlayer() {
   const hlsRef = useRef<Hls | null>(null);
   const streamKeyRef = useRef("");
 
-  useEffect(() => setMounted(true), []);
-
   useEffect(() => {
-    if (!mounted) return;
-    if (!useActiveMediaStore.getState().film) {
-      const last = loadLastFilmResume();
-      if (last?.m3u8 || last?.slug) {
-        setFilm({
-          slug: last.slug,
-          name: last.name || last.slug,
-          poster: last.poster || "",
-          episode: last.episode,
-          episodeSlug: last.episodeSlug,
-          server: last.server,
-          currentTime: last.currentTime,
-          duration: last.duration,
-          m3u8: last.m3u8,
-        });
-        setDisplayTime(last.currentTime);
-      }
-    } else {
-      const f = useActiveMediaStore.getState().film!;
-      const t = Math.max(f.currentTime, loadFilmResume(f.slug, f.episodeSlug));
-      setDisplayTime(t);
-      if (t > f.currentTime) updateFilmTime(t, f.duration);
+    setMounted(true);
+    // Xóa persist cũ của playbox (nếu còn từ bản trước)
+    try {
+      localStorage.removeItem("opus-active-media-v2");
+      localStorage.removeItem("opusfilm-mini-music");
+    } catch {
+      /* ignore */
     }
-    if (!useMusicPlayerStore.getState().track) {
-      const last = loadLastMusicResume();
-      if (last?.id) {
-        setTrack(
-          {
-            id: last.id,
-            title: last.title || "Đang phát",
-            artist: last.artist || "",
-            thumb: last.thumb,
-            currentTime: last.currentTime,
-          },
-          false
-        );
-      }
-    }
+  }, []);
+
+  // Không khôi phục playbox sau reload — chỉ hiện trong cùng phiên điều hướng
+  useEffect(() => {
+    if (!mounted || !film) return;
+    const t = Math.max(film.currentTime || 0, loadFilmResume(film.slug, film.episodeSlug));
+    setDisplayTime(t);
+    if (t > (film.currentTime || 0)) updateFilmTime(t, film.duration);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted]);
+  }, [mounted, film?.slug, film?.episodeSlug]);
 
   const getResumeSec = useCallback(() => {
     if (!film) return 0;

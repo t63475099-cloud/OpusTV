@@ -1,110 +1,185 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
-  Film,
-  Tv,
-  Flame,
-  Music,
-  Code,
-  MessageSquare,
-  Gift,
-  Settings,
-  X,
-  Clock,
   Heart,
-  Sparkles,
+  History,
+  Settings,
+  Music2,
+  MessageCircle,
+  Gift,
+  ChevronDown,
+  Clapperboard,
 } from "lucide-react";
+import { GENRE_LINKS } from "@/lib/constants";
+import { t } from "@/lib/i18n";
+import { useSettingsStore } from "@/lib/settings";
+import { cn } from "@/lib/utils";
 
-export interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
+const ITEM_DEFS: {
+  href: string;
+  key: string;
+  icon: typeof Home;
   expandable?: boolean;
-  className?: string;
-  [key: string]: any;
-}
-
-const navItems = [
-  { href: "/", label: "Trang chủ", icon: Home },
-  { href: "/moi-cap-nhat", label: "Mới cập nhật", icon: Sparkles },
-  { href: "/phim-bo", label: "Phim bộ", icon: Tv },
-  { href: "/phim-le", label: "Phim lẻ", icon: Film },
-  { href: "/da-xem", label: "Đã xem", icon: Clock },
-  { href: "/yeu-thich", label: "Yêu thích", icon: Heart },
-  { href: "/music", label: "Opus Music", icon: Music },
-  { href: "/code", label: "Opus Code", icon: Code },
-  { href: "/tin-nhan", label: "Opus Chat", icon: MessageSquare },
-  { href: "/su-kien", label: "Sự kiện", icon: Gift },
-  { href: "/cai-dat", label: "Cài đặt", icon: Settings },
+}[] = [
+  { href: "/", key: "home", icon: Home, expandable: true },
+  { href: "/yeu-thich", key: "favorites", icon: Heart },
+  { href: "/lich-su", key: "history", icon: History },
+  { href: "/nhac", key: "music", icon: Music2 },
+  { href: "/tin-nhan", key: "chat", icon: MessageCircle },
+  { href: "/su-kien", key: "events", icon: Gift },
+  { href: "/cai-dat", key: "settings", icon: Settings },
 ];
 
-export default function Sidebar({
-  isOpen = false,
-  onClose = () => {},
-  expandable = false,
-  className = "",
-}: SidebarProps) {
-  const pathname = usePathname();
+export default function Sidebar() {
+  const path = usePathname() || "/";
+  const lang = useSettingsStore((s) => s.settings.language) || "vi";
+  const [genresOpen, setGenresOpen] = useState(false);
+
+  if (
+    path.startsWith("/admin") ||
+    path.startsWith("/tin-nhan") ||
+    path.startsWith("/tai-khoan") ||
+    path.startsWith("/get-key") ||
+    path.startsWith("/dieu-khoan") ||
+    path.startsWith("/chinh-sach") ||
+    path.startsWith("/bao-tri")
+  )
+    return null;
 
   return (
-    <>
-      {/* Backdrop overlay trên mobile */}
-      {isOpen && (
-        <div
-          onClick={onClose}
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity"
-        />
+    <aside
+      data-sidebar="1"
+      className={cn(
+        "hidden lg:flex flex-col shrink-0 sticky top-14",
+        "h-[calc(100dvh-3.5rem)]",
+        "w-[72px] xl:w-[220px]",
+        "border-r border-white/10",
+        "bg-neutral-950/55 backdrop-blur-2xl",
+        "shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)]",
+        "transition-[width,background-color,box-shadow] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+        "overflow-hidden"
       )}
-
-      {/* Container Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 bottom-0 z-50 w-64 bg-neutral-950 border-r border-neutral-800 flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        } ${className}`}
+      style={{
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        overflow: "hidden",
+      }}
+    >
+      <nav
+        className="flex-1 space-y-0.5 py-3 px-2 overflow-y-auto overflow-x-hidden scrollbar-hide"
+        style={{ overflowX: "hidden" }}
       >
-        {/* Header Sidebar */}
-        <div className="flex items-center justify-between px-5 h-16 border-b border-neutral-800">
-          <Link href="/" className="flex items-center gap-2" onClick={onClose}>
-            <span className="text-xl font-black bg-gradient-to-r from-red-500 to-rose-500 bg-clip-text text-transparent">
-              OpusTV
-            </span>
-          </Link>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-900 lg:hidden transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        {ITEM_DEFS.map((item) => {
+          const active =
+            item.href === "/"
+              ? path === "/"
+              : path === item.href || path.startsWith(item.href + "/");
+          const Icon = item.icon;
 
-        {/* Menu danh sách điều hướng */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
+          if (item.expandable) {
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition ${
-                  isActive
-                    ? "bg-red-600/10 text-red-500 border border-red-500/20"
-                    : "text-neutral-300 hover:text-white hover:bg-neutral-900"
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? "text-red-500" : "text-neutral-400"}`} />
-                <span>{item.label}</span>
-              </Link>
+              <div key={item.href} className="space-y-0.5">
+                <div className="flex items-center gap-0.5">
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "group relative flex flex-1 items-center gap-4 rounded-xl px-3 py-2.5 text-sm min-w-0",
+                      "overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                      "border border-transparent",
+                      active
+                        ? "bg-white/12 text-white font-medium border-white/10"
+                        : "text-zinc-300 hover:bg-white/8 hover:text-white"
+                    )}
+                    title={t(lang, item.key)}
+                  >
+                    <Icon className="w-5 h-5 shrink-0" />
+                    <span className="hidden xl:inline truncate">{t(lang, item.key)}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setGenresOpen((v) => !v)}
+                    className={cn(
+                      "hidden xl:flex p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10",
+                      "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                      genresOpen && "bg-white/10 text-white"
+                    )}
+                    aria-label="Thể loại"
+                    aria-expanded={genresOpen}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                        genresOpen && "rotate-180"
+                      )}
+                    />
+                  </button>
+                </div>
+                <div
+                  className={cn(
+                    "hidden xl:block overflow-hidden transition-[max-height,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                    genresOpen ? "max-h-[32rem] opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  <div className="pl-3 ml-3 border-l border-white/10 space-y-0.5 pb-1">
+                    {GENRE_LINKS.map((g) => {
+                      const gActive =
+                        path === g.href || path.startsWith(g.href + "/");
+                      return (
+                        <Link
+                          key={g.href}
+                          href={g.href}
+                          className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs",
+                            "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                            gActive
+                              ? "bg-white/10 text-white"
+                              : "text-zinc-500 hover:text-zinc-200 hover:bg-white/6"
+                          )}
+                        >
+                          <Clapperboard className="w-3 h-3 shrink-0 opacity-60" />
+                          <span className="truncate">{g.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
-          })}
-        </div>
-      </aside>
-    </>
+          }
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "group relative flex items-center gap-4 rounded-xl px-3 py-2.5 text-sm",
+                "overflow-hidden",
+                "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                "border border-transparent",
+                active
+                  ? "bg-white/12 text-white font-medium border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.1)]"
+                  : "text-zinc-300 hover:bg-white/8 hover:text-white hover:border-white/8"
+              )}
+              title={t(lang, item.key)}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                  "bg-gradient-to-r from-rose-500/10 via-transparent to-violet-500/10"
+                )}
+              />
+              <Icon className="w-5 h-5 shrink-0 relative z-[1]" />
+              <span className="hidden xl:inline truncate relative z-[1]">{t(lang, item.key)}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="hidden xl:block mt-auto px-3 py-3 text-[11px] text-zinc-600 leading-relaxed border-t border-white/5">
+        OpusFilm
+      </div>
+    </aside>
   );
 }
-
-export { Sidebar };

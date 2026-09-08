@@ -143,8 +143,28 @@ export default function OpusCodeLayout() {
         return;
       }
       if (result.htmlPreview) {
-        setTerminalHeight(Math.max(280, Math.min(420, window.innerHeight * 0.4)));
         setPreviewHtml(result.htmlPreview);
+      } else {
+        // Ngôn ngữ text (C, Python stdout, JS console…) → hộp Preview nổi cùng style
+        const outLines = result.lines
+          .filter((l: { kind: string; text: string }) => l.kind === "out" || l.kind === "err" || l.kind === "info")
+          .map((l: { kind: string; text: string }) => {
+            const color =
+              l.kind === "err" ? "#f87171" : l.kind === "info" ? "#34d399" : "#e4e4e7";
+            const esc = l.text
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
+            return `<div style="color:${color}">${esc || "&nbsp;"}</div>`;
+          })
+          .join("");
+        const langLabel = (langId || "code").toUpperCase();
+        setPreviewHtml(`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
+html,body{margin:0;height:100%;background:#0d1117;color:#e4e4e7;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.55}
+.wrap{padding:16px 18px;min-height:100%;box-sizing:border-box}
+.badge{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;border:1px solid #334155;border-radius:999px;padding:2px 10px;margin-bottom:12px}
+pre{margin:0;white-space:pre-wrap;word-break:break-word}
+</style></head><body><div class="wrap"><span class="badge">${langLabel} · Output</span><pre>${outLines || '<div style="color:#71717a">Không có output</div>'}</pre></div></body></html>`);
       }
       markSaved(file.id);
     } catch (e) {
@@ -264,7 +284,7 @@ export default function OpusCodeLayout() {
             disabled={running}
             className={cn(
               "flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-white shadow",
-              "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-200",
+              "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-500",
               "disabled:opacity-60 disabled:pointer-events-none"
             )}
           >
@@ -311,9 +331,10 @@ export default function OpusCodeLayout() {
           />
         )}
         <aside
+          data-opus-panel
           className={cn(
             "z-[86] flex shrink-0 flex-col border-r border-[#2b2b2b] bg-[#252526] overflow-hidden",
-            "transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            "transition-[transform,width,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
             isMobile
               ? cn(
                   "absolute inset-y-0 left-0 w-[min(86vw,300px)] shadow-2xl",

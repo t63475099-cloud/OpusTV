@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { Eraser, Maximize2, Minimize2, X } from "lucide-react";
 import { useCodeStore } from "@/lib/codeStore";
 import { cn } from "@/lib/utils";
-import CanvasPreview from "./CanvasPreview";
 
 export default function TerminalPanel() {
   const open = useCodeStore((s) => s.terminalOpen);
@@ -27,13 +26,13 @@ export default function TerminalPanel() {
 
   if (!open) return null;
 
-  const showSide = !!canvasVisible;
 
   return (
     <div
+      data-opus-terminal
       className={cn(
         "flex shrink-0 flex-col border-t border-[#2b2b2b] bg-[#0c0c0c] text-[13px]",
-        "transition-[height] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        "transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
       )}
       style={{ height }}
     >
@@ -115,10 +114,7 @@ export default function TerminalPanel() {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <div
           ref={scrollRef}
-          className={cn(
-            "min-h-0 overflow-auto px-3 py-2 font-mono text-[12px] leading-relaxed",
-            showSide ? "flex-1 md:max-w-[45%]" : "flex-1"
-          )}
+          className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[12px] leading-relaxed"
         >
           {lines.map((l) => (
             <div
@@ -148,7 +144,6 @@ export default function TerminalPanel() {
           </div>
         </div>
 
-        {canvasVisible && <CanvasPreview />}
 
       </div>
     </div>

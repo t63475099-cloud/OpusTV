@@ -12,6 +12,7 @@ import {
   Play,
   SquareTerminal,
   Trash2,
+  Lightbulb,
 } from "lucide-react";
 import { useCodeStore } from "@/lib/codeStore";
 import { getLangMeta } from "@/lib/codeLanguages";
@@ -58,6 +59,13 @@ export default function OpusCodeLayout() {
     if (isMobile && activeId) setSidebarOpen(false);
   }, [activeId, isMobile, setSidebarOpen]);
 
+
+
+  const onSuggestMobile = useCallback(() => {
+    const ed = (window as unknown as { __opusCodeEditor?: { focus?: () => void; trigger?: (s: string, a: string, args: unknown) => void } }).__opusCodeEditor;
+    ed?.focus?.();
+    ed?.trigger?.("opus-toolbar", "editor.action.triggerSuggest", {});
+  }, []);
 
   const onPasteMobile = useCallback(async () => {
     const file = activeId ? getFile(activeId) : null;
@@ -203,6 +211,16 @@ export default function OpusCodeLayout() {
           {active ? getPath(active.id) : "workspace"}
         </span>
         <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"
+            onClick={onSuggestMobile}
+            title="Gợi ý code"
+            aria-label="Gợi ý"
+          >
+            <Lightbulb className="h-4 w-4 text-amber-300" />
+            <span className="text-[11px]">Gợi ý</span>
+          </button>
           <button
             type="button"
             className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"

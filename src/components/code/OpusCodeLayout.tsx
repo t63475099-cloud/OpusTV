@@ -22,6 +22,7 @@ import FileExplorer from "./FileExplorer";
 import EditorTabs from "./EditorTabs";
 import CodeEditor from "./CodeEditor";
 import TerminalPanel from "./TerminalPanel";
+import MobileSuggest from "./MobileSuggest";
 
 export default function OpusCodeLayout() {
   const [mounted, setMounted] = useState(false);
@@ -62,9 +63,13 @@ export default function OpusCodeLayout() {
 
 
   const onSuggestMobile = useCallback(() => {
-    const ed = (window as unknown as { __opusCodeEditor?: { focus?: () => void; trigger?: (s: string, a: string, args: unknown) => void } }).__opusCodeEditor;
-    ed?.focus?.();
-    ed?.trigger?.("opus-toolbar", "editor.action.triggerSuggest", {});
+    const open = (window as unknown as { __opusOpenSuggest?: () => void }).__opusOpenSuggest;
+    if (open) open();
+    else {
+      const ed = (window as unknown as { __opusCodeEditor?: { focus?: () => void } }).__opusCodeEditor;
+      ed?.focus?.();
+      window.dispatchEvent(new Event("opus-code-suggest-refresh"));
+    }
   }, []);
 
   const onPasteMobile = useCallback(async () => {
@@ -347,6 +352,7 @@ export default function OpusCodeLayout() {
           <EditorTabs />
           <div className="min-h-0 flex-1 overflow-hidden">
             <CodeEditor />
+            <MobileSuggest />
           </div>
           <TerminalPanel />
         </div>

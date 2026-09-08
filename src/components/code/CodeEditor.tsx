@@ -19,10 +19,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 
 function isTouchMobile() {
   if (typeof window === "undefined") return false;
-  return (
-    window.innerWidth < 768 ||
-    ("ontouchstart" in window && navigator.maxTouchPoints > 0)
-  );
+  return window.innerWidth < 768 || ("ontouchstart" in window && navigator.maxTouchPoints > 0);
 }
 
 export default function CodeEditor() {
@@ -96,52 +93,52 @@ export default function CodeEditor() {
         "editor.foreground": "#d4d4d4",
         "editorLineNumber.foreground": "#858585",
         "editor.selectionBackground": "#264f78",
-        "editorSuggestWidget.background": "#252526",
-        "editorSuggestWidget.border": "#454545",
-        "editorSuggestWidget.selectedBackground": "#04395e",
       },
     });
     monaco.editor.setTheme("opus-dark");
 
-    // Giữ diagnostics TS/JS nhẹ trên mobile
-    const noSem = isTouchMobile();
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: noSem,
-      noSyntaxValidation: false,
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
     });
     monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: noSem,
-      noSyntaxValidation: false,
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
     });
-    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ES2020,
-      allowNonTsExtensions: true,
-      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-      module: monaco.languages.typescript.ModuleKind.ESNext,
-      noEmit: true,
-      esModuleInterop: true,
-      jsx: monaco.languages.typescript.JsxEmit.React,
-      strict: false,
-    });
-    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-      target: monaco.languages.typescript.ScriptTarget.ES2020,
-      allowNonTsExtensions: true,
-      noEmit: true,
-      allowJs: true,
-      checkJs: false,
-    });
+
+    // Mobile: TẮT HOÀN TOÀN Monaco suggest (triệt spam) — dùng MobileSuggest custom
+    if (isTouchMobile()) {
+      editor.updateOptions({
+        quickSuggestions: false,
+        suggestOnTriggerCharacters: false,
+        acceptSuggestionOnEnter: "off",
+        acceptSuggestionOnCommitCharacter: false,
+        wordBasedSuggestions: "off",
+        parameterHints: { enabled: false },
+        snippetSuggestions: "none",
+        tabCompletion: "off",
+        suggest: { showWords: false, showSnippets: false, preview: false },
+      });
+      // Đóng widget nếu Monaco cố mở
+      const kill = () => {
+        try {
+          const c = editor.getContribution?.("editor.contrib.suggestController") as
+            | { cancelSuggestWidget?: () => void; stop?: () => void }
+            | undefined;
+          c?.cancelSuggestWidget?.();
+        } catch {
+          /* */
+        }
+      };
+      editor.onDidChangeCursorPosition(kill);
+      editor.onDidType?.(kill as never);
+      editor.onKeyDown(kill);
+    }
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       const id = useCodeStore.getState().activeId;
       if (id) markSaved(id);
     });
-
-    // Mobile: mở gợi ý bằng Ctrl+Space / nút — không auto-accept khi gõ
-    if (isTouchMobile()) {
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
-        editor.trigger("opus", "editor.action.triggerSuggest", {});
-      });
-    }
 
     if (active) applyMarkers(active.content || "", active.langId || "javascript");
     lastValueRef.current = active?.content || "";
@@ -157,18 +154,57 @@ export default function CodeEditor() {
     return () => clearTimeout(t);
   }, [active?.id, active?.langId, applyMarkers, active]);
 
-  /**
-   * Mobile: bật IntelliSense giống VS Code nhưng chống spam:
-   * - Có quickSuggestions + trigger characters
-   * - KHÔNG accept bằng commit character (tránh lặp mlml…)
-   * - Tắt word-based suggestions (nguồn spam chính trên soft keyboard)
-   * - suggest delay dài hơn một chút
-   */
   const editorOptions = useMemo(() => {
+    if (mobile) {
+      return {
+        fontSize: 15,
+        fontFamily: "Consolas, 'Courier New', monospace",
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        automaticLayout: true,
+        tabSize: 2,
+        wordWrap: "on" as const,
+        lineNumbers: "on" as const,
+        renderLineHighlight: "line" as const,
+        smoothScrolling: true,
+        bracketPairColorization: { enabled: true },
+        guides: { bracketPairs: true, indentation: true },
+        padding: { top: 8 },
+        formatOnPaste: false,
+        matchBrackets: "near" as const,
+        // Triệt suggest Monaco
+        quickSuggestions: false as const,
+        suggestOnTriggerCharacters: false,
+        acceptSuggestionOnEnter: "off" as const,
+        acceptSuggestionOnCommitCharacter: false,
+        wordBasedSuggestions: "off" as const,
+        parameterHints: { enabled: false },
+        snippetSuggestions: "none" as const,
+        tabCompletion: "off" as const,
+        suggest: {
+          showWords: false,
+          showSnippets: false,
+          showKeywords: false,
+          preview: false,
+          selectionMode: "never" as const,
+        },
+        autoClosingBrackets: "never" as const,
+        autoClosingQuotes: "never" as const,
+        autoSurround: "never" as const,
+        autoClosingDelete: "never" as const,
+        autoClosingOvertype: "never" as const,
+        hover: { enabled: false },
+        links: false,
+        contextmenu: true,
+        accessibilitySupport: "off" as const,
+        mouseWheelZoom: false,
+      };
+    }
+    // Desktop: Monaco IntelliSense đầy đủ
     return {
-      fontSize: mobile ? 15 : 14,
+      fontSize: 14,
       fontFamily: "Consolas, 'Courier New', monospace",
-      minimap: { enabled: !mobile },
+      minimap: { enabled: true },
       scrollBeyondLastLine: false,
       automaticLayout: true,
       tabSize: 2,
@@ -179,57 +215,22 @@ export default function CodeEditor() {
       bracketPairColorization: { enabled: true },
       guides: { bracketPairs: true, indentation: true },
       padding: { top: 8 },
-      formatOnPaste: false,
+      formatOnPaste: true,
       matchBrackets: "always" as const,
-      // --- IntelliSense (VS Code style) ---
-      quickSuggestions: {
-        other: true,
-        comments: false,
-        strings: false,
-      },
+      quickSuggestions: { other: true, comments: false, strings: false },
       suggestOnTriggerCharacters: true,
-      // Quan trọng: không tự nhận gợi ý khi gõ dấu / chữ → chống spam mobile
-      acceptSuggestionOnCommitCharacter: false,
       acceptSuggestionOnEnter: "on" as const,
-      // Word-based hay gây lặp ký tự trên IME điện thoại
-      wordBasedSuggestions: "off" as const,
+      acceptSuggestionOnCommitCharacter: true,
+      wordBasedSuggestions: "currentDocument" as const,
       parameterHints: { enabled: true },
       snippetSuggestions: "inline" as const,
       tabCompletion: "on" as const,
-      suggestSelection: "first" as const,
-      suggestFontSize: mobile ? 14 : 13,
-      suggestLineHeight: mobile ? 26 : 22,
-      // Delay trước khi hiện gợi ý (ms) — mobile chậm hơn để ổn định
-      // (Monaco không có option delay trực tiếp; dùng suggest.show*)
-      suggest: {
-        showWords: false,
-        showSnippets: true,
-        showKeywords: true,
-        showClasses: true,
-        showFunctions: true,
-        showVariables: true,
-        showProperties: true,
-        showValues: true,
-        showColors: true,
-        preview: false,
-        insertMode: "replace" as const,
-        filterGraceful: true,
-        localityBonus: true,
-        shareSuggestSelections: false,
-        selectionMode: "always" as const,
-      },
-      // Auto-close nhẹ: desktop full, mobile chỉ trước khoảng trắng
-      autoClosingBrackets: mobile ? ("beforeWhitespace" as const) : ("languageDefined" as const),
-      autoClosingQuotes: mobile ? ("beforeWhitespace" as const) : ("languageDefined" as const),
-      autoSurround: mobile ? ("never" as const) : ("languageDefined" as const),
-      autoClosingDelete: "auto" as const,
-      autoClosingOvertype: "auto" as const,
-      hover: { enabled: !mobile, delay: 400 },
+      autoClosingBrackets: "languageDefined" as const,
+      autoClosingQuotes: "languageDefined" as const,
+      hover: { enabled: true },
       links: true,
       contextmenu: true,
       accessibilitySupport: "off" as const,
-      // Touch scroll mượt
-      mouseWheelZoom: !mobile,
     };
   }, [mobile]);
 
@@ -245,7 +246,7 @@ export default function CodeEditor() {
   const meta = getLangMeta(active.langId || "javascript");
 
   return (
-    <div className="h-full min-h-0 w-full opacity-100 transition-opacity duration-300">
+    <div className="relative h-full min-h-0 w-full opacity-100 transition-opacity duration-300">
       <MonacoEditor
         key={active.id}
         height="100%"
@@ -256,26 +257,19 @@ export default function CodeEditor() {
         onMount={onMount}
         onChange={(v) => {
           if (v === undefined) return;
-          // Chống glitch spam: nhảy quá nhiều ký tự trong 1 lần trên mobile
           if (mobile) {
             const prev = lastValueRef.current || "";
             const delta = Math.abs(v.length - prev.length);
-            // Soft keyboard spam thường thêm hàng nghìn ký tự lặp trong 1 event
-            if (delta > 8000) {
-              return;
-            }
-            // Phát hiện pattern lặp ngắn (vd mlmlml…)
-            if (delta > 200 && isSpamPattern(v.slice(Math.max(0, v.length - 400)))) {
-              return;
-            }
+            if (delta > 5000) return;
+            if (delta > 150 && isSpamPattern(v.slice(-300))) return;
           }
           lastValueRef.current = v;
           updateContent(active.id, v);
           if (timer.current) clearTimeout(timer.current);
-          timer.current = setTimeout(
-            () => applyMarkers(v, active.langId || "javascript"),
-            300
-          );
+          timer.current = setTimeout(() => {
+            applyMarkers(v, active.langId || "javascript");
+            window.dispatchEvent(new Event("opus-code-suggest-refresh"));
+          }, 200);
         }}
         options={editorOptions}
       />
@@ -283,16 +277,16 @@ export default function CodeEditor() {
   );
 }
 
-/** Chuỗi lặp 1–3 ký tự chiếm phần lớn → spam */
 function isSpamPattern(chunk: string): boolean {
-  if (chunk.length < 80) return false;
-  const sample = chunk.slice(-120);
-  // lặp 2 ký tự
-  if (/^([a-zA-Z0-9<>/]{1,3})\1{20,}$/.test(sample.replace(/\s/g, ""))) return true;
-  const compact = sample.replace(/\s/g, "");
-  if (compact.length < 60) return false;
-  const unit = compact.slice(0, 2);
-  if (unit.length && compact.split(unit).length > 25) return true;
+  if (chunk.length < 60) return false;
+  const compact = chunk.replace(/\s/g, "");
+  if (compact.length < 40) return false;
+  for (let n = 1; n <= 3; n++) {
+    const unit = compact.slice(0, n);
+    if (!unit) continue;
+    const parts = compact.split(unit);
+    if (parts.length > 20) return true;
+  }
   return false;
 }
 

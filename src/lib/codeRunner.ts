@@ -27,6 +27,7 @@ export interface RunResult {
   lines: { kind: "out" | "err" | "info"; text: string }[];
   htmlPreview?: string;
   turtleMode?: boolean;
+  display?: "terminal" | "html" | "canvas";
   turtleCode?: string;
   durationMs: number;
 }
@@ -109,6 +110,7 @@ export async function runCode(
     return {
       lines,
       turtleMode: true,
+      display: "canvas" as const,
       turtleCode: code,
       durationMs: Math.round(performance.now() - t0),
     };
@@ -128,6 +130,7 @@ export async function runCode(
     return {
       lines,
       htmlPreview: html,
+      display: "html" as const,
       durationMs: Math.round(performance.now() - t0),
     };
   }
@@ -142,6 +145,7 @@ export async function runCode(
       return {
         lines,
         htmlPreview: html,
+        display: "html" as const,
         durationMs: Math.round(performance.now() - t0),
       };
     }
@@ -152,7 +156,7 @@ export async function runCode(
       kind: "info",
       text: `Hoàn tất · ${Math.round(performance.now() - t0)} ms`,
     });
-    return { lines, durationMs: Math.round(performance.now() - t0) };
+    return { lines, durationMs: Math.round(performance.now() - t0), display: "terminal" as const };
   }
 
   lines.push({ kind: "info", text: `Đang biên dịch ${meta.label}…` });
@@ -171,5 +175,5 @@ export async function runCode(
     kind: "info",
     text: `Process exited with code 0 · ${Math.round(performance.now() - t0)} ms`,
   });
-  return { lines, durationMs: Math.round(performance.now() - t0) };
+  return { lines, durationMs: Math.round(performance.now() - t0), display: "terminal" as const };
 }

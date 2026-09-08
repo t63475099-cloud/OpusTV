@@ -134,37 +134,28 @@ export default function OpusCodeLayout() {
       for (const line of result.lines) {
         addTermLine(line);
       }
+      // Tự nhận diện output:
+      //  - Canvas (Python Turtle) → Live Preview nổi + Terminal log gọn
+      //  - HTML/CSS/JS web        → Live Preview nổi + Terminal log gọn
+      //  - Console / biên dịch    → chỉ Terminal (không mở hộp Preview)
       if (result.turtleMode && result.turtleCode) {
-        setTerminalHeight(Math.max(360, Math.min(520, window.innerHeight * 0.48)));
+        setPreviewHtml(null);
         setCanvasVisible(true);
         setTurtleCode(result.turtleCode);
+        setTerminalHeight(Math.min(160, Math.max(120, window.innerHeight * 0.18)));
         markSaved(file.id);
-        // running tắt trong CanvasPreview khi Skulpt xong
         return;
       }
       if (result.htmlPreview) {
+        setCanvasVisible(false);
+        setTurtleCode(null);
         setPreviewHtml(result.htmlPreview);
+        setTerminalHeight(Math.min(160, Math.max(120, window.innerHeight * 0.18)));
       } else {
-        // Ngôn ngữ text (C, Python stdout, JS console…) → hộp Preview nổi cùng style
-        const outLines = result.lines
-          .filter((l: { kind: string; text: string }) => l.kind === "out" || l.kind === "err" || l.kind === "info")
-          .map((l: { kind: string; text: string }) => {
-            const color =
-              l.kind === "err" ? "#f87171" : l.kind === "info" ? "#34d399" : "#e4e4e7";
-            const esc = l.text
-              .replace(/&/g, "&amp;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;");
-            return `<div style="color:${color}">${esc || "&nbsp;"}</div>`;
-          })
-          .join("");
-        const langLabel = (langId || "code").toUpperCase();
-        setPreviewHtml(`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
-html,body{margin:0;height:100%;background:#0d1117;color:#e4e4e7;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.55}
-.wrap{padding:16px 18px;min-height:100%;box-sizing:border-box}
-.badge{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;border:1px solid #334155;border-radius:999px;padding:2px 10px;margin-bottom:12px}
-pre{margin:0;white-space:pre-wrap;word-break:break-word}
-</style></head><body><div class="wrap"><span class="badge">${langLabel} · Output</span><pre>${outLines || '<div style="color:#71717a">Không có output</div>'}</pre></div></body></html>`);
+        setPreviewHtml(null);
+        setCanvasVisible(false);
+        setTurtleCode(null);
+        setTerminalHeight(Math.max(200, Math.min(360, window.innerHeight * 0.32)));
       }
       markSaved(file.id);
     } catch (e) {

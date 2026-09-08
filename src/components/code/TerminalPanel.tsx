@@ -27,7 +27,7 @@ export default function TerminalPanel() {
 
   if (!open) return null;
 
-  const showSide = !!(previewHtml || canvasVisible);
+  const showSide = !!canvasVisible;
 
   return (
     <div
@@ -150,19 +150,6 @@ export default function TerminalPanel() {
 
         {canvasVisible && <CanvasPreview />}
 
-        {previewHtml && !canvasVisible && (
-          <div className="min-h-[120px] flex-1 border-t border-[#2b2b2b] md:border-l md:border-t-0">
-            <div className="bg-[#1e1e1e] px-2 py-1 text-[10px] uppercase text-zinc-500">
-              Live Preview
-            </div>
-            <iframe
-              title="preview"
-              sandbox="allow-scripts"
-              className="h-[calc(100%-24px)] w-full bg-white"
-              srcDoc={previewHtml}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

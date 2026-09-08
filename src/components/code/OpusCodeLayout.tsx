@@ -23,6 +23,7 @@ import EditorTabs from "./EditorTabs";
 import CodeEditor from "./CodeEditor";
 import TerminalPanel from "./TerminalPanel";
 import MobileSuggest from "./MobileSuggest";
+import FloatingLivePreview from "./FloatingLivePreview";
 
 export default function OpusCodeLayout() {
   const [mounted, setMounted] = useState(false);
@@ -182,7 +183,7 @@ export default function OpusCodeLayout() {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex flex-col overflow-hidden bg-[#1e1e1e] text-[#cccccc]"
+      className="opus-code-shell fixed inset-0 z-[80] flex flex-col overflow-hidden bg-[#1e1e1e] text-[#cccccc]"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -355,6 +356,7 @@ export default function OpusCodeLayout() {
             <MobileSuggest />
           </div>
           <TerminalPanel />
+      <FloatingLivePreview />
         </div>
       </div>
 

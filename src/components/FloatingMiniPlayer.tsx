@@ -216,7 +216,7 @@ export default function FloatingMiniPlayer() {
   }, [mounted, film, track, path]);
 
   if (!mounted) return null;
-  if (path.startsWith("/tin-nhan") || path.startsWith("/bao-tri")) return null;
+  if (path.startsWith("/tin-nhan") || path.startsWith("/bao-tri") || path.startsWith("/code")) return null;
 
   const onMusicPage = path.startsWith("/nhac");
   const onFilmPage = film ? path.startsWith(`/phim/${film.slug}`) : false;

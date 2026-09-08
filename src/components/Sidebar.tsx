@@ -44,6 +44,7 @@ export default function Sidebar() {
   if (
     path.startsWith("/admin") ||
     path.startsWith("/tin-nhan") ||
+    path.startsWith("/code") ||
     path.startsWith("/tai-khoan") ||
     path.startsWith("/get-key") ||
     path.startsWith("/dieu-khoan") ||

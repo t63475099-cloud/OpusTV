@@ -92,6 +92,7 @@ export default function Navbar() {
   const hideEntireNav =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/tin-nhan") ||
+    pathname.startsWith("/code") ||
     pathname.startsWith("/tai-khoan") ||
     pathname.startsWith("/get-key") ||
     pathname.startsWith("/dieu-khoan") ||

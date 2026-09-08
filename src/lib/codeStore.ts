@@ -42,6 +42,10 @@ interface CodeState {
   terminalLines: TermLine[];
   running: boolean;
   previewHtml: string | null;
+  /** Hiện khung Canvas / Turtle */
+  canvasVisible: boolean;
+  /** Code Python chờ Canvas mount rồi chạy Skulpt */
+  turtleCode: string | null;
 
   createFile: (parentId: string | null, langId: CodeLangId, name?: string) => string;
   createFolder: (parentId: string | null, name?: string) => string;
@@ -61,6 +65,8 @@ interface CodeState {
   clearTerminal: () => void;
   setRunning: (v: boolean) => void;
   setPreviewHtml: (html: string | null) => void;
+  setCanvasVisible: (v: boolean) => void;
+  setTurtleCode: (code: string | null) => void;
   importFiles: (files: { name: string; content: string }[], parentId?: string | null) => void;
   getChildren: (parentId: string | null) => FsNode[];
   getFile: (id: string) => FsNode | undefined;
@@ -122,6 +128,8 @@ export const useCodeStore = create<CodeState>()(
       ],
       running: false,
       previewHtml: null,
+      canvasVisible: false,
+      turtleCode: null,
 
       createFile: (parentId, langId, name) => {
         const meta = getLangMeta(langId);
@@ -255,6 +263,8 @@ export const useCodeStore = create<CodeState>()(
       clearTerminal: () => set({ terminalLines: [] }),
       setRunning: (v) => set({ running: v }),
       setPreviewHtml: (html) => set({ previewHtml: html }),
+      setCanvasVisible: (v) => set({ canvasVisible: v }),
+      setTurtleCode: (code) => set({ turtleCode: code }),
 
       importFiles: (list, parentId = null) => {
         const now = Date.now();

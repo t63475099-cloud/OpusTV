@@ -1,19 +1,21 @@
 import { getLangMeta, type CodeLangId } from "./codeLanguages";
 
+function usesTurtle(code: string): boolean {
+  return (
+    /\bimport\s+turtle\b/.test(code) ||
+    /\bfrom\s+turtle\s+import\b/.test(code) ||
+    /\bturtle\./.test(code)
+  );
+}
+
 export interface RunResult {
   lines: { kind: "out" | "err" | "info"; text: string }[];
   htmlPreview?: string;
+  /** Chạy Python/Turtle qua Skulpt trên Canvas */
+  turtleMode?: boolean;
+  /** Code Python cần chạy sau khi Canvas mount */
+  turtleCode?: string;
   durationMs: number;
-}
-
-function extractPrintsPython(code: string): string[] {
-  const out: string[] = [];
-  const re = /print\s*\(\s*(?:f?["'`]([^"'`]*)["'`]|([^)]+))\s*\)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(code))) {
-    out.push(m[1] ?? String(m[2] || "").trim());
-  }
-  return out.length ? out : ["(không có lệnh print — mô phỏng OK)"];
 }
 
 function extractPrintfC(code: string): string[] {
@@ -45,7 +47,6 @@ function runJsSandbox(code: string): { kind: "out" | "err"; text: string }[] {
       logs.push({ kind: "out" as const, text: args.map(String).join(" ") }),
   };
   try {
-    // Strip TS type annotations roughly for sandbox
     const stripped = code
       .replace(/:\s*[A-Za-z0-9_<>\[\]|&\s.]+(?=[,)=])/g, "")
       .replace(/\bas\s+[A-Za-z0-9_<>.]+/g, "");
@@ -59,6 +60,14 @@ function runJsSandbox(code: string): { kind: "out" | "err"; text: string }[] {
     });
   }
   return logs;
+}
+
+function looksLikeHtmlGame(code: string): boolean {
+  return (
+    /<canvas/i.test(code) ||
+    /requestAnimationFrame/i.test(code) ||
+    /getContext\s*\(\s*['"]2d['"]\s*\)/i.test(code)
+  );
 }
 
 export async function runCode(
@@ -75,12 +84,33 @@ export async function runCode(
     text: `$ run ${fileName} (${meta.label})`,
   });
 
+  // Python → Skulpt (Turtle nếu có import turtle)
+  if (langId === "python") {
+    const turtle = usesTurtle(code);
+    lines.push({
+      kind: "info",
+      text: turtle
+        ? "Phát hiện turtle — mở Canvas Preview (Skulpt)."
+        : "Chạy Python bằng Skulpt trong trình duyệt.",
+    });
+    return {
+      lines,
+      turtleMode: true,
+      turtleCode: code,
+      durationMs: Math.round(performance.now() - t0),
+    };
+  }
+
   if (meta.runnable === "html") {
     let html = code;
     if (langId === "css") {
       html = `<!DOCTYPE html><html><head><style>${code}</style></head><body><div class="hero"><h1>CSS Preview</h1><p>Style sheet applied.</p></div></body></html>`;
     }
-    lines.push({ kind: "info", text: "Mở Live Preview (HTML)." });
+    if (looksLikeHtmlGame(html) || langId === "html") {
+      lines.push({ kind: "info", text: "Mở Live Preview / Canvas game (HTML)." });
+    } else {
+      lines.push({ kind: "info", text: "Mở Live Preview (HTML)." });
+    }
     return {
       lines,
       htmlPreview: html,
@@ -89,7 +119,20 @@ export async function runCode(
   }
 
   if (meta.runnable === "js") {
-    await new Promise((r) => setTimeout(r, 80));
+    // JS thuần: nếu có canvas game pattern → bọc HTML preview
+    if (looksLikeHtmlGame(code) && !code.trim().startsWith("<")) {
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>html,body{margin:0;background:#111;height:100%;overflow:hidden}canvas{display:block;margin:0 auto;background:#000}</style></head><body><script>${code}<\/script></body></html>`;
+      lines.push({
+        kind: "info",
+        text: "Phát hiện canvas/game JS — mở Live Preview.",
+      });
+      return {
+        lines,
+        htmlPreview: html,
+        durationMs: Math.round(performance.now() - t0),
+      };
+    }
+    await new Promise((r) => setTimeout(r, 40));
     const out = runJsSandbox(code);
     lines.push(...out);
     lines.push({
@@ -99,15 +142,14 @@ export async function runCode(
     return { lines, durationMs: Math.round(performance.now() - t0) };
   }
 
-  // Simulated compile + run for C/C++/C#/Python/Rust
+  // C/C++/C#/Rust — mô phỏng
   lines.push({ kind: "info", text: `Đang biên dịch ${meta.label}…` });
-  await new Promise((r) => setTimeout(r, 350 + Math.random() * 250));
+  await new Promise((r) => setTimeout(r, 280 + Math.random() * 200));
   lines.push({ kind: "info", text: "Biên dịch thành công." });
   lines.push({ kind: "info", text: "Đang chạy…" });
-  await new Promise((r) => setTimeout(r, 120));
+  await new Promise((r) => setTimeout(r, 80));
 
-  const prints =
-    langId === "python" ? extractPrintsPython(code) : extractPrintfC(code);
+  const prints = extractPrintfC(code);
   for (const p of prints) {
     for (const row of p.split("\n")) {
       lines.push({ kind: "out", text: row });

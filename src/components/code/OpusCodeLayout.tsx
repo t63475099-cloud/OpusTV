@@ -37,6 +37,9 @@ export default function OpusCodeLayout() {
   const setRunning = useCodeStore((s) => s.setRunning);
   const addTermLine = useCodeStore((s) => s.addTermLine);
   const setPreviewHtml = useCodeStore((s) => s.setPreviewHtml);
+  const setCanvasVisible = useCodeStore((s) => s.setCanvasVisible);
+  const setTurtleCode = useCodeStore((s) => s.setTurtleCode);
+  const setTerminalHeight = useCodeStore((s) => s.setTerminalHeight);
   const markSaved = useCodeStore((s) => s.markSaved);
 
   useEffect(() => {
@@ -60,16 +63,29 @@ export default function OpusCodeLayout() {
       return;
     }
     const langId = file.langId || "javascript";
-    setRunning(true);
     setTerminalOpen(true);
     setPreviewHtml(null);
+    setCanvasVisible(false);
+    setTurtleCode(null);
     addTermLine({ kind: "cmd", text: `run ${file.name}` });
+    setRunning(true);
     try {
       const result = await runCode(langId, file.content || "", file.name);
       for (const line of result.lines) {
         addTermLine(line);
       }
-      if (result.htmlPreview) setPreviewHtml(result.htmlPreview);
+      if (result.turtleMode && result.turtleCode) {
+        setTerminalHeight(Math.max(360, Math.min(520, window.innerHeight * 0.48)));
+        setCanvasVisible(true);
+        setTurtleCode(result.turtleCode);
+        markSaved(file.id);
+        // running tắt trong CanvasPreview khi Skulpt xong
+        return;
+      }
+      if (result.htmlPreview) {
+        setTerminalHeight(Math.max(280, Math.min(420, window.innerHeight * 0.4)));
+        setPreviewHtml(result.htmlPreview);
+      }
       markSaved(file.id);
     } catch (e) {
       addTermLine({
@@ -77,7 +93,9 @@ export default function OpusCodeLayout() {
         text: e instanceof Error ? e.message : String(e),
       });
     } finally {
-      setRunning(false);
+      // Turtle giữ running=true tới khi Skulpt xong
+      const st = useCodeStore.getState();
+      if (!st.turtleCode) setRunning(false);
     }
   }, [
     activeId,
@@ -86,6 +104,9 @@ export default function OpusCodeLayout() {
     setTerminalOpen,
     setRunning,
     setPreviewHtml,
+    setCanvasVisible,
+    setTurtleCode,
+    setTerminalHeight,
     markSaved,
   ]);
 

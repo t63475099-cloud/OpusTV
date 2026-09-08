@@ -4,24 +4,30 @@ import { useEffect, useRef } from "react";
 import { Eraser, Maximize2, Minimize2, X } from "lucide-react";
 import { useCodeStore } from "@/lib/codeStore";
 import { cn } from "@/lib/utils";
+import CanvasPreview from "./CanvasPreview";
 
 export default function TerminalPanel() {
   const open = useCodeStore((s) => s.terminalOpen);
   const height = useCodeStore((s) => s.terminalHeight);
   const lines = useCodeStore((s) => s.terminalLines);
   const previewHtml = useCodeStore((s) => s.previewHtml);
+  const canvasVisible = useCodeStore((s) => s.canvasVisible);
   const setTerminalOpen = useCodeStore((s) => s.setTerminalOpen);
   const setTerminalHeight = useCodeStore((s) => s.setTerminalHeight);
   const clearTerminal = useCodeStore((s) => s.clearTerminal);
   const setPreviewHtml = useCodeStore((s) => s.setPreviewHtml);
+  const setCanvasVisible = useCodeStore((s) => s.setCanvasVisible);
+  const setTurtleCode = useCodeStore((s) => s.setTurtleCode);
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ y: number; h: number } | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [lines, previewHtml]);
+  }, [lines, previewHtml, canvasVisible]);
 
   if (!open) return null;
+
+  const showSide = !!(previewHtml || canvasVisible);
 
   return (
     <div
@@ -61,6 +67,11 @@ export default function TerminalPanel() {
       <div className="flex items-center gap-2 border-b border-[#2b2b2b] bg-[#1e1e1e] px-2 py-1">
         <span className="text-xs font-medium text-zinc-300">Terminal</span>
         <span className="text-[10px] text-zinc-500">opus@code:~$</span>
+        {canvasVisible && (
+          <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] text-rose-300">
+            Canvas
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-0.5">
           <button
             type="button"
@@ -69,6 +80,8 @@ export default function TerminalPanel() {
             onClick={() => {
               clearTerminal();
               setPreviewHtml(null);
+              setCanvasVisible(false);
+              setTurtleCode(null);
             }}
           >
             <Eraser className="h-3.5 w-3.5" />
@@ -77,7 +90,7 @@ export default function TerminalPanel() {
             type="button"
             className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
             title={height > 320 ? "Thu nhỏ" : "Mở rộng"}
-            onClick={() => setTerminalHeight(height > 320 ? 180 : 420)}
+            onClick={() => setTerminalHeight(height > 320 ? 180 : 480)}
           >
             {height > 320 ? (
               <Minimize2 className="h-3.5 w-3.5" />
@@ -89,7 +102,11 @@ export default function TerminalPanel() {
             type="button"
             className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
             title="Đóng"
-            onClick={() => setTerminalOpen(false)}
+            onClick={() => {
+              setTerminalOpen(false);
+              setCanvasVisible(false);
+              setTurtleCode(null);
+            }}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -98,7 +115,10 @@ export default function TerminalPanel() {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[12px] leading-relaxed"
+          className={cn(
+            "min-h-0 overflow-auto px-3 py-2 font-mono text-[12px] leading-relaxed",
+            showSide ? "flex-1 md:max-w-[45%]" : "flex-1"
+          )}
         >
           {lines.map((l) => (
             <div
@@ -127,7 +147,10 @@ export default function TerminalPanel() {
             <span className="ml-1 animate-pulse">▌</span>
           </div>
         </div>
-        {previewHtml && (
+
+        {canvasVisible && <CanvasPreview />}
+
+        {previewHtml && !canvasVisible && (
           <div className="min-h-[120px] flex-1 border-t border-[#2b2b2b] md:border-l md:border-t-0">
             <div className="bg-[#1e1e1e] px-2 py-1 text-[10px] uppercase text-zinc-500">
               Live Preview

@@ -20,6 +20,7 @@ import {
   MISSION_MAX_CLAIMS,
   type MissionId,
 } from "@/lib/eventCoins";
+import RedeemCashPanel from "@/components/RedeemCashPanel";
 import { useNotifStore } from "@/lib/notifications";
 
 /** Nền canvas giữ nguyên phong cách hạt sáng */
@@ -466,6 +467,8 @@ export default function SuKienPage() {
           })}
         </ul>
       </section>
+
+      <RedeemCashPanel />
 
       <section className="glass-panel p-4 text-sm text-zinc-400 space-y-2">
         <h2 className="text-sm font-semibold text-white flex items-center gap-2">

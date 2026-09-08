@@ -23,6 +23,54 @@ export const UNLOCK_COST = {
   movie: 120,
 } as const;
 
+/** Quy đổi xu → VND */
+export const COIN_TO_VND = 10; // 1 xu = 10 VND
+export const MIN_REDEEM_COINS = 5000;
+export const REDEEM_FEE_RATE = 0.02; // 2% phí
+
+export type PaymentMethodId =
+  | "bank"
+  | "momo"
+  | "zalopay"
+  | "vnpay"
+  | "shopeepay"
+  | "viettel"
+  | "card";
+
+export interface PaymentMethod {
+  id: PaymentMethodId;
+  name: string;
+  desc: string;
+  minCoins: number;
+}
+
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  { id: "bank", name: "Chuyển khoản ngân hàng", desc: "Vietcombank, MB, Techcombank, TPBank…", minCoins: MIN_REDEEM_COINS },
+  { id: "momo", name: "MoMo", desc: "Ví MoMo", minCoins: MIN_REDEEM_COINS },
+  { id: "zalopay", name: "ZaloPay", desc: "Ví ZaloPay", minCoins: MIN_REDEEM_COINS },
+  { id: "vnpay", name: "VNPay", desc: "Cổng VNPay / QR ngân hàng", minCoins: MIN_REDEEM_COINS },
+  { id: "shopeepay", name: "ShopeePay", desc: "Ví ShopeePay", minCoins: MIN_REDEEM_COINS },
+  { id: "viettel", name: "Viettel Money", desc: "Ví Viettel Money", minCoins: MIN_REDEEM_COINS },
+  { id: "card", name: "Thẻ quốc tế", desc: "Visa / Mastercard / JCB", minCoins: MIN_REDEEM_COINS },
+];
+
+export type RedeemStatus = "pending" | "processing" | "done" | "rejected";
+
+export interface RedeemRequest {
+  id: string;
+  coins: number;
+  vndGross: number;
+  fee: number;
+  vndNet: number;
+  method: PaymentMethodId;
+  accountName: string;
+  accountInfo: string;
+  status: RedeemStatus;
+  createdAt: number;
+}
+
+
+
 /** Mỗi lần nhận nhiệm vụ */
 export const MISSION_REWARD = 100;
 /** Số lần nhận tối đa mỗi nhiệm vụ / ngày */
@@ -161,6 +209,7 @@ function emptyClaims(): ClaimCountMap {
 
 export interface EventState {
   coins: number;
+  redeemHistory: RedeemRequest[];
   streakDay: number;
   lastCheckIn: string | null;
   claimedCheckInDay: string | null;
@@ -180,9 +229,17 @@ export interface EventState {
     todayReward: number;
     cycleDay: number;
   };
+
   claimCheckIn: () => { ok: boolean; coins: number; message: string };
   addMissionProgress: (id: MissionId, amount?: number) => void;
   trackEpisode: (slug: string) => void;
+  redeemCash: (opts: {
+    coins: number;
+    method: PaymentMethodId;
+    accountName: string;
+    accountInfo: string;
+  }) => { ok: boolean; error?: string; request?: RedeemRequest };
+  cancelRedeem: (id: string) => boolean;
   claimMission: (id: MissionId) => { ok: boolean; coins: number; message: string };
   spendUnlock: (
     key: string,
@@ -197,6 +254,7 @@ export const useEventStore = create<EventState>()(
   persist(
     (set, get) => ({
       coins: 0,
+      redeemHistory: [],
       streakDay: 0,
       lastCheckIn: null,
       claimedCheckInDay: null,
@@ -298,6 +356,59 @@ export const useEventStore = create<EventState>()(
         if (!slug || s.episodeSlugsToday.includes(slug)) return;
         set({ episodeSlugsToday: [...s.episodeSlugsToday, slug] });
         get().addMissionProgress("episode2", 1);
+      },
+
+
+      redeemCash: ({ coins: amount, method, accountName, accountInfo }) => {
+        const state = get();
+        const amt = Math.floor(Number(amount) || 0);
+        if (amt < MIN_REDEEM_COINS) {
+          return { ok: false, error: `Tối thiểu ${MIN_REDEEM_COINS} xu` };
+        }
+        if (amt > state.coins) {
+          return { ok: false, error: "Không đủ xu" };
+        }
+        if (!PAYMENT_METHODS.some((m) => m.id === method)) {
+          return { ok: false, error: "Phương thức không hợp lệ" };
+        }
+        const name = (accountName || "").trim();
+        const info = (accountInfo || "").trim();
+        if (name.length < 2) return { ok: false, error: "Nhập tên chủ tài khoản" };
+        if (info.length < 4) return { ok: false, error: "Nhập số tài khoản / SĐT ví" };
+
+        const vndGross = amt * COIN_TO_VND;
+        const fee = Math.round(vndGross * REDEEM_FEE_RATE);
+        const vndNet = Math.max(0, vndGross - fee);
+        const req: RedeemRequest = {
+          id: `rd_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          coins: amt,
+          vndGross,
+          fee,
+          vndNet,
+          method,
+          accountName: name,
+          accountInfo: info,
+          status: "pending",
+          createdAt: Date.now(),
+        };
+        set({
+          coins: state.coins - amt,
+          redeemHistory: [req, ...(state.redeemHistory || [])].slice(0, 50),
+        });
+        return { ok: true, request: req };
+      },
+      cancelRedeem: (id) => {
+        const state = get();
+        const list = state.redeemHistory || [];
+        const item = list.find((r) => r.id === id);
+        if (!item || item.status !== "pending") return false;
+        set({
+          coins: state.coins + item.coins,
+          redeemHistory: list.map((r) =>
+            r.id === id ? { ...r, status: "rejected" as RedeemStatus } : r
+          ),
+        });
+        return true;
       },
 
       claimMission: (id) => {

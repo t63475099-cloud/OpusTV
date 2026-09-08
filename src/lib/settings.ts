@@ -28,6 +28,8 @@ export type ThemeAccent = "red" | "blue" | "violet" | "emerald";
 export interface AppSettings {
   // Playback
   autoPlayNext: boolean;
+  /** Hiện phụ đề tiếng Việt */
+  vietsub: boolean;
   autoPlayStart: boolean;
   defaultQuality: QualityPref;
   seekSeconds: SeekSec;
@@ -204,6 +206,7 @@ const defaultProfile: UserProfile = {
 
 export const defaultSettings: AppSettings = {
   autoPlayNext: true,
+  vietsub: true,
   autoPlayStart: true,
   defaultQuality: "auto",
   seekSeconds: 10,

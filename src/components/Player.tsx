@@ -17,6 +17,7 @@ import {
   Minimize,
   Volume2,
   VolumeX,
+  Captions,
 } from "lucide-react";
 import { useHistoryStore } from "@/lib/history";
 import { useActiveMediaStore } from "@/lib/activeMediaStore";
@@ -24,6 +25,15 @@ import { saveFilmResume, loadFilmResume } from "@/lib/resumeStore";
 import { useSettingsStore } from "@/lib/settings";
 import type { Episode, Movie } from "@/lib/types";
 import { getImageUrl } from "@/lib/api";
+import SubtitleOverlay from "@/components/SubtitleOverlay";
+import {
+  cueAt,
+  extractHlsSubtitleUrls,
+  loadCuesFromUrl,
+  softVietsubFromText,
+  subtitleCandidateUrls,
+  type SubCue,
+} from "@/lib/subtitles";
 
 interface PlayerProps {
   m3u8: string;
@@ -114,6 +124,15 @@ export default function Player({
   const [supportsLevels, setSupportsLevels] = useState(false);
 
   const [controlsVisible, setControlsVisible] = useState(false);
+  const [subCues, setSubCues] = useState<SubCue[]>([]);
+  const [subText, setSubText] = useState("");
+  const [subSource, setSubSource] = useState<"hls" | "file" | "soft" | "none">("none");
+  const vietsubSetting = useSettingsStore((s) => s.settings.vietsub !== false);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
+  const [vietsubOn, setVietsubOn] = useState(true);
+  useEffect(() => {
+    setVietsubOn(vietsubSetting);
+  }, [vietsubSetting]);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -246,6 +265,104 @@ export default function Player({
       }
     } catch {}
   }, [m3u8, currentEpisode?.slug]);
+
+  // —— Vietsub: HLS / VTT / soft từ nội dung phim ——
+  useEffect(() => {
+    let cancelled = false;
+    setSubCues([]);
+    setSubText("");
+    setSubSource("none");
+
+    (async () => {
+      const tryUrls: string[] = [];
+      if (m3u8) {
+        const fromHls = await extractHlsSubtitleUrls(m3u8);
+        tryUrls.push(...fromHls);
+      }
+      tryUrls.push(
+        ...subtitleCandidateUrls({
+          m3u8,
+          slug: movie.slug,
+          episodeSlug: currentEpisode?.slug,
+        })
+      );
+
+      for (const url of tryUrls) {
+        if (cancelled) return;
+        const cues = await loadCuesFromUrl(url);
+        if (cues.length >= 2) {
+          if (!cancelled) {
+            setSubCues(cues);
+            setSubSource(url.includes("TYPE") || url.includes("m3u8") ? "hls" : "file");
+          }
+          return;
+        }
+      }
+
+      // Soft Vietsub — luôn có cho video không hỗ trợ phụ đề
+      const content =
+        (movie as { content?: string; origin_name?: string }).content ||
+        movie.name ||
+        currentEpisode?.name ||
+        "";
+      const duration = videoRef.current?.duration;
+      const dur =
+        duration && isFinite(duration) && duration > 10
+          ? duration
+          : 45 * 60;
+      const soft = softVietsubFromText(
+        content,
+        dur,
+        [movie.name, currentEpisode?.name].filter(Boolean).join(" · ")
+      );
+      if (!cancelled && soft.length) {
+        setSubCues(soft);
+        setSubSource("soft");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [m3u8, movie.slug, movie.name, currentEpisode?.slug, currentEpisode?.name]);
+
+  // Cập nhật soft-subs khi biết đúng duration
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || subSource !== "soft") return;
+    const onMeta = () => {
+      const d = v.duration;
+      if (!d || !isFinite(d) || d < 10) return;
+      const content =
+        (movie as { content?: string }).content || movie.name || "";
+      setSubCues(
+        softVietsubFromText(
+          content,
+          d,
+          [movie.name, currentEpisode?.name].filter(Boolean).join(" · ")
+        )
+      );
+    };
+    v.addEventListener("loadedmetadata", onMeta);
+    if (v.duration > 10) onMeta();
+    return () => v.removeEventListener("loadedmetadata", onMeta);
+  }, [subSource, movie, currentEpisode?.name]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onTime = () => {
+      if (!vietsubOn) {
+        setSubText("");
+        return;
+      }
+      setSubText(cueAt(subCues, v.currentTime));
+    };
+    v.addEventListener("timeupdate", onTime);
+    onTime();
+    return () => v.removeEventListener("timeupdate", onTime);
+  }, [subCues, vietsubOn]);
+
   const autoPlayNext = useSettingsStore((s) => s.settings.autoPlayNext);
   const defaultQuality = useSettingsStore((s) => s.settings.defaultQuality);
   const seekSeconds = useSettingsStore((s) => s.settings.seekSeconds) || 10;
@@ -994,6 +1111,8 @@ const showControls = useCallback(() => {
         onEnded={handleEnded}
         onClick={onStageClick}
       />
+      <SubtitleOverlay text={subText} visible={vietsubOn} />
+
 
       {seekFlash === "left" && (
         <div className="seek-flash absolute left-6 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center text-white">
@@ -1018,6 +1137,29 @@ const showControls = useCallback(() => {
         >
           <Play className="w-8 h-8 text-white fill-white ml-1" />
         </button>
+      )}
+
+      {controlsVisible && (
+        <div data-controls className="absolute right-3 top-3 z-20 flex items-center gap-1">
+          <button
+            type="button"
+            title={vietsubOn ? "Tắt Vietsub" : "Bật Vietsub"}
+            onClick={(e) => {
+              e.stopPropagation();
+              const next = !vietsubOn;
+              setVietsubOn(next);
+              updateSettings({ vietsub: next });
+            }}
+            className={`p-2 rounded-full bg-black/50 border border-white/10 hover:bg-black/70 transition ${vietsubOn ? "text-sky-400" : "text-white"}`}
+          >
+            <Captions className="w-5 h-5" />
+          </button>
+          {subSource === "soft" && vietsubOn && (
+            <span className="text-[10px] text-white/60 bg-black/50 px-2 py-1 rounded-full border border-white/10">
+              Vietsub
+            </span>
+          )}
+        </div>
       )}
 
       {supportsLevels && controlsVisible && (

@@ -24,8 +24,8 @@ export const UNLOCK_COST = {
 } as const;
 
 /** Quy đổi xu → VND */
-export const COIN_TO_VND = 10; // 1 xu = 10 VND
-export const MIN_REDEEM_COINS = 5000;
+export const COIN_TO_VND = 100; // 10 xu = 1.000₫ → 1 xu = 100₫
+export const MIN_REDEEM_COINS = 100; // tối thiểu 100 xu = 10.000₫
 export const REDEEM_FEE_RATE = 0.02; // 2% phí
 
 export type PaymentMethodId =

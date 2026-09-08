@@ -44,7 +44,7 @@ export default function RedeemCashPanel() {
     return { gross, fee, net: Math.max(0, gross - fee) };
   }, [amt]);
 
-  const submit = () => {
+  const submit = async () => {
     setError("");
     setOkMsg("");
     const res = redeemCash({
@@ -63,10 +63,26 @@ export default function RedeemCashPanel() {
       }`
     );
     try {
+      await fetch("/api/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          coins: amt,
+          method,
+          accountName,
+          accountInfo,
+          vndNet: res.request!.vndNet,
+          requestId: res.request!.id,
+        }),
+      });
+    } catch {
+      /* offline: vẫn giữ lịch sử local */
+    }
+    try {
       useNotifStore.getState().add({
         kind: "system",
         title: "Đổi xu",
-        body: `Yêu cầu ${amt} xu · ${fmtVnd(res.request!.vndNet)}`,
+        body: `Yêu cầu ${amt} xu · ${fmtVnd(res.request!.vndNet)} — chờ chuyển khoản`,
         href: "/su-kien",
       });
     } catch {
@@ -91,8 +107,12 @@ export default function RedeemCashPanel() {
         </button>
       </div>
       <p className="text-xs text-zinc-400">
-        1 xu = {COIN_TO_VND}₫ · Tối thiểu {MIN_REDEEM_COINS.toLocaleString("vi-VN")} xu · Phí{" "}
+        10 xu = 1.000₫ (1 xu = {COIN_TO_VND}₫) · Tối thiểu{" "}
+        {MIN_REDEEM_COINS.toLocaleString("vi-VN")} xu · Phí{" "}
         {Math.round(REDEEM_FEE_RATE * 100)}%
+      </p>
+      <p className="text-[11px] text-zinc-500">
+        Yêu cầu được ghi nhận và chuyển tiền thật sau khi hệ thống/admin xử lý (ngân hàng hoặc ví).
       </p>
       <p className="text-xs text-zinc-500">
         Số dư: <strong className="text-amber-300">{coins.toLocaleString("vi-VN")} xu</strong>
@@ -190,7 +210,7 @@ export default function RedeemCashPanel() {
             onClick={submit}
             className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2.5 transition-all duration-300 active:scale-[0.98]"
           >
-            Xác nhận đổi xu
+            Gửi yêu cầu nhận tiền
           </button>
         </div>
       )}

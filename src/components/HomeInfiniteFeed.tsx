@@ -96,7 +96,7 @@ export default function HomeInfiniteFeed() {
   return (
     <section className="px-3 sm:px-4 md:px-6 lg:px-8 mb-10">
       <h2 className="text-base md:text-lg font-bold text-white mb-4">Đề xuất cho bạn</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
+      <div data-gsap-reveal className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
         {items.map((movie, i) => (
           <div key={movie.slug || movie._id || String(i)} className="min-w-0 [&_a]:!w-full">
             <MovieCard movie={movie} priority={i < 6} variant="poster" />

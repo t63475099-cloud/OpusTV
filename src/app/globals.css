@@ -2386,50 +2386,131 @@ a, button, [role="button"], input, select, textarea, summary {
 }
 
 
-/* —— Opus Code: transitions & typing feel —— */
+
+/* —— Opus Code: transitions 0.5s + GPU-friendly motion —— */
 .opus-code-shell {
   --opus-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --opus-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --opus-spring: cubic-bezier(0.34, 1.15, 0.64, 1);
   --opus-dur: 0.5s;
+  --opus-dur-fast: 0.28s;
 }
+@media (prefers-reduced-motion: reduce) {
+  .opus-code-shell,
+  .opus-code-shell * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .opus-code-shell * {
   scrollbar-width: thin;
   scrollbar-color: #3c3c3c transparent;
 }
+
+/* Interactive controls */
 .opus-code-shell button,
 .opus-code-shell a,
-.opus-code-shell [role="button"] {
-  transition: background-color var(--opus-dur) var(--opus-ease),
+.opus-code-shell [role="button"],
+.opus-code-shell [role="option"] {
+  transition:
+    background-color var(--opus-dur) var(--opus-ease),
     color var(--opus-dur) var(--opus-ease),
-    transform 0.25s var(--opus-ease),
+    border-color var(--opus-dur) var(--opus-ease),
     opacity var(--opus-dur) var(--opus-ease),
-    box-shadow var(--opus-dur) var(--opus-ease);
+    box-shadow var(--opus-dur) var(--opus-ease),
+    transform var(--opus-dur-fast) var(--opus-spring);
+  will-change: transform, opacity;
 }
-/* Monaco editor container soft fade when switching files */
+.opus-code-shell button:active,
+.opus-code-shell [role="button"]:active {
+  transform: scale(0.96);
+}
+
+/* Panels / drawers — only transform & opacity (GPU) */
+.opus-code-shell aside,
+.opus-code-shell [data-opus-panel] {
+  transition:
+    transform var(--opus-dur) var(--opus-ease-out),
+    opacity var(--opus-dur) var(--opus-ease),
+    width var(--opus-dur) var(--opus-ease);
+  will-change: transform, opacity;
+}
+
+/* Terminal height / expand */
+.opus-code-shell [data-opus-terminal] {
+  transition: height var(--opus-dur) var(--opus-ease-out), opacity var(--opus-dur) var(--opus-ease);
+}
+
+/* Tabs */
+.opus-code-shell [data-opus-tab] {
+  transition:
+    background-color var(--opus-dur) var(--opus-ease),
+    color var(--opus-dur) var(--opus-ease),
+    border-color var(--opus-dur) var(--opus-ease),
+    opacity var(--opus-dur) var(--opus-ease);
+}
+
+/* Editor surface */
 .opus-code-shell .monaco-editor,
 .opus-code-shell .overflow-guard {
-  transition: opacity 0.35s var(--opus-ease);
+  transition: opacity 0.45s var(--opus-ease);
 }
-/* Suggest widget already animated; ensure smooth list */
+
+/* Suggest / listbox */
 .opus-code-shell [role="listbox"] {
-  animation: opus-fade-rise 0.35s var(--opus-ease) both;
+  animation: opus-fade-rise var(--opus-dur) var(--opus-ease-out) both;
+  transform-origin: top left;
 }
+
+/* Live preview already handled in component */
+
 @keyframes opus-fade-rise {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translate3d(0, 10px, 0) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 @keyframes opus-panel-in {
   from {
     opacity: 0;
-    transform: translateY(16px) scale(0.96);
+    transform: translate3d(0, 18px, 0) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
+}
+@keyframes opus-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.opus-code-fade-in {
+  animation: opus-fade var(--opus-dur) var(--opus-ease) both;
+}
+.opus-code-panel-in {
+  animation: opus-panel-in var(--opus-dur) var(--opus-spring) both;
+}
+
+
+/* —— GSAP / Lenis smooth scroll —— */
+html.lenis, html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+[data-gsap-reveal] {
+  will-change: transform, opacity, filter;
 }

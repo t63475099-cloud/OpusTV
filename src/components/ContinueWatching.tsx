@@ -37,7 +37,7 @@ export default function ContinueWatching() {
   if (!items.length) return null;
 
   return (
-    <section className="mb-8 md:mb-10 px-4 md:px-12">
+    <section data-gsap-reveal data-gsap-row className="mb-8 md:mb-10 px-4 md:px-12">
       <h2 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">
         Tiếp tục xem
       </h2>

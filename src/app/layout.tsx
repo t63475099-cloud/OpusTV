@@ -8,6 +8,7 @@ import ScrollNavFab from "@/components/ScrollNavFab";
 import Sidebar from "@/components/Sidebar";
 import FloatingMiniPlayer from "@/components/FloatingMiniPlayer";
 import AmbientBackdrop from "@/components/AmbientBackdrop";
+import GsapScrollProvider from "@/components/GsapScrollProvider";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -57,13 +58,15 @@ export default function RootLayout({
         <AmbientBackdrop />
         <>
           <LanguageSync />
-          <SyncBootstrap />
+          <GsapScrollProvider>
+            <SyncBootstrap />
           <ScrollNavFab />
           <Navbar />
         <div className="flex flex-1 w-full max-w-[1920px] mx-auto">
           <Sidebar />
           <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>
           <FloatingMiniPlayer />
+            </GsapScrollProvider>
         </div>
         <footer className="border-t border-white/10 py-8 px-4 text-center text-zinc-500 text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))] bg-black/20 backdrop-blur-md">
           <p className="font-semibold text-zinc-300">{APP_NAME}</p>

@@ -270,7 +270,7 @@ export default function SuKienPage() {
   const equipItem = useEventStore((s) => s.equipItem);
   const activateItem = useEventStore((s) => s.activateItem);
   const luckySpin = useEventStore((s) => s.luckySpin);
-  const push = useNotifStore((s) => s.push);
+  const addNotif = useNotifStore((s) => s.add);
 
   const [tab, setTab] = useState<TabId>("missions");
   const [toast, setToast] = useState("");
@@ -312,7 +312,7 @@ export default function SuKienPage() {
     const r = claimCheckIn();
     flash(r.message);
     if (r.ok) {
-      push({ title: "Điểm danh", body: r.message, href: "/su-kien" });
+      addNotif({ kind: "mission", title: "Điểm danh", body: r.message, href: "/su-kien" });
       setStatus(getStreakStatus());
     }
   };
@@ -321,7 +321,7 @@ export default function SuKienPage() {
     const r = claimMission(id);
     flash(r.message);
     if (r.ok) {
-      push({ title: "Nhiệm vụ", body: `${title}: ${r.message}`, href: "/su-kien" });
+      addNotif({ kind: "mission", title: "Nhiệm vụ", body: `${title}: ${r.message}`, href: "/su-kien" });
       setSummary(dailyMissionSummary());
     }
   };
@@ -329,7 +329,7 @@ export default function SuKienPage() {
   const onBuy = (shopId: string) => {
     const r = buyShopItem(shopId);
     flash(r.message);
-    if (r.ok) push({ title: "Cửa hàng", body: r.message, href: "/su-kien" });
+    if (r.ok) addNotif({ kind: "mission", title: "Cửa hàng", body: r.message, href: "/su-kien" });
   };
 
   const onEquip = (id: string) => {
@@ -340,7 +340,7 @@ export default function SuKienPage() {
   const onActivate = (id: string) => {
     const r = activateItem(id);
     flash(r.message);
-    if (r.ok) push({ title: "Kho đồ", body: r.message, href: "/su-kien" });
+    if (r.ok) addNotif({ kind: "mission", title: "Kho đồ", body: r.message, href: "/su-kien" });
   };
 
   const onSpin = () => {
@@ -360,7 +360,7 @@ export default function SuKienPage() {
       setSpinLabel(preview.label || preview.message);
       setBurst(true);
       flash(preview.message);
-      push({ title: "Vòng quay", body: preview.message, href: "/su-kien" });
+      addNotif({ kind: "mission", title: "Vòng quay", body: preview.message, href: "/su-kien" });
       window.setTimeout(() => setBurst(false), 1600);
     }, 3200);
   };

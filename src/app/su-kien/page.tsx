@@ -248,6 +248,70 @@ function pushMissionNotif(title: string, body: string) {
 }
 
 
+
+const WHEEL_COLORS = [
+  "#ef4444", "#f59e0b", "#22c55e", "#06b6d4",
+  "#3b82f6", "#8b5cf6", "#ec4899", "#eab308",
+];
+
+function fmtRemain(ms: number) {
+  if (ms <= 0) return "Hết hạn";
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (d > 0) return `${d}n ${h}h ${m}p`;
+  if (h > 0) return `${h}h ${m}p ${String(sec).padStart(2, "0")}s`;
+  return `${m}p ${String(sec).padStart(2, "0")}s`;
+}
+
+function WheelFace({ labels, colors }: { labels: string[]; colors: string[] }) {
+  const n = labels.length;
+  const stops = labels
+    .map((_, i) => {
+      const a0 = (i / n) * 360;
+      const a1 = ((i + 1) / n) * 360;
+      return `${colors[i % colors.length]} ${a0}deg ${a1}deg`;
+    })
+    .join(", ");
+  return (
+    <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(from -90deg, ${stops})` }}>
+      {/* divider lines */}
+      {labels.map((_, i) => (
+        <div
+          key={i}
+          className="absolute left-1/2 top-1/2 w-[1px] h-1/2 origin-top bg-black/40"
+          style={{ transform: `rotate(${(i / n) * 360 - 90}deg)` }}
+        />
+      ))}
+      {/* labels */}
+      {labels.map((lb, i) => {
+        const mid = ((i + 0.5) / n) * 360 - 90;
+        const rad = (mid * Math.PI) / 180;
+        // place text outward from center
+        const r = 34; // %
+        const x = 50 + r * Math.cos(rad);
+        const y = 50 + r * Math.sin(rad);
+        return (
+          <span
+            key={i}
+            className="absolute text-[9px] sm:text-[10px] md:text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] whitespace-nowrap pointer-events-none"
+            style={{
+              left: `${x}%`,
+              top: `${y}%`,
+              transform: `translate(-50%, -50%) rotate(${mid + 90}deg)`,
+            }}
+          >
+            {lb}
+          </span>
+        );
+      })}
+      <div className="absolute inset-[28%] sm:inset-[30%] rounded-full bg-neutral-950/95 border border-white/20 shadow-inner" />
+    </div>
+  );
+}
+
 export default function SuKienPage() {
   const coins = useEventStore((s) => s.coins);
   const totalEarned = useEventStore((s) => s.totalEarned);
@@ -277,6 +341,8 @@ export default function SuKienPage() {
   const [spinDeg, setSpinDeg] = useState(0);
   const [spinLabel, setSpinLabel] = useState<string | null>(null);
   const [burst, setBurst] = useState(false);
+  const [prizeModal, setPrizeModal] = useState<{ label: string; message: string } | null>(null);
+  const [nowTick, setNowTick] = useState(Date.now());
   const [status, setStatus] = useState({
     streakDay: 0,
     canClaim: true,
@@ -296,6 +362,11 @@ export default function SuKienPage() {
       console.error(e);
     }
   }, [addMissionProgress, dailyMissionSummary, ensureMissionDay, getStreakStatus]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const tickerItems = useMemo(() => {
     const live = (liveFeed || []).map((x) => x.text);
@@ -342,6 +413,8 @@ export default function SuKienPage() {
     if (r.ok) addNotif({ kind: "mission", title: "Kho đồ", body: r.message, href: "/su-kien" });
   };
 
+  const wheelLabels = SPIN_REWARDS.map((r) => r.label.replace("Hộp quà", "Hộp").replace("Thẻ 1 tập", "1 tập"));
+
   const onSpin = () => {
     if (spinning) return;
     const preview = luckySpin();
@@ -349,15 +422,21 @@ export default function SuKienPage() {
       flash(preview.message);
       return;
     }
-    // re-run visual: store already applied; animate wheel
     setSpinning(true);
     setBurst(false);
-    const extra = 360 * 5 + Math.floor(Math.random() * 360);
+    setPrizeModal(null);
+    // Align roughly to segment (equal slices)
+    const n = SPIN_REWARDS.length;
+    const idx = Math.max(0, SPIN_REWARDS.findIndex((x) => x.label === preview.label || x.id === (preview as { label?: string }).label));
+    const seg = 360 / n;
+    const targetMid = idx >= 0 ? idx * seg + seg / 2 : Math.random() * 360;
+    const extra = 360 * 5 + (360 - (targetMid % 360));
     setSpinDeg((d) => d + extra);
     window.setTimeout(() => {
       setSpinning(false);
       setSpinLabel(preview.label || preview.message);
       setBurst(true);
+      setPrizeModal({ label: preview.label || "Phần thưởng", message: preview.message });
       flash(preview.message);
       addNotif({ kind: "mission", title: "Vòng quay", body: preview.message, href: "/su-kien" });
       window.setTimeout(() => setBurst(false), 1600);
@@ -374,7 +453,7 @@ export default function SuKienPage() {
   ];
 
   return (
-    <div className="min-h-[100dvh] pt-[calc(var(--nav-h,3.5rem)+env(safe-area-inset-top,0px)+0.5rem)] pb-28 px-3 sm:px-4 max-w-lg mx-auto relative">
+    <div className="min-h-[100dvh] pt-[calc(var(--nav-h,3.5rem)+env(safe-area-inset-top,0px)+0.5rem)] pb-28 px-3 sm:px-4 md:px-6 max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto relative">
       {/* Canvas + Hello giữ nguyên */}
       <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] max-h-[220px] rounded-2xl overflow-hidden mb-3 border border-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
         <EventCanvas />
@@ -406,13 +485,13 @@ export default function SuKienPage() {
         </Link>
         <div className="flex items-center gap-2">
           {vipOn && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 flex items-center gap-1">
-              <Crown className="w-3 h-3" /> VIP
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 flex items-center gap-1 tabular-nums">
+              <Crown className="w-3 h-3" /> VIP {fmtRemain((vipExpiresAt || 0) - nowTick)}
             </span>
           )}
           {boostOn && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 flex items-center gap-1">
-              <Zap className="w-3 h-3" /> x2
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 flex items-center gap-1 tabular-nums">
+              <Zap className="w-3 h-3" /> x2 {fmtRemain((boostExpiresAt || 0) - nowTick)}
             </span>
           )}
           <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-amber-500/15 border border-amber-400/30 text-amber-200 text-sm font-semibold">
@@ -452,38 +531,42 @@ export default function SuKienPage() {
       </div>
 
       {/* Lucky Spin — luôn hiện phía trên nội dung tab */}
-      <section className="glass-panel p-4 mb-4 relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Disc3 className={`w-4 h-4 text-rose-400 ${spinning ? "animate-spin" : ""}`} />
+      
+      {/* Lucky Spin */}
+      <section className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 sm:p-5 md:p-6 mb-4 relative overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
+          <h2 className="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
+            <Disc3 className={`w-4 h-4 sm:w-5 sm:h-5 text-rose-400 ${spinning ? "animate-spin" : ""}`} />
             Vòng quay may mắn
           </h2>
-          <span className="text-[11px] text-zinc-400">{SPIN_COST} xu / lượt</span>
+          <span className="text-[10px] sm:text-xs text-zinc-400 shrink-0">{SPIN_COST} xu / lượt</span>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="relative w-40 h-40 shrink-0">
+
+        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
+          <div className="relative w-[min(72vw,260px)] h-[min(72vw,260px)] sm:w-[280px] sm:h-[280px] md:w-[300px] md:h-[300px] shrink-0">
             <div
-              className="absolute inset-0 rounded-full border-4 border-white/20 shadow-[0_0_30px_rgba(244,63,94,0.35)] transition-transform duration-[3200ms] ease-out"
-              style={{
-                transform: `rotate(${spinDeg}deg)`,
-                background:
-                  "conic-gradient(#f43f5e 0 45deg,#a855f7 45deg 90deg,#3b82f6 90deg 135deg,#fbbf24 135deg 180deg,#22c55e 180deg 225deg,#ec4899 225deg 270deg,#06b6d4 270deg 315deg,#eab308 315deg 360deg)",
-              }}
-            />
-            <div className="absolute inset-[18%] rounded-full bg-neutral-950/90 border border-white/15 flex items-center justify-center text-center px-2">
-              <span className="text-[11px] text-zinc-200 leading-snug">
+              className="absolute inset-0 rounded-full border-[3px] sm:border-4 border-white/25 shadow-[0_0_40px_rgba(244,63,94,0.3)] transition-transform duration-[3200ms] ease-out"
+              style={{ transform: `rotate(${spinDeg}deg)` }}
+            >
+              <WheelFace labels={wheelLabels} colors={WHEEL_COLORS} />
+            </div>
+            <div className="absolute inset-[28%] sm:inset-[30%] rounded-full bg-neutral-950/95 border border-white/15 flex items-center justify-center text-center px-2 z-10 pointer-events-none">
+              <span className="text-[10px] sm:text-xs text-zinc-200 leading-snug font-medium">
                 {spinLabel || "Chúc may mắn"}
               </span>
             </div>
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-b-[14px] border-l-transparent border-r-transparent border-b-rose-400 drop-shadow" />
+            {/* pointer */}
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 drop-shadow-lg">
+              <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-rose-400" />
+            </div>
             {burst && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                {Array.from({ length: 12 }).map((_, i) => (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-30">
+                {Array.from({ length: 14 }).map((_, i) => (
                   <span
                     key={i}
                     className="absolute w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"
                     style={{
-                      transform: `rotate(${i * 30}deg) translateY(-48px)`,
+                      transform: `rotate(${i * (360 / 14)}deg) translateY(-46%)`,
                       animationDuration: "0.9s",
                     }}
                   />
@@ -491,20 +574,30 @@ export default function SuKienPage() {
               </div>
             )}
           </div>
-          <div className="flex-1 w-full space-y-2">
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Quay để nhận xu thưởng, thẻ mở phim, khung viền hoặc hộp quà.
+
+          <div className="flex-1 w-full min-w-0 space-y-3">
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Mỗi phần trên vòng là một phần thưởng riêng. Kim chỉ vào ô trúng.
             </p>
-            <ul className="text-[11px] text-zinc-500 grid grid-cols-2 gap-1">
-              {SPIN_REWARDS.slice(0, 6).map((r) => (
-                <li key={r.id}>· {r.label}</li>
+            <ul className="grid grid-cols-2 gap-1.5 text-[10px] sm:text-[11px] text-zinc-300">
+              {SPIN_REWARDS.map((r, i) => (
+                <li
+                  key={r.id}
+                  className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/10 px-2 py-1"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/20"
+                    style={{ background: WHEEL_COLORS[i % WHEEL_COLORS.length] }}
+                  />
+                  <span className="truncate">{r.label}</span>
+                </li>
               ))}
             </ul>
             <button
               type="button"
               disabled={spinning || coins < SPIN_COST}
               onClick={onSpin}
-              className="w-full rounded-xl py-2.5 text-sm font-semibold bg-gradient-to-r from-rose-600 to-fuchsia-600 text-white disabled:opacity-40 bounce-press shadow-[0_0_24px_rgba(244,63,94,0.35)]"
+              className="w-full rounded-xl py-2.5 sm:py-3 text-sm font-semibold bg-gradient-to-r from-rose-600 to-fuchsia-600 text-white disabled:opacity-40 bounce-press shadow-[0_0_24px_rgba(244,63,94,0.35)] transition-all duration-500"
             >
               {spinning ? "Đang quay…" : `Quay · ${SPIN_COST} xu`}
             </button>
@@ -512,7 +605,33 @@ export default function SuKienPage() {
         </div>
       </section>
 
-      {tab === "missions" && (
+      {/* Prize modal liquid glass */}
+      {prizeModal && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm transition-opacity duration-500"
+          onClick={() => setPrizeModal(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-white/15 bg-white/[0.08] backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 text-center animate-[fadeUp_0.5s_ease]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400/30 to-rose-500/30 border border-white/20 flex items-center justify-center text-2xl">
+              🎁
+            </div>
+            <p className="text-xs uppercase tracking-wider text-zinc-400 mb-1">Phần thưởng</p>
+            <h3 className="text-xl font-bold text-white mb-2">{prizeModal.label}</h3>
+            <p className="text-sm text-zinc-300 mb-5">{prizeModal.message}</p>
+            <button
+              type="button"
+              onClick={() => setPrizeModal(null)}
+              className="w-full rounded-xl py-2.5 text-sm font-semibold bg-white text-black transition-all duration-500 hover:scale-[1.02] active:scale-95"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
+{tab === "missions" && (
         <>
           <section className="glass-panel p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
@@ -684,16 +803,32 @@ export default function SuKienPage() {
 
       {tab === "inventory" && (
         <section className="space-y-3">
-          <div className="glass-panel p-3 text-xs text-zinc-400 flex flex-wrap gap-2">
-            <span>
-              Khung:{" "}
-              <strong className="text-zinc-200">{equippedFrame || "Chưa trang bị"}</strong>
-            </span>
-            <span className="text-zinc-600">·</span>
-            <span>
-              Huy hiệu:{" "}
-              <strong className="text-zinc-200">{equippedBadge || "Chưa trang bị"}</strong>
-            </span>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 text-xs text-zinc-400 space-y-2 transition-all duration-500">
+            <div className="flex flex-wrap gap-2">
+              <span>
+                Khung:{" "}
+                <strong className="text-zinc-200">{equippedFrame || "Chưa trang bị"}</strong>
+              </span>
+              <span className="text-zinc-600">·</span>
+              <span>
+                Huy hiệu:{" "}
+                <strong className="text-zinc-200">{equippedBadge || "Chưa trang bị"}</strong>
+              </span>
+            </div>
+            {(boostOn || vipOn) && (
+              <div className="flex flex-wrap gap-2 pt-1 border-t border-white/10">
+                {boostOn && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 bg-violet-500/15 border border-violet-400/30 text-violet-200 tabular-nums">
+                    <Zap className="w-3 h-3" /> x2 còn {fmtRemain((boostExpiresAt || 0) - nowTick)}
+                  </span>
+                )}
+                {vipOn && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 bg-amber-500/15 border border-amber-400/30 text-amber-200 tabular-nums">
+                    <Crown className="w-3 h-3" /> VIP còn {fmtRemain((vipExpiresAt || 0) - nowTick)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           {(inventory || []).length === 0 ? (
             <div className="glass-panel p-8 text-center text-sm text-zinc-500">

@@ -654,14 +654,22 @@ export const useEventStore = create<EventState>()(
         if (item.kind === "boost") {
           item.qty -= 1;
           if (item.qty <= 0) inv.splice(idx, 1);
-          set({ inventory: inv, boostExpiresAt: Date.now() + 86400000 });
-          return { ok: true, message: "Đã bật x2 xu 24h" };
+          const DAY = 86400000;
+          const base = Math.max(Date.now(), s.boostExpiresAt || 0);
+          const until = base + DAY;
+          set({ inventory: inv, boostExpiresAt: until });
+          const h = Math.round((until - Date.now()) / 3600000);
+          return { ok: true, message: `x2 xu · còn ~${h}h (cộng dồn)` };
         }
         if (item.kind === "vip") {
           item.qty -= 1;
           if (item.qty <= 0) inv.splice(idx, 1);
-          set({ inventory: inv, vipExpiresAt: Date.now() + 86400000 });
-          return { ok: true, message: "VIP 1 ngày đã bật" };
+          const DAY = 86400000;
+          const base = Math.max(Date.now(), s.vipExpiresAt || 0);
+          const until = base + DAY;
+          set({ inventory: inv, vipExpiresAt: until });
+          const h = Math.round((until - Date.now()) / 3600000);
+          return { ok: true, message: `VIP · còn ~${h}h (cộng dồn)` };
         }
         if (item.kind === "unlock") {
           const key =

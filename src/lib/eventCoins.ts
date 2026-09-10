@@ -73,8 +73,8 @@ export interface RedeemRequest {
 
 /** Mỗi lần nhận nhiệm vụ */
 export const MISSION_REWARD = 100;
-/** Số lần nhận tối đa mỗi nhiệm vụ / ngày */
-export const MISSION_MAX_CLAIMS = 10;
+/** Không giới hạn số lần nhận mỗi nhiệm vụ / ngày */
+export const MISSION_MAX_CLAIMS = Number.POSITIVE_INFINITY;
 
 export type MissionId =
   | "watch5"
@@ -215,7 +215,7 @@ export interface EventState {
   claimedCheckInDay: string | null;
   missionDay: string | null;
   missionProgress: ProgressMap;
-  /** Số lần đã nhận thưởng mỗi nhiệm vụ hôm nay (0–10) */
+  /** Số lần đã nhận thưởng mỗi nhiệm vụ hôm nay (không giới hạn) */
   missionClaimCount: ClaimCountMap;
   unlocks: UnlockRecord[];
   totalEarned: number;
@@ -336,16 +336,12 @@ export const useEventStore = create<EventState>()(
         const s = get();
         const def = DAILY_MISSIONS.find((m) => m.id === id);
         if (!def) return;
-        const claims = s.missionClaimCount?.[id] || 0;
-        if (claims >= MISSION_MAX_CLAIMS) return;
         const cur = s.missionProgress[id] || 0;
-        // Cho phép vượt target để user claim nhiều lần; cap ở target * remaining claims
-        const maxProg = def.target * (MISSION_MAX_CLAIMS - claims);
-        if (cur >= maxProg) return;
+        // Không giới hạn số lần — cộng dồn tiến độ để claim nhiều lần
         set({
           missionProgress: {
             ...s.missionProgress,
-            [id]: Math.min(maxProg, cur + amount),
+            [id]: cur + amount,
           },
         });
       },
@@ -417,9 +413,6 @@ export const useEventStore = create<EventState>()(
         const def = DAILY_MISSIONS.find((m) => m.id === id);
         if (!def) return { ok: false, coins: 0, message: "Không có nhiệm vụ" };
         const claims = s.missionClaimCount?.[id] || 0;
-        if (claims >= MISSION_MAX_CLAIMS) {
-          return { ok: false, coins: 0, message: `Đã nhận tối đa ${MISSION_MAX_CLAIMS} lần` };
-        }
         const cur = s.missionProgress[id] || 0;
         if (cur < def.target) {
           return { ok: false, coins: 0, message: "Chưa đủ tiến độ" };
@@ -436,7 +429,7 @@ export const useEventStore = create<EventState>()(
         return {
           ok: true,
           coins: MISSION_REWARD,
-          message: `+${MISSION_REWARD} xu · Lần ${nextClaims}/${MISSION_MAX_CLAIMS}`,
+          message: `+${MISSION_REWARD} xu · Lần ${nextClaims}`,
         };
       },
 
@@ -473,14 +466,18 @@ export const useEventStore = create<EventState>()(
         get().ensureMissionDay();
         const s = get();
         let done = 0;
-        const total = DAILY_MISSIONS.length * MISSION_MAX_CLAIMS;
         for (const m of DAILY_MISSIONS) {
           done += s.missionClaimCount?.[m.id] || 0;
         }
+        // Không trần — % hiển thị theo số nhiệm vụ đã claim ít nhất 1 lần
+        const started = DAILY_MISSIONS.filter(
+          (m) => (s.missionClaimCount?.[m.id] || 0) > 0 || (s.missionProgress?.[m.id] || 0) > 0
+        ).length;
+        const total = Math.max(1, DAILY_MISSIONS.length);
         return {
           done,
           total,
-          pct: Math.round((done / total) * 100),
+          pct: Math.min(100, Math.round((started / total) * 100)),
         };
       },
     }),

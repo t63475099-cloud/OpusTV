@@ -256,7 +256,7 @@ export default function SuKienPage() {
   });
   const [summary, setSummary] = useState({
     done: 0,
-    total: DAILY_MISSIONS.length * MISSION_MAX_CLAIMS,
+    total: DAILY_MISSIONS.length,
     pct: 0,
   });
 
@@ -412,7 +412,7 @@ export default function SuKienPage() {
           {DAILY_MISSIONS.map((m) => {
             const cur = (missionProgress && missionProgress[m.id]) || 0;
             const claims = (missionClaimCount && missionClaimCount[m.id]) || 0;
-            const maxed = claims >= MISSION_MAX_CLAIMS;
+            const maxed = false; // không giới hạn số lần
             const inCycle = maxed ? m.target : cur % m.target === 0 && cur > 0 ? m.target : cur % m.target;
             const displayCur = maxed ? m.target : cur >= m.target ? Math.min(m.target, inCycle || m.target) : cur % m.target;
             const pct = Math.min(100, Math.round((displayCur / m.target) * 100));
@@ -426,7 +426,7 @@ export default function SuKienPage() {
                   <div className="min-w-0">
                     <p className="text-sm text-white font-medium">{m.title}</p>
                     <p className="text-[11px] text-zinc-500">
-                      {m.desc} · {claims}/{MISSION_MAX_CLAIMS} lần
+                      {m.desc} · Đã nhận {claims} lần · Không giới hạn
                     </p>
                   </div>
                   <span className="text-xs text-amber-300 shrink-0 font-semibold">
@@ -441,9 +441,7 @@ export default function SuKienPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-zinc-500">
-                    {maxed
-                      ? "Hết lượt hôm nay"
-                      : fmtProgress(displayCur, m.target, m.unit)}
+                    {fmtProgress(displayCur, m.target, m.unit)}
                   </span>
                   <button
                     type="button"
@@ -451,11 +449,7 @@ export default function SuKienPage() {
                     onClick={() => onClaimMission(m.id, m.title)}
                     className="text-xs px-3 py-1 rounded-full font-medium disabled:opacity-40 bg-amber-500/20 text-amber-200 border border-amber-400/30 bounce-press"
                   >
-                    {maxed ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Max
-                      </span>
-                    ) : canClaim ? (
+                    {canClaim ? (
                       `Nhận +${MISSION_REWARD}`
                     ) : (
                       "Đang làm"

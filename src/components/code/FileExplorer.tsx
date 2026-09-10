@@ -60,7 +60,7 @@ function TreeNode({
       <div
         className={cn(
           "group flex items-center gap-1 rounded pr-1 text-[13px] cursor-pointer select-none",
-          "transition-colors duration-200",
+          "transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
           activeId === node.id ? "bg-[#37373d] text-white" : "text-zinc-300 hover:bg-white/5"
         )}
         style={{ paddingLeft: 8 + depth * 12 }}
@@ -113,7 +113,7 @@ function TreeNode({
         )}
         <button
           type="button"
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10"
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-500 p-0.5 rounded hover:bg-white/10"
           onClick={(e) => {
             e.stopPropagation();
             setName(node.name);
@@ -125,7 +125,7 @@ function TreeNode({
         </button>
         <button
           type="button"
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10"
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-500 p-0.5 rounded hover:bg-white/10"
           onClick={(e) => {
             e.stopPropagation();
             if (confirm(`Xóa ${node.name}?`)) deleteNode(node.id);

@@ -13,6 +13,7 @@ import { useFavoritesStore } from "@/lib/favorites";
 import { useHistoryStore } from "@/lib/history";
 import VideoSocial from "@/components/VideoSocial";
 import RelatedInfinite from "@/components/RelatedInfinite";
+import { useEventStore } from "@/lib/eventCoins";
 import {
   Copy,
   ExternalLink,
@@ -171,6 +172,7 @@ export default function WatchPageClient({
   };
 
   const sharePage = async () => {
+    try { useEventStore.getState().addMissionProgress("share"); } catch {}
     const url = typeof window !== "undefined" ? window.location.href : "";
     try {
       if (navigator.share) {

@@ -1,3 +1,4 @@
+import { useEventStore } from "@/lib/eventCoins";
 import type { Metadata } from "next";
 import Link from "next/link";
 import MovieCard from "@/components/MovieCard";

@@ -102,6 +102,10 @@ const SQL_STATEMENTS = [
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires TIMESTAMPTZ`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_last_sent TIMESTAMPTZ`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_pin_hash TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS uid TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS verified INTEGER NOT NULL DEFAULT 0`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS users_uid_uidx ON users (uid)`,
 ];
 
 export async function POST(req: NextRequest) {

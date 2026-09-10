@@ -96,7 +96,7 @@ export default function CanvasPreview() {
   };
 
   return (
-    <div className="flex min-h-[160px] flex-1 flex-col border-t border-[#2b2b2b] md:border-l md:border-t-0 bg-[#0a0a0a]">
+    <div className="flex min-h-[160px] flex-1 flex-col border-t border-[#2b2b2b] md:border-l md:border-t-0 bg-[#0a0a0a] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
       <div className="flex items-center gap-2 bg-[#1e1e1e] px-2 py-1">
         <Gamepad2 className="h-3.5 w-3.5 text-rose-400" />
         <span className="text-[10px] uppercase tracking-wide text-zinc-400">

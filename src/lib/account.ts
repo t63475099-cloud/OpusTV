@@ -87,11 +87,14 @@ export const useAccountStore = create<AccountState>()(
               remoteName ||
               s.profile.name ||
               "";
+            const localUid = (s.profile.uid || "").trim();
+            const remoteUid = String(remote.uid ?? "").trim();
             return {
               profile: {
                 ...s.profile,
                 ...remote,
                 name,
+                uid: localUid || remoteUid || s.profile.uid,
                 loggedIn: true,
               },
             };
@@ -120,6 +123,7 @@ export const useAccountStore = create<AccountState>()(
             profile: {
               ...s.profile,
               name: (s.profile.name && String(s.profile.name).trim()) || data.username,
+              uid: data.uid || s.profile.uid || "",
               loggedIn: true,
               verified: !!(data.data?.profile?.verified ?? s.profile.verified),
               avatar: s.profile.avatar || undefined,
@@ -160,6 +164,7 @@ export const useAccountStore = create<AccountState>()(
             profile: {
               ...s.profile,
               name: (s.profile.name && String(s.profile.name).trim()) || data.username,
+              uid: data.uid || s.profile.uid || (data.data as { profile?: { uid?: string } })?.profile?.uid || "",
               loggedIn: true,
               verified: !!(data.data?.profile?.verified ?? s.profile.verified),
               avatar: s.profile.avatar || undefined,
@@ -195,6 +200,16 @@ export const useAccountStore = create<AccountState>()(
           const data = await res.json();
           if (data.ok && data.user?.username) {
             set({ username: data.user.username, storage: "neon" });
+            if (data.user.uid) {
+              useSettingsStore.setState((s) => ({
+                profile: {
+                  ...s.profile,
+                  uid: data.user.uid,
+                  verified: data.user.verified ?? s.profile.verified,
+                  loggedIn: true,
+                },
+              }));
+            }
           } else {
             set({ username: null, storage: null });
           }

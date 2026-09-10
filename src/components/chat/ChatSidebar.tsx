@@ -33,7 +33,9 @@ function Row({
   const preview = last
     ? call
       ? formatCallLogLabel(call.mode, call.kind, call.durationSec, last.senderId === me)
-      : `${last.senderId === me ? "Bạn: " : ""}${last.text || "Đính kèm"}`
+      : last.system || last.senderId === "system"
+        ? last.text || ""
+        : `${last.senderId === me ? "Bạn: " : ""}${last.text || "Đính kèm"}`
     : peer
       ? formatLastSeen(peer) || "Chưa có tin nhắn"
       : "Chưa có tin nhắn";

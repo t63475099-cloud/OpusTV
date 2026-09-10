@@ -1,3 +1,4 @@
+import { useEventStore } from "@/lib/eventCoins";
 "use client";
 
 import { create } from "zustand";
@@ -24,6 +25,11 @@ export const useFavoritesStore = create<FavState>()(
     (set, get) => ({
       favorites: [],
       toggle: (item) => {
+        try {
+          const exists = get().favorites.some((f) => f.slug === item.slug);
+          if (!exists) useEventStore.getState().addMissionProgress("favorite"); useEventStore.getState().addMissionProgress("favorite3");
+        } catch {}
+
         set((state) => {
           const exists = state.favorites.some((f) => f.slug === item.slug);
           if (exists) {

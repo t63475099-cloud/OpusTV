@@ -31,7 +31,7 @@ export default function EditorTabs() {
             onClick={() => setActive(f.id)}
             className={cn(
               "group relative flex max-w-[180px] items-center gap-1.5 border-r border-[#2b2b2b] px-3 text-xs",
-              "transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
               active
                 ? "bg-[#1e1e1e] text-white"
                 : "bg-[#2d2d2d] text-zinc-400 hover:text-zinc-200"

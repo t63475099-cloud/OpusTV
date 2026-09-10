@@ -1,7 +1,27 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { users } from "@/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { randomInt } from "crypto";
+
+async function ensureUidColumn() {
+  try {
+    const db = getDb();
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS uid TEXT`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS users_uid_uidx ON users (uid)`);
+  } catch {
+    /* */
+  }
+}
+
+/** UID ngẫu nhiên 10 chữ số, không trùng */
+export function generateUid(): string {
+  let s = "";
+  for (let i = 0; i < 10; i++) s += String(randomInt(0, 10));
+  if (s[0] === "0") s = String(randomInt(1, 10)) + s.slice(1);
+  return s;
+}
 
 export async function findUserByUsername(username: string) {
   const db = getDb();
@@ -9,19 +29,39 @@ export async function findUserByUsername(username: string) {
   return rows[0] || null;
 }
 
+export async function findUserByUid(uid: string) {
+  await ensureUidColumn();
+  const db = getDb();
+  const rows = await db.select().from(users).where(eq(users.uid, uid)).limit(1);
+  return rows[0] || null;
+}
+
 export async function createUser(username: string, password: string, recoveryPin: string) {
+  await ensureUidColumn();
   const db = getDb();
   const passwordHash = await hashPassword(password);
   const recoveryPinHash = await hashPassword(recoveryPin);
+  let uid = generateUid();
+  for (let i = 0; i < 8; i++) {
+    const exists = await findUserByUid(uid);
+    if (!exists) break;
+    uid = generateUid();
+  }
   const inserted = await db
     .insert(users)
     .values({
       username,
       passwordHash,
       recoveryPinHash,
+      uid,
       updatedAt: new Date(),
-    })
-    .returning({ id: users.id, username: users.username, createdAt: users.createdAt });
+    } as typeof users.$inferInsert)
+    .returning({
+      id: users.id,
+      username: users.username,
+      createdAt: users.createdAt,
+      uid: users.uid,
+    });
   return inserted[0];
 }
 
@@ -69,4 +109,21 @@ export async function setRecoveryPin(userId: number, recoveryPin: string) {
     .update(users)
     .set({ recoveryPinHash, updatedAt: new Date() })
     .where(eq(users.id, userId));
+}
+
+/** Gán UID nếu tài khoản cũ chưa có */
+export async function ensureUserUid(userId: number): Promise<string | null> {
+  await ensureUidColumn();
+  const db = getDb();
+  const rows = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const u = rows[0] as { uid?: string | null } | undefined;
+  if (!u) return null;
+  if (u.uid && /^\d{10}$/.test(u.uid)) return u.uid;
+  let uid = generateUid();
+  for (let i = 0; i < 8; i++) {
+    if (!(await findUserByUid(uid))) break;
+    uid = generateUid();
+  }
+  await db.update(users).set({ uid, updatedAt: new Date() } as never).where(eq(users.id, userId));
+  return uid;
 }

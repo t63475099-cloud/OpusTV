@@ -34,7 +34,7 @@ export async function GET() {
     `;
     const verified = Number((users[0] as { verified?: number } | undefined)?.verified || 0) === 1;
     const reqs = await db`
-      SELECT id, full_name, field, social_link, status, created_at, updated_at
+      SELECT id, full_name, field, social_link, status, note, created_at, updated_at
       FROM verification_requests
       WHERE user_id = ${session.userId}
       ORDER BY created_at DESC
@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const fullName = String(body.fullName || "").trim().slice(0, 120);
     const field = String(body.field || "").trim().slice(0, 80);
-    const socialLink = String(body.socialLink || "").trim().slice(0, 300);
+    const reason = String(body.reason || "").trim().slice(0, 120);
+    const extraNote = String(body.note || "").trim().slice(0, 300);
+    const socialLink = [reason, extraNote].filter(Boolean).join(" · ").slice(0, 300);
 
     if (fullName.length < 2) {
       return NextResponse.json({ ok: false, error: "Nhập họ và tên" }, { status: 400 });
@@ -124,7 +126,7 @@ export async function POST(req: NextRequest) {
     }
 
     await db`
-      INSERT INTO verification_requests (user_id, full_name, field, social_link, status)
+      INSERT INTO verification_requests (user_id, full_name, field, social_link, status, note)
       VALUES (${session.userId}, ${fullName}, ${field}, ${socialLink}, 'pending')
     `;
 

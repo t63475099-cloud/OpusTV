@@ -1,4 +1,5 @@
 "use client";
+import { useEventStore } from "@/lib/eventCoins";
 
 import Link from "next/link";
 import { useXpStore } from "@/lib/xpStore";
@@ -144,6 +145,7 @@ export default function VideoSocial({ slug, title }: VideoSocialProps) {
     if (data?.comment) {
       setComments((prev) => [...prev, data.comment]);
       addXp({ type: "comment" });
+      try { useEventStore.getState().addMissionProgress("comment"); } catch {}
       setText("");
       setReplyTo(null);
     }

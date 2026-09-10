@@ -1,12 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { listHistory, upsertHistory } from "@/lib/db/history";
-import { listFavorites, toggleFavorite } from "@/lib/db/favorites";
+import { listFavorites } from "@/lib/db/favorites";
 import { listMusicHistory, upsertMusicPlay } from "@/lib/db/music";
 import { getSettings, upsertSettings } from "@/lib/db/settings";
 import { getDb } from "@/db/client";
 import { favorites } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+
+function pickProfile(
+  payload: Record<string, unknown> | null | undefined,
+  username: string
+) {
+  const p =
+    payload && typeof payload === "object" && payload.profile && typeof payload.profile === "object"
+      ? (payload.profile as Record<string, unknown>)
+      : {};
+  const name =
+    typeof p.name === "string"
+      ? p.name
+      : typeof payload?.displayName === "string"
+        ? String(payload.displayName)
+        : "";
+  return {
+    name: name,
+    avatar: typeof p.avatar === "string" ? p.avatar : undefined,
+    avatarPosition:
+      typeof p.avatarPosition === "string" ? p.avatarPosition : undefined,
+    avatarFrame: typeof p.avatarFrame === "string" ? p.avatarFrame : undefined,
+    verified: !!p.verified,
+    loggedIn: true,
+    username,
+  };
+}
 
 export async function GET() {
   try {
@@ -20,6 +46,7 @@ export async function GET() {
       listMusicHistory(session.userId, 120),
       getSettings(session.userId),
     ]);
+    const payload = (settingsRow?.payload || {}) as Record<string, unknown>;
     return NextResponse.json({
       ok: true,
       username: session.username,
@@ -50,8 +77,8 @@ export async function GET() {
           category: m.category,
           watchedAt: m.playedAt?.getTime?.() || Date.now(),
         })),
-        settings: settingsRow?.payload || {},
-        profile: { name: session.username, loggedIn: true },
+        settings: payload,
+        profile: pickProfile(payload, session.username),
         updatedAt: Date.now(),
       },
     });
@@ -71,7 +98,6 @@ export async function POST(req: NextRequest) {
     const data = body.data || {};
     const uid = session.userId;
 
-    // Merge watch history từ client lên DB (không xóa bản ghi server)
     if (Array.isArray(data.history)) {
       for (const h of data.history.slice(0, 80)) {
         if (!h?.slug) continue;
@@ -123,19 +149,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (data.settings && typeof data.settings === "object") {
-      await upsertSettings(uid, {
-        payload: data.settings as Record<string, unknown>,
-      });
+    // Gộp settings + profile (tên hiển thị, avatar, khung…) vào payload
+    const prev = ((await getSettings(uid))?.payload || {}) as Record<string, unknown>;
+    const nextPayload: Record<string, unknown> = {
+      ...prev,
+      ...(data.settings && typeof data.settings === "object" ? data.settings : {}),
+    };
+    if (data.profile && typeof data.profile === "object") {
+      nextPayload.profile = {
+        ...((prev.profile as object) || {}),
+        ...data.profile,
+      };
     }
+    await upsertSettings(uid, { payload: nextPayload });
 
-    // Trả về snapshot đã merge từ DB
     const [history, favs, music, settingsRow] = await Promise.all([
       listHistory(uid, 80),
       listFavorites(uid, 100),
       listMusicHistory(uid, 120),
       getSettings(uid),
     ]);
+    const payload = (settingsRow?.payload || {}) as Record<string, unknown>;
 
     return NextResponse.json({
       ok: true,
@@ -166,8 +200,8 @@ export async function POST(req: NextRequest) {
           category: m.category,
           watchedAt: m.playedAt?.getTime?.() || Date.now(),
         })),
-        settings: settingsRow?.payload || {},
-        profile: { name: session.username, loggedIn: true },
+        settings: payload,
+        profile: pickProfile(payload, session.username),
         updatedAt: Date.now(),
       },
     });

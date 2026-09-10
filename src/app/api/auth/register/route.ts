@@ -53,7 +53,12 @@ export async function POST(req: NextRequest) {
 
     const user = await createUser(username, password, recoveryPin);
     const token = await createSession(user.id);
-    const res = NextResponse.json({ ok: true, username: user.username, storage: "neon" });
+    const res = NextResponse.json({
+      ok: true,
+      username: user.username,
+      uid: (user as { uid?: string }).uid || null,
+      storage: "neon",
+    });
     res.cookies.set(SESSION_COOKIE, token, cookieOptions(30 * 24 * 60 * 60));
     return res;
   } catch (e: unknown) {

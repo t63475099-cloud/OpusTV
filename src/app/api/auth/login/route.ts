@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkPassword, touchLastLogin } from "@/lib/db/users";
+import { checkPassword, touchLastLogin, ensureUserUid } from "@/lib/db/users";
 import { createSession, cookieOptions, SESSION_COOKIE } from "@/lib/session";
 import { listHistory } from "@/lib/db/history";
 import { listFavorites } from "@/lib/db/favorites";
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Sai tài khoản hoặc mật khẩu" }, { status: 401 });
     }
     await touchLastLogin(user.id);
+    const uid = await ensureUserUid(user.id);
     const token = await createSession(user.id);
 
     const [history, favorites, music, settingsRow] = await Promise.all([
@@ -59,13 +60,18 @@ export async function POST(req: NextRequest) {
         watchedAt: m.playedAt?.getTime?.() || Date.now(),
       })),
       settings: settingsRow?.payload || {},
-      profile: { name: user.username, loggedIn: true, verified: !!(user as { verified?: number }).verified },
+      profile: {
+        loggedIn: true,
+        verified: !!(user as { verified?: number }).verified,
+        uid: uid || undefined,
+      },
       updatedAt: Date.now(),
     };
 
     const res = NextResponse.json({
       ok: true,
       username: user.username,
+      uid,
       storage: "neon",
       data,
     });

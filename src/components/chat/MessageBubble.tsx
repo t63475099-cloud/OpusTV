@@ -47,6 +47,16 @@ export default function MessageBubble({
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(m.text || "");
 
+  if (m.system || m.senderId === "system") {
+    return (
+      <div className="flex justify-center my-2 px-4">
+        <span className="text-[11px] sm:text-[12px] text-zinc-500 text-center leading-relaxed max-w-[90%]">
+          {m.text}
+        </span>
+      </div>
+    );
+  }
+
   const call = parseCallLog(m.text || "");
   if (call) {
     const title = callLogTitle(call.kind, mine);

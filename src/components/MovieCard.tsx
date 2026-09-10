@@ -18,7 +18,7 @@ export default function MovieCard({
 
   // poster: hàng ngang (flex-shrink) hoặc lưới (w-full nhờ parent)
   return (
-    <Link data-gsap-card
+    <Link data-movie-card="1" data-gsap-card
       href={`/phim/${movie.slug}`}
       className="movie-card-glass bounce-press group movie-card-hover relative flex-shrink-0 w-[118px] sm:w-[148px] md:w-[168px] lg:w-[188px] max-w-full card-lift block"
     >

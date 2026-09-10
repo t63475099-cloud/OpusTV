@@ -1,0 +1,284 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import {
+  Crown,
+  Gift,
+  Lock,
+  Sparkles,
+  Ticket,
+  Zap,
+} from "lucide-react";
+import {
+  PASS_MAX_LEVEL,
+  PASS_TIERS,
+  PREMIUM_PASS_COST,
+  levelFromXp,
+  xpProgress,
+  useOpusPassStore,
+  type PassReward,
+} from "@/lib/opusPass";
+
+function RewardChip({
+  reward,
+  locked,
+  claimed,
+  premium,
+}: {
+  reward: PassReward;
+  locked: boolean;
+  claimed: boolean;
+  premium?: boolean;
+}) {
+  return (
+    <div
+      className={`relative flex flex-col items-center justify-center w-[72px] h-[72px] sm:w-20 sm:h-20 rounded-2xl border transition-all duration-300 ${
+        claimed
+          ? "border-emerald-400/40 bg-emerald-500/10 opacity-80"
+          : locked
+            ? "border-white/10 bg-white/[0.03] opacity-50"
+            : premium
+              ? "border-amber-400/40 bg-gradient-to-b from-amber-500/20 to-rose-500/10 shadow-[0_0_20px_rgba(251,191,36,0.15)]"
+              : "border-sky-400/30 bg-sky-500/10"
+      }`}
+    >
+      <span className="text-xl sm:text-2xl leading-none">{reward.icon}</span>
+      <span className="mt-1 text-[9px] sm:text-[10px] text-center text-zinc-200 px-1 leading-tight line-clamp-2">
+        {reward.label}
+      </span>
+      {claimed && (
+        <span className="absolute -top-1 -right-1 text-[9px] px-1 rounded bg-emerald-500 text-white font-bold">
+          ✓
+        </span>
+      )}
+      {locked && !claimed && (
+        <Lock className="absolute top-1 right-1 w-3 h-3 text-zinc-500" />
+      )}
+    </div>
+  );
+}
+
+export default function OpusPassPanel({
+  onFlash,
+  onNotif,
+}: {
+  onFlash: (msg: string) => void;
+  onNotif: (title: string, body: string) => void;
+}) {
+  const xp = useOpusPassStore((s) => s.xp);
+  const premium = useOpusPassStore((s) => s.premium);
+  const claimedFree = useOpusPassStore((s) => s.claimedFree);
+  const claimedPremium = useOpusPassStore((s) => s.claimedPremium);
+  const buyPremium = useOpusPassStore((s) => s.buyPremium);
+  const claimTier = useOpusPassStore((s) => s.claimTier);
+  const claimAll = useOpusPassStore((s) => s.claimAll);
+  const [burst, setBurst] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const prog = useMemo(() => xpProgress(xp), [xp]);
+  const level = prog.level;
+
+  const claimable = useMemo(() => {
+    let n = 0;
+    for (let lv = 1; lv <= level; lv++) {
+      if (!claimedFree.includes(lv)) n++;
+      if (premium && !claimedPremium.includes(lv)) n++;
+    }
+    return n;
+  }, [level, claimedFree, claimedPremium, premium]);
+
+  const onBuy = () => {
+    const r = buyPremium();
+    onFlash(r.message);
+    if (r.ok) {
+      setBurst(true);
+      onNotif("Opus Pass", r.message);
+      window.setTimeout(() => setBurst(false), 1800);
+    }
+  };
+
+  const onClaim = (lv: number, track: "free" | "premium") => {
+    const r = claimTier(lv, track);
+    onFlash(r.message);
+    if (r.ok) onNotif("Opus Pass", r.message);
+  };
+
+  const onClaimAll = () => {
+    const r = claimAll();
+    onFlash(r.message);
+    if (r.ok) {
+      setBurst(true);
+      onNotif("Opus Pass", r.message);
+      window.setTimeout(() => setBurst(false), 1600);
+    }
+  };
+
+  const scrollToLevel = () => {
+    const el = trackRef.current?.querySelector(`[data-pass-lv="${Math.max(1, level)}"]`);
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
+
+  return (
+    <section className="space-y-4 relative">
+      {burst && (
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden rounded-2xl">
+          {Array.from({ length: 18 }).map((_, i) => (
+            <span
+              key={i}
+              className="absolute w-2 h-2 rounded-full animate-ping"
+              style={{
+                left: `${10 + (i * 5) % 80}%`,
+                top: `${15 + (i * 7) % 60}%`,
+                background: i % 2 ? "#fbbf24" : "#f43f5e",
+                animationDelay: `${i * 40}ms`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Header glass */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-amber-300/90 font-semibold flex items-center gap-1.5">
+              <Ticket className="w-3.5 h-3.5" /> Opus Pass
+            </p>
+            <h2 className="text-xl font-bold text-white mt-0.5">
+              Cấp {level}
+              <span className="text-zinc-500 text-sm font-medium"> / {PASS_MAX_LEVEL}</span>
+            </h2>
+            <p className="text-[11px] text-zinc-400 mt-1">
+              XP: {xp.toLocaleString("vi-VN")}
+              {level < PASS_MAX_LEVEL && (
+                <> · Còn {Math.max(0, prog.nextNeed - xp).toLocaleString("vi-VN")} XP → C{level + 1}</>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            {premium ? (
+              <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-100 border border-amber-400/40">
+                <Crown className="w-3.5 h-3.5" /> Premium
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onBuy}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg active:scale-95 transition"
+              >
+                <Crown className="w-3.5 h-3.5" /> Mở Premium · {PREMIUM_PASS_COST} xu
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClaimAll}
+              disabled={claimable === 0}
+              className="text-xs px-3 py-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/15 text-emerald-100 disabled:opacity-40 active:scale-95 transition"
+            >
+              Nhận tất cả {claimable > 0 ? `(${claimable})` : ""}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-3 h-2.5 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-sky-400 via-violet-500 to-rose-500"
+            style={{ width: `${prog.pct}%` }}
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-500">
+          <button type="button" onClick={scrollToLevel} className="text-sky-300 hover:text-sky-200">
+            Tới cấp hiện tại
+          </button>
+          <span>Free + Premium · 150 mốc</span>
+        </div>
+      </div>
+
+      {/* Tracks */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl overflow-hidden">
+        <div className="px-3 py-2 border-b border-white/10 flex items-center gap-3 text-[11px] text-zinc-400">
+          <span className="inline-flex items-center gap-1"><Sparkles className="w-3 h-3 text-sky-400" /> Free</span>
+          <span className="inline-flex items-center gap-1"><Crown className="w-3 h-3 text-amber-400" /> Premium</span>
+          <span className="ml-auto inline-flex items-center gap-1"><Zap className="w-3 h-3 text-violet-400" /> Vuốt ngang</span>
+        </div>
+
+        <div
+          ref={trackRef}
+          className="overflow-x-auto overscroll-x-contain scrollbar-thin pb-3 pt-3 px-3 snap-x snap-mandatory"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <div className="flex gap-3 min-w-max pr-4">
+            {PASS_TIERS.map((tier) => {
+              const reached = level >= tier.level;
+              const freeClaimed = claimedFree.includes(tier.level);
+              const premClaimed = claimedPremium.includes(tier.level);
+              const freeLocked = !reached;
+              const premLocked = !reached || !premium;
+
+              return (
+                <div
+                  key={tier.level}
+                  data-pass-lv={tier.level}
+                  className="snap-start flex flex-col items-center gap-2 w-[80px] sm:w-[88px]"
+                >
+                  <span
+                    className={`text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full ${
+                      tier.level === level
+                        ? "bg-rose-500/30 text-rose-100 border border-rose-400/40"
+                        : reached
+                          ? "bg-white/10 text-zinc-300"
+                          : "bg-white/5 text-zinc-500"
+                    }`}
+                  >
+                    C{tier.level}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={freeLocked || freeClaimed}
+                    onClick={() => onClaim(tier.level, "free")}
+                    className="disabled:cursor-default active:scale-95 transition"
+                    title={tier.free.label}
+                  >
+                    <RewardChip
+                      reward={tier.free}
+                      locked={freeLocked}
+                      claimed={freeClaimed}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={premLocked || premClaimed}
+                    onClick={() => onClaim(tier.level, "premium")}
+                    className="disabled:cursor-default active:scale-95 transition"
+                    title={tier.premium.label}
+                  >
+                    <RewardChip
+                      reward={tier.premium}
+                      locked={premLocked}
+                      claimed={premClaimed}
+                      premium
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-zinc-500 leading-relaxed px-1">
+        Kiếm Pass XP khi điểm danh, nhận nhiệm vụ, xem phim và nghe nhạc. Mở Premium bằng xu để nhận
+        dòng thưởng cao cấp. Bấm vào ô thưởng để nhận từng mốc, hoặc dùng <strong className="text-zinc-300">Nhận tất cả</strong>.
+      </p>
+      <div className="flex items-center gap-2 text-[11px] text-zinc-400 px-1">
+        <Gift className="w-3.5 h-3.5 text-amber-300" />
+        <span>
+          Cấp hiện tại: <strong className="text-white">{levelFromXp(xp)}</strong> · Đã nhận Free:{" "}
+          {claimedFree.length}/{PASS_MAX_LEVEL}
+        </span>
+      </div>
+    </section>
+  );
+}

@@ -633,47 +633,20 @@ export default function AccountPage() {
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   Đồng bộ
                 </button>
-                
-                {/* VIP 15 cấp */}
-                <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-md p-3">
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-xs font-semibold" style={{ color: vipProg.cur.color }}>
-                      VIP {vipProg.cur.level}/15 · {vipProg.cur.title}
-                      {isVipActive() ? " · Đang active" : ""}
-                    </span>
-                    <span className="text-[10px] text-zinc-500 tabular-nums">
-                      {vipProg.earned.toLocaleString("vi-VN")}/{vipProg.next.need.toLocaleString("vi-VN")} điểm
-                    </span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${vipProg.pct}%`,
-                        background: `linear-gradient(90deg, ${vipProg.cur.color}, ${vipProg.next.color})`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-zinc-500 mt-1">
-                    {vipProg.cur.level >= 15
-                      ? "Đã đạt cấp tối đa"
-                      : `Còn ${Math.max(0, vipProg.next.need - vipProg.earned).toLocaleString("vi-VN")} điểm VIP → ${vipProg.next.title}`}
-                  </p>
-                  {equippedBadge && (
-                    <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {equippedBadge}</p>
-                  )}
-                </div>
-
                 {!profile.verified ? (
                   <button
                     type="button"
                     onClick={() => setVerifyOpen(true)}
-                    className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-sky-600/80 text-white hover:bg-sky-500 transition"
+                    className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-sky-600/80 text-white hover:bg-sky-500 transition inline-flex items-center gap-1.5"
                   >
                     Xác minh
                   </button>
                 ) : (
-                  <span className="px-3.5 py-1.5 rounded-full text-xs font-medium text-sky-300 zalo-glass-soft">
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-sky-200 bg-sky-500/15 border border-sky-400/30">
+                    <svg viewBox="0 0 24 24" width={14} height={14} className="shrink-0" aria-hidden>
+                      <circle cx="12" cy="12" r="12" fill="#1D9BF0" />
+                      <path d="M10.1 15.9 7 12.8l1.4-1.4 1.7 1.7 5-5.1L16.5 9.4z" fill="#fff" />
+                    </svg>
                     Đã xác minh
                   </span>
                 )}
@@ -684,6 +657,36 @@ export default function AccountPage() {
                 >
                   Đăng xuất
                 </button>
+              </div>
+
+              {/* VIP 15 cấp — full width, ngoài hàng nút */}
+              <div className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-md p-3">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-xs font-semibold" style={{ color: vipProg.cur.color }}>
+                    VIP {vipProg.cur.level}/15 · {vipProg.cur.title}
+                    {isVipActive() ? " · Đang active" : ""}
+                  </span>
+                  <span className="text-[10px] text-zinc-500 tabular-nums">
+                    {vipProg.earned.toLocaleString("vi-VN")}/{vipProg.next.need.toLocaleString("vi-VN")} điểm
+                  </span>
+                </div>
+                <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${vipProg.pct}%`,
+                      background: `linear-gradient(90deg, ${vipProg.cur.color}, ${vipProg.next.color})`,
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-zinc-500 mt-1">
+                  {vipProg.cur.level >= 15
+                    ? "Đã đạt cấp tối đa"
+                    : `Còn ${Math.max(0, vipProg.next.need - vipProg.earned).toLocaleString("vi-VN")} điểm VIP → ${vipProg.next.title}`}
+                </p>
+                {equippedBadge && (
+                  <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {equippedBadge}</p>
+                )}
               </div>
             </div>
           </div>

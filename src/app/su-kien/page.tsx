@@ -15,6 +15,7 @@ import {
   Disc3,
   Zap,
   Crown,
+  Ticket,
 } from "lucide-react";
 import {
   useEventStore,
@@ -28,9 +29,11 @@ import {
   type MissionId,
 } from "@/lib/eventCoins";
 import RedeemCashPanel from "@/components/RedeemCashPanel";
+import OpusPassPanel from "@/components/OpusPassPanel";
+import { useOpusPassStore } from "@/lib/opusPass";
 import { useNotifStore } from "@/lib/notifications";
 
-type TabId = "missions" | "shop" | "inventory";
+type TabId = "missions" | "shop" | "inventory" | "pass";
 
 const COMMUNITY_TICKER = [
   "@KiemThanh99 vừa đổi Khung viền Kim Cương",
@@ -384,6 +387,7 @@ export default function SuKienPage() {
     const r = claimCheckIn();
     flash(r.message);
     if (r.ok) {
+      useOpusPassStore.getState().addXp(40);
       addNotif({ kind: "mission", title: "Điểm danh", body: r.message, href: "/su-kien" });
       setStatus(getStreakStatus());
     }
@@ -393,6 +397,7 @@ export default function SuKienPage() {
     const r = claimMission(id);
     flash(r.message);
     if (r.ok) {
+      useOpusPassStore.getState().addXp(60);
       addNotif({ kind: "mission", title: "Nhiệm vụ", body: `${title}: ${r.message}`, href: "/su-kien" });
       setSummary(dailyMissionSummary());
     }
@@ -458,8 +463,9 @@ export default function SuKienPage() {
   const vipOn = !!(vipExpiresAt && vipExpiresAt > Date.now());
 
   const tabs: { id: TabId; label: string; icon: typeof Flame }[] = [
-    { id: "missions", label: "Điểm danh & Nhiệm vụ", icon: Flame },
-    { id: "shop", label: "Cửa hàng đổi quà", icon: ShoppingBag },
+    { id: "missions", label: "Điểm danh", icon: Flame },
+    { id: "pass", label: "Opus Pass", icon: Ticket },
+    { id: "shop", label: "Cửa hàng", icon: ShoppingBag },
     { id: "inventory", label: "Kho đồ", icon: Package },
   ];
 
@@ -519,7 +525,7 @@ export default function SuKienPage() {
       )}
 
       {/* Tabs */}
-      <div className="grid grid-cols-3 gap-1 p-1 mb-4 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
+      <div className="grid grid-cols-4 gap-1 p-1 mb-4 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
         {tabs.map((t) => {
           const Icon = t.icon;
           const on = tab === t.id;
@@ -528,14 +534,14 @@ export default function SuKienPage() {
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`relative flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[10px] sm:text-[11px] transition-all duration-300 ${
+              className={`relative flex flex-col items-center gap-0.5 rounded-xl px-0.5 py-2 text-[9px] sm:text-[11px] transition-all duration-300 ${
                 on
                   ? "bg-white/10 text-white shadow-[0_0_20px_rgba(244,63,94,0.25)]"
                   : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               <Icon className={`w-4 h-4 ${on ? "text-rose-400" : ""}`} />
-              <span className="leading-tight text-center">{t.label}</span>
+              <span className="leading-tight text-center line-clamp-2">{t.label}</span>
             </button>
           );
         })}
@@ -772,6 +778,13 @@ export default function SuKienPage() {
             </p>
           </section>
         </>
+      )}
+
+      {tab === "pass" && (
+        <OpusPassPanel
+          onFlash={flash}
+          onNotif={(title, body) => addNotif({ kind: "mission", title, body, href: "/su-kien" })}
+        />
       )}
 
       {tab === "shop" && (

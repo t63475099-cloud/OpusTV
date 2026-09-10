@@ -76,6 +76,64 @@ export const MISSION_REWARD = 100;
 /** Không giới hạn số lần nhận mỗi nhiệm vụ / ngày */
 export const MISSION_MAX_CLAIMS = Number.POSITIVE_INFINITY;
 
+/** Chi phí 1 lượt vòng quay */
+export const SPIN_COST = 100;
+
+export type ShopItemKind = "unlock" | "frame" | "badge" | "boost" | "vip" | "mystery" | "coins";
+
+export interface ShopItemDef {
+  id: string;
+  name: string;
+  desc: string;
+  cost: number;
+  kind: ShopItemKind;
+  /** frame id / badge id / unlock key meta */
+  meta?: string;
+  icon: string;
+}
+
+export const SHOP_ITEMS: ShopItemDef[] = [
+  { id: "card_ep", name: "Thẻ mở 1 tập", desc: "Mở khóa 1 tập phim bất kỳ", cost: 50, kind: "unlock", meta: "episode", icon: "🎬" },
+  { id: "card_movie", name: "Thẻ xem trọn bộ", desc: "Mở cả series một lần", cost: 120, kind: "unlock", meta: "movie", icon: "🍿" },
+  { id: "vip_1d", name: "VIP OpusFilm 1 ngày", desc: "Huy hiệu VIP trong 24 giờ", cost: 200, kind: "vip", meta: "vip24", icon: "👑" },
+  { id: "frame_conic", name: "Khung Conic Spin", desc: "Viền avatar xoay đa sắc", cost: 300, kind: "frame", meta: "frame:conic-rainbow", icon: "🌀" },
+  { id: "frame_plasma", name: "Khung Cyber Plasma", desc: "Viền plasma công nghệ", cost: 350, kind: "frame", meta: "frame:neon-flicker", icon: "⚡" },
+  { id: "badge_mot", name: "Huy hiệu Mọt Phim", desc: "Danh hiệu Mọt Phim Kỳ Cựu", cost: 150, kind: "badge", meta: "badge:mot-phim", icon: "🏅" },
+  { id: "badge_tycoon", name: "Huy hiệu Đại Gia Xu", desc: "Danh hiệu Đại Gia Xu", cost: 180, kind: "badge", meta: "badge:dai-gia", icon: "💎" },
+  { id: "boost_x2", name: "Nhân đôi xu x2", desc: "Xu nhiệm vụ x2 trong 24 giờ", cost: 250, kind: "boost", meta: "x2", icon: "✨" },
+  { id: "mystery", name: "Hộp quà bí ẩn", desc: "Ngẫu nhiên xu hoặc vật phẩm", cost: 80, kind: "mystery", icon: "🎁" },
+];
+
+export interface InventoryItem {
+  id: string;
+  shopId: string;
+  name: string;
+  kind: ShopItemKind;
+  meta?: string;
+  qty: number;
+  acquiredAt: number;
+  expiresAt?: number | null;
+}
+
+export interface LiveFeedItem {
+  id: string;
+  text: string;
+  at: number;
+}
+
+export const SPIN_REWARDS: { id: string; label: string; weight: number; coins?: number; shopId?: string }[] = [
+  { id: "c20", label: "+20 xu", weight: 28, coins: 20 },
+  { id: "c50", label: "+50 xu", weight: 22, coins: 50 },
+  { id: "c100", label: "+100 xu", weight: 12, coins: 100 },
+  { id: "c200", label: "+200 xu", weight: 5, coins: 200 },
+  { id: "mys", label: "Hộp quà", weight: 12, shopId: "mystery" },
+  { id: "ep", label: "Thẻ 1 tập", weight: 10, shopId: "card_ep" },
+  { id: "fr", label: "Khung Conic", weight: 6, shopId: "frame_conic" },
+  { id: "bd", label: "Huy hiệu", weight: 5, shopId: "badge_mot" },
+];
+
+
+
 export type MissionId =
   | "watch5"
   | "watch15"
@@ -220,6 +278,12 @@ export interface EventState {
   unlocks: UnlockRecord[];
   totalEarned: number;
   episodeSlugsToday: string[];
+  inventory: InventoryItem[];
+  equippedFrame: string | null;
+  equippedBadge: string | null;
+  boostExpiresAt: number | null;
+  vipExpiresAt: number | null;
+  liveFeed: LiveFeedItem[];
 
   ensureMissionDay: () => void;
   getStreakStatus: () => {
@@ -248,6 +312,13 @@ export interface EventState {
   ) => { ok: boolean; message: string };
   isUnlocked: (key: string) => boolean;
   dailyMissionSummary: () => { done: number; total: number; pct: number };
+  buyShopItem: (shopId: string) => { ok: boolean; message: string };
+  equipItem: (invId: string) => { ok: boolean; message: string };
+  activateItem: (invId: string) => { ok: boolean; message: string };
+  luckySpin: () => { ok: boolean; message: string; label?: string };
+  pushLive: (text: string) => void;
+  coinMultiplier: () => number;
+  isVipActive: () => boolean;
 }
 
 export const useEventStore = create<EventState>()(
@@ -264,6 +335,12 @@ export const useEventStore = create<EventState>()(
       unlocks: [],
       totalEarned: 0,
       episodeSlugsToday: [],
+      inventory: [],
+      equippedFrame: null,
+      equippedBadge: null,
+      boostExpiresAt: null,
+      vipExpiresAt: null,
+      liveFeed: [],
 
       ensureMissionDay: () => {
         const today = dayKey();
@@ -420,16 +497,18 @@ export const useEventStore = create<EventState>()(
         // Trừ 1 lần target, cộng 100 xu, +1 claim
         const nextProg = cur - def.target;
         const nextClaims = claims + 1;
+        const mult = get().coinMultiplier();
+        const gain = MISSION_REWARD * mult;
         set({
           missionProgress: { ...s.missionProgress, [id]: nextProg },
           missionClaimCount: { ...s.missionClaimCount, [id]: nextClaims },
-          coins: s.coins + MISSION_REWARD,
-          totalEarned: s.totalEarned + MISSION_REWARD,
+          coins: s.coins + gain,
+          totalEarned: s.totalEarned + gain,
         });
         return {
           ok: true,
-          coins: MISSION_REWARD,
-          message: `+${MISSION_REWARD} xu · Lần ${nextClaims}`,
+          coins: gain,
+          message: mult > 1 ? `+${gain} xu (x${mult}) · Lần ${nextClaims}` : `+${gain} xu · Lần ${nextClaims}`,
         };
       },
 
@@ -462,6 +541,190 @@ export const useEventStore = create<EventState>()(
         );
       },
 
+
+      pushLive: (text) => {
+        const item = {
+          id: `lf_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          text,
+          at: Date.now(),
+        };
+        set((s) => ({ liveFeed: [item, ...(s.liveFeed || [])].slice(0, 40) }));
+      },
+
+      coinMultiplier: () => {
+        const exp = get().boostExpiresAt;
+        if (exp && exp > Date.now()) return 2;
+        return 1;
+      },
+
+      isVipActive: () => {
+        const exp = get().vipExpiresAt;
+        return !!(exp && exp > Date.now());
+      },
+
+      buyShopItem: (shopId) => {
+        const def = SHOP_ITEMS.find((x) => x.id === shopId);
+        if (!def) return { ok: false, message: "Không có vật phẩm" };
+        const s = get();
+        if (s.coins < def.cost) return { ok: false, message: `Cần ${def.cost} xu` };
+
+        let finalName = def.name;
+        let finalKind = def.kind;
+        let finalMeta = def.meta;
+        let bonusCoins = 0;
+        if (def.kind === "mystery") {
+          const roll = Math.random();
+          if (roll < 0.45) {
+            bonusCoins = 30 + Math.floor(Math.random() * 70);
+            set({
+              coins: s.coins - def.cost + bonusCoins,
+              totalEarned: s.totalEarned + bonusCoins,
+            });
+            get().pushLive(`Bạn mở hộp quà nhận +${bonusCoins} xu`);
+            return { ok: true, message: `+${bonusCoins} xu từ hộp quà` };
+          } else if (roll < 0.7) {
+            finalName = "Thẻ mở 1 tập (hộp quà)";
+            finalKind = "unlock";
+            finalMeta = "episode";
+          } else if (roll < 0.88) {
+            finalName = "Khung Conic (hộp quà)";
+            finalKind = "frame";
+            finalMeta = "frame:conic-rainbow";
+          } else {
+            finalName = "Huy hiệu Mọt Phim (hộp quà)";
+            finalKind = "badge";
+            finalMeta = "badge:mot-phim";
+          }
+        }
+
+        const inv = [...(s.inventory || [])];
+        const existing = inv.find(
+          (i) => i.kind === finalKind && i.meta === finalMeta && i.name === finalName
+        );
+        if (existing) existing.qty += 1;
+        else {
+          inv.unshift({
+            id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            shopId: def.id,
+            name: finalName,
+            kind: finalKind as InventoryItem["kind"],
+            meta: finalMeta,
+            qty: 1,
+            acquiredAt: Date.now(),
+          });
+        }
+        set({ coins: s.coins - def.cost, inventory: inv });
+        get().pushLive(`Bạn vừa đổi ${finalName}`);
+        return { ok: true, message: `Đã thêm vào kho: ${finalName}` };
+      },
+
+      equipItem: (invId) => {
+        const item = (get().inventory || []).find((i) => i.id === invId);
+        if (!item) return { ok: false, message: "Không tìm thấy" };
+        if (item.kind === "frame") {
+          const frame = item.meta || null;
+          set({ equippedFrame: frame });
+          try {
+            const raw = localStorage.getItem("opusfilm-settings");
+            if (raw && frame) {
+              const j = JSON.parse(raw);
+              const state = j?.state || j;
+              if (state) {
+                state.avatarFrame = frame;
+                if (state.profile) state.profile.avatarFrame = frame;
+                localStorage.setItem("opusfilm-settings", JSON.stringify(j.state ? j : { state }));
+              }
+            }
+          } catch { /* */ }
+          return { ok: true, message: "Đã trang bị khung viền" };
+        }
+        if (item.kind === "badge") {
+          set({ equippedBadge: item.meta || null });
+          return { ok: true, message: "Đã trang bị huy hiệu" };
+        }
+        return { ok: false, message: "Không trang bị được vật phẩm này" };
+      },
+
+      activateItem: (invId) => {
+        const s = get();
+        const inv = [...(s.inventory || [])];
+        const idx = inv.findIndex((i) => i.id === invId);
+        if (idx < 0) return { ok: false, message: "Không tìm thấy" };
+        const item = inv[idx];
+        if (item.kind === "boost") {
+          item.qty -= 1;
+          if (item.qty <= 0) inv.splice(idx, 1);
+          set({ inventory: inv, boostExpiresAt: Date.now() + 86400000 });
+          return { ok: true, message: "Đã bật x2 xu 24h" };
+        }
+        if (item.kind === "vip") {
+          item.qty -= 1;
+          if (item.qty <= 0) inv.splice(idx, 1);
+          set({ inventory: inv, vipExpiresAt: Date.now() + 86400000 });
+          return { ok: true, message: "VIP 1 ngày đã bật" };
+        }
+        if (item.kind === "unlock") {
+          const key =
+            item.meta === "movie"
+              ? `credit:movie:${Date.now()}`
+              : `credit:episode:${Date.now()}`;
+          item.qty -= 1;
+          if (item.qty <= 0) inv.splice(idx, 1);
+          set({
+            inventory: inv,
+            unlocks: [
+              ...s.unlocks,
+              { key, permanent: true, expiresAt: null, spent: 0, at: Date.now() },
+            ],
+          });
+          return { ok: true, message: "Đã kích hoạt thẻ mở khóa" };
+        }
+        return { ok: false, message: "Dùng Trang bị cho khung/huy hiệu" };
+      },
+
+      luckySpin: () => {
+        const s = get();
+        if (s.coins < SPIN_COST) return { ok: false, message: `Cần ${SPIN_COST} xu` };
+        const totalW = SPIN_REWARDS.reduce((n, r) => n + r.weight, 0);
+        let r = Math.random() * totalW;
+        let pick = SPIN_REWARDS[0];
+        for (const item of SPIN_REWARDS) {
+          r -= item.weight;
+          if (r <= 0) {
+            pick = item;
+            break;
+          }
+        }
+        set({ coins: s.coins - SPIN_COST });
+        if (pick.coins) {
+          set((st) => ({
+            coins: st.coins + (pick.coins || 0),
+            totalEarned: st.totalEarned + (pick.coins || 0),
+          }));
+          get().pushLive(`Vòng quay: +${pick.coins} xu`);
+          return { ok: true, message: `Trúng ${pick.label}!`, label: pick.label };
+        }
+        if (pick.shopId) {
+          const def = SHOP_ITEMS.find((x) => x.id === pick.shopId);
+          if (def) {
+            const inv = [...(get().inventory || [])];
+            inv.unshift({
+              id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              shopId: def.id,
+              name: def.name,
+              kind: def.kind,
+              meta: def.meta,
+              qty: 1,
+              acquiredAt: Date.now(),
+            });
+            set({ inventory: inv });
+            get().pushLive(`Vòng quay: ${def.name}`);
+            return { ok: true, message: `Trúng ${def.name}!`, label: def.name };
+          }
+        }
+        return { ok: true, message: "Chúc may mắn!", label: pick.label };
+      },
+
       dailyMissionSummary: () => {
         get().ensureMissionDay();
         const s = get();
@@ -481,6 +744,6 @@ export const useEventStore = create<EventState>()(
         };
       },
     }),
-    { name: "opusfilm-event-coins-v1" }
+    { name: "opusfilm-event-coins-v2" }
   )
 );

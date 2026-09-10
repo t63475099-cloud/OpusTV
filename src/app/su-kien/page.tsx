@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,6 +10,11 @@ import {
   Check,
   Lock,
   Sparkles,
+  ShoppingBag,
+  Package,
+  Disc3,
+  Zap,
+  Crown,
 } from "lucide-react";
 import {
   useEventStore,
@@ -17,13 +22,25 @@ import {
   CHECKIN_REWARDS,
   UNLOCK_COST,
   MISSION_REWARD,
-  MISSION_MAX_CLAIMS,
+  SHOP_ITEMS,
+  SPIN_COST,
+  SPIN_REWARDS,
   type MissionId,
 } from "@/lib/eventCoins";
 import RedeemCashPanel from "@/components/RedeemCashPanel";
 import { useNotifStore } from "@/lib/notifications";
 
-/** Nền canvas giữ nguyên phong cách hạt sáng */
+type TabId = "missions" | "shop" | "inventory";
+
+const COMMUNITY_TICKER = [
+  "@KiemThanh99 vừa đổi Khung viền Kim Cương",
+  "@LanAnh xem xong nhiệm vụ nhận +100 xu",
+  "@OpusFan trúng +200 xu từ Vòng quay",
+  "@MinhPhim trang bị huy hiệu Mọt Phim",
+  "@StarNight đổi VIP OpusFilm 1 ngày",
+  "@CodeWithMe mở Hộp quà bí ẩn",
+];
+
 function EventCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -231,22 +248,36 @@ function pushMissionNotif(title: string, body: string) {
   } catch {}
 }
 
+
 export default function SuKienPage() {
   const coins = useEventStore((s) => s.coins);
   const totalEarned = useEventStore((s) => s.totalEarned);
-  const claimCheckIn = useEventStore((s) => s.claimCheckIn);
-  const getStreakStatus = useEventStore((s) => s.getStreakStatus);
-  const ensureMissionDay = useEventStore((s) => s.ensureMissionDay);
-  const addMissionProgress = useEventStore((s) => s.addMissionProgress);
   const missionProgress = useEventStore((s) => s.missionProgress);
   const missionClaimCount = useEventStore((s) => s.missionClaimCount);
+  const inventory = useEventStore((s) => s.inventory);
+  const liveFeed = useEventStore((s) => s.liveFeed);
+  const equippedFrame = useEventStore((s) => s.equippedFrame);
+  const equippedBadge = useEventStore((s) => s.equippedBadge);
+  const boostExpiresAt = useEventStore((s) => s.boostExpiresAt);
+  const vipExpiresAt = useEventStore((s) => s.vipExpiresAt);
+  const claimCheckIn = useEventStore((s) => s.claimCheckIn);
+  const getStreakStatus = useEventStore((s) => s.getStreakStatus);
   const claimMission = useEventStore((s) => s.claimMission);
+  const ensureMissionDay = useEventStore((s) => s.ensureMissionDay);
+  const addMissionProgress = useEventStore((s) => s.addMissionProgress);
   const dailyMissionSummary = useEventStore((s) => s.dailyMissionSummary);
-  const streakDay = useEventStore((s) => s.streakDay);
-  const lastCheckIn = useEventStore((s) => s.lastCheckIn);
+  const buyShopItem = useEventStore((s) => s.buyShopItem);
+  const equipItem = useEventStore((s) => s.equipItem);
+  const activateItem = useEventStore((s) => s.activateItem);
+  const luckySpin = useEventStore((s) => s.luckySpin);
+  const push = useNotifStore((s) => s.push);
 
-  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState<TabId>("missions");
   const [toast, setToast] = useState("");
+  const [spinning, setSpinning] = useState(false);
+  const [spinDeg, setSpinDeg] = useState(0);
+  const [spinLabel, setSpinLabel] = useState<string | null>(null);
+  const [burst, setBurst] = useState(false);
   const [status, setStatus] = useState({
     streakDay: 0,
     canClaim: true,
@@ -254,11 +285,7 @@ export default function SuKienPage() {
     todayReward: 10,
     cycleDay: 1,
   });
-  const [summary, setSummary] = useState({
-    done: 0,
-    total: DAILY_MISSIONS.length,
-    pct: 0,
-  });
+  const [summary, setSummary] = useState({ done: 0, total: DAILY_MISSIONS.length, pct: 0 });
 
   useEffect(() => {
     try {
@@ -269,217 +296,460 @@ export default function SuKienPage() {
     } catch (e) {
       console.error(e);
     }
-    setReady(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [addMissionProgress, dailyMissionSummary, ensureMissionDay, getStreakStatus]);
 
-  useEffect(() => {
-    try {
-      setStatus(getStreakStatus());
-      setSummary(dailyMissionSummary());
-    } catch {}
-  }, [missionProgress, missionClaimCount, streakDay, lastCheckIn, coins, getStreakStatus, dailyMissionSummary]);
+  const tickerItems = useMemo(() => {
+    const live = (liveFeed || []).map((x) => x.text);
+    return [...live, ...COMMUNITY_TICKER].slice(0, 12);
+  }, [liveFeed]);
 
-  function flash(msg: string) {
+  const flash = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 2800);
-  }
+    window.setTimeout(() => setToast(""), 2800);
+  };
 
-  function onClaimMission(id: MissionId, title: string) {
-    const r = claimMission(id);
-    setSummary(dailyMissionSummary());
-    flash(r.message);
-    if (r.ok) {
-      pushMissionNotif(`Hoàn thành: ${title}`, r.message);
-    }
-  }
-
-  function onCheckIn() {
+  const onCheckIn = () => {
     const r = claimCheckIn();
-    setStatus(getStreakStatus());
     flash(r.message);
     if (r.ok) {
-      pushMissionNotif("Điểm danh 7 ngày", r.message);
+      push({ title: "Điểm danh", body: r.message, href: "/su-kien" });
+      setStatus(getStreakStatus());
     }
-  }
+  };
 
-  if (!ready) {
-    return (
-      <div className="min-h-[50vh] pt-[calc(var(--nav-h,3.5rem)+var(--nav-chips-h,2.5rem)+env(safe-area-inset-top,0px)+1rem)] text-center text-zinc-500 text-sm">
-        Đang tải sự kiện…
-      </div>
-    );
-  }
+  const onClaimMission = (id: MissionId, title: string) => {
+    const r = claimMission(id);
+    flash(r.message);
+    if (r.ok) {
+      push({ title: "Nhiệm vụ", body: `${title}: ${r.message}`, href: "/su-kien" });
+      setSummary(dailyMissionSummary());
+    }
+  };
+
+  const onBuy = (shopId: string) => {
+    const r = buyShopItem(shopId);
+    flash(r.message);
+    if (r.ok) push({ title: "Cửa hàng", body: r.message, href: "/su-kien" });
+  };
+
+  const onEquip = (id: string) => {
+    const r = equipItem(id);
+    flash(r.message);
+  };
+
+  const onActivate = (id: string) => {
+    const r = activateItem(id);
+    flash(r.message);
+    if (r.ok) push({ title: "Kho đồ", body: r.message, href: "/su-kien" });
+  };
+
+  const onSpin = () => {
+    if (spinning) return;
+    const preview = luckySpin();
+    if (!preview.ok) {
+      flash(preview.message);
+      return;
+    }
+    // re-run visual: store already applied; animate wheel
+    setSpinning(true);
+    setBurst(false);
+    const extra = 360 * 5 + Math.floor(Math.random() * 360);
+    setSpinDeg((d) => d + extra);
+    window.setTimeout(() => {
+      setSpinning(false);
+      setSpinLabel(preview.label || preview.message);
+      setBurst(true);
+      flash(preview.message);
+      push({ title: "Vòng quay", body: preview.message, href: "/su-kien" });
+      window.setTimeout(() => setBurst(false), 1600);
+    }, 3200);
+  };
+
+  const boostOn = !!(boostExpiresAt && boostExpiresAt > Date.now());
+  const vipOn = !!(vipExpiresAt && vipExpiresAt > Date.now());
+
+  const tabs: { id: TabId; label: string; icon: typeof Flame }[] = [
+    { id: "missions", label: "Điểm danh & Nhiệm vụ", icon: Flame },
+    { id: "shop", label: "Cửa hàng đổi quà", icon: ShoppingBag },
+    { id: "inventory", label: "Kho đồ", icon: Package },
+  ];
 
   return (
-    <div className="min-h-[100dvh] pt-[calc(var(--nav-h,3.5rem)+var(--nav-chips-h,2.5rem)+env(safe-area-inset-top,0px)+0.5rem)] lg:pt-[calc(var(--nav-h,3.5rem)+env(safe-area-inset-top,0px)+0.75rem)] pb-28 px-3 sm:px-4 max-w-lg mx-auto relative">
-      <div className="flex items-center gap-3 py-3 relative z-10">
-        <Link href="/" className="p-2 rounded-full hover:bg-white/10 text-zinc-300 bounce-press">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-300" />
-            Sự kiện 7 ngày
-          </h1>
-          <p className="text-xs text-zinc-500">Nhiệm vụ · Xu · Thông báo</p>
+    <div className="min-h-[100dvh] pt-[calc(var(--nav-h,3.5rem)+env(safe-area-inset-top,0px)+0.5rem)] pb-28 px-3 sm:px-4 max-w-lg mx-auto relative">
+      {/* Canvas + Hello giữ nguyên */}
+      <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] max-h-[220px] rounded-2xl overflow-hidden mb-3 border border-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+        <EventCanvas />
+        <AppleHello />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+      </div>
+
+      {/* Live ticker */}
+      <div className="mb-3 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-md">
+        <div className="flex items-center gap-2 px-3 py-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+          <div className="overflow-hidden flex-1">
+            <div className="flex gap-8 whitespace-nowrap animate-[ticker_28s_linear_infinite] text-[11px] text-zinc-300">
+              {tickerItems.concat(tickerItems).map((t, i) => (
+                <span key={i}>{t}</span>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-border-live text-amber-300 text-sm font-semibold">
-          <Coins className="w-4 h-4" />
-          {coins}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Trang chủ
+        </Link>
+        <div className="flex items-center gap-2">
+          {vipOn && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 flex items-center gap-1">
+              <Crown className="w-3 h-3" /> VIP
+            </span>
+          )}
+          {boostOn && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 flex items-center gap-1">
+              <Zap className="w-3 h-3" /> x2
+            </span>
+          )}
+          <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-amber-500/15 border border-amber-400/30 text-amber-200 text-sm font-semibold">
+            <Coins className="w-4 h-4" />
+            {coins}
+          </div>
         </div>
       </div>
 
       {toast && (
-        <div className="mb-3 text-center text-sm text-amber-100 bg-amber-500/20 border border-amber-400/30 rounded-xl py-2 backdrop-blur-md bounce-in relative z-10">
+        <div className="mb-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100 backdrop-blur-md">
           {toast}
         </div>
       )}
 
-      <section className="relative overflow-hidden rounded-2xl mb-4 glass-border-live min-h-[200px]">
-        <EventCanvas />
-        <AppleHello />
-        <div className="relative z-10 p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-600 flex items-center justify-center shadow-lg shadow-orange-600/40">
-              <Flame className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <p className="text-white font-semibold drop-shadow">
-                Chuỗi {status.streakDay > 0 ? status.streakDay : 0} ngày
-              </p>
-              <p className="text-xs text-white/75">
-                {status.canClaim
-                  ? `Nhận ${status.todayReward} xu hôm nay`
-                  : "Đã điểm danh hôm nay"}
-                {status.missed ? " · Đã reset" : ""}
-              </p>
-            </div>
-          </div>
+      {/* Tabs */}
+      <div className="grid grid-cols-3 gap-1 p-1 mb-4 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          const on = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`relative flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[10px] sm:text-[11px] transition-all duration-300 ${
+                on
+                  ? "bg-white/10 text-white shadow-[0_0_20px_rgba(244,63,94,0.25)]"
+                  : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${on ? "text-rose-400" : ""}`} />
+              <span className="leading-tight text-center">{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-          <div className="grid grid-cols-7 gap-1.5 mb-4">
-            {CHECKIN_REWARDS.map((reward, i) => {
-              const day = i + 1;
-              const done = streakDay >= day && !!lastCheckIn;
-              const isToday = status.cycleDay === day && status.canClaim;
+      {/* Lucky Spin — luôn hiện phía trên nội dung tab */}
+      <section className="glass-panel p-4 mb-4 relative overflow-hidden">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Disc3 className={`w-4 h-4 text-rose-400 ${spinning ? "animate-spin" : ""}`} />
+            Vòng quay may mắn
+          </h2>
+          <span className="text-[11px] text-zinc-400">{SPIN_COST} xu / lượt</span>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative w-40 h-40 shrink-0">
+            <div
+              className="absolute inset-0 rounded-full border-4 border-white/20 shadow-[0_0_30px_rgba(244,63,94,0.35)] transition-transform duration-[3200ms] ease-out"
+              style={{
+                transform: `rotate(${spinDeg}deg)`,
+                background:
+                  "conic-gradient(#f43f5e 0 45deg,#a855f7 45deg 90deg,#3b82f6 90deg 135deg,#fbbf24 135deg 180deg,#22c55e 180deg 225deg,#ec4899 225deg 270deg,#06b6d4 270deg 315deg,#eab308 315deg 360deg)",
+              }}
+            />
+            <div className="absolute inset-[18%] rounded-full bg-neutral-950/90 border border-white/15 flex items-center justify-center text-center px-2">
+              <span className="text-[11px] text-zinc-200 leading-snug">
+                {spinLabel || "Chúc may mắn"}
+              </span>
+            </div>
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-r-[8px] border-b-[14px] border-l-transparent border-r-transparent border-b-rose-400 drop-shadow" />
+            {burst && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"
+                    style={{
+                      transform: `rotate(${i * 30}deg) translateY(-48px)`,
+                      animationDuration: "0.9s",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 w-full space-y-2">
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Quay để nhận xu thưởng, thẻ mở phim, khung viền hoặc hộp quà.
+            </p>
+            <ul className="text-[11px] text-zinc-500 grid grid-cols-2 gap-1">
+              {SPIN_REWARDS.slice(0, 6).map((r) => (
+                <li key={r.id}>· {r.label}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              disabled={spinning || coins < SPIN_COST}
+              onClick={onSpin}
+              className="w-full rounded-xl py-2.5 text-sm font-semibold bg-gradient-to-r from-rose-600 to-fuchsia-600 text-white disabled:opacity-40 bounce-press shadow-[0_0_24px_rgba(244,63,94,0.35)]"
+            >
+              {spinning ? "Đang quay…" : `Quay · ${SPIN_COST} xu`}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {tab === "missions" && (
+        <>
+          <section className="glass-panel p-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Flame className="w-4 h-4 text-orange-400" />
+                Chuỗi {status.cycleDay}/7
+              </h2>
+              <span className="text-xs text-zinc-400">
+                Chuỗi: <strong className="text-white">{status.streakDay}</strong>
+              </span>
+            </div>
+            {status.missed && (
+              <p className="text-[11px] text-rose-300/90 mb-2">Đã mất chuỗi — bắt đầu lại từ ngày 1.</p>
+            )}
+            <div className="grid grid-cols-7 gap-1.5 mb-3">
+              {CHECKIN_REWARDS.map((rw, i) => {
+                const day = i + 1;
+                const done = status.streakDay >= day && !status.canClaim
+                  ? true
+                  : status.streakDay > i;
+                const today = status.cycleDay === day;
+                return (
+                  <div
+                    key={day}
+                    className={`rounded-lg py-2 text-center border text-[10px] ${
+                      done
+                        ? "bg-emerald-500/15 border-emerald-400/30 text-emerald-200"
+                        : today
+                          ? "bg-rose-500/15 border-rose-400/40 text-rose-100"
+                          : "bg-white/5 border-white/10 text-zinc-500"
+                    }`}
+                  >
+                    <div className="font-medium">D{day}</div>
+                    <div>+{rw}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              disabled={!status.canClaim}
+              onClick={onCheckIn}
+              className="w-full rounded-xl py-2.5 text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-black disabled:opacity-40 bounce-press"
+            >
+              {status.canClaim ? `Nhận điểm danh +${status.todayReward} xu` : "Đã điểm danh hôm nay"}
+            </button>
+          </section>
+
+          <section className="glass-panel p-4 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <Gift className="w-4 h-4 text-violet-400" />
+                Nhiệm vụ ngày
+              </h2>
+              <span className="text-[11px] text-zinc-400">
+                Đã nhận {summary.done} lần
+              </span>
+            </div>
+            <ul className="space-y-2.5 max-h-[55vh] overflow-y-auto custom-scroll">
+              {DAILY_MISSIONS.map((m) => {
+                const claims = missionClaimCount?.[m.id] || 0;
+                const cur = missionProgress?.[m.id] || 0;
+                const inCycle =
+                  cur % m.target === 0 && cur > 0 ? m.target : cur % m.target;
+                const displayCur =
+                  cur >= m.target
+                    ? Math.min(m.target, inCycle || m.target)
+                    : cur % m.target;
+                const pct = Math.min(100, Math.round((displayCur / m.target) * 100));
+                const canClaim = cur >= m.target;
+                return (
+                  <li
+                    key={m.id}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0">
+                        <p className="text-sm text-white font-medium">{m.title}</p>
+                        <p className="text-[11px] text-zinc-500">
+                          {m.desc} · Đã nhận {claims} lần · Không giới hạn
+                        </p>
+                      </div>
+                      <span className="text-xs text-amber-300 shrink-0 font-semibold">
+                        +{MISSION_REWARD}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-2">
+                      <div
+                        className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-zinc-500">
+                        {fmtProgress(displayCur, m.target, m.unit)}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!canClaim}
+                        onClick={() => onClaimMission(m.id, m.title)}
+                        className="text-xs px-3 py-1 rounded-full font-medium disabled:opacity-40 bg-amber-500/20 text-amber-200 border border-amber-400/30 bounce-press"
+                      >
+                        {canClaim ? `Nhận +${MISSION_REWARD}` : "Đang làm"}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <RedeemCashPanel />
+
+          <section className="glass-panel p-4 text-sm text-zinc-400 space-y-2">
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Lock className="w-4 h-4" /> Dùng xu
+            </h2>
+            <p>
+              1 tập: <strong className="text-amber-300">{UNLOCK_COST.episode} xu</strong> · Cả
+              phim: <strong className="text-amber-300">{UNLOCK_COST.movie} xu</strong>
+            </p>
+            <p className="text-xs">
+              Tổng đã kiếm: <span className="text-white">{totalEarned}</span> xu
+            </p>
+          </section>
+        </>
+      )}
+
+      {tab === "shop" && (
+        <section className="space-y-3">
+          <p className="text-xs text-zinc-400 px-1">
+            Đổi xu lấy vật phẩm ảo. Vật phẩm vào <strong className="text-zinc-200">Kho đồ</strong> để trang bị hoặc kích hoạt.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {SHOP_ITEMS.map((item) => {
+              const can = coins >= item.cost;
               return (
                 <div
-                  key={day}
-                  className={`rounded-xl py-2 text-center border text-[10px] ${
-                    done
-                      ? "bg-orange-500/30 border-orange-300/50 text-orange-100"
-                      : isToday
-                      ? "bg-white/15 border-amber-300/60 text-white ring-1 ring-amber-300/50"
-                      : "bg-black/25 border-white/15 text-zinc-400"
-                  }`}
+                  key={item.id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.35)] flex flex-col"
                 >
-                  <Gift className="w-3.5 h-3.5 mx-auto mb-0.5" />
-                  <div className="font-semibold">N{day}</div>
-                  <div>{reward}</div>
+                  <div className="flex items-start gap-2 mb-2">
+                    <span className="text-2xl leading-none">{item.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white leading-tight">{item.name}</p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                  <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                    <span className="text-amber-300 text-sm font-semibold inline-flex items-center gap-1">
+                      <Coins className="w-3.5 h-3.5" />
+                      {item.cost}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!can}
+                      onClick={() => onBuy(item.id)}
+                      className="text-xs px-3 py-1.5 rounded-full font-medium disabled:opacity-40 bg-rose-600/90 hover:bg-rose-500 text-white bounce-press"
+                    >
+                      Đổi ngay
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
+        </section>
+      )}
 
-          <button
-            type="button"
-            disabled={!status.canClaim}
-            onClick={onCheckIn}
-            className="w-full py-3 rounded-xl font-semibold text-sm transition bounce-press disabled:opacity-40 bg-gradient-to-r from-orange-500 via-rose-500 to-fuchsia-600 text-white shadow-lg shadow-rose-900/40"
-          >
-            {status.canClaim ? `Điểm danh · +${status.todayReward} xu` : "Đã nhận hôm nay"}
-          </button>
-        </div>
-      </section>
-
-      <section className="glass-panel p-4 mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold text-white">
-            Nhiệm vụ ({DAILY_MISSIONS.length}) · +{MISSION_REWARD} xu/lần
-          </h2>
-          <span className="text-xs text-zinc-400">
-            {summary.done}/{summary.total}
-          </span>
-        </div>
-        <div className="h-2.5 rounded-full bg-white/10 overflow-hidden mb-4">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-violet-500 transition-all duration-700"
-            style={{ width: `${summary.pct}%` }}
-          />
-        </div>
-
-        <ul className="space-y-2.5 max-h-[55vh] overflow-y-auto custom-scroll">
-          {DAILY_MISSIONS.map((m) => {
-            const cur = (missionProgress && missionProgress[m.id]) || 0;
-            const claims = (missionClaimCount && missionClaimCount[m.id]) || 0;
-            const maxed = false; // không giới hạn số lần
-            const inCycle = maxed ? m.target : cur % m.target === 0 && cur > 0 ? m.target : cur % m.target;
-            const displayCur = maxed ? m.target : cur >= m.target ? Math.min(m.target, inCycle || m.target) : cur % m.target;
-            const pct = Math.min(100, Math.round((displayCur / m.target) * 100));
-            const canClaim = !maxed && cur >= m.target;
-            return (
-              <li
-                key={m.id}
-                className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-3"
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-sm text-white font-medium">{m.title}</p>
-                    <p className="text-[11px] text-zinc-500">
-                      {m.desc} · Đã nhận {claims} lần · Không giới hạn
-                    </p>
-                  </div>
-                  <span className="text-xs text-amber-300 shrink-0 font-semibold">
-                    +{MISSION_REWARD}
-                  </span>
-                </div>
-                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-2">
-                  <div
-                    className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-all"
-                    style={{ width: `${maxed ? 100 : pct}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-zinc-500">
-                    {fmtProgress(displayCur, m.target, m.unit)}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!canClaim}
-                    onClick={() => onClaimMission(m.id, m.title)}
-                    className="text-xs px-3 py-1 rounded-full font-medium disabled:opacity-40 bg-amber-500/20 text-amber-200 border border-amber-400/30 bounce-press"
+      {tab === "inventory" && (
+        <section className="space-y-3">
+          <div className="glass-panel p-3 text-xs text-zinc-400 flex flex-wrap gap-2">
+            <span>
+              Khung:{" "}
+              <strong className="text-zinc-200">{equippedFrame || "Chưa trang bị"}</strong>
+            </span>
+            <span className="text-zinc-600">·</span>
+            <span>
+              Huy hiệu:{" "}
+              <strong className="text-zinc-200">{equippedBadge || "Chưa trang bị"}</strong>
+            </span>
+          </div>
+          {(inventory || []).length === 0 ? (
+            <div className="glass-panel p-8 text-center text-sm text-zinc-500">
+              Kho trống. Hãy đổi quà ở Cửa hàng hoặc quay Vòng quay.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {(inventory || []).map((it) => {
+                const isEquip = it.kind === "frame" || it.kind === "badge";
+                const isAct =
+                  it.kind === "boost" || it.kind === "vip" || it.kind === "unlock";
+                return (
+                  <li
+                    key={it.id}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-3 flex items-center gap-3"
                   >
-                    {canClaim ? (
-                      `Nhận +${MISSION_REWARD}`
-                    ) : (
-                      "Đang làm"
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-white font-medium truncate">{it.name}</p>
+                      <p className="text-[11px] text-zinc-500">
+                        x{it.qty}
+                        {it.meta ? ` · ${it.meta}` : ""}
+                      </p>
+                    </div>
+                    {isEquip && (
+                      <button
+                        type="button"
+                        onClick={() => onEquip(it.id)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-sky-500/20 text-sky-200 border border-sky-400/30 bounce-press"
+                      >
+                        Trang bị
+                      </button>
                     )}
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+                    {isAct && (
+                      <button
+                        type="button"
+                        onClick={() => onActivate(it.id)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 bounce-press"
+                      >
+                        Kích hoạt
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
-      <RedeemCashPanel />
-
-      <section className="glass-panel p-4 text-sm text-zinc-400 space-y-2">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Lock className="w-4 h-4" /> Dùng xu
-        </h2>
-        <p>
-          1 tập: <strong className="text-amber-300">{UNLOCK_COST.episode} xu</strong> · Cả
-          phim: <strong className="text-amber-300">{UNLOCK_COST.movie} xu</strong>
-        </p>
-        <p className="text-xs">
-          Tổng đã kiếm: <span className="text-white">{totalEarned}</span> xu · Thông báo
-          hiện ở chuông &amp;{" "}
-          <Link href="/hop-thu" className="text-sky-400 hover:underline">
-            Hòm thư
-          </Link>
-        </p>
-      </section>
+      <style jsx global>{`
+        @keyframes ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
     </div>
   );
 }

@@ -93,16 +93,102 @@ export interface ShopItemDef {
 }
 
 export const SHOP_ITEMS: ShopItemDef[] = [
-  { id: "card_ep", name: "Thẻ mở 1 tập", desc: "Mở khóa 1 tập phim bất kỳ", cost: 50, kind: "unlock", meta: "episode", icon: "🎬" },
-  { id: "card_movie", name: "Thẻ xem trọn bộ", desc: "Mở cả series một lần", cost: 120, kind: "unlock", meta: "movie", icon: "🍿" },
-  { id: "vip_1d", name: "VIP OpusFilm 1 ngày", desc: "Huy hiệu VIP trong 24 giờ", cost: 200, kind: "vip", meta: "vip24", icon: "👑" },
-  { id: "frame_conic", name: "Khung Conic Spin", desc: "Viền avatar xoay đa sắc", cost: 300, kind: "frame", meta: "frame:conic-rainbow", icon: "🌀" },
-  { id: "frame_plasma", name: "Khung Cyber Plasma", desc: "Viền plasma công nghệ", cost: 350, kind: "frame", meta: "frame:neon-flicker", icon: "⚡" },
-  { id: "badge_mot", name: "Huy hiệu Mọt Phim", desc: "Danh hiệu Mọt Phim Kỳ Cựu", cost: 150, kind: "badge", meta: "badge:mot-phim", icon: "🏅" },
-  { id: "badge_tycoon", name: "Huy hiệu Đại Gia Xu", desc: "Danh hiệu Đại Gia Xu", cost: 180, kind: "badge", meta: "badge:dai-gia", icon: "💎" },
-  { id: "boost_x2", name: "Nhân đôi xu x2", desc: "Xu nhiệm vụ x2 trong 24 giờ", cost: 250, kind: "boost", meta: "x2", icon: "✨" },
-  { id: "mystery", name: "Hộp quà bí ẩn", desc: "Ngẫu nhiên xu hoặc vật phẩm", cost: 80, kind: "mystery", icon: "🎁" },
+  // --- Mở khóa ---
+  { id: "card_ep", name: "Thẻ mở 1 tập", desc: "Mở khóa 1 tập phim", cost: 50, kind: "unlock", meta: "episode", icon: "🎬" },
+  { id: "card_ep3", name: "Thẻ mở 3 tập", desc: "Mở 3 tập bất kỳ", cost: 120, kind: "unlock", meta: "episode", icon: "🎞️" },
+  { id: "card_movie", name: "Thẻ xem trọn bộ", desc: "Mở cả series", cost: 120, kind: "unlock", meta: "movie", icon: "🍿" },
+  { id: "card_movie_hd", name: "Thẻ trọn bộ HD", desc: "Series + ưu tiên HD", cost: 180, kind: "unlock", meta: "movie", icon: "📺" },
+  { id: "card_weekend", name: "Gói cuối tuần", desc: "Mở 5 tập trong 48h", cost: 150, kind: "unlock", meta: "episode", icon: "🗓️" },
+  // --- VIP thời gian ---
+  { id: "vip_1d", name: "VIP 1 ngày", desc: "Huy hiệu VIP 24 giờ", cost: 200, kind: "vip", meta: "vip24", icon: "👑" },
+  { id: "vip_3d", name: "VIP 3 ngày", desc: "VIP cộng dồn 72 giờ", cost: 500, kind: "vip", meta: "vip72", icon: "👑" },
+  { id: "vip_7d", name: "VIP 7 ngày", desc: "VIP một tuần", cost: 1000, kind: "vip", meta: "vip168", icon: "👑" },
+  // --- Boost ---
+  { id: "boost_x2", name: "Nhân đôi xu x2", desc: "Xu nhiệm vụ x2 · 24h", cost: 250, kind: "boost", meta: "x2", icon: "✨" },
+  { id: "boost_x2_3d", name: "x2 xu 3 ngày", desc: "Nhân đôi kéo dài 72h", cost: 600, kind: "boost", meta: "x2", icon: "⚡" },
+  { id: "boost_lucky", name: "Bùa may mắn", desc: "Cộng dồn x2 khi đang active", cost: 320, kind: "boost", meta: "x2", icon: "🍀" },
+  // --- Khung viền ---
+  { id: "frame_conic", name: "Khung Conic Spin", desc: "Viền xoay đa sắc", cost: 300, kind: "frame", meta: "frame:conic-rainbow", icon: "🌀" },
+  { id: "frame_plasma", name: "Khung Cyber Plasma", desc: "Neon flicker", cost: 350, kind: "frame", meta: "frame:neon-flicker", icon: "⚡" },
+  { id: "frame_flame", name: "Khung Flame Ring", desc: "Vòng lửa", cost: 280, kind: "frame", meta: "frame:flame-ring", icon: "🔥" },
+  { id: "frame_frost", name: "Khung Mystic Frost", desc: "Băng giá", cost: 280, kind: "frame", meta: "frame:mystic-frost", icon: "❄️" },
+  { id: "frame_galaxy", name: "Khung Galaxy", desc: "Tinh vân", cost: 320, kind: "frame", meta: "frame:galaxy-nebula", icon: "🌌" },
+  { id: "frame_solar", name: "Khung Solar Eclipse", desc: "Nhật thực", cost: 340, kind: "frame", meta: "frame:solar-eclipse", icon: "☀️" },
+  { id: "frame_lunar", name: "Khung Lunar Eclipse", desc: "Nguyệt thực", cost: 340, kind: "frame", meta: "frame:lunar-eclipse", icon: "🌙" },
+  { id: "frame_emerald", name: "Khung Emerald", desc: "Rừng ngọc", cost: 260, kind: "frame", meta: "frame:emerald-forest", icon: "💚" },
+  { id: "frame_spirit", name: "Khung Spirit Orb", desc: "Quả cầu linh", cost: 300, kind: "frame", meta: "frame:spirit-orb", icon: "🔮" },
+  { id: "frame_lightning", name: "Khung Mythic Lightning", desc: "Sét thần", cost: 360, kind: "frame", meta: "frame:mythic-lightning", icon: "⛈️" },
+  { id: "frame_halo", name: "Khung Celestial Halo", desc: "Hào quang", cost: 310, kind: "frame", meta: "frame:celestial-halo", icon: "😇" },
+  { id: "frame_emp", name: "Khung EMP Pulse", desc: "Xung điện", cost: 330, kind: "frame", meta: "frame:emp-pulse", icon: "📡" },
+  // --- Huy hiệu ---
+  { id: "badge_mot", name: "Mọt Phim Kỳ Cựu", desc: "Huy hiệu xem phim", cost: 150, kind: "badge", meta: "badge:mot-phim", icon: "🏅" },
+  { id: "badge_tycoon", name: "Đại Gia Xu", desc: "Huy hiệu giàu xu", cost: 180, kind: "badge", meta: "badge:dai-gia", icon: "💎" },
+  { id: "badge_night", name: "Cú Đêm", desc: "Xem xuyên đêm", cost: 140, kind: "badge", meta: "badge:cu-dem", icon: "🦉" },
+  { id: "badge_streak", name: "Chuỗi Lửa", desc: "Điểm danh bền bỉ", cost: 160, kind: "badge", meta: "badge:chuoi-lua", icon: "🔥" },
+  { id: "badge_coder", name: "Code Master", desc: "Opus Code", cost: 170, kind: "badge", meta: "badge:code", icon: "💻" },
+  { id: "badge_music", name: "Music Soul", desc: "Opus Music", cost: 150, kind: "badge", meta: "badge:music", icon: "🎵" },
+  { id: "badge_chat", name: "Tán Gẫu", desc: "Opus Chat", cost: 140, kind: "badge", meta: "badge:chat", icon: "💬" },
+  { id: "badge_vip", name: "Huy hiệu VIP", desc: "Biểu tượng VIP", cost: 220, kind: "badge", meta: "badge:vip", icon: "👑" },
+  { id: "badge_early", name: "Early Bird", desc: "Thành viên sớm", cost: 130, kind: "badge", meta: "badge:early", icon: "🌅" },
+  { id: "badge_legend", name: "Huyền Thoại", desc: "Cấp cao", cost: 400, kind: "badge", meta: "badge:legend", icon: "🏆" },
+  { id: "badge_heart", name: "Trái Tim Vàng", desc: "Yêu thích nhiều", cost: 145, kind: "badge", meta: "badge:heart", icon: "💛" },
+  { id: "badge_star", name: "Ngôi Sao", desc: "Nổi bật", cost: 155, kind: "badge", meta: "badge:star", icon: "⭐" },
+  // --- Hộp quà (vào kho, bấm Mở) ---
+  { id: "mystery", name: "Hộp quà bí ẩn", desc: "Vào kho → bấm Mở để nhận quà ngẫu nhiên", cost: 80, kind: "mystery", meta: "box", icon: "🎁" },
+  { id: "mystery_gold", name: "Hộp quà vàng", desc: "Tỉ lệ quà hiếm cao hơn", cost: 200, kind: "mystery", meta: "box-gold", icon: "📦" },
+  { id: "mystery_crystal", name: "Hộp tinh thể", desc: "Ngẫu nhiên khung/huy hiệu", cost: 280, kind: "mystery", meta: "box-crystal", icon: "💠" },
+  // --- Xu đóng gói ---
+  { id: "coin_pack_50", name: "Gói 50 xu", desc: "Nhận ngay 50 xu", cost: 40, kind: "coins", meta: "50", icon: "🪙" },
+  { id: "coin_pack_120", name: "Gói 120 xu", desc: "Nhận ngay 120 xu", cost: 90, kind: "coins", meta: "120", icon: "🪙" },
+  { id: "coin_pack_300", name: "Gói 300 xu", desc: "Nhận ngay 300 xu", cost: 200, kind: "coins", meta: "300", icon: "💰" },
+  // --- Thêm tiện ích ---
+  { id: "card_skip", name: "Thẻ bỏ quảng cáo", desc: "Mở khóa tiện ích xem", cost: 90, kind: "unlock", meta: "episode", icon: "🚫" },
+  { id: "card_hd_ep", name: "Thẻ tập Full HD", desc: "1 tập chất lượng cao", cost: 70, kind: "unlock", meta: "episode", icon: "📽️" },
+  { id: "badge_pioneer", name: "Người Tiên Phong", desc: "Khám phá tính năng mới", cost: 165, kind: "badge", meta: "badge:pioneer", icon: "🚀" },
+  { id: "badge_collector", name: "Nhà Sưu Tầm", desc: "Sưu tập huy hiệu", cost: 175, kind: "badge", meta: "badge:collector", icon: "🧰" },
+  { id: "frame_rainbow2", name: "Khung Rainbow+", desc: "Cầu vồng nâng cấp", cost: 380, kind: "frame", meta: "frame:conic-rainbow", icon: "🌈" },
+  { id: "boost_focus", name: "Tăng tốc nhiệm vụ", desc: "x2 xu 24h", cost: 240, kind: "boost", meta: "x2", icon: "⏱️" },
+  { id: "vip_flash", name: "VIP Flash 12h", desc: "VIP nửa ngày", cost: 120, kind: "vip", meta: "vip12", icon: "✨" },
+  { id: "mystery_mini", name: "Hộp mini", desc: "Quà nhỏ ngẫu nhiên", cost: 45, kind: "mystery", meta: "box-mini", icon: "🎀" },
+  { id: "badge_season", name: "Huy hiệu Mùa", desc: "Theo mùa sự kiện", cost: 190, kind: "badge", meta: "badge:season", icon: "🎌" },
+  { id: "card_binge", name: "Gói binge 10 tập", desc: "Mở nhiều tập", cost: 280, kind: "unlock", meta: "episode", icon: "📚" },
 ];
+
+/** 15 cấp VIP — theo tổng xu đã kiếm */
+export const VIP_LEVELS: { level: number; need: number; title: string; color: string }[] = [
+  { level: 1, need: 0, title: "Tân binh", color: "#94a3b8" },
+  { level: 2, need: 200, title: "Đồng I", color: "#cd7c32" },
+  { level: 3, need: 500, title: "Đồng II", color: "#d4924a" },
+  { level: 4, need: 1000, title: "Bạc I", color: "#c0c0c0" },
+  { level: 5, need: 1800, title: "Bạc II", color: "#e8e8e8" },
+  { level: 6, need: 2800, title: "Vàng I", color: "#eab308" },
+  { level: 7, need: 4200, title: "Vàng II", color: "#facc15" },
+  { level: 8, need: 6000, title: "Bạch kim I", color: "#67e8f9" },
+  { level: 9, need: 8500, title: "Bạch kim II", color: "#22d3ee" },
+  { level: 10, need: 12000, title: "Kim cương I", color: "#60a5fa" },
+  { level: 11, need: 16000, title: "Kim cương II", color: "#3b82f6" },
+  { level: 12, need: 22000, title: "Tinh anh", color: "#a78bfa" },
+  { level: 13, need: 30000, title: "Cao thủ", color: "#c084fc" },
+  { level: 14, need: 40000, title: "Chiến thần", color: "#f472b6" },
+  { level: 15, need: 55000, title: "Huyền thoại", color: "#f43f5e" },
+];
+
+export function getVipProgress(totalEarned: number) {
+  const earned = Math.max(0, totalEarned || 0);
+  let cur = VIP_LEVELS[0];
+  let next = VIP_LEVELS[1] || VIP_LEVELS[0];
+  for (let i = 0; i < VIP_LEVELS.length; i++) {
+    if (earned >= VIP_LEVELS[i].need) {
+      cur = VIP_LEVELS[i];
+      next = VIP_LEVELS[Math.min(i + 1, VIP_LEVELS.length - 1)];
+    }
+  }
+  const span = Math.max(1, next.need - cur.need);
+  const into = Math.min(span, Math.max(0, earned - cur.need));
+  const pct = cur.level >= 15 ? 100 : Math.round((into / span) * 100);
+  return { cur, next, pct, earned };
+}
+
 
 export interface InventoryItem {
   id: string;
@@ -313,6 +399,7 @@ export interface EventState {
   isUnlocked: (key: string) => boolean;
   dailyMissionSummary: () => { done: number; total: number; pct: number };
   buyShopItem: (shopId: string) => { ok: boolean; message: string };
+  openMysteryBox: (invId: string) => { ok: boolean; message: string };
   equipItem: (invId: string) => { ok: boolean; message: string };
   activateItem: (invId: string) => { ok: boolean; message: string };
   luckySpin: () => { ok: boolean; message: string; label?: string };
@@ -568,35 +655,21 @@ export const useEventStore = create<EventState>()(
         const s = get();
         if (s.coins < def.cost) return { ok: false, message: `Cần ${def.cost} xu` };
 
-        let finalName = def.name;
-        let finalKind = def.kind;
-        let finalMeta = def.meta;
-        let bonusCoins = 0;
-        if (def.kind === "mystery") {
-          const roll = Math.random();
-          if (roll < 0.45) {
-            bonusCoins = 30 + Math.floor(Math.random() * 70);
-            set({
-              coins: s.coins - def.cost + bonusCoins,
-              totalEarned: s.totalEarned + bonusCoins,
-            });
-            get().pushLive(`Bạn mở hộp quà nhận +${bonusCoins} xu`);
-            return { ok: true, message: `+${bonusCoins} xu từ hộp quà` };
-          } else if (roll < 0.7) {
-            finalName = "Thẻ mở 1 tập (hộp quà)";
-            finalKind = "unlock";
-            finalMeta = "episode";
-          } else if (roll < 0.88) {
-            finalName = "Khung Conic (hộp quà)";
-            finalKind = "frame";
-            finalMeta = "frame:conic-rainbow";
-          } else {
-            finalName = "Huy hiệu Mọt Phim (hộp quà)";
-            finalKind = "badge";
-            finalMeta = "badge:mot-phim";
-          }
+        // Gói xu: cộng thẳng
+        if (def.kind === "coins") {
+          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
+          set({
+            coins: s.coins - def.cost + add,
+            totalEarned: s.totalEarned + add,
+          });
+          get().pushLive(`Nhận gói +${add} xu`);
+          return { ok: true, message: `+${add} xu vào ví` };
         }
 
+        // Hộp quà / vật phẩm khác → vào kho (hộp mở sau)
+        const finalName = def.name;
+        const finalKind = def.kind;
+        const finalMeta = def.meta;
         const inv = [...(s.inventory || [])];
         const existing = inv.find(
           (i) => i.kind === finalKind && i.meta === finalMeta && i.name === finalName
@@ -664,9 +737,13 @@ export const useEventStore = create<EventState>()(
         if (item.kind === "vip") {
           item.qty -= 1;
           if (item.qty <= 0) inv.splice(idx, 1);
-          const DAY = 86400000;
+          let hours = 24;
+          if (item.meta === "vip12") hours = 12;
+          if (item.meta === "vip72") hours = 72;
+          if (item.meta === "vip168") hours = 168;
+          const MS = hours * 3600000;
           const base = Math.max(Date.now(), s.vipExpiresAt || 0);
-          const until = base + DAY;
+          const until = base + MS;
           set({ inventory: inv, vipExpiresAt: until });
           const h = Math.round((until - Date.now()) / 3600000);
           return { ok: true, message: `VIP · còn ~${h}h (cộng dồn)` };
@@ -689,6 +766,61 @@ export const useEventStore = create<EventState>()(
         }
         return { ok: false, message: "Dùng Trang bị cho khung/huy hiệu" };
       },
+
+      openMysteryBox: (invId) => {
+        const s = get();
+        const inv = [...(s.inventory || [])];
+        const idx = inv.findIndex((i) => i.id === invId);
+        if (idx < 0) return { ok: false, message: "Không tìm thấy hộp" };
+        const box = inv[idx];
+        if (box.kind !== "mystery") return { ok: false, message: "Không phải hộp quà" };
+        box.qty -= 1;
+        if (box.qty <= 0) inv.splice(idx, 1);
+
+        const pool = SHOP_ITEMS.filter((x) => x.kind !== "mystery" && x.kind !== "coins");
+        // hộp vàng/crystal bias
+        let pick = pool[Math.floor(Math.random() * pool.length)];
+        if (box.meta === "box-gold" || box.meta === "box-crystal") {
+          const rare = pool.filter((x) => x.kind === "frame" || x.kind === "badge" || x.kind === "vip");
+          if (rare.length && Math.random() < 0.65) pick = rare[Math.floor(Math.random() * rare.length)];
+        }
+        if (box.meta === "box-mini") {
+          const small = pool.filter((x) => x.cost <= 160);
+          if (small.length) pick = small[Math.floor(Math.random() * small.length)];
+        }
+
+        // 20% chance pure coins
+        if (Math.random() < 0.2) {
+          const bonus = 40 + Math.floor(Math.random() * 120);
+          set({
+            inventory: inv,
+            coins: s.coins + bonus,
+            totalEarned: s.totalEarned + bonus,
+          });
+          get().pushLive(`Mở hộp: +${bonus} xu`);
+          return { ok: true, message: `Mở hộp nhận +${bonus} xu` };
+        }
+
+        const existing = inv.find(
+          (i) => i.kind === pick.kind && i.meta === pick.meta && i.name === pick.name
+        );
+        if (existing) existing.qty += 1;
+        else {
+          inv.unshift({
+            id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            shopId: pick.id,
+            name: pick.name,
+            kind: pick.kind,
+            meta: pick.meta,
+            qty: 1,
+            acquiredAt: Date.now(),
+          });
+        }
+        set({ inventory: inv });
+        get().pushLive(`Mở hộp: ${pick.name}`);
+        return { ok: true, message: `Nhận được: ${pick.name}` };
+      },
+
 
       luckySpin: () => {
         const s = get();

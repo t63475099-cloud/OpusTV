@@ -1,5 +1,6 @@
 "use client";
-import { useEventStore } from "@/lib/eventCoins";
+import { useEventStore, getVipProgress, VIP_LEVELS } from "@/lib/eventCoins";
+
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -245,6 +246,13 @@ export default function AccountPage() {
   const updateProfile = useSettingsStore((s) => s.updateProfile);
   const xpSummary = useXpStore((s) => s.summary);
   const profile = useSettingsStore((s) => s.profile);
+  const totalEarned = useEventStore((s) => s.totalEarned);
+  const vipExpiresAt = useEventStore((s) => s.vipExpiresAt);
+  const equippedBadge = useEventStore((s) => s.equippedBadge);
+  const inventory = useEventStore((s) => s.inventory);
+  const equipItem = useEventStore((s) => s.equipItem);
+  const isVipActive = useEventStore((s) => s.isVipActive);
+  const vipProg = getVipProgress(totalEarned);
   const setAvatar = useSettingsStore((s) => s.setAvatar);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -289,6 +297,7 @@ export default function AccountPage() {
   const [pinMsg, setPinMsg] = useState("");
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
+  const [avatarTab, setAvatarTab] = useState<"frame" | "badge">("frame");
   const [uidCopied, setUidCopied] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   useEffect(() => {
@@ -624,6 +633,37 @@ export default function AccountPage() {
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   Đồng bộ
                 </button>
+                
+                {/* VIP 15 cấp */}
+                <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-md p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-xs font-semibold" style={{ color: vipProg.cur.color }}>
+                      VIP {vipProg.cur.level}/15 · {vipProg.cur.title}
+                      {isVipActive() ? " · Đang active" : ""}
+                    </span>
+                    <span className="text-[10px] text-zinc-500 tabular-nums">
+                      {vipProg.earned}/{vipProg.next.need} xu
+                    </span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${vipProg.pct}%`,
+                        background: `linear-gradient(90deg, ${vipProg.cur.color}, ${vipProg.next.color})`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1">
+                    {vipProg.cur.level >= 15
+                      ? "Đã đạt cấp tối đa"
+                      : `Còn ${Math.max(0, vipProg.next.need - vipProg.earned)} xu → ${vipProg.next.title}`}
+                  </p>
+                  {equippedBadge && (
+                    <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {equippedBadge}</p>
+                  )}
+                </div>
+
                 {!profile.verified ? (
                   <button
                     type="button"
@@ -741,7 +781,34 @@ export default function AccountPage() {
             <p className="text-xs font-medium text-zinc-400">Khung viền</p>
             <div className="max-h-64 overflow-y-auto rounded-xl zalo-glass-soft p-2 scrollbar-hide">
               <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                {AVATAR_FRAMES.map((fr) => {
+                <div className="flex gap-1 p-1 mb-3 rounded-xl bg-white/5 border border-white/10">
+                  <button type="button" onClick={() => setAvatarTab("frame")} className={`flex-1 text-xs py-1.5 rounded-lg transition-all duration-500 ${avatarTab === "frame" ? "bg-white/15 text-white" : "text-zinc-400"}`}>Khung viền</button>
+                  <button type="button" onClick={() => setAvatarTab("badge")} className={`flex-1 text-xs py-1.5 rounded-lg transition-all duration-500 ${avatarTab === "badge" ? "bg-white/15 text-white" : "text-zinc-400"}`}>Huy hiệu</button>
+                </div>
+                {avatarTab === "badge" && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                    {(inventory || []).filter((i) => i.kind === "badge").length === 0 ? (
+                      <p className="col-span-full text-xs text-zinc-500 py-4 text-center">Chưa có huy hiệu — đổi ở Sự kiện</p>
+                    ) : (
+                      (inventory || []).filter((i) => i.kind === "badge").map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => equipItem(b.id)}
+                          className={`rounded-xl border px-2 py-2 text-left text-xs transition-all duration-500 ${
+                            equippedBadge === b.meta
+                              ? "border-amber-400/50 bg-amber-500/15 text-amber-100"
+                              : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"
+                          }`}
+                        >
+                          <span className="block font-medium truncate">{b.name}</span>
+                          <span className="text-[10px] text-zinc-500">x{b.qty} · Trang bị</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+                {avatarTab === "frame" && AVATAR_FRAMES.map((fr) => {
                   const active = (profile.avatarFrame || "frame:none") === fr.id;
                   return (
                     <button

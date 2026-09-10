@@ -333,6 +333,7 @@ export default function SuKienPage() {
   const equipItem = useEventStore((s) => s.equipItem);
   const activateItem = useEventStore((s) => s.activateItem);
   const luckySpin = useEventStore((s) => s.luckySpin);
+  const openMysteryBox = useEventStore((s) => s.openMysteryBox);
   const addNotif = useNotifStore((s) => s.add);
 
   const [tab, setTab] = useState<TabId>("missions");
@@ -411,6 +412,15 @@ export default function SuKienPage() {
     const r = activateItem(id);
     flash(r.message);
     if (r.ok) addNotif({ kind: "mission", title: "Kho đồ", body: r.message, href: "/su-kien" });
+  };
+
+  const onOpenBox = (id: string) => {
+    const r = openMysteryBox(id);
+    flash(r.message);
+    if (r.ok) {
+      setPrizeModal({ label: "Hộp quà", message: r.message });
+      addNotif({ kind: "mission", title: "Hộp quà", body: r.message, href: "/su-kien" });
+    }
   };
 
   const wheelLabels = SPIN_REWARDS.map((r) => r.label.replace("Hộp quà", "Hộp").replace("Thẻ 1 tập", "1 tập"));
@@ -852,6 +862,15 @@ export default function SuKienPage() {
                         {it.meta ? ` · ${it.meta}` : ""}
                       </p>
                     </div>
+                    {it.kind === "mystery" && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenBox(it.id)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-amber-500/25 text-amber-100 border border-amber-400/40 bounce-press font-semibold"
+                      >
+                        Mở
+                      </button>
+                    )}
                     {isEquip && (
                       <button
                         type="button"

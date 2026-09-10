@@ -158,7 +158,7 @@ export default function NotificationBell() {
               Mở hòm thư đầy đủ →
             </Link>
           </div>
-          <div className="overflow-y-auto overscroll-contain flex-1">
+          <div className="overflow-y-auto overscroll-contain flex-1 custom-scroll max-h-[min(60vh,420px)]">
             {items.length === 0 ? (
               <p className="text-sm text-zinc-500 p-6 text-center">Chưa có thông báo</p>
             ) : (

@@ -34,7 +34,7 @@ type TabId = "missions" | "shop" | "inventory";
 
 const COMMUNITY_TICKER = [
   "@KiemThanh99 vừa đổi Khung viền Kim Cương",
-  "@LanAnh xem xong nhiệm vụ nhận +100 xu",
+  "@LanAnh xem xong nhiệm vụ nhận +1000 xu",
   "@OpusFan trúng +200 xu từ Vòng quay",
   "@MinhPhim trang bị huy hiệu Mọt Phim",
   "@StarNight đổi VIP OpusFilm 1 ngày",
@@ -315,6 +315,7 @@ function WheelFace({ labels, colors }: { labels: string[]; colors: string[] }) {
 export default function SuKienPage() {
   const coins = useEventStore((s) => s.coins);
   const totalEarned = useEventStore((s) => s.totalEarned);
+  const vipPoints = useEventStore((s) => s.vipPoints || 0);
   const missionProgress = useEventStore((s) => s.missionProgress);
   const missionClaimCount = useEventStore((s) => s.missionClaimCount);
   const inventory = useEventStore((s) => s.inventory);
@@ -764,7 +765,10 @@ export default function SuKienPage() {
               phim: <strong className="text-amber-300">{UNLOCK_COST.movie} xu</strong>
             </p>
             <p className="text-xs">
-              Tổng đã kiếm: <span className="text-white">{totalEarned}</span> xu
+              Tổng đã kiếm: <span className="text-white">{totalEarned.toLocaleString("vi-VN")}</span> xu
+            </p>
+            <p className="text-xs">
+              Điểm VIP: <span className="text-amber-300">{vipPoints.toLocaleString("vi-VN")}</span> (đổi xu trong Cửa hàng để tăng)
             </p>
           </section>
         </>

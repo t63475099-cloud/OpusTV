@@ -246,13 +246,13 @@ export default function AccountPage() {
   const updateProfile = useSettingsStore((s) => s.updateProfile);
   const xpSummary = useXpStore((s) => s.summary);
   const profile = useSettingsStore((s) => s.profile);
-  const totalEarned = useEventStore((s) => s.totalEarned);
+  const vipPoints = useEventStore((s) => s.vipPoints || 0);
   const vipExpiresAt = useEventStore((s) => s.vipExpiresAt);
   const equippedBadge = useEventStore((s) => s.equippedBadge);
   const inventory = useEventStore((s) => s.inventory);
   const equipItem = useEventStore((s) => s.equipItem);
   const isVipActive = useEventStore((s) => s.isVipActive);
-  const vipProg = getVipProgress(totalEarned);
+  const vipProg = getVipProgress(vipPoints);
   const setAvatar = useSettingsStore((s) => s.setAvatar);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -642,7 +642,7 @@ export default function AccountPage() {
                       {isVipActive() ? " · Đang active" : ""}
                     </span>
                     <span className="text-[10px] text-zinc-500 tabular-nums">
-                      {vipProg.earned}/{vipProg.next.need} xu
+                      {vipProg.earned.toLocaleString("vi-VN")}/{vipProg.next.need.toLocaleString("vi-VN")} điểm
                     </span>
                   </div>
                   <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
@@ -657,7 +657,7 @@ export default function AccountPage() {
                   <p className="text-[10px] text-zinc-500 mt-1">
                     {vipProg.cur.level >= 15
                       ? "Đã đạt cấp tối đa"
-                      : `Còn ${Math.max(0, vipProg.next.need - vipProg.earned)} xu → ${vipProg.next.title}`}
+                      : `Còn ${Math.max(0, vipProg.next.need - vipProg.earned).toLocaleString("vi-VN")} điểm VIP → ${vipProg.next.title}`}
                   </p>
                   {equippedBadge && (
                     <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {equippedBadge}</p>

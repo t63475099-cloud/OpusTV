@@ -8,6 +8,8 @@ import { useHistoryStore } from "./history";
 import { useFavoritesStore } from "./favorites";
 import { useMusicHistoryStore } from "./musicHistory";
 import { useSettingsStore } from "./settings";
+import { useEventStore } from "./eventCoins";
+import { useOpusPassStore } from "./opusPass";
 
 interface AccountState {
   username: string | null;
@@ -51,12 +53,44 @@ export const useAccountStore = create<AccountState>()(
         const musicWatched = useMusicHistoryStore.getState().watched;
         const settings = useSettingsStore.getState().settings;
         const profile = useSettingsStore.getState().profile;
+        const ev = useEventStore.getState();
+        const pass = useOpusPassStore.getState();
         return {
           history,
           favorites,
           musicWatched,
           settings,
           profile,
+          events: {
+            coins: ev.coins,
+            totalEarned: ev.totalEarned,
+            vipPoints: ev.vipPoints || 0,
+            streakDay: ev.streakDay,
+            lastCheckIn: ev.lastCheckIn,
+            claimedCheckInDay: ev.claimedCheckInDay,
+            missionDay: ev.missionDay,
+            missionProgress: { ...(ev.missionProgress || {}) },
+            missionClaimCount: { ...(ev.missionClaimCount || {}) },
+            unlocks: [...(ev.unlocks || [])],
+            episodeSlugsToday: [...(ev.episodeSlugsToday || [])],
+            inventory: [...(ev.inventory || [])],
+            equippedFrame: ev.equippedFrame,
+            equippedBadge: ev.equippedBadge,
+            boostExpiresAt: ev.boostExpiresAt,
+            vipExpiresAt: ev.vipExpiresAt,
+            redeemHistory: [...(ev.redeemHistory || [])],
+            liveFeed: [...(ev.liveFeed || [])].slice(0, 20),
+            updatedAt: Date.now(),
+          },
+          opusPass: {
+            season: pass.season || 1,
+            seasonStartedAt: pass.seasonStartedAt || Date.now(),
+            xp: pass.xp || 0,
+            premium: !!pass.premium,
+            claimedFree: [...(pass.claimedFree || [])],
+            claimedPremium: [...(pass.claimedPremium || [])],
+            updatedAt: Date.now(),
+          },
           updatedAt: Date.now(),
         };
       },
@@ -98,6 +132,46 @@ export const useAccountStore = create<AccountState>()(
                 loggedIn: true,
               },
             };
+          });
+        }
+        // Sự kiện / VIP / kho
+        if (data.events && typeof data.events === "object") {
+          const e = data.events as Record<string, unknown>;
+          useEventStore.setState({
+            coins: Number(e.coins) || 0,
+            totalEarned: Number(e.totalEarned) || 0,
+            vipPoints: Number(e.vipPoints) || 0,
+            streakDay: Number(e.streakDay) || 0,
+            lastCheckIn: (e.lastCheckIn as string) || null,
+            claimedCheckInDay: (e.claimedCheckInDay as string) || null,
+            missionDay: (e.missionDay as string) || null,
+            missionProgress: (e.missionProgress as never) || {},
+            missionClaimCount: (e.missionClaimCount as never) || {},
+            unlocks: Array.isArray(e.unlocks) ? (e.unlocks as never[]) : [],
+            episodeSlugsToday: Array.isArray(e.episodeSlugsToday)
+              ? (e.episodeSlugsToday as string[])
+              : [],
+            inventory: Array.isArray(e.inventory) ? (e.inventory as never[]) : [],
+            equippedFrame: (e.equippedFrame as string) || null,
+            equippedBadge: (e.equippedBadge as string) || null,
+            boostExpiresAt: e.boostExpiresAt ? Number(e.boostExpiresAt) : null,
+            vipExpiresAt: e.vipExpiresAt ? Number(e.vipExpiresAt) : null,
+            redeemHistory: Array.isArray(e.redeemHistory) ? (e.redeemHistory as never[]) : [],
+            liveFeed: Array.isArray(e.liveFeed) ? (e.liveFeed as never[]) : [],
+          });
+        }
+        // Opus Pass
+        if (data.opusPass && typeof data.opusPass === "object") {
+          const p = data.opusPass as Record<string, unknown>;
+          useOpusPassStore.setState({
+            season: Number(p.season) || 1,
+            seasonStartedAt: Number(p.seasonStartedAt) || Date.now(),
+            xp: Number(p.xp) || 0,
+            premium: !!p.premium,
+            claimedFree: Array.isArray(p.claimedFree) ? (p.claimedFree as number[]) : [],
+            claimedPremium: Array.isArray(p.claimedPremium)
+              ? (p.claimedPremium as number[])
+              : [],
           });
         }
       },
@@ -179,14 +253,32 @@ export const useAccountStore = create<AccountState>()(
       syncNow: async () => {
         if (!get().username) return { ok: false, error: "Chưa đăng nhập" };
         try {
+          // Lấy remote trước để merge với local (xu/VIP/Pass không bị ghi đè thấp hơn)
+          let remote: SyncPayload = {
+            history: [],
+            favorites: [],
+            musicWatched: [],
+            updatedAt: 0,
+          };
+          try {
+            const getRes = await fetch("/api/auth/sync");
+            const getData = await getRes.json();
+            if (getData?.ok && getData.data) remote = getData.data as SyncPayload;
+          } catch { /* */ }
+          const local = get().collectLocal();
+          const merged = mergePayload(local, remote);
+          get().applyRemote(merged);
           const res = await fetch("/api/auth/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data: get().collectLocal() }),
+            body: JSON.stringify({ data: merged }),
           });
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Đồng bộ lỗi" };
-          if (data.data) get().applyRemote(data.data);
+          if (data.data) {
+            const again = mergePayload(get().collectLocal(), data.data as SyncPayload);
+            get().applyRemote(again);
+          }
           set({ lastSyncAt: Date.now() });
           return { ok: true };
         } catch {

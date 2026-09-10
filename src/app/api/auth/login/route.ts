@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       getSettings(user.id),
     ]);
 
+    const payload = (settingsRow?.payload || {}) as Record<string, unknown>;
     const data = {
       history: history.map((h) => ({
         slug: h.videoId,
@@ -59,12 +60,17 @@ export async function POST(req: NextRequest) {
         category: m.category,
         watchedAt: m.playedAt?.getTime?.() || Date.now(),
       })),
-      settings: settingsRow?.payload || {},
+      settings: payload,
       profile: {
         loggedIn: true,
         verified: !!(user as { verified?: number }).verified,
         uid: uid || undefined,
+        ...((payload.profile as object) || {}),
       },
+      events:
+        payload.events && typeof payload.events === "object" ? payload.events : null,
+      opusPass:
+        payload.opusPass && typeof payload.opusPass === "object" ? payload.opusPass : null,
       updatedAt: Date.now(),
     };
 

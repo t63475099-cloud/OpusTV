@@ -97,7 +97,7 @@ export default function SyncBootstrap() {
       }
     };
     run();
-    const id = window.setInterval(run, 5 * 60 * 1000);
+    const id = window.setInterval(run, 90 * 1000);
     const onVis = () => {
       if (document.visibilityState === "visible") run();
     };

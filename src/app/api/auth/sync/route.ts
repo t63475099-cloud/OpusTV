@@ -79,6 +79,8 @@ export async function GET() {
         })),
         settings: payload,
         profile: pickProfile(payload, session.username),
+        events: (payload.events && typeof payload.events === "object" ? payload.events : null),
+        opusPass: (payload.opusPass && typeof payload.opusPass === "object" ? payload.opusPass : null),
         updatedAt: Date.now(),
       },
     });
@@ -161,6 +163,15 @@ export async function POST(req: NextRequest) {
         ...data.profile,
       };
     }
+    // Sự kiện / VIP / Opus Pass — lưu trong payload settings (JSON)
+    if (data.events && typeof data.events === "object") {
+      const prevEv = (prev.events && typeof prev.events === "object" ? prev.events : {}) as Record<string, unknown>;
+      nextPayload.events = { ...prevEv, ...data.events, updatedAt: Date.now() };
+    }
+    if (data.opusPass && typeof data.opusPass === "object") {
+      const prevPass = (prev.opusPass && typeof prev.opusPass === "object" ? prev.opusPass : {}) as Record<string, unknown>;
+      nextPayload.opusPass = { ...prevPass, ...data.opusPass, updatedAt: Date.now() };
+    }
     await upsertSettings(uid, { payload: nextPayload });
 
     const [history, favs, music, settingsRow] = await Promise.all([
@@ -202,6 +213,8 @@ export async function POST(req: NextRequest) {
         })),
         settings: payload,
         profile: pickProfile(payload, session.username),
+        events: (payload.events && typeof payload.events === "object" ? payload.events : null),
+        opusPass: (payload.opusPass && typeof payload.opusPass === "object" ? payload.opusPass : null),
         updatedAt: Date.now(),
       },
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Crown,
   Gift,
@@ -8,15 +8,20 @@ import {
   Sparkles,
   Ticket,
   Zap,
+  Clock,
+  Coins,
 } from "lucide-react";
 import {
   PASS_MAX_LEVEL,
-  PASS_TIERS,
+  PASS_XP_PACKS,
   PREMIUM_PASS_COST,
+  formatRemain,
+  formatSeasonDate,
   levelFromXp,
   xpProgress,
   useOpusPassStore,
   type PassReward,
+  type PassTier,
 } from "@/lib/opusPass";
 
 function RewardChip({
@@ -65,17 +70,41 @@ export default function OpusPassPanel({
   onFlash: (msg: string) => void;
   onNotif: (title: string, body: string) => void;
 }) {
+  const ensureSeason = useOpusPassStore((s) => s.ensureSeason);
+  const season = useOpusPassStore((s) => s.season);
   const xp = useOpusPassStore((s) => s.xp);
   const premium = useOpusPassStore((s) => s.premium);
   const claimedFree = useOpusPassStore((s) => s.claimedFree);
   const claimedPremium = useOpusPassStore((s) => s.claimedPremium);
   const buyPremium = useOpusPassStore((s) => s.buyPremium);
+  const buyXpPack = useOpusPassStore((s) => s.buyXpPack);
   const claimTier = useOpusPassStore((s) => s.claimTier);
   const claimAll = useOpusPassStore((s) => s.claimAll);
+  const getSeasonEndAt = useOpusPassStore((s) => s.getSeasonEndAt);
+  const getTiers = useOpusPassStore((s) => s.getTiers);
+
   const [burst, setBurst] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const trackRef = useRef<HTMLDivElement>(null);
 
-  const prog = useMemo(() => xpProgress(xp), [xp]);
+  useEffect(() => {
+    ensureSeason();
+  }, [ensureSeason]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      ensureSeason();
+      setNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [ensureSeason]);
+
+  const tiers: PassTier[] = useMemo(() => getTiers(), [getTiers, season]);
+  const endAt = useMemo(() => getSeasonEndAt(), [getSeasonEndAt, season, now]);
+  const remain = Math.max(0, endAt - now);
+  const seasonPct = Math.min(100, Math.max(0, ((now - (endAt - 45 * 86400000)) / (45 * 86400000)) * 100));
+
+  const prog = useMemo(() => xpProgress(xp, tiers), [xp, tiers]);
   const level = prog.level;
 
   const claimable = useMemo(() => {
@@ -87,7 +116,7 @@ export default function OpusPassPanel({
     return n;
   }, [level, claimedFree, claimedPremium, premium]);
 
-  const onBuy = () => {
+  const onBuyPremium = () => {
     const r = buyPremium();
     onFlash(r.message);
     if (r.ok) {
@@ -95,6 +124,12 @@ export default function OpusPassPanel({
       onNotif("Opus Pass", r.message);
       window.setTimeout(() => setBurst(false), 1800);
     }
+  };
+
+  const onBuyXp = (packId: string) => {
+    const r = buyXpPack(packId);
+    onFlash(r.message);
+    if (r.ok) onNotif("Pass XP", r.message);
   };
 
   const onClaim = (lv: number, track: "free" | "premium") => {
@@ -137,12 +172,40 @@ export default function OpusPassPanel({
         </div>
       )}
 
-      {/* Header glass */}
+      <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/10 to-rose-500/10 backdrop-blur-xl p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Ticket className="w-4 h-4 text-violet-300" />
+            <div>
+              <p className="text-sm font-bold text-white">Opus Season {season}</p>
+              <p className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5">
+                <Clock className="w-3 h-3" />
+                Mùa mới bắt đầu sau:{" "}
+                <strong className="text-amber-200">{formatSeasonDate(endAt)}</strong>
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Kết thúc mùa</p>
+            <p className="text-xs font-semibold text-violet-200 tabular-nums">{formatRemain(remain)}</p>
+          </div>
+        </div>
+        <div className="mt-2.5 h-2 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-rose-400"
+            style={{ width: `${Math.min(100, Math.max(0, seasonPct))}%` }}
+          />
+        </div>
+        <p className="text-[10px] text-zinc-500 mt-1.5">
+          Mỗi mùa 45 ngày · Hết mùa tự reset Pass XP, Premium và chuỗi thưởng mới
+        </p>
+      </div>
+
       <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <p className="text-xs uppercase tracking-wider text-amber-300/90 font-semibold flex items-center gap-1.5">
-              <Ticket className="w-3.5 h-3.5" /> Opus Pass
+              <Ticket className="w-3.5 h-3.5" /> Opus Pass · S{season}
             </p>
             <h2 className="text-xl font-bold text-white mt-0.5">
               Cấp {level}
@@ -158,12 +221,12 @@ export default function OpusPassPanel({
           <div className="flex flex-col items-end gap-2">
             {premium ? (
               <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-amber-500/20 text-amber-100 border border-amber-400/40">
-                <Crown className="w-3.5 h-3.5" /> Premium
+                <Crown className="w-3.5 h-3.5" /> Premium S{season}
               </span>
             ) : (
               <button
                 type="button"
-                onClick={onBuy}
+                onClick={onBuyPremium}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg active:scale-95 transition"
               >
                 <Crown className="w-3.5 h-3.5" /> Mở Premium · {PREMIUM_PASS_COST} xu
@@ -194,21 +257,46 @@ export default function OpusPassPanel({
         </div>
       </div>
 
-      {/* Tracks */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-3">
+        <p className="text-xs font-semibold text-white flex items-center gap-1.5 mb-2">
+          <Coins className="w-3.5 h-3.5 text-amber-300" /> Mua Pass XP bằng xu
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {PASS_XP_PACKS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onBuyXp(p.id)}
+              className="rounded-xl border border-white/10 bg-white/[0.05] hover:bg-white/10 active:scale-95 transition p-2.5 text-left"
+            >
+              <p className="text-[11px] text-amber-200 font-semibold">+{p.xp} XP</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">{p.cost} xu</p>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-zinc-500 mt-2">Cũng có trong tab Cửa hàng đổi quà</p>
+      </div>
+
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl overflow-hidden">
         <div className="px-3 py-2 border-b border-white/10 flex items-center gap-3 text-[11px] text-zinc-400">
-          <span className="inline-flex items-center gap-1"><Sparkles className="w-3 h-3 text-sky-400" /> Free</span>
-          <span className="inline-flex items-center gap-1"><Crown className="w-3 h-3 text-amber-400" /> Premium</span>
-          <span className="ml-auto inline-flex items-center gap-1"><Zap className="w-3 h-3 text-violet-400" /> Vuốt ngang</span>
+          <span className="inline-flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-sky-400" /> Free
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Crown className="w-3 h-3 text-amber-400" /> Premium
+          </span>
+          <span className="ml-auto inline-flex items-center gap-1">
+            <Zap className="w-3 h-3 text-violet-400" /> Vuốt ngang
+          </span>
         </div>
 
         <div
           ref={trackRef}
-          className="overflow-x-auto overscroll-x-contain scrollbar-thin pb-3 pt-3 px-3 snap-x snap-mandatory"
+          className="opus-pass-scroll overflow-x-auto overscroll-x-contain pb-3 pt-3 px-3 snap-x snap-mandatory"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           <div className="flex gap-3 min-w-max pr-4">
-            {PASS_TIERS.map((tier) => {
+            {tiers.map((tier) => {
               const reached = level >= tier.level;
               const freeClaimed = claimedFree.includes(tier.level);
               const premClaimed = claimedPremium.includes(tier.level);
@@ -240,11 +328,7 @@ export default function OpusPassPanel({
                     className="disabled:cursor-default active:scale-95 transition"
                     title={tier.free.label}
                   >
-                    <RewardChip
-                      reward={tier.free}
-                      locked={freeLocked}
-                      claimed={freeClaimed}
-                    />
+                    <RewardChip reward={tier.free} locked={freeLocked} claimed={freeClaimed} />
                   </button>
 
                   <button
@@ -269,13 +353,13 @@ export default function OpusPassPanel({
       </div>
 
       <p className="text-[11px] text-zinc-500 leading-relaxed px-1">
-        Kiếm Pass XP khi điểm danh, nhận nhiệm vụ, xem phim và nghe nhạc. Mở Premium bằng xu để nhận
-        dòng thưởng cao cấp. Bấm vào ô thưởng để nhận từng mốc, hoặc dùng <strong className="text-zinc-300">Nhận tất cả</strong>.
+        Kiếm Pass XP khi điểm danh, nhận nhiệm vụ, hoặc mua bằng xu. Hết mùa (45 ngày) tự sang{" "}
+        <strong className="text-zinc-300">Opus Season {season + 1}</strong> với chuỗi thưởng mới.
       </p>
       <div className="flex items-center gap-2 text-[11px] text-zinc-400 px-1">
         <Gift className="w-3.5 h-3.5 text-amber-300" />
         <span>
-          Cấp hiện tại: <strong className="text-white">{levelFromXp(xp)}</strong> · Đã nhận Free:{" "}
+          Cấp: <strong className="text-white">{levelFromXp(xp, tiers)}</strong> · Free đã nhận:{" "}
           {claimedFree.length}/{PASS_MAX_LEVEL}
         </span>
       </div>

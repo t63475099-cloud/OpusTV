@@ -79,7 +79,7 @@ export const MISSION_MAX_CLAIMS = Number.POSITIVE_INFINITY;
 /** Chi phí 1 lượt vòng quay */
 export const SPIN_COST = 100;
 
-export type ShopItemKind = "unlock" | "frame" | "badge" | "boost" | "vip" | "mystery" | "coins" | "vip_xp";
+export type ShopItemKind = "unlock" | "frame" | "badge" | "boost" | "vip" | "mystery" | "coins" | "vip_xp" | "pass_xp";
 
 export interface ShopItemDef {
   id: string;
@@ -93,6 +93,12 @@ export interface ShopItemDef {
 }
 
 export const SHOP_ITEMS: ShopItemDef[] = [
+  // ── 0. Pass XP (Opus Pass) ──
+  { id: "pass_xp_200", name: "Gói 200 Pass XP", desc: "Mua XP cho Opus Pass", cost: 150, kind: "pass_xp", meta: "200", icon: "🎫" },
+  { id: "pass_xp_600", name: "Gói 600 Pass XP", desc: "Mua XP cho Opus Pass", cost: 400, kind: "pass_xp", meta: "600", icon: "🎫" },
+  { id: "pass_xp_1500", name: "Gói 1500 Pass XP", desc: "Mua XP cho Opus Pass", cost: 900, kind: "pass_xp", meta: "1500", icon: "🎫" },
+  { id: "pass_xp_5000", name: "Gói 5000 Pass XP", desc: "Mua XP cho Opus Pass", cost: 2800, kind: "pass_xp", meta: "5000", icon: "🎫" },
+
   // ── 1. Nâng điểm VIP (xu → điểm VIP, không lấy từ nhiệm vụ) ──
   { id: "vip_rank_up", name: "Nâng điểm VIP +1000", desc: "1000 xu → +1000 điểm VIP", cost: 1000, kind: "vip_xp", meta: "1000", icon: "📈" },
   { id: "vip_rank_5k", name: "Nâng điểm VIP +5000", desc: "4500 xu → +5000 điểm VIP", cost: 4500, kind: "vip_xp", meta: "5000", icon: "📊" },
@@ -673,6 +679,19 @@ export const useEventStore = create<EventState>()(
         if (!def) return { ok: false, message: "Không có vật phẩm" };
         const s = get();
         if (s.coins < def.cost) return { ok: false, message: `Cần ${def.cost} xu` };
+
+        // Pass XP — ưu tiên gọi qua UI (buyXpPack); fallback trừ xu + cộng XP qua localStorage bridge
+        if (def.kind === "pass_xp") {
+          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
+          set({ coins: s.coins - def.cost });
+          try {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("opus-pass-add-xp", { detail: { xp: add } }));
+            }
+          } catch { /* */ }
+          get().pushLive(`+${add} Pass XP`);
+          return { ok: true, message: `+${add} Pass XP` };
+        }
 
         // Nâng điểm VIP bằng xu (không cộng totalEarned làm điểm VIP)
         if (def.kind === "vip_xp") {

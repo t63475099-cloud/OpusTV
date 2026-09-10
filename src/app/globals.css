@@ -2560,3 +2560,24 @@ html.lenis, html.lenis body {
   border-radius: 12px;
   overflow: hidden;
 }
+
+/* Opus Pass horizontal track */
+.opus-pass-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 63, 94, 0.55) rgba(255, 255, 255, 0.06);
+}
+.opus-pass-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.opus-pass-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  margin: 0 12px;
+}
+.opus-pass-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #f43f5e, #a855f7, #3b82f6);
+  border-radius: 999px;
+}
+.opus-pass-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #fb7185, #c084fc, #60a5fa);
+}

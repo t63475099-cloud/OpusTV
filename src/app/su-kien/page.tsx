@@ -404,6 +404,12 @@ export default function SuKienPage() {
   };
 
   const onBuy = (shopId: string) => {
+    if (shopId.startsWith("pass_xp_")) {
+      const r = useOpusPassStore.getState().buyXpPack(shopId);
+      flash(r.message);
+      if (r.ok) addNotif({ kind: "mission", title: "Pass XP", body: r.message, href: "/su-kien" });
+      return;
+    }
     const r = buyShopItem(shopId);
     flash(r.message);
     if (r.ok) addNotif({ kind: "mission", title: "Cửa hàng", body: r.message, href: "/su-kien" });

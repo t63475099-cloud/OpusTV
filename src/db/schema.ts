@@ -22,8 +22,14 @@ export const users = pgTable(
     lastLogin: timestamp("last_login", { withTimezone: true }),
     recoveryPinHash: text("recovery_pin_hash"),
     verified: integer("verified").default(0).notNull(),
+    /** UID 10 số — kết bạn / chat */
+    uid: text("uid"),
+    bio: text("bio"),
   },
-  (t) => [uniqueIndex("users_username_uidx").on(t.username)]
+  (t) => [
+    uniqueIndex("users_username_uidx").on(t.username),
+    uniqueIndex("users_uid_uidx").on(t.uid),
+  ]
 );
 
 /** Yêu cầu xác minh tích xanh */

@@ -1,5 +1,6 @@
-import { useEventStore } from "@/lib/eventCoins";
 "use client";
+
+import { useEventStore } from "@/lib/eventCoins";
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";

@@ -200,7 +200,7 @@ export default function ChatSidebar({
       {/* List */}
       <div
         data-chat-scroll
-        className="flex-1 overflow-y-auto overscroll-contain min-h-0"
+        className="flex-1 overflow-y-auto opus-chat-scroll custom-scroll overscroll-contain min-h-0"
         onClick={(e) => e.stopPropagation()}
       >
         {items.length === 0 ? (

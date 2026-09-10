@@ -76,7 +76,7 @@ export default function ChatInfoPanel({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className="flex-1 overflow-y-auto opus-chat-scroll custom-scroll p-4 space-y-5">
         <div className="flex flex-col items-center text-center">
           {conversation.isGroup ? (
             <div className="w-16 h-16 rounded-full bg-[#0068ff] flex items-center justify-center text-white text-xl font-bold mb-2">

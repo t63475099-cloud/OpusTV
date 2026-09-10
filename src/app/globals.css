@@ -2515,3 +2515,48 @@ html.lenis, html.lenis body {
 [data-gsap-reveal] {
   will-change: transform, opacity, filter;
 }
+
+
+/* === Opus unified glass scrollbar (Chat, Hòm thư, Sidebar) === */
+.custom-scroll,
+.opus-chat-scroll,
+.hop-thu-scroll,
+[data-sidebar="1"] {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.custom-scroll::-webkit-scrollbar,
+.opus-chat-scroll::-webkit-scrollbar,
+.hop-thu-scroll::-webkit-scrollbar,
+[data-sidebar="1"]::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track,
+.opus-chat-scroll::-webkit-scrollbar-track,
+.hop-thu-scroll::-webkit-scrollbar-track,
+[data-sidebar="1"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb,
+.opus-chat-scroll::-webkit-scrollbar-thumb,
+.hop-thu-scroll::-webkit-scrollbar-thumb,
+[data-sidebar="1"]::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.45), rgba(139, 92, 246, 0.45));
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover,
+.opus-chat-scroll::-webkit-scrollbar-thumb:hover,
+.hop-thu-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.7), rgba(139, 92, 246, 0.7));
+}
+
+/* Monaco tokens contrast helper */
+.opus-code-shell .monaco-editor .view-lines {
+  letter-spacing: 0.02em !important;
+}
+.opus-code-shell .monaco-editor {
+  border-radius: 12px;
+  overflow: hidden;
+}

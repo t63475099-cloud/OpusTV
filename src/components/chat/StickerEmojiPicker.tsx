@@ -38,7 +38,7 @@ export default function StickerEmojiPicker({
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-8 gap-0.5 p-2 max-h-48 overflow-y-auto">
+      <div className="grid grid-cols-8 gap-0.5 p-2 max-h-48 overflow-y-auto opus-chat-scroll custom-scroll">
         {items.map((e) => (
           <button
             key={e}

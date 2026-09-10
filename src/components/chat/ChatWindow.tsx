@@ -256,7 +256,7 @@ export default function ChatWindow({
       {/* Messages */}
       <div
         data-chat-scroll
-        className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 min-h-0"
+        className="flex-1 overflow-y-auto opus-chat-scroll custom-scroll overscroll-contain px-3 py-3 min-h-0"
       >
         {filtered.map((m, i) => {
           const prev = filtered[i - 1];
@@ -376,7 +376,7 @@ export default function ChatWindow({
             <div className="px-4 py-3 border-b border-neutral-800 font-semibold text-white">
               Chuyển tiếp tới
             </div>
-            <div className="overflow-y-auto max-h-[50vh]">
+            <div className="overflow-y-auto opus-chat-scroll custom-scroll max-h-[50vh]">
               {conversations
                 .filter((c) => c.id !== conversation.id)
                 .map((c) => (

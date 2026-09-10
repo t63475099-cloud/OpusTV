@@ -193,7 +193,7 @@ export default function OpusCodeLayout() {
 
   if (!mounted) {
     return (
-      <div className="flex h-[100dvh] items-center justify-center bg-[#1e1e1e] text-zinc-500 text-sm">
+      <div className="flex h-[100dvh] items-center justify-center bg-[#0d0d14]/95 backdrop-blur-xl text-zinc-500 text-sm">
         Đang mở Opus Code…
       </div>
     );
@@ -204,7 +204,7 @@ export default function OpusCodeLayout() {
 
   return (
     <div
-      className="opus-code-shell fixed inset-0 z-[80] flex flex-col overflow-hidden bg-[#1e1e1e] text-[#cccccc]"
+      className="opus-code-shell fixed inset-0 z-[80] flex flex-col overflow-hidden bg-[#0d0d14]/95 backdrop-blur-xl text-[#cccccc]"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",

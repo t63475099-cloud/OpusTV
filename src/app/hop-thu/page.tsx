@@ -124,7 +124,7 @@ export default function HopThuPage() {
             <p className="text-sm text-zinc-500">Hòm thư trống</p>
           </div>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-2 hop-thu-scroll max-h-[calc(100dvh-10rem)] overflow-y-auto pr-1">
             {filtered.map((n) => (
               <li key={n.id}>
                 <Link

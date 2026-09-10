@@ -165,7 +165,7 @@ export default function CreateGroupModal({
                 Đã chọn {selected.length} thành viên
               </p>
             </div>
-            <div className="flex-1 overflow-y-auto px-2 py-2 max-h-[45vh]">
+            <div className="flex-1 overflow-y-auto opus-chat-scroll custom-scroll px-2 py-2 max-h-[45vh]">
               {filtered.length === 0 ? (
                 <p className="text-sm text-zinc-500 text-center py-8 px-4">
                   Chưa có bạn bè. Sang tab Kết bạn để thêm bằng UID.

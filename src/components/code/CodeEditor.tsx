@@ -81,18 +81,36 @@ export default function CodeEditor() {
       inherit: true,
       rules: [
         { token: "comment", foreground: "6A9955", fontStyle: "italic" },
-        { token: "keyword", foreground: "C586C0" },
-        { token: "string", foreground: "CE9178" },
-        { token: "number", foreground: "B5CEA8" },
-        { token: "type", foreground: "4EC9B0" },
-        { token: "function", foreground: "DCDCAA" },
+        { token: "keyword", foreground: "FF7EDB", fontStyle: "bold" },
+        { token: "storage", foreground: "FF7EDB", fontStyle: "bold" },
+        { token: "string", foreground: "FFD580" },
+        { token: "number", foreground: "7EE787" },
+        { token: "regexp", foreground: "FF8B6B" },
+        { token: "type", foreground: "56D4DD" },
+        { token: "class", foreground: "56D4DD" },
+        { token: "function", foreground: "FFE66D" },
         { token: "variable", foreground: "9CDCFE" },
+        { token: "constant", foreground: "7EE787" },
+        { token: "operator", foreground: "F8F8F2" },
+        { token: "delimiter", foreground: "E2E8F0" },
+        { token: "tag", foreground: "FF7EDB" },
+        { token: "attribute.name", foreground: "9CDCFE" },
+        { token: "attribute.value", foreground: "FFD580" },
+        { token: "metatag", foreground: "FF7EDB" },
       ],
       colors: {
-        "editor.background": "#1e1e1e",
-        "editor.foreground": "#d4d4d4",
-        "editorLineNumber.foreground": "#858585",
-        "editor.selectionBackground": "#264f78",
+        "editor.background": "#0d0d14",
+        "editor.foreground": "#F1F5F9",
+        "editorLineNumber.foreground": "#64748B",
+        "editorLineNumber.activeForeground": "#E2E8F0",
+        "editor.selectionBackground": "#3B82F655",
+        "editor.inactiveSelectionBackground": "#3B82F633",
+        "editorCursor.foreground": "#F43F5E",
+        "editor.lineHighlightBackground": "#FFFFFF08",
+        "editorIndentGuide.background": "#FFFFFF12",
+        "editorIndentGuide.activeBackground": "#FFFFFF28",
+        "editorBracketMatch.background": "#F43F5E22",
+        "editorBracketMatch.border": "#F43F5E88",
       },
     });
     monaco.editor.setTheme("opus-dark");
@@ -157,6 +175,7 @@ export default function CodeEditor() {
   const editorOptions = useMemo(() => {
     if (mobile) {
       return {
+        letterSpacing: 0.3,
         fontSize: 15,
         fontFamily: "Consolas, 'Courier New', monospace",
         minimap: { enabled: false },
@@ -202,7 +221,8 @@ export default function CodeEditor() {
     }
     // Desktop: Monaco IntelliSense đầy đủ
     return {
-      fontSize: 14,
+      letterSpacing: 0.3,
+        fontSize: 14,
       fontFamily: "Consolas, 'Courier New', monospace",
       minimap: { enabled: true },
       scrollBeyondLastLine: false,

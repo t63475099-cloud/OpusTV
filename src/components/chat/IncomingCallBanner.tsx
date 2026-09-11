@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Video } from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { useChatStore } from "@/lib/chatStore";
@@ -23,17 +23,15 @@ export default function IncomingCallBanner() {
   const getUser = useChatStore((s) => s.getUser);
   const [incoming, setIncoming] = useState<IncomingRow | null>(null);
   const [accepting, setAccepting] = useState(false);
+  const acceptedRef = useRef<IncomingRow | null>(null);
 
-  // Đồng bộ me từ account (quan trọng trên mobile / mọi trang)
   useEffect(() => {
     if (username) setMe(username);
   }, [username, setMe]);
 
-  // Chuông bên nhận
   useEffect(() => {
     if (!incoming || accepting) return;
     const stop = startCallSound("callee-ring");
-    // Browser notification
     try {
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         const n = new Notification("Cuộc gọi đến — Opus Chat", {
@@ -44,7 +42,9 @@ export default function IncomingCallBanner() {
       } else if (typeof Notification !== "undefined" && Notification.permission === "default") {
         void Notification.requestPermission();
       }
-    } catch {}
+    } catch {
+      /* */
+    }
     return () => stop();
   }, [incoming, accepting]);
 
@@ -56,20 +56,21 @@ export default function IncomingCallBanner() {
         if (!r.ok) return;
         const j = await r.json();
         const list = (j.incoming || []) as IncomingRow[];
-        if (list.length && !accepting) {
+        if (accepting || acceptedRef.current) return;
+        if (list.length) {
           setIncoming((prev) => {
             if (prev?.id === list[0].id) return prev;
             return list[0];
           });
-        } else if (!list.length && !accepting) {
+        } else {
           setIncoming(null);
         }
       } catch {
-        /* ignore */
+        /* */
       }
     };
-    tick();
-    const id = window.setInterval(tick, 1500);
+    void tick();
+    const id = window.setInterval(() => void tick(), 1200);
     const onVis = () => {
       if (document.visibilityState === "visible") void tick();
     };
@@ -92,14 +93,25 @@ export default function IncomingCallBanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reject", id: incoming.id }),
       });
-    } catch {}
+    } catch {
+      /* */
+    }
     void postCallLog(from, mode, "rejected", 0);
+    acceptedRef.current = null;
     setIncoming(null);
+    setAccepting(false);
   };
 
-  if (!incoming && !accepting) return null;
+  const onAccept = () => {
+    if (!incoming?.offer_sdp) return;
+    acceptedRef.current = { ...incoming };
+    setAccepting(true);
+  };
 
-  const peerId = incoming?.from_user || "";
+  const active = accepting ? acceptedRef.current || incoming : incoming;
+  if (!active && !accepting) return null;
+
+  const peerId = active?.from_user || "";
   const peer = peerId ? getUser(peerId) : null;
   const peerUser = peer || {
     id: peerId,
@@ -108,24 +120,27 @@ export default function IncomingCallBanner() {
     avatar: "",
     status: "online" as const,
   };
-  const mode = incoming?.mode === "video" ? "video" : "audio";
+  const mode = active?.mode === "video" ? "video" : "audio";
 
-  if (accepting && incoming) {
+  if (accepting && active?.offer_sdp) {
     return (
       <CallModal
         open
         mode={mode}
         peer={peerUser}
         role="callee"
-        existingCallId={incoming.id}
-        existingOfferSdp={incoming.offer_sdp}
+        existingCallId={active.id}
+        existingOfferSdp={active.offer_sdp}
         onClose={() => {
+          acceptedRef.current = null;
           setAccepting(false);
           setIncoming(null);
         }}
       />
     );
   }
+
+  if (!active) return null;
 
   return (
     <div
@@ -152,7 +167,7 @@ export default function IncomingCallBanner() {
         </button>
         <button
           type="button"
-          onClick={() => setAccepting(true)}
+          onClick={onAccept}
           className="p-3 rounded-full bg-emerald-500 text-white shrink-0"
           title="Nghe"
         >

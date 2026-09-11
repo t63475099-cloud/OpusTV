@@ -1,14 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Mic,
-  MicOff,
-  PhoneOff,
-  Video,
-  VideoOff,
-  Settings,
-} from "lucide-react";
+import { Mic, MicOff, PhoneOff, Video, VideoOff, Settings } from "lucide-react";
 import type { ChatUser } from "@/lib/chatStore";
 import { startCallSound, stopSharedAudio } from "@/lib/callSounds";
 import { postCallLog } from "@/lib/callLog";
@@ -16,13 +9,14 @@ import { postCallLog } from "@/lib/callLog";
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: "stun:stun.l.google.com:19302" },
   { urls: "stun:stun1.l.google.com:19302" },
+  { urls: "stun:stun2.l.google.com:19302" },
   {
-    urls: "turn:openrelay.metered.ca:80",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-  {
-    urls: "turn:openrelay.metered.ca:443",
+    urls: [
+      "turn:openrelay.metered.ca:80",
+      "turn:openrelay.metered.ca:80?transport=tcp",
+      "turn:openrelay.metered.ca:443",
+      "turn:openrelay.metered.ca:443?transport=tcp",
+    ],
     username: "openrelayproject",
     credential: "openrelayproject",
   },
@@ -34,6 +28,20 @@ function avatarUrl(peer?: ChatUser | null) {
   const a = peer?.avatar || "";
   if (a.startsWith("http") || a.startsWith("data:")) return a;
   return "";
+}
+
+function normalizeIceList(raw: unknown): RTCIceCandidateInit[] {
+  if (!raw) return [];
+  let list: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      list = JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(list)) return [];
+  return list.filter((c) => c && typeof c === "object") as RTCIceCandidateInit[];
 }
 
 export default function CallModal({
@@ -61,7 +69,8 @@ export default function CallModal({
   const callIdRef = useRef<string | null>(null);
   const seenIceRef = useRef<Set<string>>(new Set());
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
-  const remoteSetRef = useRef(false);
+  const remoteDescSetRef = useRef(false);
+  const connectedRef = useRef(false);
   const pollRef = useRef<number | null>(null);
   const soundStopRef = useRef<(() => void) | null>(null);
   const phaseRef = useRef<Phase>("starting");
@@ -73,10 +82,19 @@ export default function CallModal({
   const [phase, setPhase] = useState<Phase>("starting");
   const [err, setErr] = useState<string | null>(null);
 
-  const setPhaseBoth = (p: Phase) => {
+  const setPhaseBoth = useCallback((p: Phase) => {
     phaseRef.current = p;
     setPhase(p);
-  };
+  }, []);
+
+  const markConnected = useCallback(() => {
+    if (connectedRef.current) return;
+    connectedRef.current = true;
+    phaseRef.current = "connected";
+    setPhase("connected");
+    soundStopRef.current?.();
+    soundStopRef.current = null;
+  }, []);
 
   const stopSound = useCallback(() => {
     soundStopRef.current?.();
@@ -92,7 +110,9 @@ export default function CallModal({
       }
       try {
         pcRef.current?.close();
-      } catch {}
+      } catch {
+        /* */
+      }
       pcRef.current = null;
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
@@ -103,19 +123,22 @@ export default function CallModal({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "end", id: callIdRef.current }),
           });
-        } catch {}
+        } catch {
+          /* */
+        }
       }
       callIdRef.current = null;
       seenIceRef.current = new Set();
       pendingIceRef.current = [];
-      remoteSetRef.current = false;
+      remoteDescSetRef.current = false;
+      connectedRef.current = false;
     },
     [stopSound]
   );
 
-  const pushIce = useCallback(async (candidate: RTCIceCandidate) => {
+  const pushIce = useCallback(async (candidate: RTCIceCandidate | null) => {
     const id = callIdRef.current;
-    if (!id) return;
+    if (!id || !candidate) return;
     try {
       await fetch("/api/chat/call", {
         method: "POST",
@@ -126,13 +149,15 @@ export default function CallModal({
           candidate: candidate.toJSON(),
         }),
       });
-    } catch {}
+    } catch {
+      /* */
+    }
   }, []);
 
   const flushPendingIce = useCallback(async () => {
     const pc = pcRef.current;
-    if (!pc || !remoteSetRef.current) return;
-    const pending = pendingIceRef.current;
+    if (!pc || !remoteDescSetRef.current) return;
+    const pending = [...pendingIceRef.current];
     pendingIceRef.current = [];
     for (const c of pending) {
       const key = JSON.stringify(c);
@@ -140,31 +165,39 @@ export default function CallModal({
       seenIceRef.current.add(key);
       try {
         await pc.addIceCandidate(c);
-      } catch {}
+      } catch {
+        /* */
+      }
     }
   }, []);
 
-  const applyRemoteIce = useCallback(async (list: unknown) => {
-    const pc = pcRef.current;
-    if (!pc || !Array.isArray(list)) return;
-    for (const c of list) {
-      const init = c as RTCIceCandidateInit;
-      const key = JSON.stringify(init);
-      if (seenIceRef.current.has(key)) continue;
-      if (!remoteSetRef.current) {
-        pendingIceRef.current.push(init);
-        continue;
+  const applyRemoteIce = useCallback(
+    async (list: unknown) => {
+      const pc = pcRef.current;
+      if (!pc) return;
+      const items = normalizeIceList(list);
+      for (const init of items) {
+        const key = JSON.stringify(init);
+        if (seenIceRef.current.has(key)) continue;
+        if (!remoteDescSetRef.current) {
+          pendingIceRef.current.push(init);
+          continue;
+        }
+        seenIceRef.current.add(key);
+        try {
+          await pc.addIceCandidate(init);
+        } catch {
+          /* */
+        }
       }
-      seenIceRef.current.add(key);
-      try {
-        await pc.addIceCandidate(init);
-      } catch {}
-    }
-  }, []);
+    },
+    []
+  );
 
   const attachRemoteStream = useCallback((stream: MediaStream) => {
     if (remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = stream;
+      remoteAudioRef.current.muted = false;
       void remoteAudioRef.current.play().catch(() => {});
     }
     if (remoteVideoRef.current) {
@@ -190,19 +223,28 @@ export default function CallModal({
     const start = async () => {
       setPhaseBoth("starting");
       setErr(null);
+      connectedRef.current = false;
+      remoteDescSetRef.current = false;
+      seenIceRef.current = new Set();
+      pendingIceRef.current = [];
+
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
           setErr("Trình duyệt không hỗ trợ cuộc gọi");
           setPhaseBoth("denied");
           return;
         }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
             autoGainControl: true,
           },
-          video: mode === "video",
+          video:
+            mode === "video"
+              ? { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
+              : false,
         });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -214,28 +256,91 @@ export default function CallModal({
           await localVideoRef.current.play().catch(() => {});
         }
 
-        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        const pc = new RTCPeerConnection({
+          iceServers: ICE_SERVERS,
+          iceCandidatePoolSize: 10,
+        });
         pcRef.current = pc;
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
         pc.onicecandidate = (ev) => {
           if (ev.candidate) void pushIce(ev.candidate);
         };
-        pc.onconnectionstatechange = () => {
-          const st = pc.connectionState;
-          if (st === "connected") {
-            setPhaseBoth("connected");
-            stopSound();
+
+        const onMaybeConnected = () => {
+          const cs = pc.connectionState;
+          const ics = pc.iceConnectionState;
+          if (
+            cs === "connected" ||
+            ics === "connected" ||
+            ics === "completed"
+          ) {
+            markConnected();
           }
-          if (st === "failed") setErr("Kết nối thất bại — thử lại");
-          if (st === "closed") setPhaseBoth("ended");
+          if (cs === "failed" || ics === "failed") {
+            setErr("Kết nối thất bại — thử lại hoặc kiểm tra mạng");
+          }
+          if (cs === "closed") setPhaseBoth("ended");
         };
+
+        pc.onconnectionstatechange = onMaybeConnected;
+        pc.oniceconnectionstatechange = onMaybeConnected;
+
         pc.ontrack = (ev) => {
-          const remote = ev.streams[0];
-          if (remote) attachRemoteStream(remote);
-          else if (ev.track) attachRemoteStream(new MediaStream([ev.track]));
-          setPhaseBoth("connected");
-          stopSound();
+          const remote = ev.streams[0] || new MediaStream([ev.track]);
+          attachRemoteStream(remote);
+          markConnected();
+        };
+
+        const pollCall = (id: string) => {
+          if (pollRef.current) window.clearInterval(pollRef.current);
+          const tick = async () => {
+            if (cancelled || !pcRef.current) return;
+            try {
+              const r = await fetch(`/api/chat/call?id=${encodeURIComponent(id)}`);
+              const j = await r.json();
+              const call = j.call as Record<string, unknown> | null;
+              if (!call) return;
+
+              const status = String(call.status || "");
+              if (status === "rejected" || status === "ended") {
+                setPhaseBoth("ended");
+                setErr(status === "rejected" ? "Đối phương từ chối" : "Cuộc gọi kết thúc");
+                void cleanup(false);
+                if (status === "rejected" && peer?.id) {
+                  void postCallLog(peer.id, mode, "missed", 0);
+                }
+                return;
+              }
+
+              if (role === "caller") {
+                const answerSdp = call.answer_sdp ? String(call.answer_sdp) : "";
+                if (answerSdp && !remoteDescSetRef.current && pcRef.current) {
+                  try {
+                    await pcRef.current.setRemoteDescription({
+                      type: "answer",
+                      sdp: answerSdp,
+                    });
+                    remoteDescSetRef.current = true;
+                    await flushPendingIce();
+                    if (phaseRef.current !== "connected") {
+                      setPhaseBoth("connecting");
+                    }
+                  } catch (e) {
+                    console.warn("setRemoteDescription answer", e);
+                  }
+                }
+                await applyRemoteIce(call.callee_ice);
+              } else {
+                await applyRemoteIce(call.caller_ice);
+              }
+              onMaybeConnected();
+            } catch {
+              /* */
+            }
+          };
+          void tick();
+          pollRef.current = window.setInterval(() => void tick(), 500);
         };
 
         if (role === "caller") {
@@ -267,34 +372,7 @@ export default function CallModal({
           setPhaseBoth("ringing");
           stopSound();
           soundStopRef.current = startCallSound("caller-wait");
-
-          pollRef.current = window.setInterval(async () => {
-            try {
-              const r = await fetch(`/api/chat/call?id=${encodeURIComponent(id)}`);
-              const j = await r.json();
-              const call = j.call;
-              if (!call) return;
-              if (call.status === "rejected" || call.status === "ended") {
-                setPhaseBoth("ended");
-                setErr(call.status === "rejected" ? "Đối phương từ chối" : "Cuộc gọi kết thúc");
-                void cleanup(false);
-                if (call.status === "rejected" && peer?.id) {
-                  void postCallLog(peer.id, mode, "missed", 0);
-                }
-                return;
-              }
-              if (call.answer_sdp && !remoteSetRef.current) {
-                await pc.setRemoteDescription({
-                  type: "answer",
-                  sdp: String(call.answer_sdp),
-                });
-                remoteSetRef.current = true;
-                await flushPendingIce();
-                setPhaseBoth("connecting");
-              }
-              await applyRemoteIce(call.callee_ice);
-            } catch {}
-          }, 800);
+          pollCall(id);
         } else {
           const id = existingCallId || "";
           const offerSdp = existingOfferSdp || "";
@@ -305,7 +383,7 @@ export default function CallModal({
           }
           callIdRef.current = id;
           await pc.setRemoteDescription({ type: "offer", sdp: offerSdp });
-          remoteSetRef.current = true;
+          remoteDescSetRef.current = true;
           await flushPendingIce();
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
@@ -321,21 +399,8 @@ export default function CallModal({
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Không nhận cuộc gọi");
           setPhaseBoth("connecting");
-
-          pollRef.current = window.setInterval(async () => {
-            try {
-              const r = await fetch(`/api/chat/call?id=${encodeURIComponent(id)}`);
-              const j = await r.json();
-              const call = j.call;
-              if (!call) return;
-              if (call.status === "ended") {
-                setPhaseBoth("ended");
-                void cleanup(false);
-                return;
-              }
-              await applyRemoteIce(call.caller_ice);
-            } catch {}
-          }, 800);
+          // ICE local của callee bắt đầu sau setLocalDescription — poll caller ICE ngay
+          pollCall(id);
         }
       } catch (e: unknown) {
         setErr(e instanceof Error ? e.message : "Không thể bắt đầu cuộc gọi");
@@ -348,118 +413,109 @@ export default function CallModal({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, role, peer?.id, existingCallId]);
+  }, [open, mode, role, existingCallId, existingOfferSdp, peer?.id]);
 
   useEffect(() => {
-    if (!open || phase !== "connected") return;
-    const id = window.setInterval(() => {
-      setSec((s) => {
-        const n = s + 1;
-        secRef.current = n;
-        return n;
-      });
+    if (phase !== "connected") return;
+    secRef.current = 0;
+    setSec(0);
+    const t = window.setInterval(() => {
+      secRef.current += 1;
+      setSec(secRef.current);
     }, 1000);
-    return () => window.clearInterval(id);
-  }, [open, phase]);
+    return () => window.clearInterval(t);
+  }, [phase]);
 
   const hangup = async () => {
+    const duration = secRef.current;
+    const wasConnected = connectedRef.current || phaseRef.current === "connected";
     const peerId = peer?.id;
-    const wasConnected = phaseRef.current === "connected";
-    const wasRinging =
-      phaseRef.current === "ringing" ||
-      phaseRef.current === "starting" ||
-      phaseRef.current === "connecting";
-    const duration = wasConnected ? secRef.current : 0;
     await cleanup(true);
-    stopSharedAudio();
     setPhaseBoth("ended");
     if (peerId) {
-      if (wasConnected) void postCallLog(peerId, mode, "ended", duration);
-      else if (role === "caller" && wasRinging) void postCallLog(peerId, mode, "cancelled", 0);
-      else if (role === "callee") void postCallLog(peerId, mode, "rejected", 0);
+      void postCallLog(
+        peerId,
+        mode,
+        wasConnected ? "ended" : role === "caller" ? "cancelled" : "ended",
+        wasConnected ? duration : 0
+      );
     }
-    onClose();
+    window.setTimeout(() => onClose(), 400);
   };
 
   const toggleMute = () => {
-    const next = !muted;
-    setMuted(next);
-    localStreamRef.current?.getAudioTracks().forEach((tr) => {
-      tr.enabled = !next;
+    const s = localStreamRef.current;
+    if (!s) return;
+    s.getAudioTracks().forEach((t) => {
+      t.enabled = !t.enabled;
     });
+    setMuted((m) => !m);
   };
 
   const toggleCam = () => {
-    const next = !camOff;
-    setCamOff(next);
-    localStreamRef.current?.getVideoTracks().forEach((tr) => {
-      tr.enabled = !next;
+    if (mode !== "video") return;
+    const s = localStreamRef.current;
+    if (!s) return;
+    s.getVideoTracks().forEach((t) => {
+      t.enabled = !t.enabled;
     });
+    setCamOff((c) => !c);
   };
 
   if (!open) return null;
 
-  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
-  const ss = String(sec % 60).padStart(2, "0");
   const statusText =
     phase === "starting"
-      ? "Đang kết nối…"
+      ? "Đang chuẩn bị…"
       : phase === "ringing"
-        ? "Đang đổ chuông ..."
+        ? "Đang đổ chuông…"
         : phase === "connecting"
           ? "Đang kết nối…"
           : phase === "connected"
-            ? `${mm}:${ss}`
+            ? `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`
             : phase === "denied"
-              ? "Không truy cập được thiết bị"
+              ? "Không có quyền micro/camera"
               : "Đã kết thúc";
 
   const bg = avatarUrl(peer);
   const initial = (peer?.name || peer?.id || "?").slice(0, 1).toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-[90] flex flex-col bg-black text-white">
+    <div className="fixed inset-0 z-[220] flex flex-col bg-black text-white">
       <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
-      {/* Nền blur kiểu Zalo */}
-      <div className="absolute inset-0 overflow-hidden">
-        {bg ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={bg} alt="" className="w-full h-full object-cover scale-110 blur-2xl opacity-60" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-b from-zinc-800 to-black" />
-        )}
-        <div className="absolute inset-0 bg-black/45" />
-      </div>
-
-      {/* Video remote full khi đã nối (video call) */}
-      {mode === "video" && phase === "connected" && (
-        <video
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover z-[1]"
+      {bg && (
+        <div
+          className="absolute inset-0 scale-110 bg-cover bg-center opacity-40 blur-2xl"
+          style={{ backgroundImage: `url(${bg})` }}
         />
       )}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/70 to-black" />
+
       {mode === "video" && (
-        <video
-          ref={localVideoRef}
-          autoPlay
-          playsInline
-          muted
-          className={`absolute z-[5] rounded-xl object-cover border border-white/20 bg-black ${
-            phase === "connected"
-              ? "bottom-28 right-4 w-28 aspect-[3/4]"
-              : "opacity-0 pointer-events-none"
-          } ${camOff ? "opacity-30" : ""}`}
-        />
+        <>
+          <video
+            ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className={`absolute inset-0 w-full h-full object-cover ${
+              phase === "connected" ? "opacity-100" : "opacity-0"
+            }`}
+          />
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute right-3 bottom-28 w-28 h-40 sm:w-36 sm:h-52 object-cover rounded-xl border border-white/20 shadow-lg z-10 bg-black/40"
+          />
+        </>
       )}
 
-      {/* Nội dung giữa */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
-        {!(mode === "video" && phase === "connected") && (
+        {(mode === "audio" || phase !== "connected") && (
           <>
-            <div className="w-28 h-28 rounded-full overflow-hidden ring-2 ring-white/30 shadow-2xl bg-[#2a2e36] flex items-center justify-center">
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl bg-zinc-800 flex items-center justify-center">
               {bg ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={bg} alt="" className="w-full h-full object-cover" />
@@ -478,10 +534,9 @@ export default function CallModal({
           </p>
         )}
         <p className="mt-2 text-sm text-white/80 drop-shadow">{statusText}</p>
-        {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+        {err && <p className="mt-2 text-xs text-red-300 text-center max-w-xs">{err}</p>}
       </div>
 
-      {/* Thanh điều khiển dưới kiểu Zalo */}
       <div
         className="relative z-10 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 px-8"
         style={{ background: "linear-gradient(transparent, rgba(0,0,0,0.75))" }}
@@ -491,9 +546,7 @@ export default function CallModal({
             type="button"
             onClick={toggleCam}
             disabled={mode !== "video"}
-            className={`flex flex-col items-center gap-1 ${
-              mode !== "video" ? "opacity-30" : ""
-            }`}
+            className={`flex flex-col items-center gap-1 ${mode !== "video" ? "opacity-30" : ""}`}
           >
             <span className="w-12 h-12 rounded-full bg-white/15 flex items-center justify-center backdrop-blur">
               {camOff || mode !== "video" ? (

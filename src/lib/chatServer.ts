@@ -484,11 +484,21 @@ export async function rejectOrEndCall(id: string, me: string, status: "rejected"
   `;
 }
 
-export async function appendIce(
-  id: string,
-  me: string,
-  candidate: object
-) {
+function normalizeIceJson(raw: unknown): object[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter((x) => x && typeof x === "object") as object[];
+  if (typeof raw === "string") {
+    try {
+      const p = JSON.parse(raw) as unknown;
+      return Array.isArray(p) ? (p.filter((x) => x && typeof x === "object") as object[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+export async function appendIce(id: string, me: string, candidate: object) {
   await ensureChatTables();
   const sql = getSql();
   const u = me.toLowerCase();
@@ -498,17 +508,14 @@ export async function appendIce(
   const to = String(call.to_user).toLowerCase();
   if (u !== from && u !== to) throw new Error("Forbidden");
   const isCaller = u === from;
-  const col = isCaller ? "caller_ice" : "callee_ice";
-  const existing = (isCaller ? call.caller_ice : call.callee_ice) as object[] | null;
-  const arr = Array.isArray(existing) ? [...existing] : [];
-  arr.push(candidate);
-  // keep last 40
-  const trimmed = arr.slice(-40);
-  const json = JSON.stringify(trimmed);
+  const existing = normalizeIceJson(isCaller ? call.caller_ice : call.callee_ice);
+  const arr = [...existing, candidate];
+  const trimmed = arr.slice(-60);
+  const payload = JSON.stringify(trimmed);
   if (isCaller) {
-    await sql`UPDATE chat_calls SET caller_ice = ${json}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+    await sql`UPDATE chat_calls SET caller_ice = ${payload}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   } else {
-    await sql`UPDATE chat_calls SET callee_ice = ${json}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+    await sql`UPDATE chat_calls SET callee_ice = ${payload}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   }
 }
 

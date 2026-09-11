@@ -232,19 +232,46 @@ export function mergePayload(local: SyncPayload, remote: SyncPayload): SyncPaylo
       "watchedAt"
     ),
     settings: remote.settings ?? local.settings,
-    // Tên & UID: ưu tiên remote (tài khoản đã tạo trên server), tránh tên guest máy khác ghi đè
+    /**
+     * Hồ sơ gắn tài khoản: name / avatar / frame theo mốc profileUpdatedAt mới hơn.
+     * UID luôn ưu tiên phía đã có (remote nếu có).
+     * Không trộn guest local vào account khác.
+     */
     profile: (() => {
       const r = { ...((remote.profile as object) || {}) } as Record<string, unknown>;
       const l = { ...((local.profile as object) || {}) } as Record<string, unknown>;
-      const rName = String(r.name ?? "").trim();
-      const lName = String(l.name ?? "").trim();
+      const rt = Number(r.profileUpdatedAt) || 0;
+      const lt = Number(l.profileUpdatedAt) || 0;
+      const newer = lt > rt ? l : r;
+      const older = lt > rt ? r : l;
       const rUid = String(r.uid ?? "").trim();
       const lUid = String(l.uid ?? "").trim();
+      const name =
+        String(newer.name ?? "").trim() ||
+        String(older.name ?? "").trim() ||
+        "";
+      const avatar =
+        (typeof newer.avatar === "string" && newer.avatar) ||
+        (typeof older.avatar === "string" && older.avatar) ||
+        undefined;
       return {
-        ...l,
-        ...r,
-        name: rName || lName,
-        uid: rUid || lUid || r.uid || l.uid,
+        ...older,
+        ...newer,
+        name,
+        avatar,
+        avatarPosition:
+          (newer.avatarPosition as string) ||
+          (older.avatarPosition as string) ||
+          "50% 50%",
+        avatarFrame:
+          (newer.avatarFrame as string) ||
+          (older.avatarFrame as string) ||
+          "frame:none",
+        bio: String(newer.bio ?? older.bio ?? ""),
+        uid: rUid || lUid || "",
+        verified: !!(r.verified ?? l.verified),
+        loggedIn: true,
+        profileUpdatedAt: Math.max(rt, lt) || Date.now(),
       };
     })(),
     events: mergeEvents(local.events, remote.events),

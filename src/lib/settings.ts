@@ -17,6 +17,8 @@ export interface UserProfile {
   /** Tài khoản đã xác thực (tích xanh) */
   verified?: boolean;
   loggedIn: boolean;
+  /** Mốc cập nhật hồ sơ (tên/avatar) — dùng merge đa thiết bị */
+  profileUpdatedAt?: number;
 }
 
 export type SeekSec = 1 | 5 | 10 | 20 | 30;
@@ -202,6 +204,7 @@ const defaultProfile: UserProfile = {
   avatarFrame: "frame:none",
   verified: false,
   loggedIn: false,
+  profileUpdatedAt: 0,
 };
 
 export const defaultSettings: AppSettings = {
@@ -370,26 +373,44 @@ export const useSettingsStore = create<SettingsState>()(
           },
         }));
       },
-      logout: () => set({ profile: { ...defaultProfile } }),
+      logout: () => set({ profile: { ...defaultProfile, profileUpdatedAt: 0 } }),
       updateProfile: (partial) =>
-        set((s) => ({ profile: { ...s.profile, ...partial } })),
+        set((s) => ({
+          profile: {
+            ...s.profile,
+            ...partial,
+            profileUpdatedAt: Date.now(),
+          },
+        })),
       setAvatar: (avatar, position) => {
         set((s) => ({
           profile: {
             ...s.profile,
             avatar,
             avatarPosition: position || s.profile.avatarPosition || "50% 50%",
+            profileUpdatedAt: Date.now(),
           },
         }));
-        // Đồng bộ ngay sang Opus Chat
         try {
           void import("@/lib/chatStore").then((m) => {
             m.useChatStore.getState().syncMyAvatarFromFilm?.();
           });
         } catch {}
+        // Đẩy lên server ngay để máy khác không bị avatar cũ
+        try {
+          void import("@/lib/account").then((m) => {
+            void m.useAccountStore.getState().syncNow?.();
+          });
+        } catch {}
       },
       setAvatarPosition: (pos) =>
-        set((s) => ({ profile: { ...s.profile, avatarPosition: pos } })),
+        set((s) => ({
+          profile: {
+            ...s.profile,
+            avatarPosition: pos,
+            profileUpdatedAt: Date.now(),
+          },
+        })),
       updateSettings: (partial) =>
         set((s) => ({ settings: { ...s.settings, ...partial } })),
       resetSettings: () => set({ settings: { ...defaultSettings } }),

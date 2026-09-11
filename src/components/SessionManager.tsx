@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Monitor, Smartphone, Trash2, ShieldOff, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Trash2,
+  ShieldOff,
+  RefreshCw,
+} from "lucide-react";
 import { useAccountStore } from "@/lib/account";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +18,9 @@ type SessionItem = {
   createdAt: string;
   expiresAt: string;
   isCurrent: boolean;
+  deviceName?: string;
+  platform?: string;
+  userAgent?: string;
 };
 
 function formatVi(iso: string) {
@@ -24,6 +35,17 @@ function formatVi(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function DeviceIcon({ name, platform }: { name?: string; platform?: string }) {
+  const t = `${name || ""} ${platform || ""}`.toLowerCase();
+  if (/iphone|android|mobile|phone/.test(t)) {
+    return <Smartphone className="h-4 w-4" />;
+  }
+  if (/ipad|tablet/.test(t)) {
+    return <Tablet className="h-4 w-4" />;
+  }
+  return <Monitor className="h-4 w-4" />;
 }
 
 export default function SessionManager() {
@@ -149,7 +171,7 @@ export default function SessionManager() {
         <div>
           <h3 className="text-sm font-semibold text-white">Phiên đăng nhập</h3>
           <p className="text-[11px] text-zinc-500 mt-0.5">
-            Mỗi thiết bị một phiên · có thể đăng xuất từ xa
+            Tên thiết bị lấy từ hệ thống · đăng xuất từ xa được
           </p>
         </div>
         <button
@@ -174,51 +196,59 @@ export default function SessionManager() {
         <p className="text-sm text-zinc-500 py-2">Không có phiên nào.</p>
       ) : (
         <ul className="space-y-2">
-          {list.map((s, i) => (
-            <li
-              key={s.id}
-              className={cn(
-                "flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition",
-                s.isCurrent
-                  ? "border-sky-500/40 bg-sky-500/10"
-                  : "border-white/10 bg-white/[0.04]"
-              )}
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-zinc-200">
-                {s.isCurrent ? (
-                  <Monitor className="h-4 w-4" />
-                ) : (
-                  <Smartphone className="h-4 w-4" />
+          {list.map((s) => {
+            const title =
+              (s.deviceName && s.deviceName.trim()) ||
+              (s.platform && s.platform.trim()) ||
+              "Thiết bị không xác định";
+            return (
+              <li
+                key={s.id}
+                className={cn(
+                  "flex items-start gap-3 rounded-2xl border px-3 py-2.5 transition",
+                  s.isCurrent
+                    ? "border-sky-500/40 bg-sky-500/10"
+                    : "border-white/10 bg-white/[0.04]"
                 )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-white font-medium truncate">
-                  {s.isCurrent ? "Thiết bị này" : `Thiết bị #${i + 1}`}
-                  {s.isCurrent && (
-                    <span className="ml-2 text-[10px] font-normal text-sky-300">
-                      Đang dùng
-                    </span>
-                  )}
-                </p>
-                <p className="text-[11px] text-zinc-500 tabular-nums">
-                  Tạo: {formatVi(s.createdAt)} · Hết hạn: {formatVi(s.expiresAt)}
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={busyId === s.id}
-                onClick={() => void onRevoke(s.id, s.isCurrent)}
-                className="p-2 rounded-xl text-zinc-400 hover:text-rose-300 hover:bg-rose-500/15 transition disabled:opacity-50"
-                title="Đăng xuất phiên này"
               >
-                {busyId === s.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </button>
-            </li>
-          ))}
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-zinc-200 mt-0.5">
+                  <DeviceIcon name={s.deviceName} platform={s.platform} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white font-medium leading-snug break-words">
+                    {title}
+                    {s.isCurrent && (
+                      <span className="ml-2 text-[10px] font-normal text-sky-300 whitespace-nowrap">
+                        Đang dùng
+                      </span>
+                    )}
+                  </p>
+                  {s.platform && s.deviceName && !String(s.deviceName).includes(s.platform) && (
+                    <p className="text-[11px] text-zinc-400 mt-0.5">{s.platform}</p>
+                  )}
+                  <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5">
+                    Đăng nhập: {formatVi(s.createdAt)}
+                  </p>
+                  <p className="text-[10px] text-zinc-600 tabular-nums">
+                    Hết hạn: {formatVi(s.expiresAt)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={busyId === s.id}
+                  onClick={() => void onRevoke(s.id, s.isCurrent)}
+                  className="p-2 rounded-xl text-zinc-400 hover:text-rose-300 hover:bg-rose-500/15 transition disabled:opacity-50 shrink-0"
+                  title="Đăng xuất phiên này"
+                >
+                  {busyId === s.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 

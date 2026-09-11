@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { eq, and, gt, ne, desc } from "drizzle-orm";
+import { eq, and, gt, ne, desc, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { sessions, users } from "@/db/schema";
 import { hashToken, makeSessionToken } from "@/lib/password";
@@ -7,19 +7,53 @@ import { hashToken, makeSessionToken } from "@/lib/password";
 export const SESSION_COOKIE = "opus_session";
 const SESSION_DAYS = 30;
 
+export type SessionDeviceMeta = {
+  deviceName?: string;
+  userAgent?: string;
+  platform?: string;
+};
+
 export function sessionExpiryDate() {
   return new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
 }
 
-export async function createSession(userId: number): Promise<string> {
+/** Đảm bảo cột device trên bảng sessions (Neon) */
+export async function ensureSessionDeviceColumns() {
+  try {
+    const db = getDb();
+    await db.execute(sql`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_name text`);
+    await db.execute(sql`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent text`);
+    await db.execute(sql`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS platform text`);
+  } catch {
+    /* cột có thể đã có hoặc quyền hạn chế */
+  }
+}
+
+export async function createSession(
+  userId: number,
+  device?: SessionDeviceMeta
+): Promise<string> {
   const db = getDb();
   const token = makeSessionToken();
   const tokenHash = hashToken(token);
-  await db.insert(sessions).values({
-    userId,
-    sessionTokenHash: tokenHash,
-    expiresAt: sessionExpiryDate(),
-  });
+  await ensureSessionDeviceColumns();
+  try {
+    await db.insert(sessions).values({
+      userId,
+      sessionTokenHash: tokenHash,
+      expiresAt: sessionExpiryDate(),
+      deviceName: device?.deviceName?.slice(0, 120) || null,
+      userAgent: device?.userAgent?.slice(0, 500) || null,
+      platform: device?.platform?.slice(0, 64) || null,
+    });
+  } catch {
+    // Fallback nếu cột chưa migrate
+    await db.insert(sessions).values({
+      userId,
+      sessionTokenHash: tokenHash,
+      expiresAt: sessionExpiryDate(),
+    });
+  }
   return token;
 }
 
@@ -58,7 +92,15 @@ export type SessionRow = {
   createdAt: string;
   expiresAt: string;
   isCurrent: boolean;
+  deviceName: string;
+  platform: string;
+  userAgent: string;
 };
+
+function toIso(v: unknown): string {
+  if (v instanceof Date) return v.toISOString();
+  return new Date(String(v)).toISOString();
+}
 
 /** Danh sách phiên còn hạn của user */
 export async function listSessionsForUser(
@@ -66,6 +108,7 @@ export async function listSessionsForUser(
   currentToken?: string | null
 ): Promise<SessionRow[]> {
   const db = getDb();
+  await ensureSessionDeviceColumns();
   const currentHash = currentToken ? hashToken(currentToken) : "";
   const rows = await db
     .select({
@@ -73,26 +116,31 @@ export async function listSessionsForUser(
       createdAt: sessions.createdAt,
       expiresAt: sessions.expiresAt,
       sessionTokenHash: sessions.sessionTokenHash,
+      deviceName: sessions.deviceName,
+      userAgent: sessions.userAgent,
+      platform: sessions.platform,
     })
     .from(sessions)
     .where(and(eq(sessions.userId, userId), gt(sessions.expiresAt, new Date())))
     .orderBy(desc(sessions.createdAt));
 
-  return rows.map((r) => ({
-    id: r.id,
-    createdAt: (r.createdAt instanceof Date
-      ? r.createdAt
-      : new Date(r.createdAt as string)
-    ).toISOString(),
-    expiresAt: (r.expiresAt instanceof Date
-      ? r.expiresAt
-      : new Date(r.expiresAt as string)
-    ).toISOString(),
-    isCurrent: !!currentHash && r.sessionTokenHash === currentHash,
-  }));
+  return rows.map((r, i) => {
+    const name =
+      (r.deviceName && String(r.deviceName).trim()) ||
+      (r.platform && String(r.platform).trim()) ||
+      `Thiết bị #${i + 1}`;
+    return {
+      id: r.id,
+      createdAt: toIso(r.createdAt),
+      expiresAt: toIso(r.expiresAt),
+      isCurrent: !!currentHash && r.sessionTokenHash === currentHash,
+      deviceName: name,
+      platform: r.platform ? String(r.platform) : "",
+      userAgent: r.userAgent ? String(r.userAgent) : "",
+    };
+  });
 }
 
-/** Thu hồi 1 phiên (chỉ của chính user) */
 export async function revokeSessionById(userId: number, sessionId: number) {
   const db = getDb();
   await db
@@ -100,7 +148,6 @@ export async function revokeSessionById(userId: number, sessionId: number) {
     .where(and(eq(sessions.userId, userId), eq(sessions.id, sessionId)));
 }
 
-/** Thu hồi mọi phiên khác, giữ phiên hiện tại */
 export async function revokeOtherSessions(userId: number, currentToken: string) {
   const db = getDb();
   const currentHash = hashToken(currentToken);
@@ -109,7 +156,6 @@ export async function revokeOtherSessions(userId: number, currentToken: string) 
     .where(and(eq(sessions.userId, userId), ne(sessions.sessionTokenHash, currentHash)));
 }
 
-/** Thu hồi toàn bộ phiên của user (đăng xuất mọi nơi) */
 export async function revokeAllSessions(userId: number) {
   const db = getDb();
   await db.delete(sessions).where(eq(sessions.userId, userId));

@@ -65,6 +65,12 @@ export const sessions = pgTable(
     sessionTokenHash: text("session_token_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** Tên thiết bị hiển thị (iPhone 15, Windows PC, …) */
+    deviceName: text("device_name"),
+    /** User-Agent thô */
+    userAgent: text("user_agent"),
+    /** platform / os gọn */
+    platform: text("platform"),
   },
   (t) => [
     uniqueIndex("sessions_token_hash_uidx").on(t.sessionTokenHash),

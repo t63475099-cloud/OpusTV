@@ -17,13 +17,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const username = String(body.username || "").trim().toLowerCase();
     const password = String(body.password || "");
+    const device = {
+      deviceName: String(body.deviceName || body.device?.deviceName || "").slice(0, 120),
+      userAgent: String(
+        body.userAgent || body.device?.userAgent || req.headers.get("user-agent") || ""
+      ).slice(0, 500),
+      platform: String(body.platform || body.device?.platform || "").slice(0, 64),
+    };
     const user = await checkPassword(username, password);
     if (!user) {
       return NextResponse.json({ ok: false, error: "Sai tài khoản hoặc mật khẩu" }, { status: 401 });
     }
     await touchLastLogin(user.id);
     const uid = await ensureUserUid(user.id);
-    const token = await createSession(user.id);
+    const token = await createSession(user.id, device);
 
     const [history, favorites, music, settingsRow] = await Promise.all([
       listHistory(user.id, 80),

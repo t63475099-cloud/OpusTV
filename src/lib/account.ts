@@ -42,9 +42,8 @@ export const useAccountStore = create<AccountState>()(
           /* ignore */
         }
         set({ username: null, storage: null, lastSyncAt: null });
-        useSettingsStore.setState((s) => ({
-          profile: { ...s.profile, loggedIn: false },
-        }));
+        // Xóa sạch hồ sơ local — tránh tên/avatar tài khoản A dính sang B
+        useSettingsStore.getState().logout();
       },
 
       collectLocal: () => {
@@ -113,23 +112,40 @@ export const useAccountStore = create<AccountState>()(
         if (data.profile && typeof data.profile === "object") {
           useSettingsStore.setState((s) => {
             const remote = data.profile as Record<string, unknown>;
-            const localName = (s.profile.name || "").trim();
-            const remoteName = String(remote.name ?? "").trim();
-            // Ưu tiên tên trên server (đúng tài khoản đã tạo), không lấy tên máy khách / guest
+            const local = s.profile;
+            const rt = Number(remote.profileUpdatedAt) || 0;
+            const lt = Number(local.profileUpdatedAt) || 0;
+            // Hồ sơ identity: lấy bản mới hơn (tránh avatar/tên bị kéo về bản cũ)
+            const useRemote = rt >= lt;
+            const src = useRemote ? remote : (local as unknown as Record<string, unknown>);
+            const other = useRemote ? (local as unknown as Record<string, unknown>) : remote;
             const name =
-              remoteName ||
-              localName ||
+              String(src.name ?? "").trim() ||
+              String(other.name ?? "").trim() ||
               get().username ||
               "";
-            const localUid = (s.profile.uid || "").trim();
+            const avatar =
+              (typeof src.avatar === "string" && src.avatar) ||
+              (typeof other.avatar === "string" && other.avatar) ||
+              undefined;
             const remoteUid = String(remote.uid ?? "").trim();
+            const localUid = String(local.uid || "").trim();
             return {
               profile: {
-                ...s.profile,
+                ...local,
                 ...remote,
                 name,
-                uid: remoteUid || localUid || s.profile.uid,
+                avatar,
+                avatarPosition:
+                  String(src.avatarPosition || other.avatarPosition || "50% 50%"),
+                avatarFrame: String(
+                  src.avatarFrame || other.avatarFrame || "frame:none"
+                ),
+                bio: String(src.bio ?? other.bio ?? ""),
+                uid: remoteUid || localUid || "",
+                verified: !!(remote.verified ?? local.verified),
                 loggedIn: true,
+                profileUpdatedAt: Math.max(rt, lt) || Date.now(),
               },
             };
           });
@@ -178,25 +194,38 @@ export const useAccountStore = create<AccountState>()(
 
       register: async (username, password, recoveryPin: string, activationKey: string) => {
         try {
+          const { collectDeviceInfoAsync } = await import("@/lib/deviceInfo");
+          const device = await collectDeviceInfoAsync();
           const res = await fetch("/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password, recoveryPin, activationKey }),
+            body: JSON.stringify({
+              username,
+              password,
+              recoveryPin,
+              activationKey,
+              ...device,
+              device,
+            }),
           });
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Đăng ký thất bại" };
           get().setSession(data.username);
-          // Tên hiển thị = tên tài khoản lúc tạo (không lấy guest local)
-          useSettingsStore.setState((s) => ({
+          // Hồ sơ mới sạch — đúng username lúc tạo, không avatar guest
+          useSettingsStore.setState({
             profile: {
-              ...s.profile,
               name: String(data.username),
               uid: data.uid || "",
-              loggedIn: true,
-              verified: false,
+              bio: "",
+              email: "",
               avatar: undefined,
+              avatarPosition: "50% 50%",
+              avatarFrame: "frame:none",
+              verified: false,
+              loggedIn: true,
+              profileUpdatedAt: Date.now(),
             },
-          }));
+          });
           await fetch("/api/auth/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -211,10 +240,12 @@ export const useAccountStore = create<AccountState>()(
 
       login: async (username, password) => {
         try {
+          const { collectDeviceInfoAsync } = await import("@/lib/deviceInfo");
+          const device = await collectDeviceInfoAsync();
           const res = await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ username, password, ...device, device }),
           });
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Đăng nhập thất bại" };
@@ -225,21 +256,28 @@ export const useAccountStore = create<AccountState>()(
             musicWatched: [],
             updatedAt: 0,
           }) as SyncPayload;
-          // Không trộn profile.name từ guest máy này — lấy remote / username đăng nhập
           const remoteProfile = (remote.profile || {}) as Record<string, unknown>;
           const accountName =
             String(remoteProfile.name || "").trim() || String(data.username || username);
-          const accountUid =
-            String(data.uid || remoteProfile.uid || "").trim();
-          // Local chỉ lấy history/favorites/... — profile name/uid khóa theo account
+          const accountUid = String(data.uid || remoteProfile.uid || "").trim();
+          const accountAvatar =
+            typeof remoteProfile.avatar === "string" ? remoteProfile.avatar : undefined;
+
+          // Bỏ profile guest local — chỉ lấy dữ liệu gắn tài khoản server
           const local = get().collectLocal();
           const merged = mergePayload(
             {
               ...local,
               profile: {
-                ...((local.profile as object) || {}),
                 name: accountName,
                 uid: accountUid,
+                avatar: accountAvatar,
+                avatarPosition: remoteProfile.avatarPosition || "50% 50%",
+                avatarFrame: remoteProfile.avatarFrame || "frame:none",
+                bio: remoteProfile.bio || "",
+                verified: !!remoteProfile.verified,
+                loggedIn: true,
+                profileUpdatedAt: Number(remoteProfile.profileUpdatedAt) || Date.now(),
               },
             },
             {
@@ -248,19 +286,26 @@ export const useAccountStore = create<AccountState>()(
                 ...remoteProfile,
                 name: accountName,
                 uid: accountUid || remoteProfile.uid,
+                avatar: accountAvatar ?? remoteProfile.avatar,
+                loggedIn: true,
               },
             }
           );
           get().applyRemote(merged);
-          useSettingsStore.setState((s) => ({
+          useSettingsStore.setState({
             profile: {
-              ...s.profile,
               name: accountName,
-              uid: accountUid || s.profile.uid || "",
+              uid: accountUid,
+              bio: String(remoteProfile.bio || ""),
+              email: String(remoteProfile.email || ""),
+              avatar: accountAvatar,
+              avatarPosition: String(remoteProfile.avatarPosition || "50% 50%"),
+              avatarFrame: String(remoteProfile.avatarFrame || "frame:none"),
+              verified: !!remoteProfile.verified,
               loggedIn: true,
-              verified: !!(remoteProfile.verified ?? s.profile.verified),
+              profileUpdatedAt: Number(remoteProfile.profileUpdatedAt) || Date.now(),
             },
-          }));
+          });
           await fetch("/api/auth/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

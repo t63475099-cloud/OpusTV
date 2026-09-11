@@ -52,7 +52,14 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await createUser(username, password, recoveryPin);
-    const token = await createSession(user.id);
+    const device = {
+      deviceName: String(body.deviceName || body.device?.deviceName || "").slice(0, 120),
+      userAgent: String(
+        body.userAgent || body.device?.userAgent || req.headers.get("user-agent") || ""
+      ).slice(0, 500),
+      platform: String(body.platform || body.device?.platform || "").slice(0, 64),
+    };
+    const token = await createSession(user.id, device);
     const res = NextResponse.json({
       ok: true,
       username: user.username,

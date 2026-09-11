@@ -115,34 +115,39 @@ export const useAccountStore = create<AccountState>()(
             const local = s.profile;
             const rt = Number(remote.profileUpdatedAt) || 0;
             const lt = Number(local.profileUpdatedAt) || 0;
-            // Hồ sơ identity: lấy bản mới hơn (tránh avatar/tên bị kéo về bản cũ)
-            const useRemote = rt >= lt;
-            const src = useRemote ? remote : (local as unknown as Record<string, unknown>);
-            const other = useRemote ? (local as unknown as Record<string, unknown>) : remote;
+            const useRemote = rt > lt; // chỉ nhận remote khi mới hơn hẳn
+            const src = useRemote
+              ? remote
+              : (local as unknown as Record<string, unknown>);
+            const other = useRemote
+              ? (local as unknown as Record<string, unknown>)
+              : remote;
             const name =
               String(src.name ?? "").trim() ||
               String(other.name ?? "").trim() ||
               get().username ||
               "";
-            const avatar =
-              (typeof src.avatar === "string" && src.avatar) ||
-              (typeof other.avatar === "string" && other.avatar) ||
+            // Không bao giờ xóa avatar đang có bằng giá trị rỗng
+            const avatarRaw =
+              (typeof src.avatar === "string" && src.avatar.length > 0 && src.avatar) ||
+              (typeof other.avatar === "string" && other.avatar.length > 0 && other.avatar) ||
               undefined;
             const remoteUid = String(remote.uid ?? "").trim();
             const localUid = String(local.uid || "").trim();
             return {
               profile: {
                 ...local,
-                ...remote,
                 name,
-                avatar,
-                avatarPosition:
-                  String(src.avatarPosition || other.avatarPosition || "50% 50%"),
-                avatarFrame: String(
-                  src.avatarFrame || other.avatarFrame || "frame:none"
+                avatar: avatarRaw,
+                avatarPosition: String(
+                  src.avatarPosition || other.avatarPosition || local.avatarPosition || "50% 50%"
                 ),
-                bio: String(src.bio ?? other.bio ?? ""),
-                uid: remoteUid || localUid || "",
+                avatarFrame: String(
+                  src.avatarFrame || other.avatarFrame || local.avatarFrame || "frame:none"
+                ),
+                bio: String(src.bio ?? other.bio ?? local.bio ?? ""),
+                email: String(src.email ?? other.email ?? local.email ?? ""),
+                uid: remoteUid || localUid || local.uid || "",
                 verified: !!(remote.verified ?? local.verified),
                 loggedIn: true,
                 profileUpdatedAt: Math.max(rt, lt) || Date.now(),

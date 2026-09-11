@@ -347,19 +347,19 @@ export default function AccountPage() {
     return () => { c = true; };
   }, [username, updateProfile]);
 
-  /** Cắt ảnh vuông giữa + nén JPEG để đồng bộ thiết bị */
+  /** Cắt ảnh vuông + nén nhẹ để đồng bộ ổn định giữa các thiết bị */
   const processAvatarFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
-    if (file.size > 4 * 1024 * 1024) {
-      setErr("Ảnh tối đa 4MB");
+    if (file.size > 6 * 1024 * 1024) {
+      setErr("Ảnh tối đa 6MB");
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const src = reader.result as string;
       const img = new Image();
-      img.onload = () => {
-        const size = 256;
+      img.onload = async () => {
+        const size = 192;
         const canvas = document.createElement("canvas");
         canvas.width = size;
         canvas.height = size;
@@ -369,11 +369,13 @@ export default function AccountPage() {
         const sx = (img.width - side) / 2;
         const sy = (img.height - side) / 2;
         ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
         setAvatar(dataUrl, "50% 50%");
-        void useAccountStore.getState().syncNow();
-        setMsg("Đã cập nhật ảnh đại diện");
+        setMsg("Đã cập nhật ảnh đại diện — đang đồng bộ…");
+        const r = await useAccountStore.getState().syncNow();
+        setMsg(r.ok ? "Đã đồng bộ ảnh đại diện" : "Lưu máy này; đồng bộ cloud lỗi");
       };
+      img.onerror = () => setErr("Không đọc được ảnh");
       img.src = src;
     };
     reader.readAsDataURL(file);
@@ -536,21 +538,26 @@ export default function AccountPage() {
             <div className="zalo-cover" />
             <div className="relative px-4 pb-4 -mt-12">
               <div className="flex flex-col items-center text-center">
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="relative group"
-                  aria-label="Đổi ảnh đại diện"
-                >
-                  <UserAvatar
-                    profile={{ ...profile, name: showName }}
-                    size={108}
-                    showBadge={!!profile.verified}
-                  />
-                  <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition">
-                    <Camera className="w-7 h-7 text-white" />
-                  </span>
-                </button>
+                <div className="relative h-[108px] w-[108px] shrink-0 select-none">
+                  {/* Avatar không nằm trong button — hover chỉ phủ lớp tối, không đổi src ảnh */}
+                  <div className="pointer-events-none">
+                    <UserAvatar
+                      profile={{ ...profile, name: showName }}
+                      size={108}
+                      showBadge={!!profile.verified}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    aria-label="Đổi ảnh đại diện"
+                    className="avatar-edit-btn absolute inset-0 z-20 flex items-center justify-center rounded-full border-0 bg-transparent p-0 cursor-pointer"
+                  >
+                    <span className="avatar-edit-icon flex h-full w-full items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity duration-150 ease-out">
+                      <Camera className="h-7 w-7 text-white drop-shadow" strokeWidth={1.75} />
+                    </span>
+                  </button>
+                </div>
                 <input
                   ref={fileRef}
                   type="file"
@@ -1196,6 +1203,14 @@ export default function AccountPage() {
 function AuthStyles() {
   return (
     <style jsx global>{`
+      .avatar-edit-btn:hover .avatar-edit-icon,
+      .avatar-edit-btn:focus-visible .avatar-edit-icon {
+        opacity: 1;
+      }
+      .avatar-edit-btn:focus-visible {
+        outline: 2px solid rgba(244, 63, 94, 0.7);
+        outline-offset: 2px;
+      }
       .auth-orb {
         position: absolute;
         border-radius: 50%;

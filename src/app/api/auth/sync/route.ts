@@ -23,14 +23,56 @@ function pickProfile(
         ? String(payload.displayName)
         : "";
   return {
-    name: name,
-    avatar: typeof p.avatar === "string" ? p.avatar : undefined,
+    name,
+    uid: typeof p.uid === "string" ? p.uid : undefined,
+    bio: typeof p.bio === "string" ? p.bio : undefined,
+    email: typeof p.email === "string" ? p.email : undefined,
+    avatar: typeof p.avatar === "string" && p.avatar.length > 0 ? p.avatar : undefined,
     avatarPosition:
-      typeof p.avatarPosition === "string" ? p.avatarPosition : undefined,
-    avatarFrame: typeof p.avatarFrame === "string" ? p.avatarFrame : undefined,
+      typeof p.avatarPosition === "string" ? p.avatarPosition : "50% 50%",
+    avatarFrame: typeof p.avatarFrame === "string" ? p.avatarFrame : "frame:none",
     verified: !!p.verified,
     loggedIn: true,
+    profileUpdatedAt: Number(p.profileUpdatedAt) || 0,
     username,
+  };
+}
+
+/** Gộp profile theo mốc profileUpdatedAt — bản mới hơn giữ name/avatar */
+function mergeProfileServer(
+  prev: Record<string, unknown>,
+  incoming: Record<string, unknown>
+): Record<string, unknown> {
+  const pt = Number(prev.profileUpdatedAt) || 0;
+  const it = Number(incoming.profileUpdatedAt) || 0;
+  if (it >= pt) {
+    return {
+      ...prev,
+      ...incoming,
+      // Không ghi đè avatar bằng chuỗi rỗng
+      avatar:
+        typeof incoming.avatar === "string" && incoming.avatar.length > 0
+          ? incoming.avatar
+          : prev.avatar,
+      name:
+        String(incoming.name || "").trim() ||
+        String(prev.name || "").trim() ||
+        "",
+      profileUpdatedAt: Math.max(it, pt) || Date.now(),
+    };
+  }
+  return {
+    ...incoming,
+    ...prev,
+    avatar:
+      typeof prev.avatar === "string" && prev.avatar.length > 0
+        ? prev.avatar
+        : incoming.avatar,
+    name:
+      String(prev.name || "").trim() ||
+      String(incoming.name || "").trim() ||
+      "",
+    profileUpdatedAt: Math.max(it, pt) || Date.now(),
   };
 }
 
@@ -158,10 +200,14 @@ export async function POST(req: NextRequest) {
       ...(data.settings && typeof data.settings === "object" ? data.settings : {}),
     };
     if (data.profile && typeof data.profile === "object") {
-      nextPayload.profile = {
-        ...((prev.profile as object) || {}),
-        ...data.profile,
-      };
+      const prevP =
+        prev.profile && typeof prev.profile === "object"
+          ? (prev.profile as Record<string, unknown>)
+          : {};
+      nextPayload.profile = mergeProfileServer(
+        prevP,
+        data.profile as Record<string, unknown>
+      );
     }
     // Sự kiện / VIP / Opus Pass — lưu trong payload settings (JSON)
     if (data.events && typeof data.events === "object") {

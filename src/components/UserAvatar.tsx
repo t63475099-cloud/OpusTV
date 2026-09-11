@@ -76,8 +76,10 @@ export default function UserAvatar({
         src={imgSrc}
         alt={profile.name || "Avatar"}
         className={`rounded-full object-cover bg-zinc-800 ${ringCls} ${className}`}
-        style={imgStyle}
+        style={{ ...imgStyle, display: "block" }}
         referrerPolicy="no-referrer"
+        draggable={false}
+        decoding="async"
       />
     );
   } else if (isPresetAvatar(profile.avatar)) {

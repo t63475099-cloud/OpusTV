@@ -251,9 +251,12 @@ export function mergePayload(local: SyncPayload, remote: SyncPayload): SyncPaylo
         String(older.name ?? "").trim() ||
         "";
       const avatar =
-        (typeof newer.avatar === "string" && newer.avatar) ||
-        (typeof older.avatar === "string" && older.avatar) ||
-        undefined;
+        (typeof newer.avatar === "string" && newer.avatar.length > 0
+          ? newer.avatar
+          : undefined) ||
+        (typeof older.avatar === "string" && older.avatar.length > 0
+          ? older.avatar
+          : undefined);
       return {
         ...older,
         ...newer,

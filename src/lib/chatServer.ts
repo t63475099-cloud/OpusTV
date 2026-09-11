@@ -509,13 +509,15 @@ export async function appendIce(id: string, me: string, candidate: object) {
   if (u !== from && u !== to) throw new Error("Forbidden");
   const isCaller = u === from;
   const existing = normalizeIceJson(isCaller ? call.caller_ice : call.callee_ice);
-  const arr = [...existing, candidate];
-  const trimmed = arr.slice(-60);
-  const payload = JSON.stringify(trimmed);
+  // Tránh trùng candidate
+  const key = JSON.stringify(candidate);
+  const filtered = existing.filter((x) => JSON.stringify(x) !== key);
+  const trimmed = [...filtered, candidate].slice(-80);
+  // Truyền JS array — neon serialize đúng jsonb (không double-encode string)
   if (isCaller) {
-    await sql`UPDATE chat_calls SET caller_ice = ${payload}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+    await sql`UPDATE chat_calls SET caller_ice = ${JSON.stringify(trimmed)}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   } else {
-    await sql`UPDATE chat_calls SET callee_ice = ${payload}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+    await sql`UPDATE chat_calls SET callee_ice = ${JSON.stringify(trimmed)}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   }
 }
 

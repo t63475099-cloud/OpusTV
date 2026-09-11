@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, PhoneOff, Video, VideoOff, Settings } from "lucide-react";
 import type { ChatUser } from "@/lib/chatStore";
-import { startCallSound, stopSharedAudio } from "@/lib/callSounds";
+import { startCallSound } from "@/lib/callSounds";
 import { postCallLog } from "@/lib/callLog";
 
 const ICE_SERVERS: RTCIceServer[] = [
@@ -15,7 +15,7 @@ const ICE_SERVERS: RTCIceServer[] = [
       "turn:openrelay.metered.ca:80",
       "turn:openrelay.metered.ca:80?transport=tcp",
       "turn:openrelay.metered.ca:443",
-      "turn:openrelay.metered.ca:443?transport=tcp",
+      "turns:openrelay.metered.ca:443",
     ],
     username: "openrelayproject",
     credential: "openrelayproject",
@@ -69,7 +69,9 @@ export default function CallModal({
   const callIdRef = useRef<string | null>(null);
   const seenIceRef = useRef<Set<string>>(new Set());
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const localIceBufRef = useRef<RTCIceCandidateInit[]>([]);
   const remoteDescSetRef = useRef(false);
+  const answerAppliedRef = useRef(false);
   const connectedRef = useRef(false);
   const pollRef = useRef<number | null>(null);
   const soundStopRef = useRef<(() => void) | null>(null);
@@ -130,24 +132,22 @@ export default function CallModal({
       callIdRef.current = null;
       seenIceRef.current = new Set();
       pendingIceRef.current = [];
+      localIceBufRef.current = [];
       remoteDescSetRef.current = false;
+      answerAppliedRef.current = false;
       connectedRef.current = false;
     },
     [stopSound]
   );
 
-  const pushIce = useCallback(async (candidate: RTCIceCandidate | null) => {
+  const pushIce = useCallback(async (init: RTCIceCandidateInit) => {
     const id = callIdRef.current;
-    if (!id || !candidate) return;
+    if (!id || !init?.candidate) return;
     try {
       await fetch("/api/chat/call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "ice",
-          id,
-          candidate: candidate.toJSON(),
-        }),
+        body: JSON.stringify({ action: "ice", id, candidate: init }),
       });
     } catch {
       /* */
@@ -171,28 +171,31 @@ export default function CallModal({
     }
   }, []);
 
-  const applyRemoteIce = useCallback(
-    async (list: unknown) => {
-      const pc = pcRef.current;
-      if (!pc) return;
-      const items = normalizeIceList(list);
-      for (const init of items) {
-        const key = JSON.stringify(init);
-        if (seenIceRef.current.has(key)) continue;
-        if (!remoteDescSetRef.current) {
-          pendingIceRef.current.push(init);
-          continue;
-        }
-        seenIceRef.current.add(key);
-        try {
-          await pc.addIceCandidate(init);
-        } catch {
-          /* */
-        }
+  const applyRemoteIce = useCallback(async (list: unknown) => {
+    const pc = pcRef.current;
+    if (!pc) return;
+    for (const init of normalizeIceList(list)) {
+      const key = JSON.stringify(init);
+      if (seenIceRef.current.has(key)) continue;
+      if (!remoteDescSetRef.current) {
+        pendingIceRef.current.push(init);
+        continue;
       }
-    },
-    []
-  );
+      seenIceRef.current.add(key);
+      try {
+        await pc.addIceCandidate(init);
+      } catch {
+        /* */
+      }
+    }
+  }, []);
+
+  /** Gửi lại toàn bộ ICE local (sau khi có remote description) */
+  const resendLocalIce = useCallback(async () => {
+    for (const c of localIceBufRef.current) {
+      await pushIce(c);
+    }
+  }, [pushIce]);
 
   const attachRemoteStream = useCallback((stream: MediaStream) => {
     if (remoteAudioRef.current) {
@@ -225,8 +228,10 @@ export default function CallModal({
       setErr(null);
       connectedRef.current = false;
       remoteDescSetRef.current = false;
+      answerAppliedRef.current = false;
       seenIceRef.current = new Set();
       pendingIceRef.current = [];
+      localIceBufRef.current = [];
 
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
@@ -258,27 +263,41 @@ export default function CallModal({
 
         const pc = new RTCPeerConnection({
           iceServers: ICE_SERVERS,
-          iceCandidatePoolSize: 10,
+          iceCandidatePoolSize: 16,
         });
         pcRef.current = pc;
-        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+        // sendrecv rõ ràng — tránh một chiều
+        const audioTrack = stream.getAudioTracks()[0];
+        if (audioTrack) {
+          pc.addTransceiver(audioTrack, { direction: "sendrecv" });
+        } else {
+          pc.addTransceiver("audio", { direction: "sendrecv" });
+        }
+        if (mode === "video") {
+          const videoTrack = stream.getVideoTracks()[0];
+          if (videoTrack) {
+            pc.addTransceiver(videoTrack, { direction: "sendrecv" });
+          } else {
+            pc.addTransceiver("video", { direction: "sendrecv" });
+          }
+        }
 
         pc.onicecandidate = (ev) => {
-          if (ev.candidate) void pushIce(ev.candidate);
+          if (!ev.candidate) return;
+          const init = ev.candidate.toJSON();
+          localIceBufRef.current.push(init);
+          void pushIce(init);
         };
 
         const onMaybeConnected = () => {
           const cs = pc.connectionState;
           const ics = pc.iceConnectionState;
-          if (
-            cs === "connected" ||
-            ics === "connected" ||
-            ics === "completed"
-          ) {
+          if (cs === "connected" || ics === "connected" || ics === "completed") {
             markConnected();
           }
           if (cs === "failed" || ics === "failed") {
-            setErr("Kết nối thất bại — thử lại hoặc kiểm tra mạng");
+            setErr("Kết nối thất bại — thử lại hoặc đổi mạng");
           }
           if (cs === "closed") setPhaseBoth("ended");
         };
@@ -294,10 +313,13 @@ export default function CallModal({
 
         const pollCall = (id: string) => {
           if (pollRef.current) window.clearInterval(pollRef.current);
+
           const tick = async () => {
             if (cancelled || !pcRef.current) return;
             try {
-              const r = await fetch(`/api/chat/call?id=${encodeURIComponent(id)}`);
+              const r = await fetch(`/api/chat/call?id=${encodeURIComponent(id)}`, {
+                cache: "no-store",
+              });
               const j = await r.json();
               const call = j.call as Record<string, unknown> | null;
               if (!call) return;
@@ -315,19 +337,26 @@ export default function CallModal({
 
               if (role === "caller") {
                 const answerSdp = call.answer_sdp ? String(call.answer_sdp) : "";
-                if (answerSdp && !remoteDescSetRef.current && pcRef.current) {
+                if (
+                  answerSdp &&
+                  !answerAppliedRef.current &&
+                  pcRef.current.signalingState !== "closed"
+                ) {
                   try {
                     await pcRef.current.setRemoteDescription({
                       type: "answer",
                       sdp: answerSdp,
                     });
+                    answerAppliedRef.current = true;
                     remoteDescSetRef.current = true;
                     await flushPendingIce();
+                    await resendLocalIce();
                     if (phaseRef.current !== "connected") {
                       setPhaseBoth("connecting");
+                      stopSound();
                     }
                   } catch (e) {
-                    console.warn("setRemoteDescription answer", e);
+                    console.warn("[call] answer SDP", e);
                   }
                 }
                 await applyRemoteIce(call.callee_ice);
@@ -339,8 +368,9 @@ export default function CallModal({
               /* */
             }
           };
+
           void tick();
-          pollRef.current = window.setInterval(() => void tick(), 500);
+          pollRef.current = window.setInterval(() => void tick(), 350);
         };
 
         if (role === "caller") {
@@ -387,6 +417,8 @@ export default function CallModal({
           await flushPendingIce();
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
+          // Gửi ICE đã có + sẽ gửi tiếp qua onicecandidate
+          await resendLocalIce();
           const res = await fetch("/api/chat/call", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -399,7 +431,6 @@ export default function CallModal({
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Không nhận cuộc gọi");
           setPhaseBoth("connecting");
-          // ICE local của callee bắt đầu sau setLocalDescription — poll caller ICE ngay
           pollCall(id);
         }
       } catch (e: unknown) {

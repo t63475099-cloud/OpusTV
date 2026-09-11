@@ -742,7 +742,7 @@ function SettingsInner() {
               }}
               className="text-sm text-red-400 underline"
             >
-              Khôi phục mặc định
+              Khôi phục
             </button>
           </div>
         )}
@@ -783,16 +783,13 @@ function SettingsInner() {
               Chính sách bảo mật
               <span className="text-zinc-500">›</span>
             </Link>
-            <p className="px-3 pt-2 text-xs text-zinc-500 leading-relaxed">
-              Áp dụng khi bạn tạo và dùng tài khoản trên trang này.
-            </p>
           </div>
         )}
 
         {section === "about" && (
           <div className="px-4 py-6 text-sm text-zinc-400 space-y-2 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
             <p className="text-white font-medium text-base">OpusFilm</p>
-            <p className="text-xs text-zinc-500">Phiên bản web</p>
+            <p className="text-xs text-zinc-500">Phiên bản 2.1.1</p>
           </div>
         )}
       </div>

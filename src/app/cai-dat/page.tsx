@@ -525,7 +525,7 @@ function SettingsInner() {
               onChange={(v) => set({ seekSeconds: v })}
             />
             <ChipGroup
-              label="Chất lượng mặc định"
+              label="Chất lượng"
               value={settings.defaultQuality || "auto"}
               options={[
                 { value: "auto" as const, label: "Tự động" },
@@ -536,7 +536,7 @@ function SettingsInner() {
               onChange={(v) => set({ defaultQuality: v })}
             />
             <ChipGroup
-              label="Tốc độ phát mặc định"
+              label="Tốc độ phát"
               value={settings.defaultSpeed ?? 1}
               options={[0.75, 1, 1.25, 1.5, 2].map((n) => ({ value: n, label: `${n}x` }))}
               onChange={(v) => set({ defaultSpeed: v })}
@@ -568,7 +568,7 @@ function SettingsInner() {
               onChange={(v) => set({ seekSeconds: v })}
             />
             <ChipGroup
-              label="Chất lượng mặc định"
+              label="Chất lượng"
               value={settings.defaultQuality}
               options={[
                 { value: "auto" as const, label: "Tự động" },

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, ne, desc } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { sessions, users } from "@/db/schema";
 import { hashToken, makeSessionToken } from "@/lib/password";
@@ -51,6 +51,68 @@ export async function getSessionUser() {
   } catch {
     return null;
   }
+}
+
+export type SessionRow = {
+  id: number;
+  createdAt: string;
+  expiresAt: string;
+  isCurrent: boolean;
+};
+
+/** Danh sách phiên còn hạn của user */
+export async function listSessionsForUser(
+  userId: number,
+  currentToken?: string | null
+): Promise<SessionRow[]> {
+  const db = getDb();
+  const currentHash = currentToken ? hashToken(currentToken) : "";
+  const rows = await db
+    .select({
+      id: sessions.id,
+      createdAt: sessions.createdAt,
+      expiresAt: sessions.expiresAt,
+      sessionTokenHash: sessions.sessionTokenHash,
+    })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), gt(sessions.expiresAt, new Date())))
+    .orderBy(desc(sessions.createdAt));
+
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: (r.createdAt instanceof Date
+      ? r.createdAt
+      : new Date(r.createdAt as string)
+    ).toISOString(),
+    expiresAt: (r.expiresAt instanceof Date
+      ? r.expiresAt
+      : new Date(r.expiresAt as string)
+    ).toISOString(),
+    isCurrent: !!currentHash && r.sessionTokenHash === currentHash,
+  }));
+}
+
+/** Thu hồi 1 phiên (chỉ của chính user) */
+export async function revokeSessionById(userId: number, sessionId: number) {
+  const db = getDb();
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.userId, userId), eq(sessions.id, sessionId)));
+}
+
+/** Thu hồi mọi phiên khác, giữ phiên hiện tại */
+export async function revokeOtherSessions(userId: number, currentToken: string) {
+  const db = getDb();
+  const currentHash = hashToken(currentToken);
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.userId, userId), ne(sessions.sessionTokenHash, currentHash)));
+}
+
+/** Thu hồi toàn bộ phiên của user (đăng xuất mọi nơi) */
+export async function revokeAllSessions(userId: number) {
+  const db = getDb();
+  await db.delete(sessions).where(eq(sessions.userId, userId));
 }
 
 export function cookieOptions(maxAgeSeconds: number) {

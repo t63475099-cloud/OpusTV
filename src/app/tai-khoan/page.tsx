@@ -25,6 +25,7 @@ import { useSettingsStore, AVATAR_FRAMES } from "@/lib/settings";
 import UserAvatar from "@/components/UserAvatar";
 import ProfileMotionCanvas from "@/components/ProfileMotionCanvas";
 import VerifyRequestModal from "@/components/VerifyRequestModal";
+import SessionManager from "@/components/SessionManager";
 import { useXpStore } from "@/lib/xpStore";
 
 type Mode = "login" | "register" | "recover";
@@ -897,6 +898,11 @@ export default function AccountPage() {
               Lưu PIN
             </button>
             {pinMsg && <p className="text-xs text-emerald-400">{pinMsg}</p>}
+          </div>
+
+          {/* Quản lý phiên làm việc */}
+          <div className="zalo-glass rounded-2xl p-4 mt-3">
+            <SessionManager />
           </div>
 
           {/* Đồng bộ */}

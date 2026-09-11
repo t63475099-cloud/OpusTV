@@ -1,5 +1,7 @@
 import { getLangMeta, type CodeLangId } from "./codeLanguages";
 
+export type RunMode = "terminal" | "preview";
+
 function usesTurtle(code: string): boolean {
   return (
     /\bimport\s+turtle\b/.test(code) ||
@@ -84,10 +86,36 @@ function looksLikeHtmlGame(code: string): boolean {
   );
 }
 
+function wrapConsoleAsHtml(
+  title: string,
+  lines: { kind: string; text: string }[]
+): string {
+  const body = lines
+    .map((l) => {
+      const color =
+        l.kind === "err" ? "#f87171" : l.kind === "info" ? "#94a3b8" : "#e2e8f0";
+      const esc = String(l.text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      return `<div style="color:${color};white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.5">${esc}</div>`;
+    })
+    .join("");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title}</title>
+<style>html,body{margin:0;background:#0b0f14;color:#e2e8f0;min-height:100%}main{padding:12px 14px}</style></head>
+<body><main><h1 style="font:600 14px system-ui;margin:0 0 10px;color:#7dd3fc">${title}</h1>${body}</main></body></html>`;
+}
+
+/**
+ * Chạy code theo mode độc lập:
+ * - terminal: chỉ log ra Terminal (không mở Live Preview)
+ * - preview: mở Live Preview (HTML/canvas) — console-only vẫn bọc HTML
+ */
 export async function runCode(
   langId: CodeLangId,
   code: string,
-  fileName: string
+  fileName: string,
+  mode: RunMode = "terminal"
 ): Promise<RunResult> {
   const t0 = performance.now();
   const meta = getLangMeta(langId);
@@ -95,22 +123,49 @@ export async function runCode(
 
   lines.push({
     kind: "info",
-    text: `$ run ${fileName} (${meta.label})`,
+    text: `$ ${mode === "preview" ? "preview" : "run"} ${fileName} (${meta.label})`,
   });
 
-  // Python / Turtle → luôn Skulpt (không mô phỏng text)
+  // Python / Turtle
   if (isPythonFile(langId, fileName, code)) {
     const turtle = usesTurtle(code);
+    if (mode === "terminal") {
+      if (turtle) {
+        lines.push({
+          kind: "info",
+          text: "File có Turtle/canvas — bấm «Live Preview» để xem đồ họa.",
+        });
+        return {
+          lines,
+          display: "terminal",
+          durationMs: Math.round(performance.now() - t0),
+        };
+      }
+      lines.push({
+        kind: "info",
+        text: "Python (console). Dùng Live Preview nếu cần canvas/Turtle.",
+      });
+      // Terminal mode: vẫn kích hoạt Skulpt qua turtle panel? Không — chỉ log hướng dẫn
+      // Thực thi text qua Skulpt cần panel; gợi ý dùng Preview cho full run
+      lines.push({
+        kind: "out",
+        text: "(Terminal mode) Bấm Live Preview để chạy Python đầy đủ trong trình duyệt.",
+      });
+      return {
+        lines,
+        display: "terminal",
+        durationMs: Math.round(performance.now() - t0),
+      };
+    }
+    // preview mode
     lines.push({
       kind: "info",
-      text: turtle
-        ? "Turtle / canvas."
-        : "Python.",
+      text: turtle ? "Turtle / canvas → Live Preview." : "Python → Live Preview (Skulpt).",
     });
     return {
       lines,
       turtleMode: true,
-      display: "canvas" as const,
+      display: "canvas",
       turtleCode: code,
       durationMs: Math.round(performance.now() - t0),
     };
@@ -119,7 +174,19 @@ export async function runCode(
   if (meta.runnable === "html") {
     let html = code;
     if (langId === "css") {
-      html = `<!DOCTYPE html><html><head><style>${code}</style></head><body><div class="hero"><h1>CSS Preview</h1><p>Style sheet applied.</p></div></body></html>`;
+      html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/><style>${code}</style></head><body><div class="hero"><h1>CSS Preview</h1><p>Style sheet applied.</p></div></body></html>`;
+    }
+    if (mode === "terminal") {
+      lines.push({
+        kind: "info",
+        text: "HTML/CSS — output dành cho Live Preview. Bấm «Live Preview» để xem.",
+      });
+      lines.push({ kind: "out", text: `(${html.length} bytes markup)` });
+      return {
+        lines,
+        display: "terminal",
+        durationMs: Math.round(performance.now() - t0),
+      };
     }
     lines.push({
       kind: "info",
@@ -130,22 +197,30 @@ export async function runCode(
     return {
       lines,
       htmlPreview: html,
-      display: "html" as const,
+      display: "html",
       durationMs: Math.round(performance.now() - t0),
     };
   }
 
   if (meta.runnable === "js") {
     if (looksLikeHtmlGame(code) && !code.trim().startsWith("<")) {
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>html,body{margin:0;background:#111;height:100%;overflow:hidden}canvas{display:block;margin:0 auto;background:#000}</style></head><body><script>${code}<\/script></body></html>`;
-      lines.push({
-        kind: "info",
-        text: "Phát hiện canvas/game JS — mở Live Preview.",
-      });
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>html,body{margin:0;background:#111;height:100%;overflow:hidden}canvas{display:block;margin:0 auto;background:#000;max-width:100%}</style></head><body><script>${code}<\/script></body></html>`;
+      if (mode === "terminal") {
+        lines.push({
+          kind: "info",
+          text: "Phát hiện canvas/game JS — bấm «Live Preview» để chơi.",
+        });
+        return {
+          lines,
+          display: "terminal",
+          durationMs: Math.round(performance.now() - t0),
+        };
+      }
+      lines.push({ kind: "info", text: "Canvas/game JS → Live Preview." });
       return {
         lines,
         htmlPreview: html,
-        display: "html" as const,
+        display: "html",
         durationMs: Math.round(performance.now() - t0),
       };
     }
@@ -156,14 +231,25 @@ export async function runCode(
       kind: "info",
       text: `Hoàn tất · ${Math.round(performance.now() - t0)} ms`,
     });
-    return { lines, durationMs: Math.round(performance.now() - t0), display: "terminal" as const };
+    if (mode === "preview") {
+      return {
+        lines,
+        htmlPreview: wrapConsoleAsHtml(`${fileName} · console`, lines),
+        display: "html",
+        durationMs: Math.round(performance.now() - t0),
+      };
+    }
+    return {
+      lines,
+      display: "terminal",
+      durationMs: Math.round(performance.now() - t0),
+    };
   }
 
+  // C / C++ / C# / Rust / ...
   lines.push({ kind: "info", text: `${meta.label}…` });
-  await new Promise((r) => setTimeout(r, 280 + Math.random() * 200));
+  await new Promise((r) => setTimeout(r, 200 + Math.random() * 180));
   lines.push({ kind: "info", text: "OK" });
-  await new Promise((r) => setTimeout(r, 80));
-
   const prints = extractPrintfC(code);
   for (const p of prints) {
     for (const row of p.split("\n")) {
@@ -174,5 +260,17 @@ export async function runCode(
     kind: "info",
     text: `Process exited with code 0 · ${Math.round(performance.now() - t0)} ms`,
   });
-  return { lines, durationMs: Math.round(performance.now() - t0), display: "terminal" as const };
+  if (mode === "preview") {
+    return {
+      lines,
+      htmlPreview: wrapConsoleAsHtml(`${fileName} · ${meta.label}`, lines),
+      display: "html",
+      durationMs: Math.round(performance.now() - t0),
+    };
+  }
+  return {
+    lines,
+    display: "terminal",
+    durationMs: Math.round(performance.now() - t0),
+  };
 }

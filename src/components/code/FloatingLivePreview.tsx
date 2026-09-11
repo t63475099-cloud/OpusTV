@@ -201,8 +201,8 @@ export default function FloatingLivePreview() {
           "bg-[#0d1117]/95 shadow-[0_25px_80px_rgba(0,0,0,0.65)]",
           "backdrop-blur-xl",
           expanded
-            ? "h-[min(100dvh-1.5rem,900px)] w-[min(100vw-1rem,1200px)]"
-            : "h-[min(72dvh,560px)] w-[min(100vw-1.5rem,720px)] sm:h-[min(78dvh,640px)]"
+            ? "h-[min(100dvh-1rem,100svh-1rem)] w-[min(100vw-0.5rem,100%)] max-w-[1280px] sm:h-[min(100dvh-1.5rem,920px)] sm:w-[min(100vw-1rem,1200px)]"
+            : "h-[min(68dvh,520px)] w-[min(100vw-1rem,100%)] max-w-[720px] sm:h-[min(75dvh,640px)] sm:w-[min(92vw,780px)] md:h-[min(78dvh,700px)] md:w-[min(88vw,860px)]"
         )}
       >
         <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 bg-[#161b22]/90 px-3">

@@ -232,10 +232,21 @@ export function mergePayload(local: SyncPayload, remote: SyncPayload): SyncPaylo
       "watchedAt"
     ),
     settings: remote.settings ?? local.settings,
-    profile: {
-      ...((remote.profile as object) || {}),
-      ...((local.profile as object) || {}),
-    },
+    // Tên & UID: ưu tiên remote (tài khoản đã tạo trên server), tránh tên guest máy khác ghi đè
+    profile: (() => {
+      const r = { ...((remote.profile as object) || {}) } as Record<string, unknown>;
+      const l = { ...((local.profile as object) || {}) } as Record<string, unknown>;
+      const rName = String(r.name ?? "").trim();
+      const lName = String(l.name ?? "").trim();
+      const rUid = String(r.uid ?? "").trim();
+      const lUid = String(l.uid ?? "").trim();
+      return {
+        ...l,
+        ...r,
+        name: rName || lName,
+        uid: rUid || lUid || r.uid || l.uid,
+      };
+    })(),
     events: mergeEvents(local.events, remote.events),
     opusPass: mergeOpusPass(local.opusPass, remote.opusPass),
     updatedAt: Date.now(),

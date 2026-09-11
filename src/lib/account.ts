@@ -115,11 +115,11 @@ export const useAccountStore = create<AccountState>()(
             const remote = data.profile as Record<string, unknown>;
             const localName = (s.profile.name || "").trim();
             const remoteName = String(remote.name ?? "").trim();
-            // Giữ tên local nếu user đã đặt; không ghi đè bằng username rỗng / mặc định
+            // Ưu tiên tên trên server (đúng tài khoản đã tạo), không lấy tên máy khách / guest
             const name =
-              localName ||
               remoteName ||
-              s.profile.name ||
+              localName ||
+              get().username ||
               "";
             const localUid = (s.profile.uid || "").trim();
             const remoteUid = String(remote.uid ?? "").trim();
@@ -128,7 +128,7 @@ export const useAccountStore = create<AccountState>()(
                 ...s.profile,
                 ...remote,
                 name,
-                uid: localUid || remoteUid || s.profile.uid,
+                uid: remoteUid || localUid || s.profile.uid,
                 loggedIn: true,
               },
             };
@@ -186,23 +186,23 @@ export const useAccountStore = create<AccountState>()(
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Đăng ký thất bại" };
           get().setSession(data.username);
-          // Đẩy dữ liệu local lên Neon (merge)
+          // Tên hiển thị = tên tài khoản lúc tạo (không lấy guest local)
+          useSettingsStore.setState((s) => ({
+            profile: {
+              ...s.profile,
+              name: String(data.username),
+              uid: data.uid || "",
+              loggedIn: true,
+              verified: false,
+              avatar: undefined,
+            },
+          }));
           await fetch("/api/auth/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ data: get().collectLocal() }),
           });
           set({ lastSyncAt: Date.now() });
-          useSettingsStore.setState((s) => ({
-            profile: {
-              ...s.profile,
-              name: (s.profile.name && String(s.profile.name).trim()) || data.username,
-              uid: data.uid || s.profile.uid || "",
-              loggedIn: true,
-              verified: !!(data.data?.profile?.verified ?? s.profile.verified),
-              avatar: s.profile.avatar || undefined,
-            },
-          }));
           return { ok: true };
         } catch {
           return { ok: false, error: "Không kết nối được máy chủ" };
@@ -219,36 +219,60 @@ export const useAccountStore = create<AccountState>()(
           const data = await res.json();
           if (!data.ok) return { ok: false, error: data.error || "Đăng nhập thất bại" };
           get().setSession(data.username);
-          const local = get().collectLocal();
           const remote = (data.data || {
             history: [],
             favorites: [],
             musicWatched: [],
             updatedAt: 0,
           }) as SyncPayload;
-          const merged = mergePayload(local, remote);
+          // Không trộn profile.name từ guest máy này — lấy remote / username đăng nhập
+          const remoteProfile = (remote.profile || {}) as Record<string, unknown>;
+          const accountName =
+            String(remoteProfile.name || "").trim() || String(data.username || username);
+          const accountUid =
+            String(data.uid || remoteProfile.uid || "").trim();
+          // Local chỉ lấy history/favorites/... — profile name/uid khóa theo account
+          const local = get().collectLocal();
+          const merged = mergePayload(
+            {
+              ...local,
+              profile: {
+                ...((local.profile as object) || {}),
+                name: accountName,
+                uid: accountUid,
+              },
+            },
+            {
+              ...remote,
+              profile: {
+                ...remoteProfile,
+                name: accountName,
+                uid: accountUid || remoteProfile.uid,
+              },
+            }
+          );
           get().applyRemote(merged);
+          useSettingsStore.setState((s) => ({
+            profile: {
+              ...s.profile,
+              name: accountName,
+              uid: accountUid || s.profile.uid || "",
+              loggedIn: true,
+              verified: !!(remoteProfile.verified ?? s.profile.verified),
+            },
+          }));
           await fetch("/api/auth/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ data: merged }),
           });
           set({ lastSyncAt: Date.now() });
-          useSettingsStore.setState((s) => ({
-            profile: {
-              ...s.profile,
-              name: (s.profile.name && String(s.profile.name).trim()) || data.username,
-              uid: data.uid || s.profile.uid || (data.data as { profile?: { uid?: string } })?.profile?.uid || "",
-              loggedIn: true,
-              verified: !!(data.data?.profile?.verified ?? s.profile.verified),
-              avatar: s.profile.avatar || undefined,
-            },
-          }));
           return { ok: true };
         } catch {
           return { ok: false, error: "Không kết nối được máy chủ" };
         }
       },
+
 
       syncNow: async () => {
         if (!get().username) return { ok: false, error: "Chưa đăng nhập" };

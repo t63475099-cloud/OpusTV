@@ -14,10 +14,11 @@ import {
   SquareTerminal,
   Trash2,
   Lightbulb,
+  AppWindow,
 } from "lucide-react";
 import { useCodeStore } from "@/lib/codeStore";
 import { getLangMeta } from "@/lib/codeLanguages";
-import { runCode } from "@/lib/codeRunner";
+import { runCode, type RunMode } from "@/lib/codeRunner";
 import { cn } from "@/lib/utils";
 import FileExplorer from "./FileExplorer";
 import EditorTabs from "./EditorTabs";
@@ -123,73 +124,97 @@ export default function OpusCodeLayout() {
     addTermLine({ kind: "info", text: "Đã dừng." });
   }, [setRunning, setTurtleCode, setCanvasVisible, setPreviewHtml, addTermLine]);
 
-  const onRun = useCallback(async () => {
-    const file = activeId ? getFile(activeId) : null;
-    if (!file || file.kind !== "file") {
-      addTermLine({ kind: "err", text: "Không có file đang mở để chạy." });
-      setTerminalOpen(true);
-      return;
-    }
-    // Ưu tiên đuôi file .py → python (tránh langId sai / file cũ)
-    const langId =
-      /\.py$/i.test(file.name) ? "python" : file.langId || "javascript";
-    setTerminalOpen(true);
-    setPreviewHtml(null);
-    setCanvasVisible(false);
-    setTurtleCode(null);
-    addTermLine({ kind: "cmd", text: `run ${file.name}` });
-    setRunning(true);
-    try {
-      const result = await runCode(langId as any, file.content || "", file.name);
-      for (const line of result.lines) {
-        addTermLine(line);
-      }
-      // Tự nhận diện output:
-      //  - Canvas (Python Turtle) → Live Preview nổi + Terminal log gọn
-      //  - HTML/CSS/JS web        → Live Preview nổi + Terminal log gọn
-      //  - Console / biên dịch    → chỉ Terminal (không mở hộp Preview)
-      if (result.turtleMode && result.turtleCode) {
-        setPreviewHtml(null);
-        setCanvasVisible(true);
-        setTurtleCode(result.turtleCode);
-        setTerminalHeight(Math.min(160, Math.max(120, window.innerHeight * 0.18)));
-        markSaved(file.id);
+  /** mode=terminal → chỉ Terminal; mode=preview → Live Preview độc lập */
+  const onRunMode = useCallback(
+    async (mode: RunMode) => {
+      const file = activeId ? getFile(activeId) : null;
+      if (!file || file.kind !== "file") {
+        addTermLine({ kind: "err", text: "Không có file đang mở để chạy." });
+        setTerminalOpen(true);
         return;
       }
-      if (result.htmlPreview) {
-        setCanvasVisible(false);
-        setTurtleCode(null);
-        setPreviewHtml(result.htmlPreview);
-        setTerminalHeight(Math.min(160, Math.max(120, window.innerHeight * 0.18)));
-      } else {
+      const langId = /\.py$/i.test(file.name) ? "python" : file.langId || "javascript";
+
+      if (mode === "terminal") {
+        // Độc lập: không mở preview
         setPreviewHtml(null);
         setCanvasVisible(false);
         setTurtleCode(null);
-        setTerminalHeight(Math.max(200, Math.min(360, window.innerHeight * 0.32)));
+        setTerminalOpen(true);
+        setTerminalHeight(
+          Math.max(180, Math.min(420, typeof window !== "undefined" ? window.innerHeight * 0.34 : 240))
+        );
+      } else {
+        // Preview: mở panel nổi; terminal thu nhỏ
+        setTerminalOpen(true);
+        setTerminalHeight(
+          Math.min(140, Math.max(100, typeof window !== "undefined" ? window.innerHeight * 0.16 : 120))
+        );
       }
-      markSaved(file.id);
-    } catch (e) {
+
       addTermLine({
-        kind: "err",
-        text: e instanceof Error ? e.message : String(e),
+        kind: "cmd",
+        text: `${mode === "preview" ? "preview" : "run"} ${file.name}`,
       });
-    } finally {
-      // Turtle giữ running=true tới khi Skulpt xong
-      const st = useCodeStore.getState();
-      if (!st.turtleCode) setRunning(false);
-    }
-  }, [
-    activeId,
-    getFile,
-    addTermLine,
-    setTerminalOpen,
-    setRunning,
-    setPreviewHtml,
-    setCanvasVisible,
-    setTurtleCode,
-    setTerminalHeight,
-    markSaved,
-  ]);
+      setRunning(true);
+      try {
+        const result = await runCode(
+          langId as Parameters<typeof runCode>[0],
+          file.content || "",
+          file.name,
+          mode
+        );
+        for (const line of result.lines) {
+          addTermLine(line);
+        }
+
+        if (mode === "terminal") {
+          setPreviewHtml(null);
+          setCanvasVisible(false);
+          setTurtleCode(null);
+        } else {
+          if (result.turtleMode && result.turtleCode) {
+            setPreviewHtml(null);
+            setCanvasVisible(true);
+            setTurtleCode(result.turtleCode);
+          } else if (result.htmlPreview) {
+            setCanvasVisible(false);
+            setTurtleCode(null);
+            setPreviewHtml(result.htmlPreview);
+          } else {
+            setPreviewHtml(null);
+            setCanvasVisible(false);
+            setTurtleCode(null);
+            addTermLine({
+              kind: "info",
+              text: "Không có giao diện xem trước — xem log trong Terminal.",
+            });
+          }
+        }
+        markSaved(file.id);
+      } catch (e) {
+        addTermLine({
+          kind: "err",
+          text: e instanceof Error ? e.message : String(e),
+        });
+      } finally {
+        const st = useCodeStore.getState();
+        if (!st.turtleCode) setRunning(false);
+      }
+    },
+    [
+      activeId,
+      getFile,
+      addTermLine,
+      setTerminalOpen,
+      setRunning,
+      setPreviewHtml,
+      setCanvasVisible,
+      setTurtleCode,
+      setTerminalHeight,
+      markSaved,
+    ]
+  );
 
   if (!mounted) {
     return (
@@ -284,25 +309,40 @@ export default function OpusCodeLayout() {
               type="button"
               onClick={onStop}
               className={cn(
-                "flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-white shadow",
-                "bg-rose-600 hover:bg-rose-500 active:scale-[0.98] transition-all duration-500"
+                "flex h-8 items-center gap-1.5 rounded-md px-2.5 sm:px-3 text-xs font-semibold text-white shadow",
+                "bg-rose-600 hover:bg-rose-500 active:scale-[0.98] transition-all duration-300"
               )}
             >
               <Square className="h-3.5 w-3.5 fill-white" />
-              Dừng
+              <span>Dừng</span>
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => void onRun()}
-              className={cn(
-                "flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-white shadow",
-                "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-500"
-              )}
-            >
-              <Play className="h-4 w-4 fill-white" />
-              Chạy
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => void onRunMode("terminal")}
+                title="Chạy ra Terminal"
+                className={cn(
+                  "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-white shadow",
+                  "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-300"
+                )}
+              >
+                <SquareTerminal className="h-3.5 w-3.5" />
+                <span className="hidden xs:inline sm:inline">Terminal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void onRunMode("preview")}
+                title="Chạy Live Preview"
+                className={cn(
+                  "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-white shadow",
+                  "bg-sky-600 hover:bg-sky-500 active:scale-[0.98] transition-all duration-300"
+                )}
+              >
+                <AppWindow className="h-3.5 w-3.5" />
+                <span className="hidden xs:inline sm:inline">Preview</span>
+              </button>
+            </>
           )}
         </div>
       </header>

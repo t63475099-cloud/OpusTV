@@ -116,13 +116,24 @@ export default function OpusCodeLayout() {
   }, [activeId, getFile, updateContent]);
 
 
+  const cancelTerminalInput = useCodeStore((s) => s.cancelTerminalInput);
+  const requestTerminalInput = useCodeStore((s) => s.requestTerminalInput);
+
   const onStop = useCallback(() => {
+    cancelTerminalInput();
     setRunning(false);
     setTurtleCode(null);
     setCanvasVisible(false);
     setPreviewHtml(null);
     addTermLine({ kind: "info", text: "Đã dừng." });
-  }, [setRunning, setTurtleCode, setCanvasVisible, setPreviewHtml, addTermLine]);
+  }, [
+    cancelTerminalInput,
+    setRunning,
+    setTurtleCode,
+    setCanvasVisible,
+    setPreviewHtml,
+    addTermLine,
+  ]);
 
   /** mode=terminal → chỉ Terminal; mode=preview → Live Preview độc lập */
   const onRunMode = useCallback(
@@ -162,7 +173,12 @@ export default function OpusCodeLayout() {
           langId as Parameters<typeof runCode>[0],
           file.content || "",
           file.name,
-          mode
+          mode,
+          {
+            readLine: async (prompt?: string) => {
+              return requestTerminalInput(prompt);
+            },
+          }
         );
         for (const line of result.lines) {
           addTermLine(line);
@@ -213,6 +229,7 @@ export default function OpusCodeLayout() {
       setTurtleCode,
       setTerminalHeight,
       markSaved,
+      requestTerminalInput,
     ]
   );
 
@@ -293,17 +310,6 @@ export default function OpusCodeLayout() {
             <Trash2 className="h-4 w-4" />
             <span className="text-[11px]">Xóa</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setTerminalOpen(!terminalOpen)}
-            className={cn(
-              "flex h-8 items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
-              terminalOpen ? "bg-white/15 text-white" : "text-zinc-300 hover:bg-white/10"
-            )}
-          >
-            <SquareTerminal className="h-4 w-4" />
-            <span className="hidden sm:inline">Terminal</span>
-          </button>
           {running ? (
             <button
               type="button"
@@ -321,26 +327,26 @@ export default function OpusCodeLayout() {
               <button
                 type="button"
                 onClick={() => void onRunMode("terminal")}
-                title="Chạy ra Terminal"
+                title="Chạy trong Terminal (có thể nhập liệu)"
                 className={cn(
                   "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-white shadow",
                   "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-300"
                 )}
               >
-                <SquareTerminal className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline sm:inline">Terminal</span>
+                <Play className="h-3.5 w-3.5 fill-white" />
+                <span>Chạy</span>
               </button>
               <button
                 type="button"
                 onClick={() => void onRunMode("preview")}
-                title="Chạy Live Preview"
+                title="Live Preview"
                 className={cn(
                   "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-white shadow",
                   "bg-sky-600 hover:bg-sky-500 active:scale-[0.98] transition-all duration-300"
                 )}
               >
                 <AppWindow className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline sm:inline">Preview</span>
+                <span className="hidden sm:inline">Preview</span>
               </button>
             </>
           )}

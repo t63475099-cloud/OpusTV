@@ -46,6 +46,15 @@ interface CodeState {
   canvasVisible: boolean;
   /** Code Python chờ Canvas mount rồi chạy Skulpt */
   turtleCode: string | null;
+  /** Terminal đang chờ người dùng nhập (ReadLine / input) */
+  awaitingInput: boolean;
+  inputPrompt: string;
+  /** resolver nội bộ cho Promise nhập liệu */
+  _inputResolver: ((value: string) => void) | null;
+
+  requestTerminalInput: (prompt?: string) => Promise<string>;
+  submitTerminalInput: (value: string) => void;
+  cancelTerminalInput: () => void;
 
   createFile: (parentId: string | null, langId: CodeLangId, name?: string) => string;
   createFolder: (parentId: string | null, name?: string) => string;
@@ -130,6 +139,47 @@ export const useCodeStore = create<CodeState>()(
       previewHtml: null,
       canvasVisible: false,
       turtleCode: null,
+      awaitingInput: false,
+      inputPrompt: "",
+      _inputResolver: null,
+
+      requestTerminalInput: (prompt) => {
+        const p = (prompt || "").trim();
+        if (p) {
+          get().addTermLine({ kind: "out", text: p.endsWith(" ") ? p : p + " " });
+        }
+        return new Promise<string>((resolve) => {
+          set({
+            awaitingInput: true,
+            inputPrompt: prompt || "",
+            terminalOpen: true,
+            _inputResolver: resolve,
+          });
+        });
+      },
+
+      submitTerminalInput: (value) => {
+        const resolver = get()._inputResolver;
+        const text = String(value ?? "");
+        set({
+          awaitingInput: false,
+          inputPrompt: "",
+          _inputResolver: null,
+        });
+        get().addTermLine({ kind: "cmd", text: text });
+        resolver?.(text);
+      },
+
+      cancelTerminalInput: () => {
+        const resolver = get()._inputResolver;
+        set({
+          awaitingInput: false,
+          inputPrompt: "",
+          _inputResolver: null,
+          running: false,
+        });
+        resolver?.("");
+      },
 
       createFile: (parentId, langId, name) => {
         const meta = getLangMeta(langId);

@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import type { NeonQueryFunction } from "@neondatabase/serverless";
+import { getNeonSql } from "@/lib/neonSql";
 
 export interface CommentDoc {
   id: string;
@@ -21,9 +22,7 @@ export interface VideoSocialDoc {
 }
 
 function getSql(): NeonQueryFunction<false, false> {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL missing");
-  return neon(url);
+  return getNeonSql();
 }
 
 let ensured = false;

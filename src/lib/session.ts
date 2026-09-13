@@ -63,9 +63,19 @@ export async function destroySession(token: string) {
   await db.delete(sessions).where(eq(sessions.sessionTokenHash, hashToken(token)));
 }
 
-export async function getSessionUser() {
-  const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE)?.value;
+export async function resolveSessionToken(explicit?: string | null): Promise<string | null> {
+  if (explicit && explicit.length > 10) return explicit;
+  try {
+    const jar = await cookies();
+    const c = jar.get(SESSION_COOKIE)?.value;
+    if (c) return c;
+  } catch {
+    /* */
+  }
+  return null;
+}
+
+export async function getSessionUserByToken(token: string | null | undefined) {
   if (!token) return null;
   try {
     const db = getDb();
@@ -82,9 +92,47 @@ export async function getSessionUser() {
       .where(and(eq(sessions.sessionTokenHash, tokenHash), gt(sessions.expiresAt, new Date())))
       .limit(1);
     return rows[0] || null;
-  } catch {
-    return null;
+  } catch (e) {
+    // Retry 1 lần khi Neon cold
+    try {
+      await new Promise((r) => setTimeout(r, 500));
+      const db = getDb();
+      const tokenHash = hashToken(token!);
+      const rows = await db
+        .select({
+          userId: users.id,
+          username: users.username,
+          expiresAt: sessions.expiresAt,
+          sessionId: sessions.id,
+        })
+        .from(sessions)
+        .innerJoin(users, eq(sessions.userId, users.id))
+        .where(and(eq(sessions.sessionTokenHash, tokenHash), gt(sessions.expiresAt, new Date())))
+        .limit(1);
+      return rows[0] || null;
+    } catch {
+      return null;
+    }
   }
+}
+
+/** Cookie httpOnly HOẶC Authorization: Bearer / x-opus-session */
+export async function getSessionUser(req?: { headers?: Headers | { get: (k: string) => string | null } }) {
+  let token: string | null = null;
+  try {
+    if (req?.headers) {
+      const h = req.headers;
+      const auth = h.get("authorization") || h.get("Authorization") || "";
+      if (auth.toLowerCase().startsWith("bearer ")) {
+        token = auth.slice(7).trim();
+      }
+      if (!token) token = h.get("x-opus-session") || h.get("X-Opus-Session");
+    }
+  } catch {
+    /* */
+  }
+  if (!token) token = await resolveSessionToken();
+  return getSessionUserByToken(token);
 }
 
 export type SessionRow = {
@@ -162,7 +210,11 @@ export async function revokeAllSessions(userId: number) {
 }
 
 export function cookieOptions(maxAgeSeconds: number) {
-  const secure = process.env.NODE_ENV === "production";
+  // Render + Netlify đều HTTPS production
+  const secure =
+    process.env.NODE_ENV === "production" ||
+    process.env.COOKIE_SECURE === "1" ||
+    process.env.RENDER === "true";
   return {
     httpOnly: true,
     secure,

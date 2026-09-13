@@ -1,8 +1,9 @@
-import { getNeonSql as getSql, formatDbError } from "@/lib/neonSql";
+import { getNeonSql as getSql, formatDbError, withNeonRetry, wakeNeon } from "@/lib/neonSql";
 
 export { formatDbError };
 
 export async function ensureChatTables() {
+  await wakeNeon();
   const sql = getSql();
   // Cột hồ sơ public — tránh lỗi "column uid does not exist"
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS uid TEXT`;

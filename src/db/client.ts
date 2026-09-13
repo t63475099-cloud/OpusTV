@@ -4,7 +4,7 @@ import * as schema from "./schema";
 import { resolveDatabaseUrl } from "@/lib/neonSql";
 
 /**
- * Neon HTTP driver — Render / Netlify / Vercel.
+ * Neon HTTP + Drizzle — Render / mọi host Node.
  */
 export function getDb() {
   const url = resolveDatabaseUrl();

@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "@/lib/sessionClient";
 
 import { create } from "zustand";
 import { useNotifStore } from "@/lib/notifications";
@@ -237,6 +238,7 @@ interface ChatState {
   replyTo: ChatMessage | null;
   loading: boolean;
   error: string | null;
+  clearError: () => void;
   synced: boolean;
   /** peer username đang soạn tin */
   typingPeers: Record<string, number>;
@@ -388,6 +390,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       replyTo: null,
       loading: false,
       error: null,
+      clearError: () => set({ error: null }),
       synced: false,
       typingPeers: {},
       blockedUsers: [],
@@ -588,8 +591,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         const prevActive = get().activeId;
         try {
           const [frRaw, inboxRaw] = await Promise.all([
-            fetch("/api/chat/friends", { credentials: "include" }),
-            fetch("/api/chat/messages", { credentials: "include" }),
+            apiFetch("/api/chat/friends"),
+            apiFetch("/api/chat/messages"),
           ]);
           const fr = await frRaw.json();
           const inboxRes = await inboxRaw.json();
@@ -666,7 +669,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
           // Presence Zalo-style
           try {
-            await fetch("/api/chat/presence", { method: "POST" });
+            await apiFetch("/api/chat/presence", { method: "POST" });
             if (friendIds.length) {
               const pr = await fetch(
                 `/api/chat/presence?users=${encodeURIComponent(friendIds.join(","))}`
@@ -685,7 +688,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           } catch {}
 
           try {
-            const gr = await fetch("/api/chat/groups").then((r) => r.json());
+            const gr = await apiFetch("/api/chat/groups").then((r) => r.json());
             if (Array.isArray(gr.groups)) {
               for (const g of gr.groups) {
                 const gid = String(g.id);
@@ -722,6 +725,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             blockedUsers: meta.blockedUsers,
             loading: false,
             synced: true,
+            error: null,
             // Không bao giờ xóa activeId khi sync (tránh mất đoạn chat khi click/poll)
             activeId: prevActive || get().activeId,
           });
@@ -755,9 +759,12 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             /* ignore */
           }
         } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "Không đồng bộ được";
+          const hasData = (get().conversations || []).length > 0 || (get().friends || []).length > 0;
           set({
             loading: false,
-            error: e instanceof Error ? e.message : "Không đồng bộ được",
+            // Nếu đã có hội thoại local thì chỉ cảnh báo nhẹ, không chặn UI
+            error: hasData && /fetch failed|Neon|DATABASE/i.test(msg) ? null : msg,
             synced: false,
           });
         }
@@ -769,7 +776,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           if (!/^\d{6,12}$/.test(uid)) {
             return { ok: false, message: "Nhập UID số của đối phương (trong Tài khoản)" };
           }
-          const res = await fetch("/api/chat/friends", {
+          const res = await apiFetch("/api/chat/friends", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ uid }),
@@ -835,7 +842,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         const peer = username.toLowerCase();
         const id = convIdFor(me, peer);
         try {
-          const res = await fetch(`/api/chat/messages?with=${encodeURIComponent(peer)}`);
+          const res = await apiFetch(`/api/chat/messages?with=${encodeURIComponent(peer)}`);
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Lỗi tải tin");
           const list = (data.messages || []).map((row: Parameters<typeof mapServerMsg>[0]) =>
@@ -867,7 +874,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             ),
           }));
         } catch (e: unknown) {
-          set({ error: e instanceof Error ? e.message : "Lỗi tải tin" });
+          {
+            const msg = e instanceof Error ? e.message : "Lỗi tải tin";
+            if (!/fetch failed|Neon DB/i.test(msg)) set({ error: msg });
+          }
         }
       },
       loadGroupThread: async (groupId) => {
@@ -1675,7 +1685,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         }));
         void (async () => {
           try {
-            const res = await fetch("/api/chat/groups", {
+            const res = await apiFetch("/api/chat/groups", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ title: conv.title, members: memberIds }),
@@ -1748,13 +1758,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
       heartbeat: async () => {
         try {
-          await fetch("/api/chat/presence", { method: "POST" });
+          await apiFetch("/api/chat/presence", { method: "POST" });
         } catch {}
       },
 
       notifyTyping: (peer) => {
         if (!get().me || !peer) return;
-        void fetch("/api/chat/typing", {
+        void apiFetch("/api/chat/typing", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ to: peer }),

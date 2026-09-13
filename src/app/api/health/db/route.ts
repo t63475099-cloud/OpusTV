@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getNeonSql, formatDbError, resolveDatabaseUrl } from "@/lib/neonSql";
+import { wakeNeon, formatDbError, resolveDatabaseUrl } from "@/lib/neonSql";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Kiểm tra Neon từ Render: GET /api/health/db */
+/** GET /api/health/db — đánh thức Neon + kiểm tra kết nối */
 export async function GET() {
   const hasUrl = !!resolveDatabaseUrl();
   if (!hasUrl) {
@@ -12,31 +12,24 @@ export async function GET() {
       {
         ok: false,
         error: "DATABASE_URL chưa có trên server",
-        hint: "Render Dashboard → Environment → Add DATABASE_URL (Neon connection string)",
+        hint: "Render → Environment → DATABASE_URL = Neon connection string (?sslmode=require)",
       },
       { status: 503 }
     );
   }
-  try {
-    const sql = getNeonSql();
-    const rows = await sql`SELECT 1 AS ok`;
-    return NextResponse.json({
-      ok: true,
-      db: "connected",
-      sample: rows?.[0] ?? null,
-      host: (() => {
-        try {
-          const u = new URL(resolveDatabaseUrl()!.replace(/^postgresql:/, "postgres:"));
-          return u.hostname;
-        } catch {
-          return "unknown";
-        }
-      })(),
-    });
-  } catch (e: unknown) {
+  const r = await wakeNeon();
+  if (!r.ok) {
     return NextResponse.json(
-      { ok: false, error: formatDbError(e), raw: e instanceof Error ? e.message : String(e) },
+      { ok: false, error: r.error || "Neon unreachable" },
       { status: 500 }
     );
   }
+  let host = "unknown";
+  try {
+    const u = new URL(resolveDatabaseUrl()!.replace(/^postgresql:/, "postgres:"));
+    host = u.hostname;
+  } catch {
+    /* */
+  }
+  return NextResponse.json({ ok: true, db: "connected", host });
 }

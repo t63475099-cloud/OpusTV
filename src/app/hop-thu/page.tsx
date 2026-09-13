@@ -60,11 +60,12 @@ export default function HopThuPage() {
     if (filter === "all") return items;
     if (filter === "social")
       return items.filter((n) => ["reply", "like"].includes(n.kind));
-    if (filter === "chat")
-      return items.filter((n) => n.kind === "chat");
+    if (filter === "chat") return items.filter((n) => n.kind === "chat");
     if (filter === "verify")
       return items.filter((n) => n.kind.startsWith("verify"));
-    return items.filter((n) => n.kind === filter || n.kind === "system" || n.kind === "key");
+    return items.filter(
+      (n) => n.kind === filter || n.kind === "system" || n.kind === "key"
+    );
   }, [items, filter]);
 
   const unread = items.filter((i) => !i.read).length;
@@ -73,7 +74,11 @@ export default function HopThuPage() {
     <div className="min-h-[100dvh] pt-14 pb-24 bg-[#07070c]">
       <div className="mx-auto max-w-lg px-3 sm:px-4">
         <div className="flex items-center gap-3 py-4">
-          <Link href="/tai-khoan" className="p-2 rounded-full hover:bg-white/10 text-zinc-300" aria-label="Quay lại">
+          <Link
+            href="/tai-khoan"
+            className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+            aria-label="Quay lại"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">
@@ -86,7 +91,11 @@ export default function HopThuPage() {
             </p>
           </div>
           {unread > 0 && (
-            <button type="button" onClick={() => markAllRead()} className="text-xs text-sky-400 px-2 py-1">
+            <button
+              type="button"
+              onClick={() => markAllRead()}
+              className="text-xs text-sky-400 px-2 py-1"
+            >
               Đọc hết
             </button>
           )}
@@ -104,18 +113,20 @@ export default function HopThuPage() {
           )}
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-3">
-          {
         <div className="mb-4">
           <StreakRestoreForm />
         </div>
-FILTERS.map((f) => (
+
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-3">
+          {FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => setFilter(f.id)}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                filter === f.id ? "bg-sky-600 text-white" : "bg-white/5 text-zinc-400 hover:bg-white/10"
+                filter === f.id
+                  ? "bg-sky-600 text-white"
+                  : "bg-white/5 text-zinc-400 hover:bg-white/10"
               }`}
             >
               {f.label}
@@ -145,13 +156,19 @@ FILTERS.map((f) => (
                     {iconFor(n.kind)}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="text-sm font-medium text-white block">{n.title}</span>
-                    <span className="text-xs text-zinc-400 line-clamp-2 block mt-0.5">{n.body}</span>
+                    <span className="text-sm font-medium text-white block">
+                      {n.title}
+                    </span>
+                    <span className="text-xs text-zinc-400 line-clamp-2 block mt-0.5">
+                      {n.body}
+                    </span>
                     <span className="text-[10px] text-zinc-600 mt-1 block">
                       {new Date(n.createdAt).toLocaleString("vi-VN")}
                     </span>
                   </span>
-                  {!n.read && <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 mt-2" />}
+                  {!n.read && (
+                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0 mt-2" />
+                  )}
                 </Link>
               </li>
             ))}

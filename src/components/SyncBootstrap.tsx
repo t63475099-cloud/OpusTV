@@ -175,42 +175,30 @@ export default function SyncBootstrap() {
         }
       } catch {}
 
-      // Áp dụng TẤT CẢ lần admin cấp xu chưa nhận (độc lập với chuỗi)
+      // Grant xu admin — chỉ unclaimed trên server, claim sau khi áp dụng
       let coinsChanged = false;
       try {
-        const cr = await fetch("/api/coins/me", { credentials: "include" });
-        const cd = await cr.json();
-        const list: { id: number; amount: number }[] = Array.isArray(cd?.grants)
-          ? cd.grants
-          : cd?.grant
-            ? [cd.grant]
-            : [];
-        for (const g of list) {
-          const gid = Number(g.id);
-          const amt = Number(g.amount);
-          if (!gid || !Number.isFinite(amt) || amt < 1) continue;
-          const before = useEventStore.getState().coins;
-          useEventStore.getState().grantCoins(amt, gid);
-          const after = useEventStore.getState().coins;
-          if (after > before) {
-            coinsChanged = true;
+        const { applyPendingCoinGrants } = await import("@/lib/applyCoinGrants");
+        const { gained, appliedIds } = await applyPendingCoinGrants();
+        if (appliedIds.length) {
+          coinsChanged = true;
+          if (gained !== 0) {
             try {
               useNotifStore.getState().add({
                 kind: "system",
-                title: amt < 0 ? "Admin đã trừ xu" : "Nhận xu từ Admin",
+                title: gained < 0 ? "Admin đã trừ xu" : "Nhận xu từ Admin",
                 body:
-                  amt < 0
-                    ? `Ví Sự kiện bị trừ ${Math.abs(amt).toLocaleString("vi-VN")} xu.`
-                    : `Bạn được cấp ${amt.toLocaleString("vi-VN")} xu.`,
+                  gained < 0
+                    ? `Ví Sự kiện bị trừ ${Math.abs(gained).toLocaleString("vi-VN")} xu.`
+                    : `Bạn được cấp ${gained.toLocaleString("vi-VN")} xu.`,
                 href: "/su-kien",
-                dedupeKey: `coin-grant-${gid}`,
+                dedupeKey: `coin-grant-batch-${appliedIds.join("-")}`,
               });
             } catch {}
           }
         }
       } catch {}
 
-      // Đẩy xu mới lên cloud nếu vừa nhận grant
       if (coinsChanged) {
         try {
           await syncNow();

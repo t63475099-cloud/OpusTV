@@ -423,7 +423,7 @@ export interface EventState {
   ) => { ok: boolean; message: string };
   isUnlocked: (key: string) => boolean;
   dailyMissionSummary: () => { done: number; total: number; pct: number };
-  buyShopItem: (shopId: string) => { ok: boolean; message: string };
+  buyShopItem: (shopId: string, qty?: number) => { ok: boolean; message: string };
   openMysteryBox: (invId: string) => { ok: boolean; message: string };
   equipItem: (invId: string) => { ok: boolean; message: string };
   activateItem: (invId: string) => { ok: boolean; message: string };
@@ -725,48 +725,50 @@ coinMultiplier: () => {
         return !!(exp && exp > Date.now());
       },
 
-      buyShopItem: (shopId) => {
+      buyShopItem: (shopId, qty = 1) => {
         const def = SHOP_ITEMS.find((x) => x.id === shopId);
         if (!def) return { ok: false, message: "Không có vật phẩm" };
+        const q = Math.min(999, Math.max(1, Math.floor(Number(qty) || 1)));
         const s = get();
-        if (s.coins < def.cost) return { ok: false, message: `Cần ${def.cost} xu` };
+        const totalCost = def.cost * q;
+        if (s.coins < totalCost) {
+          return { ok: false, message: `Cần ${totalCost.toLocaleString("vi-VN")} xu (có ${s.coins.toLocaleString("vi-VN")})` };
+        }
 
-        // Pass XP — ưu tiên gọi qua UI (buyXpPack); fallback trừ xu + cộng XP qua localStorage bridge
         if (def.kind === "pass_xp") {
-          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
-          set({ coins: s.coins - def.cost, coinsUpdatedAt: Date.now() });
+          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0) * q;
+          set({ coins: s.coins - totalCost, coinsUpdatedAt: Date.now() });
           try {
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("opus-pass-add-xp", { detail: { xp: add } }));
             }
           } catch { /* */ }
           get().pushLive(`+${add} Pass XP`);
-          return { ok: true, message: `+${add} Pass XP` };
+          return { ok: true, message: `×${q} · +${add} Pass XP` };
         }
 
-        // Nâng điểm VIP bằng xu (không cộng totalEarned làm điểm VIP)
         if (def.kind === "vip_xp") {
-          const add = Math.max(0, parseInt(def.meta || "1000", 10) || 1000);
+          const add = Math.max(0, parseInt(def.meta || "1000", 10) || 1000) * q;
           set({
-            coins: s.coins - def.cost,
+            coins: s.coins - totalCost,
+            coinsUpdatedAt: Date.now(),
             vipPoints: (s.vipPoints || 0) + add,
           });
           get().pushLive(`+${add} điểm VIP`);
-          return { ok: true, message: `+${add} điểm VIP (tiến cấp)` };
+          return { ok: true, message: `×${q} · +${add} điểm VIP` };
         }
 
-        // Gói xu: cộng thẳng — không cộng điểm VIP
         if (def.kind === "coins") {
-          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
+          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0) * q;
           set({
-            coins: s.coins - def.cost + add,
+            coins: s.coins - totalCost + add,
+            coinsUpdatedAt: Date.now(),
             totalEarned: s.totalEarned + add,
           });
           get().pushLive(`Nhận gói +${add} xu`);
-          return { ok: true, message: `+${add} xu vào ví` };
+          return { ok: true, message: `×${q} · +${add} xu vào ví` };
         }
 
-        // Hộp quà / vật phẩm khác → vào kho (hộp mở sau)
         const finalName = def.name;
         const finalKind = def.kind;
         const finalMeta = def.meta;
@@ -774,7 +776,7 @@ coinMultiplier: () => {
         const existing = inv.find(
           (i) => i.kind === finalKind && i.meta === finalMeta && i.name === finalName
         );
-        if (existing) existing.qty += 1;
+        if (existing) existing.qty += q;
         else {
           inv.unshift({
             id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -782,89 +784,13 @@ coinMultiplier: () => {
             name: finalName,
             kind: finalKind as InventoryItem["kind"],
             meta: finalMeta,
-            qty: 1,
+            qty: q,
             acquiredAt: Date.now(),
           });
         }
-        set({ coins: s.coins - def.cost, inventory: inv });
-        get().pushLive(`Bạn vừa đổi ${finalName}`);
-        return { ok: true, message: `Đã thêm vào kho: ${finalName}` };
-      },
-
-      equipItem: (invId) => {
-        const item = (get().inventory || []).find((i) => i.id === invId);
-        if (!item) return { ok: false, message: "Không tìm thấy" };
-        if (item.kind === "frame") {
-          const frame = item.meta || null;
-          set({ equippedFrame: frame });
-          try {
-            const raw = localStorage.getItem("opusfilm-settings");
-            if (raw && frame) {
-              const j = JSON.parse(raw);
-              const state = j?.state || j;
-              if (state) {
-                state.avatarFrame = frame;
-                if (state.profile) state.profile.avatarFrame = frame;
-                localStorage.setItem("opusfilm-settings", JSON.stringify(j.state ? j : { state }));
-              }
-            }
-          } catch { /* */ }
-          return { ok: true, message: "Đã trang bị khung viền" };
-        }
-        if (item.kind === "badge") {
-          set({ equippedBadge: item.meta || null });
-          return { ok: true, message: "Đã trang bị huy hiệu" };
-        }
-        return { ok: false, message: "Không trang bị được vật phẩm này" };
-      },
-
-      activateItem: (invId) => {
-        const s = get();
-        const inv = [...(s.inventory || [])];
-        const idx = inv.findIndex((i) => i.id === invId);
-        if (idx < 0) return { ok: false, message: "Không tìm thấy" };
-        const item = inv[idx];
-        if (item.kind === "boost") {
-          item.qty -= 1;
-          if (item.qty <= 0) inv.splice(idx, 1);
-          const DAY = 86400000;
-          const base = Math.max(Date.now(), s.boostExpiresAt || 0);
-          const until = base + DAY;
-          set({ inventory: inv, boostExpiresAt: until });
-          const h = Math.round((until - Date.now()) / 3600000);
-          return { ok: true, message: `x2 xu · còn ~${h}h (cộng dồn)` };
-        }
-        if (item.kind === "vip") {
-          item.qty -= 1;
-          if (item.qty <= 0) inv.splice(idx, 1);
-          let hours = 24;
-          if (item.meta === "vip12") hours = 12;
-          if (item.meta === "vip72") hours = 72;
-          if (item.meta === "vip168") hours = 168;
-          const MS = hours * 3600000;
-          const base = Math.max(Date.now(), s.vipExpiresAt || 0);
-          const until = base + MS;
-          set({ inventory: inv, vipExpiresAt: until });
-          const h = Math.round((until - Date.now()) / 3600000);
-          return { ok: true, message: `VIP · còn ~${h}h (cộng dồn)` };
-        }
-        if (item.kind === "unlock") {
-          const key =
-            item.meta === "movie"
-              ? `credit:movie:${Date.now()}`
-              : `credit:episode:${Date.now()}`;
-          item.qty -= 1;
-          if (item.qty <= 0) inv.splice(idx, 1);
-          set({
-            inventory: inv,
-            unlocks: [
-              ...s.unlocks,
-              { key, permanent: true, expiresAt: null, spent: 0, at: Date.now() },
-            ],
-          });
-          return { ok: true, message: "Đã kích hoạt thẻ mở khóa" };
-        }
-        return { ok: false, message: "Dùng Trang bị cho khung/huy hiệu" };
+        set({ coins: s.coins - totalCost, coinsUpdatedAt: Date.now(), inventory: inv });
+        get().pushLive(`Đổi ${finalName} ×${q}`);
+        return { ok: true, message: `Đã đổi ${finalName} ×${q}` };
       },
 
       openMysteryBox: (invId) => {

@@ -341,6 +341,8 @@ export default function SuKienPage() {
   const addNotif = useNotifStore((s) => s.add);
 
   const [tab, setTab] = useState<TabId>("missions");
+  /** Số lượng đổi cửa hàng (1–999) */
+  const [buyQty, setBuyQty] = useState(1);
   const [toast, setToast] = useState("");
   const [spinning, setSpinning] = useState(false);
   const [spinDeg, setSpinDeg] = useState(0);
@@ -368,38 +370,20 @@ export default function SuKienPage() {
     }
   }, [addMissionProgress, dailyMissionSummary, ensureMissionDay, getStreakStatus]);
 
-  // Nhận xu admin cấp (mọi lần vào trang Sự kiện)
+  // Nhận xu admin (chỉ grant chưa claim trên server)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const cr = await fetch("/api/coins/me", { credentials: "include" });
-        const cd = await cr.json();
-        if (cancelled || !cd?.ok) return;
-        const list = Array.isArray(cd.grants) ? cd.grants : cd.grant ? [cd.grant] : [];
-        let gained = 0;
-        for (const g of list) {
-          const gid = Number(g.id);
-          const amt = Number(g.amount);
-          if (!gid || amt < 1) continue;
-          const before = useEventStore.getState().coins;
-          useEventStore.getState().grantCoins(amt, gid);
-          const after = useEventStore.getState().coins;
-          if (after > before) gained += after - before;
-        }
-        if (gained > 0) {
-          setToast(`+${gained.toLocaleString("vi-VN")} xu từ Admin`);
-          window.setTimeout(() => setToast(""), 4000);
-          try {
-            useNotifStore.getState().add({
-              kind: "system",
-              title: "Nhận xu từ Admin",
-              body: `+${gained.toLocaleString("vi-VN")} xu đã cộng vào ví Sự kiện.`,
-              href: "/su-kien",
-              dedupeKey: `coin-grant-batch-${Date.now()}`,
-            });
-          } catch {}
-        }
+        const { applyPendingCoinGrants } = await import("@/lib/applyCoinGrants");
+        const { gained } = await applyPendingCoinGrants();
+        if (cancelled || gained === 0) return;
+        setToast(
+          gained > 0
+            ? `+${gained.toLocaleString("vi-VN")} xu từ Admin`
+            : `−${Math.abs(gained).toLocaleString("vi-VN")} xu (Admin trừ)`
+        );
+        window.setTimeout(() => setToast(""), 4000);
       } catch {}
     })();
     return () => {
@@ -443,15 +427,12 @@ export default function SuKienPage() {
   };
 
   const onBuy = (shopId: string) => {
-    if (shopId.startsWith("pass_xp_")) {
-      const r = useOpusPassStore.getState().buyXpPack(shopId);
-      flash(r.message);
-      if (r.ok) addNotif({ kind: "mission", title: "Pass XP", body: r.message, href: "/su-kien" });
-      return;
-    }
-    const r = buyShopItem(shopId);
+    const q = Math.min(999, Math.max(1, Math.floor(buyQty) || 1));
+    const r = buyShopItem(shopId, q);
     flash(r.message);
-    if (r.ok) addNotif({ kind: "mission", title: "Cửa hàng", body: r.message, href: "/su-kien" });
+    if (r.ok) {
+      addNotif({ kind: "mission", title: "Cửa hàng", body: r.message, href: "/su-kien" });
+    }
   };
 
   const onEquip = (id: string) => {
@@ -837,6 +818,63 @@ export default function SuKienPage() {
           <p className="text-xs text-zinc-400 px-1">
             Vuốt ngang từng hàng để xem quà. Đổi xong vào <strong className="text-zinc-200">Kho đồ</strong> để trang bị / kích hoạt.
           </p>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-white">Số lượng mỗi lần đổi</p>
+              <span className="text-sm font-bold text-amber-300 tabular-nums">×{buyQty}</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={999}
+              value={buyQty}
+              onChange={(e) => setBuyQty(Math.min(999, Math.max(1, Number(e.target.value) || 1)))}
+              className="w-full accent-rose-500 h-2 cursor-pointer"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setBuyQty((q) => Math.max(1, q - 1))}
+                className="px-2.5 py-1 rounded-lg bg-white/10 text-xs text-white"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={999}
+                value={buyQty}
+                onChange={(e) =>
+                  setBuyQty(Math.min(999, Math.max(1, Math.floor(Number(e.target.value) || 1)))
+                }
+                className="w-20 px-2 py-1 rounded-lg bg-black/40 border border-white/10 text-sm text-center tabular-nums"
+              />
+              <button
+                type="button"
+                onClick={() => setBuyQty((q) => Math.min(999, q + 1))}
+                className="px-2.5 py-1 rounded-lg bg-white/10 text-xs text-white"
+              >
+                +
+              </button>
+              <div className="flex gap-1 ml-auto">
+                {[1, 10, 50, 100, 999].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setBuyQty(n)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-medium ${
+                      buyQty === n ? "bg-rose-600 text-white" : "bg-white/10 text-zinc-300"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-500">
+              Xu bị trừ = giá 1 món × số lượng (tối đa 999 / lượt).
+            </p>
+          </div>
           {(
             [
               { key: "vip_xp", title: "Nâng điểm VIP", hint: "Đổi xu → điểm VIP" },
@@ -869,7 +907,7 @@ export default function SuKienPage() {
                   style={{ WebkitOverflowScrolling: "touch" }}
                 >
                   {items.map((item) => {
-                    const can = coins >= item.cost;
+                    const can = coins >= item.cost * buyQty;
                     return (
                       <div
                         key={item.id}
@@ -887,15 +925,18 @@ export default function SuKienPage() {
                         <div className="flex items-center justify-between gap-1 mt-auto">
                           <span className="text-amber-300 text-[11px] font-bold inline-flex items-center gap-0.5 tabular-nums">
                             <Coins className="w-3 h-3 shrink-0" />
-                            {item.cost.toLocaleString("vi-VN")}
+                            {(item.cost * buyQty).toLocaleString("vi-VN")}
+                            {buyQty > 1 ? (
+                              <span className="text-zinc-500 font-normal">×{buyQty}</span>
+                            ) : null}
                           </span>
                           <button
                             type="button"
-                            disabled={!can}
+                            disabled={coins < item.cost * buyQty}
                             onClick={() => onBuy(item.id)}
                             className="text-[10px] px-2.5 py-1 rounded-full font-semibold disabled:opacity-35 bg-gradient-to-r from-rose-600 to-fuchsia-600 hover:from-rose-500 hover:to-fuchsia-500 text-white bounce-press shadow-md shadow-rose-900/30"
                           >
-                            Đổi
+                            Đổi{buyQty > 1 ? ` ×${buyQty}` : ""}
                           </button>
                         </div>
                       </div>

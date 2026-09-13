@@ -531,8 +531,18 @@ export default function AdminVerifyPage() {
                         @{String(a.username || "khách")} ·{" "}
                         {VIOLATION_LABELS[a.kind as ViolationKind] ||
                           String(a.kind)}
+                        {a.severity ? (
+                          <span className="ml-2 text-[10px] uppercase text-amber-300">
+                            {String(a.severity)}
+                          </span>
+                        ) : null}
+                        {a.risk_score ? (
+                          <span className="ml-1 text-[10px] text-rose-300">
+                            risk {String(a.risk_score)}
+                          </span>
+                        ) : null}
                       </p>
-                      <p className="text-zinc-400">{String(a.detail || "")}</p>
+                      <p className="text-zinc-400 break-words">{String(a.detail || "")}</p>
                       <p className="text-zinc-600">
                         {String(a.path || "")} · {String(a.ip || "")}
                       </p>

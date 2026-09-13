@@ -12,11 +12,28 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const kind = String(body.kind || "other").slice(0, 40);
-    const detail = String(body.detail || "").slice(0, 800);
+    const severity = String(body.severity || "low").slice(0, 16);
+    const riskScore = Math.min(100, Math.max(0, Math.floor(Number(body.riskScore) || 0)));
+    let detail = String(body.detail || "").slice(0, 800);
     const path = String(body.path || "").slice(0, 200);
+    const meta =
+      body.meta && typeof body.meta === "object"
+        ? JSON.stringify(body.meta).slice(0, 600)
+        : "";
+    if (meta) {
+      detail = `${detail} | meta:${meta}`.slice(0, 800);
+    }
+    if (severity && severity !== "low") {
+      detail = `[${severity}] ${detail}`.slice(0, 800);
+    }
+    if (riskScore > 0) {
+      detail = `${detail} | risk=${riskScore}`.slice(0, 800);
+    }
+
     if (!detail && !kind) {
       return NextResponse.json({ ok: false, error: "Thiếu dữ liệu" }, { status: 400 });
     }
+
     let userId: number | null = null;
     let username = "";
     try {
@@ -28,6 +45,7 @@ export async function POST(req: NextRequest) {
     } catch {
       /* guest */
     }
+
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("x-real-ip") ||
@@ -48,20 +66,35 @@ export async function POST(req: NextRequest) {
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
-    // rate limit simple: max 5 open alerts / user / hour
+    try {
+      await db`ALTER TABLE moderation_alerts ADD COLUMN IF NOT EXISTS severity TEXT DEFAULT 'low'`;
+      await db`ALTER TABLE moderation_alerts ADD COLUMN IF NOT EXISTS risk_score INTEGER DEFAULT 0`;
+    } catch {
+      /* */
+    }
+
     if (userId) {
       const cnt = await db`
         SELECT COUNT(*)::int AS c FROM moderation_alerts
         WHERE user_id = ${userId} AND created_at > NOW() - INTERVAL '1 hour'
       `;
-      if (Number((cnt[0] as { c: number }).c) >= 8) {
+      if (Number((cnt[0] as { c: number }).c) >= 12) {
         return NextResponse.json({ ok: true, throttled: true });
       }
     }
-    await db`
-      INSERT INTO moderation_alerts (user_id, username, kind, detail, path, ip, user_agent)
-      VALUES (${userId}, ${username}, ${kind}, ${detail}, ${path}, ${ip}, ${ua})
-    `;
+
+    try {
+      await db`
+        INSERT INTO moderation_alerts (user_id, username, kind, detail, path, ip, user_agent, severity, risk_score)
+        VALUES (${userId}, ${username}, ${kind}, ${detail}, ${path}, ${ip}, ${ua}, ${severity}, ${riskScore})
+      `;
+    } catch {
+      await db`
+        INSERT INTO moderation_alerts (user_id, username, kind, detail, path, ip, user_agent)
+        VALUES (${userId}, ${username}, ${kind}, ${detail}, ${path}, ${ip}, ${ua})
+      `;
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Lỗi";

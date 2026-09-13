@@ -974,9 +974,13 @@ export default function AccountPage() {
                 </div>
               )}
               {avatarTab === "frame" && (
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
                   {AVATAR_FRAMES.map((fr) => {
                     const active = (profile.avatarFrame || "frame:none") === fr.id;
+                    const has = fr.css && fr.css !== "none" && fr.id !== "frame:none";
+                    const size = 52;
+                    const pad = has ? 4 : 0;
+                    const inner = size - pad * 2;
                     return (
                       <button
                         key={fr.id}
@@ -986,14 +990,23 @@ export default function AccountPage() {
                           updateProfile({ avatarFrame: fr.id });
                           void syncNow();
                         }}
-                        className={`aspect-square rounded-full border-2 transition overflow-hidden ${
-                          active ? "border-fuchsia-400 scale-105" : "border-white/15 opacity-80 hover:opacity-100"
+                        className={`flex flex-col items-center gap-1 p-1 rounded-xl transition ${
+                          active ? "bg-white/10 ring-1 ring-fuchsia-400/60" : "hover:bg-white/5"
                         }`}
                       >
                         <span
-                          className={`block w-full h-full rounded-full ab-frame ab-frame--${fr.css}`}
-                          style={{ background: fr.id === "frame:none" ? "#27272a" : undefined }}
-                        />
+                          className={`ab-wrap relative ${has ? `ab-frame--${fr.css}` : ""}`}
+                          style={{ width: size, height: size }}
+                        >
+                          <span
+                            className="ab-face block rounded-full bg-zinc-700"
+                            style={{ width: inner, height: inner }}
+                          />
+                          {has ? <span className="ab-ring" aria-hidden /> : null}
+                        </span>
+                        <span className="text-[9px] text-zinc-500 truncate w-full text-center leading-tight">
+                          {fr.label}
+                        </span>
                       </button>
                     );
                   })}

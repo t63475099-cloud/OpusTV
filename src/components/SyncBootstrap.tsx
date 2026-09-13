@@ -8,6 +8,8 @@ import { useOpusPassStore } from "@/lib/opusPass";
 import { useHistoryStore } from "@/lib/history";
 import { useFavoritesStore } from "@/lib/favorites";
 import { useSettingsStore } from "@/lib/settings";
+import { useStreakStore } from "@/lib/streak";
+import { useNotifStore } from "@/lib/notifications";
 
 /** Bắt lỗi client để không làm trắng cả site */
 class BootErrorBoundary extends Component<
@@ -140,6 +142,32 @@ export default function SyncBootstrap() {
     try {
       await waitAllHydrated();
       await refreshMe();
+      // Áp dụng grant chuỗi từ admin (nếu có)
+      try {
+        const sr = await fetch("/api/streak/me", { credentials: "include" });
+        const sd = await sr.json();
+        if (sd?.ok && sd.grant?.days) {
+          const gid = Number(sd.grant.id);
+          const days = Number(sd.grant.days);
+          const prev = useStreakStore.getState().appliedGrantId;
+          if (gid && days > 0 && prev !== gid) {
+            useStreakStore.getState().applyGrant(days, gid);
+            try {
+              useEventStore.getState().applyStreakGrant?.(days);
+            } catch {}
+            try {
+              useNotifStore.getState().add({
+                kind: "streak",
+                title: "Đã khôi phục chuỗi",
+                body: `Admin đã cấp lại ${days} ngày chuỗi cho bạn.`,
+                href: "/",
+                dedupeKey: `streak-grant-${gid}`,
+              });
+            } catch {}
+          }
+        }
+      } catch {}
+
       const u = useAccountStore.getState().username;
       if (!u) return;
       await syncNow();

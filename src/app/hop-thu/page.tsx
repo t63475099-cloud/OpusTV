@@ -14,6 +14,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useNotifStore, type NotifKind } from "@/lib/notifications";
+import StreakRestoreForm from "@/components/StreakRestoreForm";
 
 const FILTERS: { id: "all" | NotifKind | "social"; label: string }[] = [
   { id: "all", label: "Tất cả" },
@@ -104,7 +105,11 @@ export default function HopThuPage() {
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-3">
-          {FILTERS.map((f) => (
+          {
+        <div className="mb-4">
+          <StreakRestoreForm />
+        </div>
+FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"

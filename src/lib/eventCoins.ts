@@ -427,6 +427,7 @@ export interface EventState {
   activateItem: (invId: string) => { ok: boolean; message: string };
   luckySpin: () => { ok: boolean; message: string; label?: string };
   pushLive: (text: string) => void;
+  applyStreakGrant: (days: number) => void;
   coinMultiplier: () => number;
   isVipActive: () => boolean;
 }
@@ -663,7 +664,20 @@ export const useEventStore = create<EventState>()(
         set((s) => ({ liveFeed: [item, ...(s.liveFeed || [])].slice(0, 40) }));
       },
 
-      coinMultiplier: () => {
+            applyStreakGrant: (days) => {
+        const d = Math.max(1, Math.floor(Number(days) || 0));
+        if (!Number.isFinite(d) || d < 1) return;
+        const today = dayKey();
+        const s = get();
+        set({
+          streakDay: d,
+          lastCheckIn: today,
+          // Không auto claim xu — chỉ khôi phục chuỗi
+          claimedCheckInDay: s.claimedCheckInDay === today ? today : s.claimedCheckInDay,
+        });
+      },
+
+coinMultiplier: () => {
         const exp = get().boostExpiresAt;
         if (exp && exp > Date.now()) return 2;
         return 1;

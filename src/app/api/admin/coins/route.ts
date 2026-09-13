@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     await ensure(db);
     const recent = await db`
       SELECT id, username, amount, note, created_at FROM coin_grants
-      ORDER BY id DESC LIMIT 40
+      ORDER BY id DESC LIMIT 50
     `;
     return NextResponse.json({ ok: true, recent });
   } catch (e: unknown) {
@@ -53,11 +53,14 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json().catch(() => ({}));
-    // uid ưu tiên; vẫn nhận username để tương thích
     const target = String(body.uid || body.username || "").trim();
-    // Cho phép số lớn (tối đa ~2 tỷ)
-    const amount = Math.floor(Number(body.amount) || 0);
-    const note = String(body.note || "Admin cấp xu").slice(0, 200);
+    const rawAmt = Math.floor(Number(body.amount) || 0);
+    const action = String(body.action || "add").toLowerCase(); // add | remove
+    const isRemove = action === "remove" || action === "delete" || rawAmt < 0;
+    const absAmt = Math.abs(rawAmt);
+    const note = String(
+      body.note || (isRemove ? "Admin xóa xu" : "Admin cấp xu")
+    ).slice(0, 200);
 
     if (!target) {
       return NextResponse.json(
@@ -65,12 +68,14 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (!Number.isFinite(amount) || amount < 1 || amount > 2_000_000_000) {
+    if (!Number.isFinite(absAmt) || absAmt < 1 || absAmt > 2_000_000_000) {
       return NextResponse.json(
         { ok: false, error: "Số xu phải từ 1 đến 2.000.000.000" },
         { status: 400 }
       );
     }
+
+    const signed = isRemove ? -absAmt : absAmt;
 
     const u = await resolveUserByUidOrUsername(target);
     if (!u) {
@@ -84,12 +89,13 @@ export async function POST(req: NextRequest) {
     await ensure(db);
     const ins = await db`
       INSERT INTO coin_grants (user_id, username, amount, note)
-      VALUES (${u.id}, ${u.username}, ${amount}, ${note})
-      RETURNING id, username, amount, created_at
+      VALUES (${u.id}, ${u.username}, ${signed}, ${note})
+      RETURNING id, username, amount, note, created_at
     `;
     return NextResponse.json({
       ok: true,
       grant: ins[0],
+      action: isRemove ? "remove" : "add",
       resolved: { username: u.username, uid: u.uid },
     });
   } catch (e: unknown) {

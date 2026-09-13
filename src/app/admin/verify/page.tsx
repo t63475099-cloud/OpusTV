@@ -47,7 +47,7 @@ export default function AdminVerifyPage() {
   const [items, setItems] = useState<VerifyItem[]>([]);
   const [streakPending, setStreakPending] = useState<StreakReq[]>([]);
   const [streakRecent, setStreakRecent] = useState<{ id: number; username: string; days: number; created_at: string }[]>([]);
-  const [coinRecent, setCoinRecent] = useState<{ id: number; username: string; amount: number; created_at: string }[]>([]);
+  const [coinRecent, setCoinRecent] = useState<{ id: number; username: string; amount: number; note?: string; created_at: string }[]>([]);
   const [alerts, setAlerts] = useState<Record<string, unknown>[]>([]);
   const [bans, setBans] = useState<Record<string, unknown>[]>([]);
 
@@ -408,7 +408,7 @@ export default function AdminVerifyPage() {
                     <Coins className="w-4 h-4" /> Cấp xu Sự kiện
                   </p>
                   <p className="text-xs text-zinc-400">
-                    Nhập UID kết bạn (10 số) + số xu. User reload sẽ nhận xu tự động.
+                    Nhập UID kết bạn (10 số) + số xu. User reload / vào Sự kiện sẽ nhận xu.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -434,6 +434,7 @@ export default function AdminVerifyPage() {
                           {
                             uid: coinUser.trim(),
                             amount: Math.floor(Number(coinAmt) || 0),
+                            action: "add",
                           },
                           `Đã cấp ${coinAmt} xu`
                         )
@@ -444,13 +445,66 @@ export default function AdminVerifyPage() {
                     </button>
                   </div>
                 </div>
+
+                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 backdrop-blur-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-rose-100 flex items-center gap-2">
+                    <Ban className="w-4 h-4" /> Xóa xu
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Trừ xu khỏi ví Sự kiện theo UID. Số xu về máy user sau khi reload (không âm dưới 0).
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      value={coinUser}
+                      onChange={(e) => setCoinUser(e.target.value)}
+                      placeholder="UID kết bạn (10 số)"
+                      className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={coinAmt}
+                      onChange={(e) => setCoinAmt(e.target.value)}
+                      placeholder="Số xu cần xóa"
+                      className="w-full sm:w-36 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void post(
+                          "/api/admin/coins",
+                          {
+                            uid: coinUser.trim(),
+                            amount: Math.floor(Number(coinAmt) || 0),
+                            action: "remove",
+                          },
+                          `Đã xóa ${coinAmt} xu`
+                        )
+                      }
+                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold inline-flex items-center gap-1.5"
+                    >
+                      <Ban className="w-3.5 h-3.5" /> Xóa xu
+                    </button>
+                  </div>
+                </div>
+
                 <ul className="text-xs text-zinc-400 space-y-1">
-                  {coinRecent.map((g) => (
-                    <li key={g.id}>
-                      #{g.id} · @{g.username} · +{g.amount} xu ·{" "}
-                      {new Date(g.created_at).toLocaleString("vi-VN")}
-                    </li>
-                  ))}
+                  {coinRecent.map((g) => {
+                    const amt = Number(g.amount) || 0;
+                    const neg = amt < 0;
+                    return (
+                      <li key={g.id}>
+                        #{g.id} · @{g.username} ·{" "}
+                        <span className={neg ? "text-rose-400" : "text-amber-300"}>
+                          {neg ? "" : "+"}
+                          {amt.toLocaleString("vi-VN")} xu
+                        </span>
+                        {g.note ? ` · ${g.note}` : ""} ·{" "}
+                        {new Date(g.created_at).toLocaleString("vi-VN")}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}

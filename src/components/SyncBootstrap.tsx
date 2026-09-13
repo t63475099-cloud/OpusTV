@@ -197,8 +197,11 @@ export default function SyncBootstrap() {
             try {
               useNotifStore.getState().add({
                 kind: "system",
-                title: "Nhận xu từ Admin",
-                body: `Bạn được cấp ${amt.toLocaleString("vi-VN")} xu.`,
+                title: amt < 0 ? "Admin đã trừ xu" : "Nhận xu từ Admin",
+                body:
+                  amt < 0
+                    ? `Ví Sự kiện bị trừ ${Math.abs(amt).toLocaleString("vi-VN")} xu.`
+                    : `Bạn được cấp ${amt.toLocaleString("vi-VN")} xu.`,
                 href: "/su-kien",
                 dedupeKey: `coin-grant-${gid}`,
               });

@@ -691,7 +691,8 @@ export const useEventStore = create<EventState>()(
 
       grantCoins: (amount, grantId) => {
         const n = Math.floor(Number(amount) || 0);
-        if (!Number.isFinite(n) || n < 1) return;
+        // Cho phép âm (admin xóa xu) hoặc dương (cấp xu)
+        if (!Number.isFinite(n) || n === 0) return;
         const s = get();
         const applied = Array.isArray((s as any).appliedCoinGrantIds)
           ? ([...(s as any).appliedCoinGrantIds] as number[])
@@ -699,14 +700,15 @@ export const useEventStore = create<EventState>()(
         if (grantId != null) {
           const gid = Number(grantId);
           if (applied.includes(gid)) return;
-          // legacy single id
           if ((s as any)._coinGrantId === gid) return;
           applied.push(gid);
         }
+        const next = Math.max(0, (s.coins || 0) + n);
         set({
-          coins: (s.coins || 0) + n,
+          coins: next,
           coinsUpdatedAt: Date.now(),
-          totalEarned: (s.totalEarned || 0) + n,
+          totalEarned:
+            n > 0 ? (s.totalEarned || 0) + n : s.totalEarned || 0,
           appliedCoinGrantIds: applied.slice(-80),
           ...(grantId != null ? { _coinGrantId: Number(grantId) } : {}),
         } as any);

@@ -587,10 +587,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         set({ loading: true, error: null });
         const prevActive = get().activeId;
         try {
-          const [fr, inboxRes] = await Promise.all([
-            fetch("/api/chat/friends").then((r) => r.json()),
-            fetch("/api/chat/messages").then((r) => r.json()),
+          const [frRaw, inboxRaw] = await Promise.all([
+            fetch("/api/chat/friends", { credentials: "include" }),
+            fetch("/api/chat/messages", { credentials: "include" }),
           ]);
+          const fr = await frRaw.json();
+          const inboxRes = await inboxRaw.json();
+          if (frRaw.status === 401 || inboxRaw.status === 401) {
+            throw new Error(
+              "Chưa có phiên đăng nhập trên domain này. Vào Tài khoản → Đăng nhập lại (cookie không dùng chung Netlify ↔ Render)."
+            );
+          }
           if (fr.error) throw new Error(fr.error);
           if (inboxRes.error) throw new Error(inboxRes.error);
 

@@ -5,12 +5,13 @@ import { listHistory } from "@/lib/db/history";
 import { listFavorites } from "@/lib/db/favorites";
 import { listMusicHistory } from "@/lib/db/music";
 import { getSettings } from "@/lib/db/settings";
+import { resolveDatabaseUrl } from "@/lib/neonSql";
 
 export async function POST(req: NextRequest) {
   try {
-    if (!process.env.DATABASE_URL) {
+    if (!resolveDatabaseUrl()) {
       return NextResponse.json(
-        { ok: false, error: "DATABASE_URL chưa cấu hình (Neon PostgreSQL)." },
+        { ok: false, error: "DATABASE_URL chưa cấu hình (Neon PostgreSQL) trên Render." },
         { status: 503 }
       );
     }

@@ -11,7 +11,7 @@ async function fetcher<T>(url: string, revalidate = 1800): Promise<T> {
   const res = await fetch(url, {
     next: { revalidate },
     headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; XianxiaStream/1.0)",
+      "User-Agent": "Mozilla/5.0 (compatible; OpusFilm/1.0)",
     },
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -34,11 +34,17 @@ export async function getMoviesByCountry(slug: string, page = 1): Promise<ListRe
   return fetcher(`${API_BASE}/v1/api/quoc-gia/${slug}?page=${page}`);
 }
 
+/** Search: luôn no-store để tránh cache nhầm kết quả giữa các từ khóa */
 export async function searchMovies(keyword: string, page = 1): Promise<ListResponse> {
-  return fetcher(
-    `${API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`,
-    1800
-  );
+  const url = `${API_BASE}/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`;
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; OpusFilm/1.0)",
+    },
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
 }
 
 export async function getMovieDetail(slug: string): Promise<MovieDetailResponse> {

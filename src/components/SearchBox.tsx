@@ -62,6 +62,7 @@ export default function SearchBox({
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const searchSeqRef = useRef(0);
   const recognitionRef = useRef<any>(null);
 
   /** Chỉ dùng cho mobile expand */
@@ -98,21 +99,24 @@ export default function SearchBox({
     }
     const ac = new AbortController();
     abortRef.current = ac;
+    const seq = ++searchSeqRef.current;
     setLoading(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`, {
         signal: ac.signal,
+        cache: "no-store",
       });
       const data = await res.json();
+      if (seq !== searchSeqRef.current) return;
       if (!ac.signal.aborted) {
         setItems(data.items || []);
         setOpen(true);
         setActiveIdx(-1);
       }
     } catch {
-      if (!ac.signal.aborted) setItems([]);
+      if (seq === searchSeqRef.current && !ac.signal.aborted) setItems([]);
     } finally {
-      if (!ac.signal.aborted) setLoading(false);
+      if (seq === searchSeqRef.current && !ac.signal.aborted) setLoading(false);
     }
   }, []);
 

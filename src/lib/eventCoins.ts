@@ -847,6 +847,58 @@ coinMultiplier: () => {
         return { ok: true, message: `Nhận được: ${pick.name}` };
       },
 
+      equipItem: (invId) => {
+        const s = get();
+        const item = (s.inventory || []).find((i) => i.id === invId);
+        if (!item) return { ok: false, message: "Không có vật phẩm" };
+        if (item.kind === "frame") {
+          set({ equippedFrame: item.meta || null });
+          try {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent("opus-equip-frame", { detail: { frame: item.meta || "frame:none" } })
+              );
+            }
+          } catch { /* */ }
+          return { ok: true, message: `Đã trang bị khung: ${item.name}` };
+        }
+        if (item.kind === "badge") {
+          set({ equippedBadge: item.meta || null });
+          return { ok: true, message: `Đã trang bị huy hiệu: ${item.name}` };
+        }
+        return { ok: false, message: "Vật phẩm này không trang bị được" };
+      },
+
+      activateItem: (invId) => {
+        const s = get();
+        const inv = [...(s.inventory || [])];
+        const idx = inv.findIndex((i) => i.id === invId);
+        if (idx < 0) return { ok: false, message: "Không có vật phẩm" };
+        const item = inv[idx];
+        const now = Date.now();
+        if (item.kind === "vip") {
+          const hours = Math.max(1, parseInt(item.meta || "24", 10) || 24);
+          const base = Math.max(s.vipExpiresAt || 0, now);
+          set({ vipExpiresAt: base + hours * 3600_000 });
+        } else if (item.kind === "boost") {
+          const hours = Math.max(1, parseInt(item.meta || "24", 10) || 24);
+          const base = Math.max(s.boostExpiresAt || 0, now);
+          set({ boostExpiresAt: base + hours * 3600_000 });
+        } else if (item.kind === "unlock") {
+          const key = item.meta || item.shopId || item.id;
+          const unlocks = [...(s.unlocks || [])];
+          if (!unlocks.some((u) => u.key === key)) {
+            unlocks.push({ key, at: now, permanent: true });
+          }
+          set({ unlocks });
+        } else {
+          return { ok: false, message: "Vật phẩm này không kích hoạt được (dùng Trang bị hoặc Mở hộp)" };
+        }
+        if (item.qty > 1) inv[idx] = { ...item, qty: item.qty - 1 };
+        else inv.splice(idx, 1);
+        set({ inventory: inv });
+        return { ok: true, message: `Đã kích hoạt: ${item.name}` };
+      },
 
       luckySpin: () => {
         const s = get();

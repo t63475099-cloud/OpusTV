@@ -833,43 +833,78 @@ export default function SuKienPage() {
       )}
 
       {tab === "shop" && (
-        <section className="space-y-3">
+        <section className="space-y-4">
           <p className="text-xs text-zinc-400 px-1">
-            Đổi xu lấy vật phẩm ảo. Vật phẩm vào <strong className="text-zinc-200">Kho đồ</strong> để trang bị hoặc kích hoạt.
+            Vuốt ngang từng hàng để xem quà. Đổi xong vào <strong className="text-zinc-200">Kho đồ</strong> để trang bị / kích hoạt.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {SHOP_ITEMS.map((item) => {
-              const can = coins >= item.cost;
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 shadow-[0_8px_32px_rgba(0,0,0,0.35)] flex flex-col"
-                >
-                  <div className="flex items-start gap-2 mb-2">
-                    <span className="text-2xl leading-none">{item.icon}</span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white leading-tight">{item.name}</p>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">{item.desc}</p>
-                    </div>
+          {(
+            [
+              { key: "vip_xp", title: "Nâng điểm VIP", hint: "Đổi xu → điểm VIP" },
+              { key: "pass_xp", title: "Pass XP", hint: "Mua XP Opus Pass" },
+              { key: "vip", title: "Gói VIP thời hạn", hint: "Xem phim ưu tiên" },
+              { key: "unlock", title: "Mở khóa phim", hint: "Thẻ tập / trọn bộ" },
+              { key: "boost", title: "Tăng tốc xu", hint: "Nhân đôi trong thời gian" },
+              { key: "mystery", title: "Hộp quà", hint: "Mở trong Kho đồ" },
+              { key: "frame", title: "Khung viền", hint: "Trang bị avatar" },
+              { key: "badge", title: "Huy hiệu", hint: "Hiện cạnh tên" },
+              { key: "coins", title: "Gói xu", hint: "Đổi gói xu nhanh" },
+            ] as const
+          ).map((row) => {
+            const items = SHOP_ITEMS.filter((x) => x.kind === row.key);
+            if (!items.length) return null;
+            return (
+              <div
+                key={row.key}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden"
+              >
+                <div className="flex items-end justify-between gap-2 px-3 pt-3 pb-1.5">
+                  <div>
+                    <p className="text-sm font-semibold text-white leading-none">{row.title}</p>
+                    <p className="text-[10px] text-zinc-500 mt-1">{row.hint}</p>
                   </div>
-                  <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                    <span className="text-amber-300 text-sm font-semibold inline-flex items-center gap-1">
-                      <Coins className="w-3.5 h-3.5" />
-                      {item.cost}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={!can}
-                      onClick={() => onBuy(item.id)}
-                      className="text-xs px-3 py-1.5 rounded-full font-medium disabled:opacity-40 bg-rose-600/90 hover:bg-rose-500 text-white bounce-press"
-                    >
-                      Đổi ngay
-                    </button>
-                  </div>
+                  <span className="text-[10px] text-zinc-600 shrink-0">Vuốt →</span>
                 </div>
-              );
-            })}
-          </div>
+                <div
+                  className="flex gap-2.5 overflow-x-auto px-3 pb-3 pt-1 snap-x snap-mandatory custom-scroll"
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
+                  {items.map((item) => {
+                    const can = coins >= item.cost;
+                    return (
+                      <div
+                        key={item.id}
+                        className="snap-start shrink-0 w-[148px] sm:w-[160px] rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-2.5 flex flex-col min-h-[148px] transition-transform duration-300 hover:scale-[1.02] hover:border-white/20"
+                      >
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-xl leading-none w-9 h-9 rounded-lg bg-black/30 border border-white/10 flex items-center justify-center shrink-0">
+                            {item.icon}
+                          </span>
+                          <p className="text-[12px] font-semibold text-white leading-snug line-clamp-2">
+                            {item.name}
+                          </p>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 line-clamp-2 flex-1 mb-2">{item.desc}</p>
+                        <div className="flex items-center justify-between gap-1 mt-auto">
+                          <span className="text-amber-300 text-[11px] font-bold inline-flex items-center gap-0.5 tabular-nums">
+                            <Coins className="w-3 h-3 shrink-0" />
+                            {item.cost.toLocaleString("vi-VN")}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={!can}
+                            onClick={() => onBuy(item.id)}
+                            className="text-[10px] px-2.5 py-1 rounded-full font-semibold disabled:opacity-35 bg-gradient-to-r from-rose-600 to-fuchsia-600 hover:from-rose-500 hover:to-fuchsia-500 text-white bounce-press shadow-md shadow-rose-900/30"
+                          >
+                            Đổi
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </section>
       )}
 

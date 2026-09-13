@@ -368,6 +368,45 @@ export default function SuKienPage() {
     }
   }, [addMissionProgress, dailyMissionSummary, ensureMissionDay, getStreakStatus]);
 
+  // Nhận xu admin cấp (mọi lần vào trang Sự kiện)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cr = await fetch("/api/coins/me", { credentials: "include" });
+        const cd = await cr.json();
+        if (cancelled || !cd?.ok) return;
+        const list = Array.isArray(cd.grants) ? cd.grants : cd.grant ? [cd.grant] : [];
+        let gained = 0;
+        for (const g of list) {
+          const gid = Number(g.id);
+          const amt = Number(g.amount);
+          if (!gid || amt < 1) continue;
+          const before = useEventStore.getState().coins;
+          useEventStore.getState().grantCoins(amt, gid);
+          const after = useEventStore.getState().coins;
+          if (after > before) gained += after - before;
+        }
+        if (gained > 0) {
+          setToast(`+${gained.toLocaleString("vi-VN")} xu từ Admin`);
+          window.setTimeout(() => setToast(""), 4000);
+          try {
+            useNotifStore.getState().add({
+              kind: "system",
+              title: "Nhận xu từ Admin",
+              body: `+${gained.toLocaleString("vi-VN")} xu đã cộng vào ví Sự kiện.`,
+              href: "/su-kien",
+              dedupeKey: `coin-grant-batch-${Date.now()}`,
+            });
+          } catch {}
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     const id = window.setInterval(() => setNowTick(Date.now()), 1000);
     return () => window.clearInterval(id);

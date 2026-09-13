@@ -11,7 +11,7 @@ function sql() {
 export async function GET() {
   try {
     const user = await getSessionUser();
-    if (!user) return NextResponse.json({ ok: true, grant: null });
+    if (!user) return NextResponse.json({ ok: true, grants: [], grant: null });
     const db = sql();
     try {
       await db`
@@ -30,19 +30,19 @@ export async function GET() {
     const rows = await db`
       SELECT id, amount, note, created_at FROM coin_grants
       WHERE user_id = ${user.userId}
-      ORDER BY id DESC LIMIT 1
+      ORDER BY id ASC
+      LIMIT 100
     `;
-    if (!rows.length) return NextResponse.json({ ok: true, grant: null });
-    const g = rows[0] as { id: number; amount: number; note: string; created_at: string };
-    return NextResponse.json({
-      ok: true,
-      grant: {
+    const grants = (rows as { id: number; amount: number; note: string; created_at: string }[]).map(
+      (g) => ({
         id: g.id,
         amount: Number(g.amount),
-        note: g.note,
+        note: g.note || "",
         createdAt: g.created_at,
-      },
-    });
+      })
+    );
+    const latest = grants.length ? grants[grants.length - 1] : null;
+    return NextResponse.json({ ok: true, grants, grant: latest });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Lỗi";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

@@ -428,6 +428,8 @@ export interface EventState {
   luckySpin: () => { ok: boolean; message: string; label?: string };
   pushLive: (text: string) => void;
   applyStreakGrant: (days: number) => void;
+  /** ID các lần admin cấp xu đã áp dụng (tránh cộng trùng) */
+  appliedCoinGrantIds: number[];
   grantCoins: (amount: number, grantId?: number) => void;
   coinMultiplier: () => number;
   isVipActive: () => boolean;
@@ -437,6 +439,7 @@ export const useEventStore = create<EventState>()(
   persist(
     (set, get) => ({
       coins: 0,
+      appliedCoinGrantIds: [],
       redeemHistory: [],
       streakDay: 0,
       lastCheckIn: null,
@@ -680,13 +683,23 @@ export const useEventStore = create<EventState>()(
 
       grantCoins: (amount, grantId) => {
         const n = Math.floor(Number(amount) || 0);
-        if (n < 1) return;
-        const s = get() as any;
-        if (grantId != null && s._coinGrantId === grantId) return;
+        if (!Number.isFinite(n) || n < 1) return;
+        const s = get();
+        const applied = Array.isArray((s as any).appliedCoinGrantIds)
+          ? ([...(s as any).appliedCoinGrantIds] as number[])
+          : [];
+        if (grantId != null) {
+          const gid = Number(grantId);
+          if (applied.includes(gid)) return;
+          // legacy single id
+          if ((s as any)._coinGrantId === gid) return;
+          applied.push(gid);
+        }
         set({
           coins: (s.coins || 0) + n,
           totalEarned: (s.totalEarned || 0) + n,
-          ...(grantId != null ? { _coinGrantId: grantId } : {}),
+          appliedCoinGrantIds: applied.slice(-80),
+          ...(grantId != null ? { _coinGrantId: Number(grantId) } : {}),
         } as any);
       },
 

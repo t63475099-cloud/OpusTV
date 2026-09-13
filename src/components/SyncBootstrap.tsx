@@ -142,7 +142,14 @@ export default function SyncBootstrap() {
     try {
       await waitAllHydrated();
       await refreshMe();
-      // Áp dụng grant chuỗi từ admin (nếu có)
+
+      const u = useAccountStore.getState().username;
+      if (!u) return;
+
+      // Đồng bộ cloud trước
+      await syncNow();
+
+      // Áp dụng grant chuỗi từ admin (độc lập)
       try {
         const sr = await fetch("/api/streak/me", { credentials: "include" });
         const sd = await sr.json();
@@ -164,34 +171,49 @@ export default function SyncBootstrap() {
                 dedupeKey: `streak-grant-${gid}`,
               });
             } catch {}
-
-      try {
-        const cr = await fetch("/api/coins/me", { credentials: "include" });
-        const cd = await cr.json();
-        if (cd?.ok && cd.grant?.amount) {
-          const gid = Number(cd.grant.id);
-          const amt = Number(cd.grant.amount);
-          try {
-            useEventStore.getState().grantCoins?.(amt, gid);
-          } catch {}
-          try {
-            useNotifStore.getState().add({
-              kind: "system",
-              title: "Nhận xu từ Admin",
-              body: `Bạn được cấp ${amt} xu.`,
-              href: "/su-kien",
-              dedupeKey: `coin-grant-${gid}`,
-            });
-          } catch {}
-        }
-      } catch {}
           }
         }
       } catch {}
 
-      const u = useAccountStore.getState().username;
-      if (!u) return;
-      await syncNow();
+      // Áp dụng TẤT CẢ lần admin cấp xu chưa nhận (độc lập với chuỗi)
+      let coinsChanged = false;
+      try {
+        const cr = await fetch("/api/coins/me", { credentials: "include" });
+        const cd = await cr.json();
+        const list: { id: number; amount: number }[] = Array.isArray(cd?.grants)
+          ? cd.grants
+          : cd?.grant
+            ? [cd.grant]
+            : [];
+        for (const g of list) {
+          const gid = Number(g.id);
+          const amt = Number(g.amount);
+          if (!gid || !Number.isFinite(amt) || amt < 1) continue;
+          const before = useEventStore.getState().coins;
+          useEventStore.getState().grantCoins(amt, gid);
+          const after = useEventStore.getState().coins;
+          if (after > before) {
+            coinsChanged = true;
+            try {
+              useNotifStore.getState().add({
+                kind: "system",
+                title: "Nhận xu từ Admin",
+                body: `Bạn được cấp ${amt.toLocaleString("vi-VN")} xu.`,
+                href: "/su-kien",
+                dedupeKey: `coin-grant-${gid}`,
+              });
+            } catch {}
+          }
+        }
+      } catch {}
+
+      // Đẩy xu mới lên cloud nếu vừa nhận grant
+      if (coinsChanged) {
+        try {
+          await syncNow();
+        } catch {}
+      }
+
       lastSyncRef.current = Date.now();
       // Chat
       try {

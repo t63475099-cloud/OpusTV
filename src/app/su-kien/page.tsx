@@ -845,7 +845,7 @@ export default function SuKienPage() {
                 max={999}
                 value={buyQty}
                 onChange={(e) =>
-                  setBuyQty(Math.min(999, Math.max(1, Math.floor(Number(e.target.value) || 1)))
+                  setBuyQty(Math.min(999, Math.max(1, Math.floor(Number(e.target.value) || 1))))
                 }
                 className="w-20 px-2 py-1 rounded-lg bg-black/40 border border-white/10 text-sm text-center tabular-nums"
               />

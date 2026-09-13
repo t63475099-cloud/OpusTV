@@ -888,7 +888,7 @@ coinMultiplier: () => {
           const key = item.meta || item.shopId || item.id;
           const unlocks = [...(s.unlocks || [])];
           if (!unlocks.some((u) => u.key === key)) {
-            unlocks.push({ key, at: now, permanent: true });
+            unlocks.push({ key, permanent: true, expiresAt: null, spent: 0, at: now });
           }
           set({ unlocks });
         } else {

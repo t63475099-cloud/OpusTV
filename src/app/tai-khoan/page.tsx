@@ -26,7 +26,8 @@ import UserAvatar from "@/components/UserAvatar";
 import ProfileMotionCanvas from "@/components/ProfileMotionCanvas";
 import VerifyRequestModal from "@/components/VerifyRequestModal";
 import SessionManager from "@/components/SessionManager";
-import { useXpStore } from "@/lib/xpStore";
+import { useXpStore, EXP_COIN_PACKS } from "@/lib/xpStore";
+import { MAX_LEVEL } from "@/lib/gamification";
 
 type Mode = "login" | "register" | "recover";
 type FieldErrors = {
@@ -317,6 +318,11 @@ export default function AccountPage() {
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [avatarTab, setAvatarTab] = useState<"frame" | "badge">("frame");
+  type AccTab = "profile" | "rank" | "style" | "security";
+  const [accountTab, setAccountTab] = useState<AccTab>("profile");
+  const [rankMsg, setRankMsg] = useState("");
+  const buyExpWithCoins = useXpStore((s) => s.buyExpWithCoins);
+  const eventCoins = useEventStore((s) => s.coins);
   const [uidCopied, setUidCopied] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   useEffect(() => {
@@ -551,18 +557,46 @@ export default function AccountPage() {
             </Link>
           </div>
 
+          {/* Thanh tab cố định trên đầu */}
+          <div className="sticky top-0 z-30 -mx-1 mb-3 px-1 pt-1 pb-2 bg-gradient-to-b from-[#0a0a0f]/95 to-transparent backdrop-blur-md">
+            <div className="flex gap-1 p-1 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl">
+              {(
+                [
+                  { id: "profile" as const, label: "Hồ sơ" },
+                  { id: "rank" as const, label: "Cấp bậc" },
+                  { id: "style" as const, label: "Giao diện" },
+                  { id: "security" as const, label: "Bảo mật" },
+                ]
+              ).map((tb) => (
+                <button
+                  key={tb.id}
+                  type="button"
+                  onClick={() => setAccountTab(tb.id)}
+                  className={`flex-1 text-[11px] sm:text-xs py-2 rounded-xl font-medium transition-all duration-300 ${
+                    accountTab === tb.id
+                      ? "bg-white/15 text-white shadow-lg shadow-black/30"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  {tb.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ===== TAB HỒ SƠ ===== */}
+          {accountTab === "profile" && (
+            <>
           {/* Card profile Zalo */}
           <div className="zalo-glass rounded-3xl overflow-hidden lg-enter-delay-1">
             <div className="zalo-cover" />
             <div className="relative px-4 pb-4 -mt-12">
               <div className="flex flex-col items-center text-center">
                 <div className="relative h-[108px] w-[108px] shrink-0 select-none">
-                  {/* Avatar không nằm trong button — hover chỉ phủ lớp tối, không đổi src ảnh */}
                   <div className="pointer-events-none">
                     <UserAvatar
                       profile={{ ...profile, name: showName }}
                       size={108}
-                      showBadge={!!profile.verified}
                     />
                   </div>
                   <button
@@ -587,182 +621,103 @@ export default function AccountPage() {
                     e.target.value = "";
                   }}
                 />
-                <h1 className="mt-3 text-xl font-bold text-white tracking-tight break-words max-w-full">
-                  {showName}
-                </h1>
-                <p className="text-sm text-zinc-400">@{username}</p>
-                {profile.uid ? (
-                  <div className="mt-3 w-full max-w-xs rounded-2xl bg-black/30 border border-white/10 px-3 py-2.5 text-left">
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">UID kết bạn</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-sm font-mono text-rose-300 tracking-wider truncate">
-                        {profile.uid}
-                      </code>
-                      <button
-                        type="button"
-                        className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-[11px] font-semibold"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(String(profile.uid));
-                            setUidCopied(true);
-                            setTimeout(() => setUidCopied(false), 1500);
-                          } catch {}
-                        }}
-                      >
-                        {uidCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        {uidCopied ? "Đã chép" : "Copy"}
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-zinc-600 mt-1.5">Gửi UID này để người khác kết bạn trên Tin nhắn</p>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-[11px] text-zinc-600">Đang lấy UID… bấm Đồng bộ nếu chưa hiện</p>
+                <h1 className="mt-3 text-lg font-bold text-white tracking-tight">{showName}</h1>
+                <p className="text-xs text-zinc-500">@{username}</p>
+                {equippedBadge && (
+                  <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-200 border border-amber-400/30">
+                    ✦ {badgeLabel(equippedBadge)}
+                  </span>
                 )}
-                {profile.bio ? (
-                  <p className="mt-2 text-xs text-zinc-400 leading-relaxed line-clamp-3 max-w-sm">
-                    {profile.bio}
-                  </p>
-                ) : null}
-              </div>
 
-              <div className="mt-4 flex justify-center gap-2">
-                <Link
-                  href="/hop-thu"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full zalo-glass-soft text-xs font-medium text-white hover:bg-white/10 transition"
-                >
-                  <Mail className="w-4 h-4 text-sky-400" />
-                  Hòm thư
-                </Link>
-              </div>
+                {/* Cấp bậc ngay dưới tên, trên UID */}
+                {(() => {
+                  const xp = xpSummary();
+                  return (
+                    <div className="mt-3 w-full max-w-xs rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-left">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold" style={{ color: xp.rankColor }}>
+                          Lv.{xp.level}/{MAX_LEVEL} · {xp.rankLabel}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 tabular-nums">
+                          {xp.exp.toLocaleString("vi-VN")} EXP
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${xp.pct}%`,
+                            background: `linear-gradient(90deg, ${xp.rankColor}, #f472b6)`,
+                          }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-zinc-500 mt-1">
+                        {xp.level >= MAX_LEVEL
+                          ? "Đã đạt cấp tối đa"
+                          : `Còn ${xp.need.toLocaleString("vi-VN")} EXP → Lv.${xp.level + 1}`}
+                      </p>
+                    </div>
+                  );
+                })()}
 
-              <div className="mt-3 flex flex-wrap justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-medium zalo-glass-soft text-white hover:bg-white/10 transition"
-                >
-                  Đổi ảnh
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    setErr("");
-                    const r = await syncNow();
-                    setBusy(false);
-                    if (!r.ok) setErr(r.error || "Lỗi");
-                    else setMsg("Đã đồng bộ");
-                  }}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-medium zalo-glass-soft text-white hover:bg-white/10 transition inline-flex items-center gap-1.5"
-                >
-                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                  Đồng bộ
-                </button>
-                {!profile.verified ? (
+                {/* UID */}
+                <div className="mt-3 w-full max-w-xs">
+                  {profile.uid ? (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">UID kết bạn</p>
+                      <div className="flex items-center gap-2 justify-center">
+                        <code className="text-sm font-mono text-cyan-300 tracking-wider">{profile.uid}</code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(String(profile.uid));
+                            setMsg("Đã copy UID");
+                          }}
+                          className="text-[10px] px-2 py-0.5 rounded-lg bg-white/10 text-zinc-300 hover:bg-white/15"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-zinc-600">Gửi UID này để người khác kết bạn trên Tin nhắn</p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-zinc-600">Đang lấy UID… bấm Đồng bộ nếu chưa hiện</p>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  {!profile.verified && (
+                    <button
+                      type="button"
+                      onClick={() => setVerifyOpen(true)}
+                      className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-sky-600/90 text-white"
+                    >
+                      Xin tích xanh
+                    </button>
+                  )}
+                  {profile.verified && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-sky-500/15 text-sky-300 border border-sky-400/30">
+                      <svg width="14" height="14" viewBox="0 0 22 22" aria-hidden>
+                        <circle cx="11" cy="11" r="10" fill="#1D9BF0" />
+                        <path d="M10.1 15.9 7 12.8l1.4-1.4 1.7 1.7 5-5.1L16.5 9.4z" fill="#fff" />
+                      </svg>
+                      Đã xác minh
+                    </span>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setVerifyOpen(true)}
-                    className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-sky-600/80 text-white hover:bg-sky-500 transition inline-flex items-center gap-1.5"
+                    onClick={() => void syncNow()}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-white/10 text-zinc-200 hover:bg-white/15"
                   >
-                    Xác minh
+                    Đồng bộ
                   </button>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium text-sky-200 bg-sky-500/15 border border-sky-400/30">
-                    <svg viewBox="0 0 24 24" width={14} height={14} className="shrink-0" aria-hidden>
-                      <circle cx="12" cy="12" r="12" fill="#1D9BF0" />
-                      <path d="M10.1 15.9 7 12.8l1.4-1.4 1.7 1.7 5-5.1L16.5 9.4z" fill="#fff" />
-                    </svg>
-                    Đã xác minh
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => logout()}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-medium text-rose-300 hover:bg-rose-500/15 transition"
-                >
-                  Đăng xuất
-                </button>
-              </div>
-
-              {/* VIP 15 cấp — tiến độ + danh sách đạt / chưa đạt */}
-              <div className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-md p-3">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="text-xs font-semibold" style={{ color: vipProg.cur.color }}>
-                    VIP {vipProg.cur.level}/15 · {vipProg.cur.title}
-                    {isVipActive() ? " · Đang active" : ""}
-                  </span>
-                  <span className="text-[10px] text-zinc-500 tabular-nums">
-                    {vipProg.earned.toLocaleString("vi-VN")}/{vipProg.next.need.toLocaleString("vi-VN")} điểm
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${vipProg.pct}%`,
-                      background: `linear-gradient(90deg, ${vipProg.cur.color}, ${vipProg.next.color})`,
-                    }}
-                  />
-                </div>
-                <p className="text-[10px] text-zinc-500 mt-1">
-                  {vipProg.cur.level >= 15
-                    ? "Đã đạt cấp tối đa"
-                    : `Còn ${Math.max(0, vipProg.next.need - vipProg.earned).toLocaleString("vi-VN")} điểm VIP → ${vipProg.next.title}`}
-                </p>
-                {equippedBadge && (
-                  <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {badgeLabel(equippedBadge)}</p>
-                )}
-
-                <div className="mt-3 pt-2 border-t border-white/10">
-                  <p className="text-[10px] font-medium text-zinc-400 mb-2">Các cấp VIP</p>
-                  <div className="max-h-[220px] overflow-y-auto custom-scroll space-y-1.5 pr-0.5">
-                    {VIP_LEVELS.map((lv) => {
-                      const reached = vipProg.earned >= lv.need;
-                      const isCurrent = vipProg.cur.level === lv.level;
-                      return (
-                        <div
-                          key={lv.level}
-                          className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 border text-[11px] transition-colors ${
-                            isCurrent
-                              ? "border-white/25 bg-white/10"
-                              : reached
-                                ? "border-white/10 bg-white/[0.04]"
-                                : "border-white/5 bg-black/20 opacity-55"
-                          }`}
-                        >
-                          <span
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 border border-white/10"
-                            style={{
-                              color: reached ? lv.color : "#71717a",
-                              background: reached ? `${lv.color}22` : "transparent",
-                            }}
-                          >
-                            {lv.level}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className="font-semibold leading-tight truncate"
-                              style={{ color: reached ? lv.color : "#a1a1aa" }}
-                            >
-                              {lv.title}
-                              {isCurrent ? " · Hiện tại" : ""}
-                            </p>
-                            <p className="text-[10px] text-zinc-500 tabular-nums">
-                              {lv.need.toLocaleString("vi-VN")} điểm VIP
-                            </p>
-                          </div>
-                          <span
-                            className={`text-[10px] font-medium shrink-0 ${
-                              reached ? "text-emerald-400" : "text-zinc-600"
-                            }`}
-                          >
-                            {reached ? "Đã đạt" : "Chưa đạt"}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => logout()}
+                    className="px-3.5 py-1.5 rounded-full text-xs font-medium text-rose-300 hover:bg-rose-500/15 transition"
+                  >
+                    Đăng xuất
+                  </button>
                 </div>
               </div>
             </div>
@@ -775,158 +730,282 @@ export default function AccountPage() {
             onVerifiedChange={(v) => updateProfile({ verified: v })}
           />
 
-          
-          {/* Cấp bậc */}
-          <div className="zalo-glass rounded-2xl p-4 mt-3 lg-enter-delay-2 space-y-3">
-            <p className="text-xs font-medium text-zinc-400">Cấp bậc</p>
-            {(() => {
-              const xp = xpSummary();
-              return (
-                <>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-white">
-                      Lv.{xp.level} · <span style={{ color: xp.rankColor }}>{xp.rankLabel}</span>
-                    </span>
-                    <span className="text-xs text-zinc-400 tabular-nums">
-                      {xp.exp} / {xp.nextAt} EXP
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-rose-500 via-fuchsia-500 to-violet-500 transition-all"
-                      style={{ width: `${Math.max(4, xp.pct)}%` }}
-                    />
-                  </div>
-                  <p className="text-[11px] text-zinc-500">
-                    Còn <span className="text-zinc-300">{xp.need} EXP</span> để lên Lv.{xp.level + 1}
-                  </p>
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Tên hiển thị */}
           <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
             <p className="text-xs font-medium text-zinc-400">Tên hiển thị</p>
             <div className="flex gap-2">
               <input
                 value={editName}
-                onChange={(e) => setEditName(e.target.value.slice(0, 80))}
-                placeholder="Nhập tên"
-                maxLength={80}
-                className="lg-input flex-1 min-w-0"
+                onChange={(e) => setEditName(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
+                placeholder="Tên hiển thị"
               />
               <button
                 type="button"
                 onClick={() => {
-                  const n = editName.slice(0, 80);
-                  updateProfile({ name: n });
-                  setEditName(n);
+                  updateProfile({ name: editName.trim().slice(0, 80) });
                   void syncNow();
-                  setMsg(n.trim() ? "Đã lưu tên" : "Đã xóa tên");
+                  setMsg("Đã lưu tên");
                 }}
-                className="lg-btn lg-btn-primary shrink-0 px-4"
+                className="px-4 py-2 rounded-full bg-fuchsia-600/90 text-sm text-white font-medium"
               >
                 Lưu
               </button>
             </div>
           </div>
 
-          {/* Giới thiệu */}
           <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
             <p className="text-xs font-medium text-zinc-400">Giới thiệu</p>
             <textarea
               value={editBio}
-              onChange={(e) => setEditBio(e.target.value.slice(0, 160))}
-              placeholder="Viết vài dòng về bạn..."
-              maxLength={160}
-              rows={2}
-              className="lg-input w-full resize-none"
+              onChange={(e) => setEditBio(e.target.value.slice(0, 200))}
+              rows={3}
+              className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm resize-none"
+              placeholder="Viết vài dòng về bạn…"
             />
             <button
               type="button"
               onClick={() => {
-                updateProfile({ bio: editBio.slice(0, 160) });
+                updateProfile({ bio: editBio.trim() });
                 void syncNow();
                 setMsg("Đã lưu giới thiệu");
               }}
-              className="lg-btn lg-btn-primary px-4"
+              className="px-4 py-2 rounded-full bg-fuchsia-600/90 text-sm text-white font-medium"
             >
               Lưu
             </button>
           </div>
+            </>
+          )}
 
-          {/* Khung viền */}
-          <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
-            <p className="text-xs font-medium text-zinc-400">Khung viền</p>
-            <div className="max-h-64 overflow-y-auto rounded-xl zalo-glass-soft p-2 scrollbar-hide">
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                <div className="flex gap-1 p-1 mb-3 rounded-xl bg-white/5 border border-white/10">
-                  <button type="button" onClick={() => setAvatarTab("frame")} className={`flex-1 text-xs py-1.5 rounded-lg transition-all duration-500 ${avatarTab === "frame" ? "bg-white/15 text-white" : "text-zinc-400"}`}>Khung viền</button>
-                  <button type="button" onClick={() => setAvatarTab("badge")} className={`flex-1 text-xs py-1.5 rounded-lg transition-all duration-500 ${avatarTab === "badge" ? "bg-white/15 text-white" : "text-zinc-400"}`}>Huy hiệu</button>
+          {/* ===== TAB CẤP BẬC ===== */}
+          {accountTab === "rank" && (
+            <div className="space-y-3">
+              {(() => {
+                const xp = xpSummary();
+                return (
+                  <div className="zalo-glass rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-white">
+                        Lv.{xp.level}<span className="text-zinc-500 text-xs">/{MAX_LEVEL}</span>
+                        {" · "}
+                        <span style={{ color: xp.rankColor }}>{xp.rankLabel}</span>
+                      </p>
+                      <span className="text-xs text-zinc-400 tabular-nums">{xp.exp.toLocaleString("vi-VN")} EXP</span>
+                    </div>
+                    <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${xp.pct}%`,
+                          background: `linear-gradient(90deg, ${xp.rankColor}, #e879f9)`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-zinc-500">
+                      Cấp bậc tăng bằng cách <strong className="text-zinc-300">đổi xu Sự kiện → EXP</strong> (không cày xem phim).
+                    </p>
+                  </div>
+                );
+              })()}
+
+              <div className="zalo-glass rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-zinc-400">Đổi xu lấy EXP</p>
+                  <span className="text-[11px] text-amber-300 tabular-nums">
+                    Ví: {eventCoins.toLocaleString("vi-VN")} xu
+                  </span>
                 </div>
-                {avatarTab === "badge" && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-                    {(inventory || []).filter((i) => i.kind === "badge").length === 0 ? (
-                      <p className="col-span-full text-xs text-zinc-500 py-4 text-center">Chưa có huy hiệu — đổi ở Sự kiện</p>
-                    ) : (
-                      (inventory || []).filter((i) => i.kind === "badge").map((b) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {EXP_COIN_PACKS.map((pk) => (
+                    <button
+                      key={pk.id}
+                      type="button"
+                      disabled={eventCoins < pk.coins}
+                      onClick={() => {
+                        const r = buyExpWithCoins(pk.id);
+                        setRankMsg(r.message);
+                        if (r.ok) void syncNow();
+                      }}
+                      className="rounded-xl border border-white/10 bg-white/[0.05] p-2.5 text-left disabled:opacity-40 hover:border-fuchsia-400/40 transition"
+                    >
+                      <p className="text-xs font-semibold text-white">{pk.label}</p>
+                      <p className="text-[10px] text-amber-300 mt-0.5">{pk.coins.toLocaleString("vi-VN")} xu</p>
+                    </button>
+                  ))}
+                </div>
+                {rankMsg && <p className="text-xs text-emerald-400">{rankMsg}</p>}
+              </div>
+
+              <div className="zalo-glass rounded-2xl p-4 space-y-2">
+                <p className="text-xs font-medium text-zinc-400">Danh hiệu theo cấp</p>
+                {xpSummary().ranks.map((r) => (
+                  <div
+                    key={r.id}
+                    className={`flex items-center justify-between rounded-xl px-3 py-2 border text-xs ${
+                      r.active ? "border-white/25 bg-white/10" : r.reached ? "border-white/10 bg-white/[0.04]" : "border-white/5 opacity-50"
+                    }`}
+                  >
+                    <span style={{ color: r.reached ? r.color : "#71717a" }} className="font-semibold">
+                      {r.label}
+                    </span>
+                    <span className="text-zinc-500">Lv.{r.minLevel}+ · {r.reached ? "Đã đạt" : "Chưa đạt"}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* VIP */}
+              <div className="zalo-glass rounded-2xl p-4 space-y-2">
+                <p className="text-xs font-semibold" style={{ color: vipProg.cur.color }}>
+                  VIP {vipProg.cur.level}/15 · {vipProg.cur.title}
+                  {isVipActive() ? " · Active" : ""}
+                </p>
+                <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${vipProg.pct}%`,
+                      background: `linear-gradient(90deg, ${vipProg.cur.color}, ${vipProg.next.color})`,
+                    }}
+                  />
+                </div>
+                <div className="max-h-[180px] overflow-y-auto custom-scroll space-y-1">
+                  {VIP_LEVELS.map((lv) => {
+                    const reached = vipProg.earned >= lv.need;
+                    return (
+                      <div key={lv.level} className={`flex justify-between text-[11px] px-2 py-1 rounded-lg ${reached ? "bg-white/5" : "opacity-40"}`}>
+                        <span style={{ color: reached ? lv.color : "#71717a" }}>Lv.{lv.level} {lv.title}</span>
+                        <span className="text-zinc-500">{reached ? "Đã đạt" : lv.need.toLocaleString("vi-VN")}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Huy hiệu — inventory + gamification */}
+              <div className="zalo-glass rounded-2xl p-4 space-y-3">
+                <p className="text-xs font-medium text-zinc-400">Huy hiệu</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(inventory || []).filter((i) => i.kind === "badge").length === 0 &&
+                  xpSummary().badges.length === 0 ? (
+                    <p className="col-span-2 text-xs text-zinc-500 text-center py-3">
+                      Chưa có huy hiệu — đổi ở Sự kiện hoặc lên cấp
+                    </p>
+                  ) : null}
+                  {(inventory || [])
+                    .filter((i) => i.kind === "badge")
+                    .map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => {
+                          const r = equipItem(b.id);
+                          setRankMsg(r.message);
+                        }}
+                        className={`rounded-xl border px-2.5 py-2 text-left text-xs ${
+                          equippedBadge === b.meta
+                            ? "border-amber-400/50 bg-amber-500/15 text-amber-100"
+                            : "border-white/10 bg-white/5 text-zinc-300"
+                        }`}
+                      >
+                        <span className="font-medium block truncate">{b.name}</span>
+                        <span className="text-[10px] text-zinc-500">
+                          x{b.qty} · {equippedBadge === b.meta ? "Đang dùng" : "Trang bị"}
+                        </span>
+                      </button>
+                    ))}
+                  {xpSummary().badges.map((b) => (
+                    <div
+                      key={b.id}
+                      className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-2 text-xs"
+                    >
+                      <span className="font-medium text-emerald-100">
+                        {b.icon} {b.label}
+                      </span>
+                      <span className="block text-[10px] text-zinc-500">Đã mở khóa</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== TAB GIAO DIỆN ===== */}
+          {accountTab === "style" && (
+            <div className="zalo-glass rounded-2xl p-4 space-y-3">
+              <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setAvatarTab("frame")}
+                  className={`flex-1 text-xs py-1.5 rounded-lg ${avatarTab === "frame" ? "bg-white/15 text-white" : "text-zinc-400"}`}
+                >
+                  Khung viền
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAvatarTab("badge")}
+                  className={`flex-1 text-xs py-1.5 rounded-lg ${avatarTab === "badge" ? "bg-white/15 text-white" : "text-zinc-400"}`}
+                >
+                  Huy hiệu
+                </button>
+              </div>
+              {avatarTab === "badge" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {(inventory || []).filter((i) => i.kind === "badge").length === 0 ? (
+                    <p className="col-span-full text-xs text-zinc-500 py-4 text-center">Chưa có huy hiệu — đổi ở Sự kiện</p>
+                  ) : (
+                    (inventory || [])
+                      .filter((i) => i.kind === "badge")
+                      .map((b) => (
                         <button
                           key={b.id}
                           type="button"
                           onClick={() => equipItem(b.id)}
-                          className={`rounded-xl border px-2 py-2 text-left text-xs transition-all duration-500 ${
+                          className={`rounded-xl border px-2 py-2 text-left text-xs ${
                             equippedBadge === b.meta
                               ? "border-amber-400/50 bg-amber-500/15 text-amber-100"
-                              : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"
+                              : "border-white/10 bg-white/5 text-zinc-300"
                           }`}
                         >
                           <span className="block font-medium truncate">{b.name}</span>
-                          <span className="text-[10px] text-zinc-500">x{b.qty} · Trang bị</span>
+                          <span className="text-[10px] text-zinc-500">x{b.qty}</span>
                         </button>
                       ))
-                    )}
-                  </div>
-                )}
-                {avatarTab === "frame" && AVATAR_FRAMES.map((fr) => {
-                  const active = (profile.avatarFrame || "frame:none") === fr.id;
-                  return (
-                    <button
-                      key={fr.id}
-                      type="button"
-                      title={fr.label}
-                      onClick={() => {
-                        updateProfile({ avatarFrame: fr.id });
-                        void syncNow();
-                      }}
-                      className={`relative flex flex-col items-center gap-1 rounded-xl border p-1.5 transition ${
-                        active
-                          ? "border-sky-400/50 bg-sky-500/10"
-                          : "border-white/10 bg-black/20 hover:bg-white/5"
-                      }`}
-                    >
-                      <span
-                        className={`ab-wrap ab-frame--${fr.css || "none"}`}
-                        style={{ width: 48, height: 48 }}
+                  )}
+                </div>
+              )}
+              {avatarTab === "frame" && (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                  {AVATAR_FRAMES.map((fr) => {
+                    const active = (profile.avatarFrame || "frame:none") === fr.id;
+                    return (
+                      <button
+                        key={fr.id}
+                        type="button"
+                        title={fr.label}
+                        onClick={() => {
+                          updateProfile({ avatarFrame: fr.id });
+                          void syncNow();
+                        }}
+                        className={`aspect-square rounded-full border-2 transition overflow-hidden ${
+                          active ? "border-fuchsia-400 scale-105" : "border-white/15 opacity-80 hover:opacity-100"
+                        }`}
                       >
                         <span
-                          className="ab-face rounded-full bg-gradient-to-br from-zinc-600 to-zinc-900"
-                          style={{ width: 34, height: 34 }}
+                          className={`block w-full h-full rounded-full ab-frame ab-frame--${fr.css}`}
+                          style={{ background: fr.id === "frame:none" ? "#27272a" : undefined }}
                         />
-                        {fr.id !== "frame:none" ? <span className="ab-ring" /> : null}
-                      </span>
-                      <span className="text-[9px] text-zinc-500 truncate max-w-full text-center leading-tight">
-                        {fr.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
-          {/* Bảo mật */}
-          <div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
+          {/* ===== TAB BẢO MẬT ===== */}
+          {accountTab === "security" && (
+            <div className="space-y-3">
+<div className="zalo-glass rounded-2xl p-4 mt-3 space-y-3">
             <p className="text-xs font-medium text-zinc-400">Bảo mật</p>
             <FloatingField
               id="newpin"
@@ -993,7 +1072,10 @@ export default function AccountPage() {
           </div>
 
 
-            {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
+            </div>
+          )}
+
+                      {err && <p className="mt-3 text-center text-sm text-red-400">{err}</p>}
             {msg && <p className="mt-3 text-center text-sm text-emerald-400">{msg}</p>}
         </div>
         <AuthStyles />

@@ -1,6 +1,13 @@
-/** EXP / Level / Badge system */
+/** EXP / Level / Badge system — cấp tối đa 999 */
 
-export type RankId = "newbie" | "fan" | "elite" | "legend" | "god";
+export type RankId =
+  | "newbie"
+  | "fan"
+  | "elite"
+  | "legend"
+  | "god"
+  | "immortal"
+  | "apex";
 
 export interface RankDef {
   id: RankId;
@@ -9,12 +16,16 @@ export interface RankDef {
   color: string;
 }
 
+export const MAX_LEVEL = 999;
+
 export const RANKS: RankDef[] = [
   { id: "newbie", label: "Tân thủ", minLevel: 1, color: "#a1a1aa" },
   { id: "fan", label: "Fan cứng", minLevel: 5, color: "#38bdf8" },
   { id: "elite", label: "Tinh anh", minLevel: 12, color: "#a855f7" },
   { id: "legend", label: "Chiến thần", minLevel: 25, color: "#f43f5e" },
   { id: "god", label: "Huyền thoại", minLevel: 40, color: "#fbbf24" },
+  { id: "immortal", label: "Bất diệt", minLevel: 100, color: "#22d3ee" },
+  { id: "apex", label: "Đỉnh phong", minLevel: 500, color: "#fb7185" },
 ];
 
 export const BADGES = [
@@ -23,15 +34,20 @@ export const BADGES = [
   { id: "moth100", label: "Mọt 100h", icon: "🏆", need: { watchHours: 100 } },
   { id: "chatty", label: "Thảo luận", icon: "💬", need: { comments: 20 } },
   { id: "melody", label: "Nhạc sĩ", icon: "🎵", need: { musicPlays: 50 } },
+  { id: "lv50", label: "Cấp 50", icon: "⭐", need: { level: 50 } },
+  { id: "lv100", label: "Cấp 100", icon: "🌟", need: { level: 100 } },
+  { id: "lv500", label: "Cấp 500", icon: "💫", need: { level: 500 } },
+  { id: "lv999", label: "Cấp 999", icon: "👑", need: { level: 999 } },
 ] as const;
 
 export function levelFromExp(exp: number): number {
-  // ~100 exp per level, soft curve
-  return Math.max(1, Math.floor(Math.sqrt(Math.max(0, exp) / 50)) + 1);
+  const raw = Math.max(1, Math.floor(Math.sqrt(Math.max(0, exp) / 50)) + 1);
+  return Math.min(MAX_LEVEL, raw);
 }
 
 export function expForLevel(level: number): number {
-  return Math.pow(Math.max(0, level - 1), 2) * 50;
+  const lv = Math.min(MAX_LEVEL, Math.max(1, level));
+  return Math.pow(Math.max(0, lv - 1), 2) * 50;
 }
 
 export function rankFromLevel(level: number): RankDef {
@@ -50,6 +66,9 @@ export function progressToNext(exp: number): {
   need: number;
 } {
   const level = levelFromExp(exp);
+  if (level >= MAX_LEVEL) {
+    return { level: MAX_LEVEL, pct: 100, nextAt: expForLevel(MAX_LEVEL), currentAt: expForLevel(MAX_LEVEL), need: 0 };
+  }
   const cur = expForLevel(level);
   const next = expForLevel(level + 1);
   const pct = next > cur ? Math.min(100, ((exp - cur) / (next - cur)) * 100) : 100;
@@ -62,7 +81,6 @@ export function progressToNext(exp: number): {
   };
 }
 
-/** Hạng kế tiếp theo level */
 export function nextRankFromLevel(level: number): RankDef | null {
   const higher = RANKS.filter((r) => r.minLevel > level).sort(
     (a, b) => a.minLevel - b.minLevel

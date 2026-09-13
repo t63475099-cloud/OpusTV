@@ -65,7 +65,7 @@ export default function RootLayout({
           <BehaviorMonitor />
           <ScrollNavFab />
           <Navbar />
-          <div className="flex flex-1 w-full max-w-[1920px] mx-auto">
+          <div data-shell="1" className="flex flex-1 w-full max-w-[1920px] mx-auto">
             <Sidebar />
             <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>
           </div>

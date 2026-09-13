@@ -71,7 +71,7 @@ export default function HopThuPage() {
   const unread = items.filter((i) => !i.read).length;
 
   return (
-    <div className="min-h-[100dvh] pt-14 pb-24 bg-[#07070c]">
+    <div className="min-h-[100dvh] w-full pt-4 pb-24 bg-[#07070c]">
       <div className="mx-auto max-w-lg px-3 sm:px-4">
         <div className="flex items-center gap-3 py-4">
           <Link

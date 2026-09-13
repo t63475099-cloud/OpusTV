@@ -2583,13 +2583,14 @@ html.lenis, html.lenis body {
 }
 
 
-/* Ẩn navbar + sidebar — không để khoảng trống bên trái */
+/* Ẩn navbar + sidebar — full width, căn giữa, lấp canvas */
 html.opus-chrome-hide [data-navbar="1"],
 html.opus-chrome-hide [data-sidebar="1"],
 html.opus-chrome-hide nav[data-nav],
 html.opus-chrome-hide aside[data-sidebar],
 html.opus-chrome-hide aside {
   display: none !important;
+  visibility: hidden !important;
   width: 0 !important;
   min-width: 0 !important;
   max-width: 0 !important;
@@ -2598,30 +2599,46 @@ html.opus-chrome-hide aside {
   border: none !important;
   padding: 0 !important;
   margin: 0 !important;
-  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
   pointer-events: none !important;
 }
 html.opus-chrome-hide body {
   padding-top: 0 !important;
   margin: 0 !important;
 }
+html.opus-chrome-hide body > div.flex,
+html.opus-chrome-hide body .flex.flex-1 {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
 html.opus-chrome-hide main {
+  display: block !important;
   width: 100% !important;
   max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  padding-left: 0 !important;
-  flex: 1 1 100% !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  flex: none !important;
+  min-height: 100dvh !important;
 }
-html.opus-chrome-hide body > div,
-html.opus-chrome-hide .flex.flex-1 {
-  margin-left: 0 !important;
-  padding-left: 0 !important;
+/* Bỏ padding-top dành cho navbar trên trang ẩn chrome */
+html.opus-chrome-hide main .pt-16,
+html.opus-chrome-hide main .pt-24,
+html.opus-chrome-hide main .lg\:pt-16 {
+  padding-top: 1rem !important;
+}
+
+
+html.opus-chrome-hide [data-shell="1"] {
+  display: block !important;
   width: 100% !important;
   max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
-/* Trang tài khoản / cài đặt: căn giữa nội dung, bỏ lệch trái */
-html.opus-chrome-hide main > div {
-  margin-left: auto !important;
-  margin-right: auto !important;
+html.opus-chrome-hide footer {
+  display: none !important;
 }

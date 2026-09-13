@@ -325,7 +325,7 @@ function SettingsInner() {
   };
 
   if (!mounted) {
-    return <div className="min-h-screen pt-[calc(3.25rem+env(safe-area-inset-top,0px))] lg:pt-16" />;
+    return <div className="min-h-screen w-full pt-[max(1rem,env(safe-area-inset-top,0px))]" />;
   }
 
   const titleMap: Record<Section, string> = {
@@ -347,7 +347,7 @@ function SettingsInner() {
   };
 
   return (
-    <div className="relative min-h-screen pt-[calc(3.25rem+env(safe-area-inset-top,0px))] lg:pt-16 pb-24 max-w-xl mx-auto">
+    <div className="relative min-h-screen w-full pt-[max(1rem,env(safe-area-inset-top,0px))] pb-24">
       <SettingsAmbientCanvas />
       <style jsx global>{`
         @keyframes fadeUp {
@@ -355,7 +355,7 @@ function SettingsInner() {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div className="sticky top-14 lg:top-16 z-30 flex items-center gap-3 px-3 py-3 mx-3 mt-2 rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] transition-all duration-500">
+      <div className="sticky top-2 z-30 flex items-center gap-3 px-3 py-3 mx-auto mt-2 max-w-xl rounded-2xl w-[calc(100%-1.5rem)] border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] transition-all duration-500">
         {section !== "root" ? (
           <button
             type="button"
@@ -373,7 +373,7 @@ function SettingsInner() {
         <h1 className="text-xl font-semibold text-white tracking-tight">{titleMap[section]}</h1>
       </div>
 
-      <div className="relative z-10 px-3 mt-3 space-y-3 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
+      <div className="relative z-10 mx-auto w-full max-w-xl px-3 mt-3 space-y-3 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
         {section === "root" && (
           <div className="space-y-3 animate-[fadeUp_0.5s_ease]">
             <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
@@ -792,7 +792,7 @@ function SettingsInner() {
         {section === "about" && (
           <div className="px-4 py-6 text-sm text-zinc-400 space-y-2 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
             <p className="text-white font-medium text-base">OpusFilm</p>
-            <p className="text-xs text-zinc-500">Phiên bản web 2.0</p>
+            <p className="text-xs text-zinc-500">Phiên bản web</p>
           </div>
         )}
       </div>

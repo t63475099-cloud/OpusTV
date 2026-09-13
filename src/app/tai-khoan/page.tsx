@@ -539,9 +539,9 @@ export default function AccountPage() {
     const name = profile.name != null ? profile.name.trim() : "";
     const showName = name || username;
     return (
-      <div className="relative min-h-[100dvh] overflow-x-hidden overflow-y-auto pb-[max(7rem,env(safe-area-inset-bottom))] pt-[calc(3.5rem+env(safe-area-inset-top,0px))]">
+      <div className="relative min-h-[100dvh] w-full overflow-x-hidden overflow-y-auto pb-[max(7rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top,0px))]">
         <ProfileMotionCanvas />
-        <div className={`relative z-10 mx-auto max-w-md px-3 sm:px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
+        <div className={`relative z-10 mx-auto w-full max-w-md px-3 sm:px-4 ${mounted ? "lg-enter" : "opacity-0"}`}>
           <div className="pt-3 pb-2">
             <Link
               href="/cai-dat"
@@ -951,7 +951,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden px-4 pb-20 pt-24">
+    <div className="relative min-h-[100dvh] w-full overflow-hidden px-4 pb-20 pt-10 sm:pt-14">
       <AuthCanvas />
       <div className="pointer-events-none fixed inset-0 z-[1] bg-neutral-950/40 backdrop-blur-[2px]" aria-hidden />
       <div className={`relative z-10 mx-auto w-full max-w-[420px] px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>

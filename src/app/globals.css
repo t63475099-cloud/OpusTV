@@ -2583,13 +2583,45 @@ html.lenis, html.lenis body {
 }
 
 
-/* Ẩn navbar + sidebar khi vào cài đặt / admin / khóa tài khoản */
+/* Ẩn navbar + sidebar — không để khoảng trống bên trái */
 html.opus-chrome-hide [data-navbar="1"],
 html.opus-chrome-hide [data-sidebar="1"],
 html.opus-chrome-hide nav[data-nav],
-html.opus-chrome-hide aside[data-sidebar] {
+html.opus-chrome-hide aside[data-sidebar],
+html.opus-chrome-hide aside {
   display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  flex: 0 0 0 !important;
+  overflow: hidden !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 html.opus-chrome-hide body {
   padding-top: 0 !important;
+  margin: 0 !important;
+}
+html.opus-chrome-hide main {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  flex: 1 1 100% !important;
+}
+html.opus-chrome-hide body > div,
+html.opus-chrome-hide .flex.flex-1 {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+/* Trang tài khoản / cài đặt: căn giữa nội dung, bỏ lệch trái */
+html.opus-chrome-hide main > div {
+  margin-left: auto !important;
+  margin-right: auto !important;
 }

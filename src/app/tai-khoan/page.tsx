@@ -69,6 +69,24 @@ function validatePassword(pw: string): string | undefined {
   return undefined;
 }
 
+
+function badgeLabel(meta: string | null | undefined): string {
+  if (!meta) return "";
+  const m = String(meta);
+  if (m.startsWith("badge:")) {
+    const id = m.slice(6);
+    const map: Record<string, string> = {
+      "chuoi-lua": "Chuỗi Lửa",
+      "mot-phim": "Mọt Phim",
+      "dai-gia-xu": "Đại Gia Xu",
+      "chien-than": "Chiến Thần",
+      "vip": "VIP",
+    };
+    return map[id] || id.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return m;
+}
+
 function AuthCanvas() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -693,7 +711,7 @@ export default function AccountPage() {
                     : `Còn ${Math.max(0, vipProg.next.need - vipProg.earned).toLocaleString("vi-VN")} điểm VIP → ${vipProg.next.title}`}
                 </p>
                 {equippedBadge && (
-                  <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {equippedBadge}</p>
+                  <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {badgeLabel(equippedBadge)}</p>
                 )}
               </div>
             </div>

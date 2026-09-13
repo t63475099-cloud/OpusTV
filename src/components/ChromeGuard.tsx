@@ -26,11 +26,14 @@ export default function ChromeGuard() {
     const root = document.documentElement;
     if (hide) {
       root.classList.add("opus-chrome-hide");
+      document.body.classList.add("opus-chrome-hide-body");
     } else {
       root.classList.remove("opus-chrome-hide");
+      document.body.classList.remove("opus-chrome-hide-body");
     }
     return () => {
       root.classList.remove("opus-chrome-hide");
+      document.body.classList.remove("opus-chrome-hide-body");
     };
   }, [path]);
 

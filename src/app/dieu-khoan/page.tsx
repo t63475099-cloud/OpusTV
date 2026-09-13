@@ -173,6 +173,32 @@ export default function LegalPage() {
             OpusFilm · Chính sách & Điều khoản · Bản áp dụng trên opus-tv.vercel.app và các tên miền chính thức khác (nếu có).
           </p>
         </div>
+      
+        <section className="mt-10 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 text-sm text-zinc-300 leading-relaxed space-y-3">
+          <h2 className="text-lg font-semibold text-white">Giám sát &amp; khóa tài khoản</h2>
+          <p>
+            Chúng tôi giám sát chặt chẽ phát ngôn không đúng chuẩn mực. Hệ thống nhắc nhở tối đa 3 lần/người dùng;
+            tiếp tục vi phạm sẽ khóa tài khoản theo mức độ.
+          </p>
+          <p>
+            Lợi dụng lỗ hổng bảo mật, đường link hoặc app thứ 3 để sửa đổi web có thể bị khóa vĩnh viễn.
+            Các trường hợp: bug xu Sự kiện; khiếu nại sai sự thật (chuỗi, tích xanh); dùng F12/Console thay đổi giá trị.
+          </p>
+          <ul className="list-disc pl-5 space-y-1 text-zinc-400">
+            <li>Vi phạm lần 1 → Khóa 1 ngày</li>
+            <li>Vi phạm lần 2 → Khóa 3 ngày</li>
+            <li>Vi phạm lần 3 → Khóa 7 ngày</li>
+            <li>Vi phạm lần 4 → Khóa 30 ngày</li>
+            <li>Vi phạm lần 5 → Khóa vĩnh viễn (kèm chặn IP thiết bị)</li>
+          </ul>
+          <p>
+            Khiếu nại trực tiếp Zalo:{" "}
+            <a href="https://zalo.me/0774510491" className="text-sky-400 hover:underline" target="_blank" rel="noopener noreferrer">
+              0774510491
+            </a>
+          </p>
+        </section>
+
       </article>
     </div>
   );

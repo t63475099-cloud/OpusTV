@@ -9,6 +9,8 @@ import Sidebar from "@/components/Sidebar";
 import FloatingMiniPlayer from "@/components/FloatingMiniPlayer";
 import AmbientBackdrop from "@/components/AmbientBackdrop";
 import GsapScrollProvider from "@/components/GsapScrollProvider";
+import ChromeGuard from "@/components/ChromeGuard";
+import BehaviorMonitor from "@/components/BehaviorMonitor";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -59,6 +61,8 @@ export default function RootLayout({
         <GsapScrollProvider>
           <LanguageSync />
           <SyncBootstrap />
+          <ChromeGuard />
+          <BehaviorMonitor />
           <ScrollNavFab />
           <Navbar />
           <div className="flex flex-1 w-full max-w-[1920px] mx-auto">

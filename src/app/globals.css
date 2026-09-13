@@ -2581,3 +2581,15 @@ html.lenis, html.lenis body {
 .opus-pass-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(90deg, #fb7185, #c084fc, #60a5fa);
 }
+
+
+/* Ẩn navbar + sidebar khi vào cài đặt / admin / khóa tài khoản */
+html.opus-chrome-hide [data-navbar="1"],
+html.opus-chrome-hide [data-sidebar="1"],
+html.opus-chrome-hide nav[data-nav],
+html.opus-chrome-hide aside[data-sidebar] {
+  display: none !important;
+}
+html.opus-chrome-hide body {
+  padding-top: 0 !important;
+}

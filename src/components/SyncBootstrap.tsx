@@ -164,6 +164,27 @@ export default function SyncBootstrap() {
                 dedupeKey: `streak-grant-${gid}`,
               });
             } catch {}
+
+      try {
+        const cr = await fetch("/api/coins/me", { credentials: "include" });
+        const cd = await cr.json();
+        if (cd?.ok && cd.grant?.amount) {
+          const gid = Number(cd.grant.id);
+          const amt = Number(cd.grant.amount);
+          try {
+            useEventStore.getState().grantCoins?.(amt, gid);
+          } catch {}
+          try {
+            useNotifStore.getState().add({
+              kind: "system",
+              title: "Nhận xu từ Admin",
+              body: `Bạn được cấp ${amt} xu.`,
+              href: "/su-kien",
+              dedupeKey: `coin-grant-${gid}`,
+            });
+          } catch {}
+        }
+      } catch {}
           }
         }
       } catch {}

@@ -428,6 +428,7 @@ export interface EventState {
   luckySpin: () => { ok: boolean; message: string; label?: string };
   pushLive: (text: string) => void;
   applyStreakGrant: (days: number) => void;
+  grantCoins: (amount: number, grantId?: number) => void;
   coinMultiplier: () => number;
   isVipActive: () => boolean;
 }
@@ -675,6 +676,18 @@ export const useEventStore = create<EventState>()(
           // Không auto claim xu — chỉ khôi phục chuỗi
           claimedCheckInDay: s.claimedCheckInDay === today ? today : s.claimedCheckInDay,
         });
+      },
+
+      grantCoins: (amount, grantId) => {
+        const n = Math.floor(Number(amount) || 0);
+        if (n < 1) return;
+        const s = get() as any;
+        if (grantId != null && s._coinGrantId === grantId) return;
+        set({
+          coins: (s.coins || 0) + n,
+          totalEarned: (s.totalEarned || 0) + n,
+          ...(grantId != null ? { _coinGrantId: grantId } : {}),
+        } as any);
       },
 
 coinMultiplier: () => {

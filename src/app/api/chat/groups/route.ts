@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { createGroup, listGroups } from "@/lib/chatServer";
+import { formatDbError } from "@/lib/neonSql";
 
 export async function GET() {
   try {
@@ -11,7 +12,7 @@ export async function GET() {
     const groups = await listGroups(session.username);
     return NextResponse.json({ ok: true, groups });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     const g = await createGroup(session.username, title, members);
     return NextResponse.json({ ok: true, group: g });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -1,10 +1,6 @@
-import { neon } from "@neondatabase/serverless";
+import { getNeonSql as getSql, formatDbError } from "@/lib/neonSql";
 
-function getSql() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL missing");
-  return neon(url);
-}
+export { formatDbError };
 
 export async function ensureChatTables() {
   const sql = getSql();
@@ -484,21 +480,11 @@ export async function rejectOrEndCall(id: string, me: string, status: "rejected"
   `;
 }
 
-function normalizeIceJson(raw: unknown): object[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw.filter((x) => x && typeof x === "object") as object[];
-  if (typeof raw === "string") {
-    try {
-      const p = JSON.parse(raw) as unknown;
-      return Array.isArray(p) ? (p.filter((x) => x && typeof x === "object") as object[]) : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-export async function appendIce(id: string, me: string, candidate: object) {
+export async function appendIce(
+  id: string,
+  me: string,
+  candidate: object
+) {
   await ensureChatTables();
   const sql = getSql();
   const u = me.toLowerCase();
@@ -508,16 +494,17 @@ export async function appendIce(id: string, me: string, candidate: object) {
   const to = String(call.to_user).toLowerCase();
   if (u !== from && u !== to) throw new Error("Forbidden");
   const isCaller = u === from;
-  const existing = normalizeIceJson(isCaller ? call.caller_ice : call.callee_ice);
-  // Tránh trùng candidate
-  const key = JSON.stringify(candidate);
-  const filtered = existing.filter((x) => JSON.stringify(x) !== key);
-  const trimmed = [...filtered, candidate].slice(-80);
-  // Truyền JS array — neon serialize đúng jsonb (không double-encode string)
+  const col = isCaller ? "caller_ice" : "callee_ice";
+  const existing = (isCaller ? call.caller_ice : call.callee_ice) as object[] | null;
+  const arr = Array.isArray(existing) ? [...existing] : [];
+  arr.push(candidate);
+  // keep last 40
+  const trimmed = arr.slice(-40);
+  const json = JSON.stringify(trimmed);
   if (isCaller) {
-    await sql`UPDATE chat_calls SET caller_ice = ${JSON.stringify(trimmed)}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+    await sql`UPDATE chat_calls SET caller_ice = ${json}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   } else {
-    await sql`UPDATE chat_calls SET callee_ice = ${JSON.stringify(trimmed)}::jsonb, updated_at = NOW() WHERE id = ${id}`;
+    await sql`UPDATE chat_calls SET callee_ice = ${json}::jsonb, updated_at = NOW() WHERE id = ${id}`;
   }
 }
 

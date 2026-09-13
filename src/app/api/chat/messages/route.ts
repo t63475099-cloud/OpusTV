@@ -8,6 +8,7 @@ import {
   sendMessage,
   unreadCount,
 } from "@/lib/chatServer";
+import { formatDbError } from "@/lib/neonSql";
 
 export async function GET(req: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json({ ok: true, inbox: withUnread });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, id });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }

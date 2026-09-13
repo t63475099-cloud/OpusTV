@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { touchPresence, getPresenceMap } from "@/lib/chatServer";
+import { formatDbError } from "@/lib/neonSql";
 
 export async function POST() {
   try {
@@ -11,7 +12,7 @@ export async function POST() {
     await touchPresence(session.username);
     return NextResponse.json({ ok: true, at: Date.now() });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     const map = await getPresenceMap(names);
     return NextResponse.json({ me: Date.now(), presence: map });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

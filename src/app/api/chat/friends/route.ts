@@ -6,6 +6,7 @@ import {
   getPublicProfile,
   listFriends,
 } from "@/lib/chatServer";
+import { formatDbError } from "@/lib/neonSql";
 
 export async function GET() {
   try {
@@ -24,7 +25,7 @@ export async function GET() {
       friends,
     });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     const friend = await addFriendByUid(session.username, uid);
     return NextResponse.json({ ok: true, friend });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }

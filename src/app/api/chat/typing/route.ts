@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { setTyping, getTypingFrom, areFriends } from "@/lib/chatServer";
+import { formatDbError } from "@/lib/neonSql";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
     await setTyping(session.username, to);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     const typing = await getTypingFrom(peer, session.username);
     return NextResponse.json({ typing });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
+    const msg = formatDbError(e);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -10,6 +10,7 @@ import {
   appendIce,
   areFriends,
 } from "@/lib/chatServer";
+import { formatDbError } from "@/lib/neonSql";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser();

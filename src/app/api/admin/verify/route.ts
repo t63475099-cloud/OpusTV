@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { resolveUserByUidOrUsername } from "@/lib/adminResolveUser";
 
 function sql() {
   const url = process.env.DATABASE_URL;
@@ -48,8 +49,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const id = Number(body.id || 0);
     const action = String(body.action || ""); // approve | reject
+
+    if (action === "grant_uid") {
+      const target = String(body.uid || body.username || "").trim();
+      if (!target) {
+        return NextResponse.json({ ok: false, error: "Thiếu UID" }, { status: 400 });
+      }
+      const u = await resolveUserByUidOrUsername(target);
+      if (!u) {
+        return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản" }, { status: 404 });
+      }
+      const db = sql();
+      await db`UPDATE users SET verified = 1, updated_at = NOW() WHERE id = ${u.id}`;
+      return NextResponse.json({ ok: true, username: u.username, uid: u.uid });
+    }
+
     const note = String(body.note || "").slice(0, 200);
-    if (!id || !["approve", "reject"].includes(action)) {
+    if (action !== "grant_uid" && (!id || !["approve", "reject"].includes(action))) {
       return NextResponse.json({ ok: false, error: "Thiếu id/action" }, { status: 400 });
     }
     const db = sql();

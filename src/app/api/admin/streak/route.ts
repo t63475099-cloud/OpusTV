@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { resolveUserByUidOrUsername } from "@/lib/adminResolveUser";
 
 function sql() {
   const url = process.env.DATABASE_URL;
@@ -87,30 +88,24 @@ export async function POST(req: NextRequest) {
     await ensureTables(db);
 
     if (action === "grant") {
-      const username = String(body.username || "")
-        .trim()
-        .toLowerCase()
-        .slice(0, 64);
+      const target = String(body.uid || body.username || "").trim();
       const days = Math.floor(Number(body.days) || 0);
-      if (!username || days < 1 || days > 999999) {
+      if (!target || days < 1 || days > 999999) {
         return NextResponse.json(
-          { ok: false, error: "username và days (1–999999) bắt buộc" },
+          { ok: false, error: "UID (hoặc username) và days (1–999999) bắt buộc" },
           { status: 400 }
         );
       }
-      const users = await db`
-        SELECT id, username FROM users WHERE lower(username) = ${username} LIMIT 1
-      `;
-      if (!users.length) {
-        return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản" }, { status: 404 });
+      const u = await resolveUserByUidOrUsername(target);
+      if (!u) {
+        return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản với UID/username này" }, { status: 404 });
       }
-      const u = users[0] as { id: number; username: string };
       const ins = await db`
         INSERT INTO streak_grants (user_id, username, days, source_request_id)
         VALUES (${u.id}, ${u.username}, ${days}, NULL)
         RETURNING id, user_id, username, days, created_at
       `;
-      return NextResponse.json({ ok: true, grant: ins[0] });
+      return NextResponse.json({ ok: true, grant: ins[0], resolved: { username: u.username, uid: u.uid } });
     }
 
     if (action === "approve" || action === "reject") {

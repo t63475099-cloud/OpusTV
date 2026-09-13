@@ -223,6 +223,35 @@ export default function AdminVerifyPage() {
             {/* VERIFY */}
             {tab === "verify" && (
               <div className="space-y-3">
+
+                <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 backdrop-blur-xl p-4 space-y-3 mb-3">
+                  <p className="text-sm font-semibold text-sky-100 flex items-center gap-2">
+                    <BadgeCheck className="w-4 h-4" /> Cấp tích xanh theo UID
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      value={grantUser}
+                      onChange={(e) => setGrantUser(e.target.value)}
+                      placeholder="UID kết bạn (10 số)"
+                      className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={busy || !grantUser.trim()}
+                      onClick={() =>
+                        void post(
+                          "/api/admin/verify",
+                          { action: "grant_uid", uid: grantUser.trim() },
+                          `Đã cấp tích xanh cho UID ${grantUser.trim()}`
+                        )
+                      }
+                      className="px-4 py-2 rounded-xl bg-sky-600 text-sm font-semibold"
+                    >
+                      Cấp tick
+                    </button>
+                  </div>
+                </div>
+
                 {items.length === 0 ? (
                   <p className="text-sm text-zinc-500 py-8 text-center rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur">
                     Không có yêu cầu pending
@@ -278,13 +307,13 @@ export default function AdminVerifyPage() {
               <div className="space-y-4">
                 <div className="rounded-2xl border border-orange-500/25 bg-orange-500/10 backdrop-blur-xl p-4 space-y-3">
                   <p className="text-sm font-semibold text-orange-100 flex items-center gap-2">
-                    <Flame className="w-4 h-4" /> Cấp chuỗi trực tiếp
+                    <Flame className="w-4 h-4" /> Cấp chuỗi theo UID
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       value={grantUser}
                       onChange={(e) => setGrantUser(e.target.value)}
-                      placeholder="username"
+                      placeholder="UID kết bạn (10 số)"
                       className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
                     />
                     <input
@@ -302,7 +331,7 @@ export default function AdminVerifyPage() {
                           "/api/admin/streak",
                           {
                             action: "grant",
-                            username: grantUser.trim(),
+                            uid: grantUser.trim(),
                             days: Math.floor(Number(grantDays) || 0),
                           },
                           `Đã cấp ${grantDays} ngày chuỗi`
@@ -379,13 +408,13 @@ export default function AdminVerifyPage() {
                     <Coins className="w-4 h-4" /> Cấp xu Sự kiện
                   </p>
                   <p className="text-xs text-zinc-400">
-                    Chỉ cần username + số xu. User reload sẽ nhận xu tự động.
+                    Nhập UID kết bạn (10 số) + số xu. User reload sẽ nhận xu tự động.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       value={coinUser}
                       onChange={(e) => setCoinUser(e.target.value)}
-                      placeholder="username"
+                      placeholder="UID kết bạn (10 số)"
                       className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
                     />
                     <input
@@ -403,7 +432,7 @@ export default function AdminVerifyPage() {
                         void post(
                           "/api/admin/coins",
                           {
-                            username: coinUser.trim(),
+                            uid: coinUser.trim(),
                             amount: Math.floor(Number(coinAmt) || 0),
                           },
                           `Đã cấp ${coinAmt} xu`
@@ -437,7 +466,7 @@ export default function AdminVerifyPage() {
                     <input
                       value={banUser}
                       onChange={(e) => setBanUser(e.target.value)}
-                      placeholder="username"
+                      placeholder="UID kết bạn (10 số)"
                       className="px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
                     />
                     <select
@@ -467,12 +496,12 @@ export default function AdminVerifyPage() {
                           "/api/admin/moderation",
                           {
                             action: "ban",
-                            username: banUser.trim(),
+                            uid: banUser.trim(),
                             level: Number(banLevel),
                             reason: banReason,
                             kind: "other",
                           },
-                          `Đã khóa @${banUser}`
+                          `Đã khóa ${banUser}`
                         )
                       }
                       className="px-4 py-2 rounded-xl bg-rose-600 text-sm font-semibold"
@@ -487,10 +516,10 @@ export default function AdminVerifyPage() {
                           "/api/admin/moderation",
                           {
                             action: "warn",
-                            username: banUser.trim(),
+                            uid: banUser.trim(),
                             reason: banReason || "Cảnh báo chuẩn mực",
                           },
-                          `Đã cảnh báo @${banUser}`
+                          `Đã cảnh báo ${banUser}`
                         )
                       }
                       className="px-4 py-2 rounded-xl bg-amber-600/80 text-sm font-semibold"
@@ -503,8 +532,8 @@ export default function AdminVerifyPage() {
                       onClick={() =>
                         void post(
                           "/api/admin/moderation",
-                          { action: "unban", username: banUser.trim() },
-                          `Đã mở khóa @${banUser}`
+                          { action: "unban", uid: banUser.trim() },
+                          `Đã mở khóa ${banUser}`
                         )
                       }
                       className="px-4 py-2 rounded-xl bg-white/10 text-sm"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { resolveUserByUidOrUsername } from "@/lib/adminResolveUser";
 
 function sql() {
   const url = process.env.DATABASE_URL;
@@ -52,33 +53,45 @@ export async function POST(req: NextRequest) {
   }
   try {
     const body = await req.json().catch(() => ({}));
-    const username = String(body.username || "")
-      .trim()
-      .toLowerCase()
-      .slice(0, 64);
+    // uid ưu tiên; vẫn nhận username để tương thích
+    const target = String(body.uid || body.username || "").trim();
+    // Cho phép số lớn (tối đa ~2 tỷ)
     const amount = Math.floor(Number(body.amount) || 0);
     const note = String(body.note || "Admin cấp xu").slice(0, 200);
-    if (!username || amount < 1 || amount > 99999999) {
+
+    if (!target) {
       return NextResponse.json(
-        { ok: false, error: "username và amount (1+) bắt buộc" },
+        { ok: false, error: "Nhập UID (khuyến nghị) hoặc username" },
         { status: 400 }
       );
     }
+    if (!Number.isFinite(amount) || amount < 1 || amount > 2_000_000_000) {
+      return NextResponse.json(
+        { ok: false, error: "Số xu phải từ 1 đến 2.000.000.000" },
+        { status: 400 }
+      );
+    }
+
+    const u = await resolveUserByUidOrUsername(target);
+    if (!u) {
+      return NextResponse.json(
+        { ok: false, error: "Không tìm thấy tài khoản với UID/username này" },
+        { status: 404 }
+      );
+    }
+
     const db = sql();
     await ensure(db);
-    const users = await db`
-      SELECT id, username FROM users WHERE lower(username) = ${username} LIMIT 1
-    `;
-    if (!users.length) {
-      return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản" }, { status: 404 });
-    }
-    const u = users[0] as { id: number; username: string };
     const ins = await db`
       INSERT INTO coin_grants (user_id, username, amount, note)
       VALUES (${u.id}, ${u.username}, ${amount}, ${note})
       RETURNING id, username, amount, created_at
     `;
-    return NextResponse.json({ ok: true, grant: ins[0] });
+    return NextResponse.json({
+      ok: true,
+      grant: ins[0],
+      resolved: { username: u.username, uid: u.uid },
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Lỗi";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

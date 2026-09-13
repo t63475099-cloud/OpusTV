@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import { resolveUserByUidOrUsername } from "@/lib/adminResolveUser";
 
 function sql() {
   const url = process.env.DATABASE_URL;
@@ -106,21 +107,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const username = String(body.username || "")
-      .trim()
-      .toLowerCase()
-      .slice(0, 64);
-    if (!username && action !== "close_alert") {
-      return NextResponse.json({ ok: false, error: "Thiếu username" }, { status: 400 });
+    const target = String(body.uid || body.username || "").trim();
+    if (!target && action !== "close_alert") {
+      return NextResponse.json({ ok: false, error: "Thiếu UID (hoặc username)" }, { status: 400 });
     }
 
-    const users = username
-      ? await db`SELECT id, username FROM users WHERE lower(username) = ${username} LIMIT 1`
-      : [];
-    if (username && !users.length) {
-      return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản" }, { status: 404 });
+    const resolved = target ? await resolveUserByUidOrUsername(target) : null;
+    if (target && !resolved) {
+      return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản với UID/username này" }, { status: 404 });
     }
-    const u = users[0] as { id: number; username: string } | undefined;
+    const u = resolved ? { id: resolved.id, username: resolved.username } : undefined;
 
     if (action === "warn" && u) {
       const reason = String(body.reason || "").slice(0, 400);

@@ -373,6 +373,8 @@ function emptyClaims(): ClaimCountMap {
 
 export interface EventState {
   coins: number;
+  /** Thời điểm số dư xu đổi gần nhất (sync đa thiết bị) */
+  coinsUpdatedAt: number;
   redeemHistory: RedeemRequest[];
   streakDay: number;
   lastCheckIn: string | null;
@@ -439,6 +441,7 @@ export const useEventStore = create<EventState>()(
   persist(
     (set, get) => ({
       coins: 0,
+      coinsUpdatedAt: 0,
       appliedCoinGrantIds: [],
       redeemHistory: [],
       streakDay: 0,
@@ -519,6 +522,7 @@ export const useEventStore = create<EventState>()(
           lastCheckIn: today,
           claimedCheckInDay: today,
           coins: s.coins + reward,
+          coinsUpdatedAt: Date.now(),
           totalEarned: s.totalEarned + reward,
         });
         return { ok: true, coins: reward, message: `+${reward} xu · Ngày ${next}/7` };
@@ -582,6 +586,7 @@ export const useEventStore = create<EventState>()(
         };
         set({
           coins: state.coins - amt,
+          coinsUpdatedAt: Date.now(),
           redeemHistory: [req, ...(state.redeemHistory || [])].slice(0, 50),
         });
         return { ok: true, request: req };
@@ -593,6 +598,7 @@ export const useEventStore = create<EventState>()(
         if (!item || item.status !== "pending") return false;
         set({
           coins: state.coins + item.coins,
+          coinsUpdatedAt: Date.now(),
           redeemHistory: list.map((r) =>
             r.id === id ? { ...r, status: "rejected" as RedeemStatus } : r
           ),
@@ -619,6 +625,7 @@ export const useEventStore = create<EventState>()(
           missionProgress: { ...s.missionProgress, [id]: nextProg },
           missionClaimCount: { ...s.missionClaimCount, [id]: nextClaims },
           coins: s.coins + gain,
+          coinsUpdatedAt: Date.now(),
           totalEarned: s.totalEarned + gain,
           // vipPoints không đổi — xu nhiệm vụ không tính vào VIP
         });
@@ -637,6 +644,7 @@ export const useEventStore = create<EventState>()(
         }
         set({
           coins: s.coins - cost,
+          coinsUpdatedAt: Date.now(),
           unlocks: [
             ...s.unlocks.filter((u) => u.key !== key),
             {
@@ -697,6 +705,7 @@ export const useEventStore = create<EventState>()(
         }
         set({
           coins: (s.coins || 0) + n,
+          coinsUpdatedAt: Date.now(),
           totalEarned: (s.totalEarned || 0) + n,
           appliedCoinGrantIds: applied.slice(-80),
           ...(grantId != null ? { _coinGrantId: Number(grantId) } : {}),
@@ -723,7 +732,7 @@ coinMultiplier: () => {
         // Pass XP — ưu tiên gọi qua UI (buyXpPack); fallback trừ xu + cộng XP qua localStorage bridge
         if (def.kind === "pass_xp") {
           const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
-          set({ coins: s.coins - def.cost });
+          set({ coins: s.coins - def.cost, coinsUpdatedAt: Date.now() });
           try {
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("opus-pass-add-xp", { detail: { xp: add } }));

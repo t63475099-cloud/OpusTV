@@ -685,7 +685,7 @@ export default function AccountPage() {
                 </button>
               </div>
 
-              {/* VIP 15 cấp — full width, ngoài hàng nút */}
+              {/* VIP 15 cấp — tiến độ + danh sách đạt / chưa đạt */}
               <div className="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-md p-3">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <span className="text-xs font-semibold" style={{ color: vipProg.cur.color }}>
@@ -713,6 +713,57 @@ export default function AccountPage() {
                 {equippedBadge && (
                   <p className="text-[11px] text-amber-200/90 mt-1">Huy hiệu: {badgeLabel(equippedBadge)}</p>
                 )}
+
+                <div className="mt-3 pt-2 border-t border-white/10">
+                  <p className="text-[10px] font-medium text-zinc-400 mb-2">Các cấp VIP</p>
+                  <div className="max-h-[220px] overflow-y-auto custom-scroll space-y-1.5 pr-0.5">
+                    {VIP_LEVELS.map((lv) => {
+                      const reached = vipProg.earned >= lv.need;
+                      const isCurrent = vipProg.cur.level === lv.level;
+                      return (
+                        <div
+                          key={lv.level}
+                          className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 border text-[11px] transition-colors ${
+                            isCurrent
+                              ? "border-white/25 bg-white/10"
+                              : reached
+                                ? "border-white/10 bg-white/[0.04]"
+                                : "border-white/5 bg-black/20 opacity-55"
+                          }`}
+                        >
+                          <span
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 border border-white/10"
+                            style={{
+                              color: reached ? lv.color : "#71717a",
+                              background: reached ? `${lv.color}22` : "transparent",
+                            }}
+                          >
+                            {lv.level}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="font-semibold leading-tight truncate"
+                              style={{ color: reached ? lv.color : "#a1a1aa" }}
+                            >
+                              {lv.title}
+                              {isCurrent ? " · Hiện tại" : ""}
+                            </p>
+                            <p className="text-[10px] text-zinc-500 tabular-nums">
+                              {lv.need.toLocaleString("vi-VN")} điểm VIP
+                            </p>
+                          </div>
+                          <span
+                            className={`text-[10px] font-medium shrink-0 ${
+                              reached ? "text-emerald-400" : "text-zinc-600"
+                            }`}
+                          >
+                            {reached ? "Đã đạt" : "Chưa đạt"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

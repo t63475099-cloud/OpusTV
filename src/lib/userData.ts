@@ -2,8 +2,12 @@
 
 export interface EventSyncData {
   coins?: number;
+  /** Mốc thời gian số dư xu thay đổi — last-write-wins khi sync */
+  coinsUpdatedAt?: number;
   totalEarned?: number;
   vipPoints?: number;
+  /** Các grant xu admin đã áp dụng */
+  appliedCoinGrantIds?: number[];
   streakDay?: number;
   lastCheckIn?: string | null;
   claimedCheckInDay?: string | null;
@@ -119,8 +123,30 @@ export function mergeEvents(
   const sameMissionDay =
     local.missionDay && remote.missionDay && local.missionDay === remote.missionDay;
 
+  // Xu: last-write-wins theo coinsUpdatedAt (tránh F5 hồi xu đã tiêu)
+  const lCoinTs = Number(local.coinsUpdatedAt || 0) || Number(local.updatedAt || 0);
+  const rCoinTs = Number(remote.coinsUpdatedAt || 0) || Number(remote.updatedAt || 0);
+  const coins =
+    lCoinTs === rCoinTs
+      ? maxNum(local.coins, remote.coins)
+      : lCoinTs > rCoinTs
+        ? Number(local.coins) || 0
+        : Number(remote.coins) || 0;
+  const coinsUpdatedAt = Math.max(lCoinTs, rCoinTs) || Date.now();
+  const appliedCoinGrantIds = Array.from(
+    new Set([
+      ...(Array.isArray(local.appliedCoinGrantIds) ? local.appliedCoinGrantIds : []),
+      ...(Array.isArray(remote.appliedCoinGrantIds) ? remote.appliedCoinGrantIds : []),
+    ])
+  )
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x) && x > 0)
+    .slice(-100);
+
   return {
-    coins: maxNum(local.coins, remote.coins),
+    coins,
+    coinsUpdatedAt,
+    appliedCoinGrantIds,
     totalEarned: maxNum(local.totalEarned, remote.totalEarned),
     vipPoints: maxNum(local.vipPoints, remote.vipPoints),
     streakDay: maxNum(local.streakDay, remote.streakDay),

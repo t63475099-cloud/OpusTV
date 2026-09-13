@@ -28,6 +28,7 @@ import VerifyRequestModal from "@/components/VerifyRequestModal";
 import SessionManager from "@/components/SessionManager";
 import { useXpStore, EXP_COIN_PACKS } from "@/lib/xpStore";
 import { MAX_LEVEL } from "@/lib/gamification";
+import { VIP_BADGES, vipBadgeSrc, isVipBadgeUnlocked } from "@/lib/vipBadges";
 
 type Mode = "login" | "register" | "recover";
 type FieldErrors = {
@@ -623,6 +624,20 @@ export default function AccountPage() {
                 />
                 <h1 className="mt-3 text-lg font-bold text-white tracking-tight">{showName}</h1>
                 <p className="text-xs text-zinc-500">@{username}</p>
+                {vipProg.cur.level >= 1 && (
+                  <div className="mt-2 flex flex-col items-center gap-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={vipBadgeSrc(vipProg.cur.level)}
+                      alt={`VIP ${vipProg.cur.level}`}
+                      className="h-14 w-14 object-contain drop-shadow-[0_0_12px_rgba(168,85,247,0.45)]"
+                      draggable={false}
+                    />
+                    <span className="text-[10px] font-medium text-violet-200/90">
+                      Huy hiệu VIP {vipProg.cur.level} · {vipProg.cur.title}
+                    </span>
+                  </div>
+                )}
                 {equippedBadge && (
                   <span className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-200 border border-amber-400/30">
                     ✦ {badgeLabel(equippedBadge)}
@@ -868,13 +883,44 @@ export default function AccountPage() {
                     }}
                   />
                 </div>
-                <div className="max-h-[180px] overflow-y-auto custom-scroll space-y-1">
-                  {VIP_LEVELS.map((lv) => {
-                    const reached = vipProg.earned >= lv.need;
+                <p className="text-[10px] text-zinc-500">
+                  Huy hiệu VIP tự trang bị theo cấp hiện tại. Cấp cao hơn = khóa đến khi đạt.
+                </p>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-[320px] overflow-y-auto custom-scroll pr-0.5">
+                  {VIP_BADGES.map((b) => {
+                    const unlocked = isVipBadgeUnlocked(b.level, vipProg.cur.level);
+                    const equipped = vipProg.cur.level === b.level;
                     return (
-                      <div key={lv.level} className={`flex justify-between text-[11px] px-2 py-1 rounded-lg ${reached ? "bg-white/5" : "opacity-40"}`}>
-                        <span style={{ color: reached ? lv.color : "#71717a" }}>Lv.{lv.level} {lv.title}</span>
-                        <span className="text-zinc-500">{reached ? "Đã đạt" : lv.need.toLocaleString("vi-VN")}</span>
+                      <div
+                        key={b.level}
+                        className={`relative rounded-xl border p-1.5 flex flex-col items-center gap-1 transition ${
+                          equipped
+                            ? "border-fuchsia-400/50 bg-fuchsia-500/10"
+                            : unlocked
+                              ? "border-white/15 bg-white/[0.04]"
+                              : "border-white/5 bg-black/30 opacity-55"
+                        }`}
+                      >
+                        <div className="relative w-14 h-14 flex items-center justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={b.src}
+                            alt={`VIP ${b.level}`}
+                            className={`w-full h-full object-contain ${unlocked ? "" : "grayscale brightness-50"}`}
+                            draggable={false}
+                          />
+                          {!unlocked && (
+                            <span className="absolute inset-0 flex items-center justify-center text-lg" aria-hidden>
+                              🔒
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] font-semibold text-center leading-tight text-zinc-200">
+                          VIP {b.level}
+                        </p>
+                        <p className="text-[9px] text-zinc-500 text-center leading-tight truncate w-full">
+                          {equipped ? "Đang dùng" : unlocked ? "Đã mở" : "Khóa"}
+                        </p>
                       </div>
                     );
                   })}

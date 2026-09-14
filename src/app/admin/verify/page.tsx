@@ -13,10 +13,11 @@ import {
   Coins,
   AlertTriangle,
   Ban,
+  FileText,
 } from "lucide-react";
 import { BAN_DURATIONS, VIOLATION_LABELS, type ViolationKind } from "@/lib/moderation";
 
-type Tab = "verify" | "streak" | "coins" | "mod" | "stats";
+type Tab = "verify" | "streak" | "coins" | "mod" | "appeals" | "stats";
 
 type VerifyItem = {
   id: number;
@@ -49,7 +50,8 @@ export default function AdminVerifyPage() {
   const [streakRecent, setStreakRecent] = useState<{ id: number; username: string; days: number; created_at: string }[]>([]);
   const [coinRecent, setCoinRecent] = useState<{ id: number; username: string; amount: number; created_at: string }[]>([]);
   const [alerts, setAlerts] = useState<Record<string, unknown>[]>([]);
-  const [bans, setBans] = useState<Record<string, unknown>[]>([])
+  const [bans, setBans] = useState<Record<string, unknown>[]>([]);
+  const [appeals, setAppeals] = useState<Record<string, unknown>[]>([])
   const [stats, setStats] = useState<Record<string, number> | null>(null);
 
   const [grantUser, setGrantUser] = useState("");
@@ -76,12 +78,13 @@ export default function AdminVerifyPage() {
     setBusy(true);
     setErr("");
     try {
-      const [v, s, c, m, st] = await Promise.all([
+      const [v, s, c, m, st, ap] = await Promise.all([
         fetch("/api/admin/verify", { headers: headers() }),
         fetch("/api/admin/streak", { headers: headers() }),
         fetch("/api/admin/coins", { headers: headers() }),
         fetch("/api/admin/moderation", { headers: headers() }),
         fetch("/api/admin/stats", { headers: headers() }),
+        fetch("/api/ban/appeal", { headers: headers() }),
       ]);
       const vd = await v.json();
       if (!v.ok || !vd.ok) {
@@ -105,6 +108,8 @@ export default function AdminVerifyPage() {
         setAlerts(md.alerts || []);
         setBans(md.bans || []);
       }
+      const apd = await ap.json().catch(() => ({}));
+      if (apd.ok) setAppeals(apd.appeals || []);
     } catch {
       setErr("Lỗi mạng");
     } finally {
@@ -140,6 +145,12 @@ export default function AdminVerifyPage() {
     { id: "streak", label: "Chuỗi", icon: Flame, count: streakPending.length },
     { id: "coins", label: "Cấp xu", icon: Coins },
     { id: "mod", label: "Giám sát", icon: AlertTriangle, count: alerts.length },
+    {
+      id: "appeals",
+      label: "Khiếu nại",
+      icon: FileText,
+      count: appeals.filter((a) => String(a.status) === "pending").length,
+    },
   ];
 
   return (
@@ -676,7 +687,122 @@ export default function AdminVerifyPage() {
                 )}
               </div>
             )}
-            {tab === "stats" && (
+            
+            {tab === "appeals" && (
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-500">
+                  Đơn khiếu nại khóa tài khoản. Duyệt = gỡ khóa; Từ chối = giữ nguyên.
+                </p>
+                {appeals.length === 0 ? (
+                  <p className="text-sm text-zinc-500">Chưa có đơn.</p>
+                ) : (
+                  appeals.map((a) => (
+                    <div
+                      key={String(a.id)}
+                      className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-2"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm text-white font-medium">
+                          @{String(a.username)} · mức {String(a.ban_level || "?")}
+                        </p>
+                        <span
+                          className={`text-[10px] uppercase px-2 py-0.5 rounded-full border ${
+                            String(a.status) === "pending"
+                              ? "border-amber-500/40 text-amber-300"
+                              : String(a.status) === "approved"
+                                ? "border-emerald-500/40 text-emerald-300"
+                                : "border-zinc-500/40 text-zinc-400"
+                          }`}
+                        >
+                          {String(a.status)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-400 whitespace-pre-wrap break-words">
+                        {String(a.message || "")}
+                      </p>
+                      {a.contact ? (
+                        <p className="text-[11px] text-sky-400">Liên hệ: {String(a.contact)}</p>
+                      ) : null}
+                      {a.ban_reason ? (
+                        <p className="text-[11px] text-zinc-500">Lý do khóa: {String(a.ban_reason)}</p>
+                      ) : null}
+                      {String(a.status) === "pending" && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-500 text-white"
+                            onClick={() =>
+                              void (async () => {
+                                setBusy(true);
+                                try {
+                                  const res = await fetch("/api/ban/appeal", {
+                                    method: "PATCH",
+                                    headers: headers(),
+                                    body: JSON.stringify({
+                                      id: a.id,
+                                      status: "approved",
+                                      note: "Admin duyệt khiếu nại",
+                                    }),
+                                  });
+                                  const data = await res.json();
+                                  if (!data.ok) setErr(data.error || "Lỗi");
+                                  else {
+                                    setMsg("Đã duyệt & gỡ khóa");
+                                    await loadAll();
+                                  }
+                                } catch {
+                                  setErr("Lỗi mạng");
+                                } finally {
+                                  setBusy(false);
+                                }
+                              })()
+                            }
+                          >
+                            Duyệt / Gỡ khóa
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-rose-500/20 text-zinc-200"
+                            onClick={() =>
+                              void (async () => {
+                                setBusy(true);
+                                try {
+                                  const res = await fetch("/api/ban/appeal", {
+                                    method: "PATCH",
+                                    headers: headers(),
+                                    body: JSON.stringify({
+                                      id: a.id,
+                                      status: "rejected",
+                                      note: "Từ chối",
+                                    }),
+                                  });
+                                  const data = await res.json();
+                                  if (!data.ok) setErr(data.error || "Lỗi");
+                                  else {
+                                    setMsg("Đã từ chối đơn");
+                                    await loadAll();
+                                  }
+                                } catch {
+                                  setErr("Lỗi mạng");
+                                } finally {
+                                  setBusy(false);
+                                }
+                              })()
+                            }
+                          >
+                            Từ chối
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+{tab === "stats" && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
                   ["users", "Người dùng"],

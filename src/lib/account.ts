@@ -62,10 +62,6 @@ export const useAccountStore = create<AccountState>()(
           profile,
           events: {
             coins: ev.coins,
-            coinsUpdatedAt: (ev as { coinsUpdatedAt?: number }).coinsUpdatedAt || Date.now(),
-            appliedCoinGrantIds: Array.isArray((ev as { appliedCoinGrantIds?: number[] }).appliedCoinGrantIds)
-              ? (ev as { appliedCoinGrantIds: number[] }).appliedCoinGrantIds
-              : [],
             totalEarned: ev.totalEarned,
             vipPoints: ev.vipPoints || 0,
             streakDay: ev.streakDay,
@@ -164,10 +160,6 @@ export const useAccountStore = create<AccountState>()(
           const e = data.events as Record<string, unknown>;
           useEventStore.setState({
             coins: Number(e.coins) || 0,
-            coinsUpdatedAt: Number(e.coinsUpdatedAt) || Date.now(),
-            appliedCoinGrantIds: Array.isArray(e.appliedCoinGrantIds)
-              ? (e.appliedCoinGrantIds as number[]).map(Number).filter((x) => x > 0)
-              : [],
             totalEarned: Number(e.totalEarned) || 0,
             vipPoints: Number(e.vipPoints) || 0,
             streakDay: Number(e.streakDay) || 0,
@@ -261,7 +253,22 @@ export const useAccountStore = create<AccountState>()(
             body: JSON.stringify({ username, password, ...device, device }),
           });
           const data = await res.json();
-          if (!data.ok) return { ok: false, error: data.error || "Đăng nhập thất bại" };
+          if (!data.ok) {
+            if (data.banned) {
+              try {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem(
+                    "opus_ban_notice",
+                    JSON.stringify({ ...(data.ban || {}), at: Date.now() })
+                  );
+                  window.location.href = "/bi-khoa";
+                }
+              } catch {
+                /* */
+              }
+            }
+            return { ok: false, error: data.error || "Đăng nhập thất bại" };
+          }
           get().setSession(data.username);
           const remote = (data.data || {
             history: [],

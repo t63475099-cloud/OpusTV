@@ -5,13 +5,12 @@ import { listHistory } from "@/lib/db/history";
 import { listFavorites } from "@/lib/db/favorites";
 import { listMusicHistory } from "@/lib/db/music";
 import { getSettings } from "@/lib/db/settings";
-import { resolveDatabaseUrl } from "@/lib/neonSql";
 
 export async function POST(req: NextRequest) {
   try {
-    if (!resolveDatabaseUrl()) {
+    if (!process.env.DATABASE_URL) {
       return NextResponse.json(
-        { ok: false, error: "DATABASE_URL chưa cấu hình (Neon PostgreSQL) trên Render." },
+        { ok: false, error: "DATABASE_URL chưa cấu hình (Neon PostgreSQL)." },
         { status: 503 }
       );
     }
@@ -29,6 +28,62 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ ok: false, error: "Sai tài khoản hoặc mật khẩu" }, { status: 401 });
     }
+
+    // Chặn đăng nhập nếu đang bị khóa
+    try {
+      const { neon } = await import("@neondatabase/serverless");
+      const url = process.env.DATABASE_URL;
+      if (url) {
+        const db = neon(url);
+        const bans = await db`
+          SELECT level, reason, kind, ban_until, permanent
+          FROM user_bans
+          WHERE user_id = ${user.id}
+          ORDER BY id DESC
+          LIMIT 1
+        `;
+        if (bans.length) {
+          const b = bans[0] as {
+            level: number;
+            reason: string;
+            kind: string;
+            ban_until: string | null;
+            permanent: boolean;
+          };
+          const permanent = !!b.permanent;
+          const until = b.ban_until ? new Date(String(b.ban_until)) : null;
+          const active = permanent || !until || until.getTime() > Date.now();
+          if (active) {
+            const level = Number(b.level) || 1;
+            const labels: Record<number, string> = {
+              1: "1 ngày",
+              2: "3 ngày",
+              3: "7 ngày",
+              4: "30 ngày",
+              5: "vĩnh viễn",
+            };
+            return NextResponse.json(
+              {
+                ok: false,
+                banned: true,
+                error: `Tài khoản đang bị khóa (${labels[level] || "tạm thời"}). ${b.reason || ""}`.trim(),
+                ban: {
+                  level,
+                  permanent,
+                  banUntil: until ? until.toISOString() : null,
+                  reason: String(b.reason || ""),
+                  kind: String(b.kind || ""),
+                },
+              },
+              { status: 403 }
+            );
+          }
+        }
+      }
+    } catch {
+      /* không chặn login nếu DB ban lỗi */
+    }
+
     await touchLastLogin(user.id);
     const uid = await ensureUserUid(user.id);
     const token = await createSession(user.id, device);

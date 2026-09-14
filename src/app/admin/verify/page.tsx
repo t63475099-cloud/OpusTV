@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { BAN_DURATIONS, VIOLATION_LABELS, type ViolationKind } from "@/lib/moderation";
 
-type Tab = "verify" | "streak" | "coins" | "mod";
+type Tab = "verify" | "streak" | "coins" | "mod" | "stats";
 
 type VerifyItem = {
   id: number;
@@ -47,9 +47,10 @@ export default function AdminVerifyPage() {
   const [items, setItems] = useState<VerifyItem[]>([]);
   const [streakPending, setStreakPending] = useState<StreakReq[]>([]);
   const [streakRecent, setStreakRecent] = useState<{ id: number; username: string; days: number; created_at: string }[]>([]);
-  const [coinRecent, setCoinRecent] = useState<{ id: number; username: string; amount: number; note?: string; created_at: string }[]>([]);
+  const [coinRecent, setCoinRecent] = useState<{ id: number; username: string; amount: number; created_at: string }[]>([]);
   const [alerts, setAlerts] = useState<Record<string, unknown>[]>([]);
-  const [bans, setBans] = useState<Record<string, unknown>[]>([]);
+  const [bans, setBans] = useState<Record<string, unknown>[]>([])
+  const [stats, setStats] = useState<Record<string, number> | null>(null);
 
   const [grantUser, setGrantUser] = useState("");
   const [grantDays, setGrantDays] = useState("7");
@@ -58,6 +59,9 @@ export default function AdminVerifyPage() {
   const [banUser, setBanUser] = useState("");
   const [banLevel, setBanLevel] = useState("1");
   const [banReason, setBanReason] = useState("");
+  const [bulkUids, setBulkUids] = useState("");
+  const [bulkLevel, setBulkLevel] = useState("1");
+  const [bulkReason, setBulkReason] = useState("Khóa hàng loạt");
   const [approveDays, setApproveDays] = useState<Record<number, string>>({});
 
   const headers = useCallback(
@@ -72,11 +76,12 @@ export default function AdminVerifyPage() {
     setBusy(true);
     setErr("");
     try {
-      const [v, s, c, m] = await Promise.all([
+      const [v, s, c, m, st] = await Promise.all([
         fetch("/api/admin/verify", { headers: headers() }),
         fetch("/api/admin/streak", { headers: headers() }),
         fetch("/api/admin/coins", { headers: headers() }),
         fetch("/api/admin/moderation", { headers: headers() }),
+        fetch("/api/admin/stats", { headers: headers() }),
       ]);
       const vd = await v.json();
       if (!v.ok || !vd.ok) {
@@ -84,6 +89,8 @@ export default function AdminVerifyPage() {
         setUnlocked(false);
         return;
       }
+      const stData = await st.json().catch(() => ({}));
+      if (stData?.stats) setStats(stData.stats);
       setUnlocked(true);
       setItems(vd.items || []);
       const sd = await s.json();
@@ -178,6 +185,17 @@ export default function AdminVerifyPage() {
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Đăng nhập admin
             </button>
+          <button
+            type="button"
+            onClick={() => setTab("stats")}
+            className={`px-3 py-1.5 rounded-full text-xs border transition ${
+              tab === "stats"
+                ? "bg-emerald-600/30 border-emerald-500 text-emerald-200"
+                : "border-white/10 text-zinc-400 hover:text-white"
+            }`}
+          >
+            Thống kê
+          </button>
             {err && <p className="text-sm text-amber-400">{err}</p>}
           </div>
         ) : (
@@ -408,7 +426,7 @@ export default function AdminVerifyPage() {
                     <Coins className="w-4 h-4" /> Cấp xu Sự kiện
                   </p>
                   <p className="text-xs text-zinc-400">
-                    Nhập UID kết bạn (10 số) + số xu. User reload / vào Sự kiện sẽ nhận xu.
+                    Nhập UID kết bạn (10 số) + số xu. User reload sẽ nhận xu tự động.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -434,7 +452,6 @@ export default function AdminVerifyPage() {
                           {
                             uid: coinUser.trim(),
                             amount: Math.floor(Number(coinAmt) || 0),
-                            action: "add",
                           },
                           `Đã cấp ${coinAmt} xu`
                         )
@@ -445,66 +462,13 @@ export default function AdminVerifyPage() {
                     </button>
                   </div>
                 </div>
-
-                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 backdrop-blur-xl p-4 space-y-3">
-                  <p className="text-sm font-semibold text-rose-100 flex items-center gap-2">
-                    <Ban className="w-4 h-4" /> Xóa xu
-                  </p>
-                  <p className="text-xs text-zinc-400">
-                    Trừ xu khỏi ví Sự kiện theo UID. Số xu về máy user sau khi reload (không âm dưới 0).
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      value={coinUser}
-                      onChange={(e) => setCoinUser(e.target.value)}
-                      placeholder="UID kết bạn (10 số)"
-                      className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
-                    />
-                    <input
-                      type="number"
-                      min={1}
-                      value={coinAmt}
-                      onChange={(e) => setCoinAmt(e.target.value)}
-                      placeholder="Số xu cần xóa"
-                      className="w-full sm:w-36 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
-                    />
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void post(
-                          "/api/admin/coins",
-                          {
-                            uid: coinUser.trim(),
-                            amount: Math.floor(Number(coinAmt) || 0),
-                            action: "remove",
-                          },
-                          `Đã xóa ${coinAmt} xu`
-                        )
-                      }
-                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-sm font-semibold inline-flex items-center gap-1.5"
-                    >
-                      <Ban className="w-3.5 h-3.5" /> Xóa xu
-                    </button>
-                  </div>
-                </div>
-
                 <ul className="text-xs text-zinc-400 space-y-1">
-                  {coinRecent.map((g) => {
-                    const amt = Number(g.amount) || 0;
-                    const neg = amt < 0;
-                    return (
-                      <li key={g.id}>
-                        #{g.id} · @{g.username} ·{" "}
-                        <span className={neg ? "text-rose-400" : "text-amber-300"}>
-                          {neg ? "" : "+"}
-                          {amt.toLocaleString("vi-VN")} xu
-                        </span>
-                        {g.note ? ` · ${g.note}` : ""} ·{" "}
-                        {new Date(g.created_at).toLocaleString("vi-VN")}
-                      </li>
-                    );
-                  })}
+                  {coinRecent.map((g) => (
+                    <li key={g.id}>
+                      #{g.id} · @{g.username} · +{g.amount} xu ·{" "}
+                      {new Date(g.created_at).toLocaleString("vi-VN")}
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}
@@ -512,6 +476,57 @@ export default function AdminVerifyPage() {
             {/* MODERATION */}
             {tab === "mod" && (
               <div className="space-y-4">
+
+              <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4 space-y-3 mb-4">
+                <h3 className="text-sm font-semibold text-rose-200">Khóa hàng loạt theo UID</h3>
+                <p className="text-[11px] text-zinc-500">Mỗi dòng một UID (tối đa 100). Có thể cách nhau bằng dấu phẩy.</p>
+                <textarea
+                  value={bulkUids}
+                  onChange={(e) => setBulkUids(e.target.value)}
+                  rows={5}
+                  placeholder={"8148579771\n8123456789\n..."}
+                  className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white font-mono outline-none focus:border-rose-500/50"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <select
+                    value={bulkLevel}
+                    onChange={(e) => setBulkLevel(e.target.value)}
+                    className="rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white"
+                  >
+                    <option value="1">Lần 1 · 1 ngày</option>
+                    <option value="2">Lần 2 · 3 ngày</option>
+                    <option value="3">Lần 3 · 7 ngày</option>
+                    <option value="4">Lần 4 · 30 ngày</option>
+                    <option value="5">Lần 5 · Vĩnh viễn</option>
+                  </select>
+                  <input
+                    value={bulkReason}
+                    onChange={(e) => setBulkReason(e.target.value)}
+                    placeholder="Lý do"
+                    className="flex-1 min-w-[140px] rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white"
+                  />
+                  <button
+                    type="button"
+                    disabled={busy || !bulkUids.trim()}
+                    onClick={() =>
+                      post(
+                        "/api/admin/moderation",
+                        {
+                          action: "bulk_ban",
+                          uids: bulkUids,
+                          level: Number(bulkLevel),
+                          reason: bulkReason,
+                        },
+                        "Đã xử lý khóa hàng loạt"
+                      )
+                    }
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium disabled:opacity-40"
+                  >
+                    Khóa danh sách
+                  </button>
+                </div>
+              </div>
+
                 <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 backdrop-blur-xl p-4 space-y-3">
                   <p className="text-sm font-semibold text-rose-100 flex items-center gap-2">
                     <Ban className="w-4 h-4" /> Khóa tài khoản
@@ -665,5 +680,29 @@ export default function AdminVerifyPage() {
         )}
       </div>
     </div>
+
+        {tab === "stats" && (
+          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              ["users", "Người dùng"],
+              ["verified", "Tích xanh"],
+              ["bans", "Đang khóa"],
+              ["alerts", "Cảnh báo"],
+              ["coinGrants", "Lần cấp xu"],
+              ["streakGrants", "Đơn chuỗi"],
+            ].map(([k, label]) => (
+              <div
+                key={k}
+                className="rounded-2xl border border-white/10 bg-black/30 p-4 text-center"
+              >
+                <p className="text-2xl font-bold text-white tabular-nums">
+                  {stats?.[k] ?? "—"}
+                </p>
+                <p className="text-[11px] text-zinc-500 mt-1">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
   );
 }

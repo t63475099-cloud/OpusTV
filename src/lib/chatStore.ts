@@ -1,5 +1,4 @@
 "use client";
-import { apiFetch } from "@/lib/sessionClient";
 
 import { create } from "zustand";
 import { useNotifStore } from "@/lib/notifications";
@@ -106,6 +105,8 @@ export interface ChatLocalMeta {
   blockedUsers: string[];
   groupTitles: Record<string, string>;
   groupAnnouncements: Record<string, string>;
+  /** conversationId -> messageId */
+  pinnedMessageIds: Record<string, string>;
   groupMembers: Record<string, string[]>;
   /** username admin theo group id */
   groupAdmins: Record<string, string[]>;
@@ -122,6 +123,7 @@ function emptyMeta(): ChatLocalMeta {
     blockedUsers: [],
     groupTitles: {},
     groupAnnouncements: {},
+    pinnedMessageIds: {},
     groupMembers: {},
     groupAdmins: {},
     systemMessages: {},
@@ -148,6 +150,7 @@ function loadMeta(): ChatLocalMeta {
       blockedUsers: Array.isArray(parsed.blockedUsers) ? parsed.blockedUsers : [],
       groupTitles: parsed.groupTitles || {},
       groupAnnouncements: parsed.groupAnnouncements || {},
+      pinnedMessageIds: parsed.pinnedMessageIds || {},
       groupMembers: parsed.groupMembers || {},
       groupAdmins: parsed.groupAdmins || {},
       systemMessages: parsed.systemMessages || {},
@@ -191,6 +194,9 @@ function applyConversationMeta(c: Conversation): Conversation {
   const pin = meta.pinned[c.id];
   const mute = meta.muted[c.id];
   let next = { ...c };
+  if (meta.pinnedMessageIds?.[c.id]) {
+    next.pinnedMessageId = meta.pinnedMessageIds[c.id];
+  }
   if (c.isGroup && meta.groupTitles[c.id]) {
     next.title = meta.groupTitles[c.id];
   }
@@ -238,7 +244,6 @@ interface ChatState {
   replyTo: ChatMessage | null;
   loading: boolean;
   error: string | null;
-  clearError: () => void;
   synced: boolean;
   /** peer username đang soạn tin */
   typingPeers: Record<string, number>;
@@ -269,6 +274,7 @@ interface ChatState {
   toggleMute: (conversationId: string) => void;
   muteFor: (conversationId: string, hours: number | null) => void;
   togglePin: (conversationId: string) => void;
+  pinMessage: (conversationId: string, messageId: string | null) => void;
   toggleReaction: (messageId: string, emoji: string) => void;
   editMessage: (messageId: string, text: string) => void;
   deleteMessage: (messageId: string, scope?: "me" | "everyone") => void;
@@ -390,7 +396,6 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       replyTo: null,
       loading: false,
       error: null,
-      clearError: () => set({ error: null }),
       synced: false,
       typingPeers: {},
       blockedUsers: [],
@@ -590,17 +595,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         set({ loading: true, error: null });
         const prevActive = get().activeId;
         try {
-          const [frRaw, inboxRaw] = await Promise.all([
-            apiFetch("/api/chat/friends"),
-            apiFetch("/api/chat/messages"),
+          const [fr, inboxRes] = await Promise.all([
+            fetch("/api/chat/friends").then((r) => r.json()),
+            fetch("/api/chat/messages").then((r) => r.json()),
           ]);
-          const fr = await frRaw.json();
-          const inboxRes = await inboxRaw.json();
-          if (frRaw.status === 401 || inboxRaw.status === 401) {
-            throw new Error(
-              "Chưa có phiên đăng nhập trên domain này. Vào Tài khoản → Đăng nhập lại (cookie không dùng chung Netlify ↔ Render)."
-            );
-          }
           if (fr.error) throw new Error(fr.error);
           if (inboxRes.error) throw new Error(inboxRes.error);
 
@@ -669,7 +667,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
           // Presence Zalo-style
           try {
-            await apiFetch("/api/chat/presence", { method: "POST" });
+            await fetch("/api/chat/presence", { method: "POST" });
             if (friendIds.length) {
               const pr = await fetch(
                 `/api/chat/presence?users=${encodeURIComponent(friendIds.join(","))}`
@@ -688,7 +686,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           } catch {}
 
           try {
-            const gr = await apiFetch("/api/chat/groups").then((r) => r.json());
+            const gr = await fetch("/api/chat/groups").then((r) => r.json());
             if (Array.isArray(gr.groups)) {
               for (const g of gr.groups) {
                 const gid = String(g.id);
@@ -725,7 +723,6 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             blockedUsers: meta.blockedUsers,
             loading: false,
             synced: true,
-            error: null,
             // Không bao giờ xóa activeId khi sync (tránh mất đoạn chat khi click/poll)
             activeId: prevActive || get().activeId,
           });
@@ -759,12 +756,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             /* ignore */
           }
         } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : "Không đồng bộ được";
-          const hasData = (get().conversations || []).length > 0 || (get().friends || []).length > 0;
           set({
             loading: false,
-            // Nếu đã có hội thoại local thì chỉ cảnh báo nhẹ, không chặn UI
-            error: hasData && /fetch failed|Neon|DATABASE/i.test(msg) ? null : msg,
+            error: e instanceof Error ? e.message : "Không đồng bộ được",
             synced: false,
           });
         }
@@ -776,7 +770,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           if (!/^\d{6,12}$/.test(uid)) {
             return { ok: false, message: "Nhập UID số của đối phương (trong Tài khoản)" };
           }
-          const res = await apiFetch("/api/chat/friends", {
+          const res = await fetch("/api/chat/friends", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ uid }),
@@ -842,7 +836,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         const peer = username.toLowerCase();
         const id = convIdFor(me, peer);
         try {
-          const res = await apiFetch(`/api/chat/messages?with=${encodeURIComponent(peer)}`);
+          const res = await fetch(`/api/chat/messages?with=${encodeURIComponent(peer)}`);
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Lỗi tải tin");
           const list = (data.messages || []).map((row: Parameters<typeof mapServerMsg>[0]) =>
@@ -874,10 +868,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             ),
           }));
         } catch (e: unknown) {
-          {
-            const msg = e instanceof Error ? e.message : "Lỗi tải tin";
-            if (!/fetch failed|Neon DB/i.test(msg)) set({ error: msg });
-          }
+          set({ error: e instanceof Error ? e.message : "Lỗi tải tin" });
         }
       },
       loadGroupThread: async (groupId) => {
@@ -1052,6 +1043,23 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                   muted,
                   mutedUntil: until,
                 }
+              : c
+          ),
+        }));
+      },
+
+      
+      pinMessage: (conversationId, messageId) => {
+        patchMeta((m) => {
+          const next = { ...(m.pinnedMessageIds || {}) };
+          if (!messageId) delete next[conversationId];
+          else next[conversationId] = messageId;
+          return { ...m, pinnedMessageIds: next };
+        });
+        set((s) => ({
+          conversations: s.conversations.map((c) =>
+            c.id === conversationId
+              ? { ...c, pinnedMessageId: messageId || undefined }
               : c
           ),
         }));
@@ -1685,7 +1693,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         }));
         void (async () => {
           try {
-            const res = await apiFetch("/api/chat/groups", {
+            const res = await fetch("/api/chat/groups", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ title: conv.title, members: memberIds }),
@@ -1758,13 +1766,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
       heartbeat: async () => {
         try {
-          await apiFetch("/api/chat/presence", { method: "POST" });
+          await fetch("/api/chat/presence", { method: "POST" });
         } catch {}
       },
 
       notifyTyping: (peer) => {
         if (!get().me || !peer) return;
-        void apiFetch("/api/chat/typing", {
+        void fetch("/api/chat/typing", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ to: peer }),

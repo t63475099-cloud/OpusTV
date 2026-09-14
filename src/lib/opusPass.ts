@@ -11,6 +11,12 @@ export const PASS_XP_PER_LEVEL = 120;
 export const SEASON_DAYS = 45;
 export const SEASON_MS = SEASON_DAYS * 24 * 60 * 60 * 1000;
 
+export function seasonTitle(season: number) {
+  const s = Math.max(1, Math.floor(season || 1));
+  return `Opus Season ${s}`;
+}
+
+
 /** Gói mua Pass XP bằng xu (cũng có trong Cửa hàng) */
 export const PASS_XP_PACKS: { id: string; xp: number; cost: number; name: string }[] = [
   { id: "pass_xp_200", xp: 200, cost: 150, name: "Gói 200 Pass XP" },
@@ -252,7 +258,7 @@ function defaultStart() {
 export const useOpusPassStore = create<OpusPassState>()(
   persist(
     (set, get) => ({
-      season: 1,
+      season: 2,
       seasonStartedAt: defaultStart(),
       xp: 0,
       premium: false,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Reply,
+  Pin,
   Check,
   CheckCheck,
   PhoneOutgoing,
@@ -43,6 +44,7 @@ export default function MessageBubble({
   const setReplyTo = useChatStore((s) => s.setReplyTo);
   const editMessage = useChatStore((s) => s.editMessage);
   const deleteMessage = useChatStore((s) => s.deleteMessage);
+  const pinMessage = useChatStore((s) => s.pinMessage);
   const [showBar, setShowBar] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(m.text || "");
@@ -269,6 +271,17 @@ export default function MessageBubble({
             onClick={() => setReplyTo(m)}
           >
             <Reply className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            className="p-1 text-zinc-400 hover:text-amber-300"
+            title="Ghim tin"
+            onClick={() => {
+              pinMessage(m.conversationId, m.id);
+              setShowBar(false);
+            }}
+          >
+            <Pin className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"

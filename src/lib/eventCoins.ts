@@ -200,7 +200,24 @@ export function getVipProgress(vipPoints: number) {
   for (let i = 0; i < VIP_LEVELS.length; i++) {
     if (earned >= VIP_LEVELS[i].need) {
       cur = VIP_LEVELS[i];
-      next = VIP_LEVELS[Math.min(i + 1, VIP_LEVELS.length - 1)];
+      next = VIP_LEVELS[Math.min(i + 1, VIP_LEVELS.length - 1)
+  // ── Mùa Opus Season 2 ──
+  { id: "s2_frame_aurora", name: "Khung Aurora S2", desc: "Viền mùa 2 cực quang", cost: 220, kind: "frame", meta: "frame:northern-lights", icon: "🌌" },
+  { id: "s2_frame_meteor", name: "Khung Meteor S2", desc: "Viền mưa sao băng", cost: 240, kind: "frame", meta: "frame:meteor-shower", icon: "☄️" },
+  { id: "s2_frame_phoenix", name: "Khung Phoenix S2", desc: "Viền phượng hoàng", cost: 280, kind: "frame", meta: "frame:phoenix-ash", icon: "🔥" },
+  { id: "s2_badge_pioneer", name: "Huy hiệu Pioneer S2", desc: "Danh hiệu mùa 2", cost: 180, kind: "badge", meta: "badge:pioneer", icon: "🏅" },
+  { id: "s2_badge_season2", name: "Huy hiệu Season 2", desc: "Đặc quyền mùa mới", cost: 200, kind: "badge", meta: "badge:season", icon: "🎌" },
+  { id: "s2_boost_x3", name: "Nhân xu x3 (12h)", desc: "Boost xu mạnh S2", cost: 350, kind: "boost", meta: "boost:x3:12", icon: "⚡" },
+  { id: "s2_boost_x2_48", name: "Nhân xu x2 (48h)", desc: "Boost dài hạn", cost: 400, kind: "boost", meta: "boost:x2:48", icon: "⚡" },
+  { id: "s2_mystery_gold", name: "Hộp vàng S2", desc: "Quà ngẫu nhiên cao cấp", cost: 300, kind: "mystery", meta: "mystery:gold", icon: "🎁" },
+  { id: "s2_mystery_legend", name: "Hộp huyền thoại S2", desc: "Tỷ lệ khung hiếm cao", cost: 500, kind: "mystery", meta: "mystery:legend", icon: "💎" },
+  { id: "s2_card_marathon", name: "Thẻ marathon 5 tập", desc: "Mở 5 tập", cost: 180, kind: "unlock", meta: "episode", icon: "🎬" },
+  { id: "s2_card_binge", name: "Thẻ binge cả bộ", desc: "Trọn bộ ưu đãi S2", cost: 260, kind: "unlock", meta: "movie", icon: "🍿" },
+  { id: "s2_vip_14d", name: "VIP 14 ngày S2", desc: "VIP nửa tháng", cost: 1800, kind: "vip", meta: "vip336", icon: "👑" },
+  { id: "s2_pass_xp_2k", name: "Pass XP 2000 S2", desc: "XP Pass mùa 2", cost: 1100, kind: "pass_xp", meta: "2000", icon: "🎫" },
+  { id: "s2_coin_pack_500", name: "Gói 500 xu S2", desc: "Đổi xu sự kiện", cost: 0, kind: "coins", meta: "500", icon: "🪙" },
+  { id: "s2_coin_pack_1k", name: "Gói 1000 xu S2", desc: "Đổi xu sự kiện", cost: 0, kind: "coins", meta: "1000", icon: "🪙" },
+];
     }
   }
   const span = Math.max(1, next.need - cur.need);
@@ -252,7 +269,12 @@ export type MissionId =
   | "music"
   | "openEvent"
   | "episode2"
-  | "login";
+  | "login"
+  | "chat"
+  | "code"
+  | "spin"
+  | "checkin"
+  | "profile";
 
 export interface MissionDef {
   id: MissionId;
@@ -347,6 +369,41 @@ export const DAILY_MISSIONS: MissionDef[] = [
     target: 1,
     unit: "count",
   },
+  {
+    id: "chat",
+    title: "Gửi tin Opus Chat",
+    desc: "Nhắn một tin trong Opus Chat",
+    target: 1,
+    unit: "count",
+  },
+  {
+    id: "code",
+    title: "Mở Opus Code",
+    desc: "Vào môi trường lập trình",
+    target: 1,
+    unit: "count",
+  },
+  {
+    id: "spin",
+    title: "Quay vòng may mắn",
+    desc: "Quay 1 lần tại Sự kiện",
+    target: 1,
+    unit: "count",
+  },
+  {
+    id: "checkin",
+    title: "Điểm danh hôm nay",
+    desc: "Nhận thưởng điểm danh",
+    target: 1,
+    unit: "count",
+  },
+  {
+    id: "profile",
+    title: "Cập nhật hồ sơ",
+    desc: "Mở trang Tài khoản",
+    target: 1,
+    unit: "count",
+  },
 ];
 
 export interface UnlockRecord {
@@ -373,8 +430,6 @@ function emptyClaims(): ClaimCountMap {
 
 export interface EventState {
   coins: number;
-  /** Thời điểm số dư xu đổi gần nhất (sync đa thiết bị) */
-  coinsUpdatedAt: number;
   redeemHistory: RedeemRequest[];
   streakDay: number;
   lastCheckIn: string | null;
@@ -423,15 +478,13 @@ export interface EventState {
   ) => { ok: boolean; message: string };
   isUnlocked: (key: string) => boolean;
   dailyMissionSummary: () => { done: number; total: number; pct: number };
-  buyShopItem: (shopId: string, qty?: number) => { ok: boolean; message: string };
+  buyShopItem: (shopId: string) => { ok: boolean; message: string };
   openMysteryBox: (invId: string) => { ok: boolean; message: string };
   equipItem: (invId: string) => { ok: boolean; message: string };
   activateItem: (invId: string) => { ok: boolean; message: string };
   luckySpin: () => { ok: boolean; message: string; label?: string };
   pushLive: (text: string) => void;
   applyStreakGrant: (days: number) => void;
-  /** ID các lần admin cấp xu đã áp dụng (tránh cộng trùng) */
-  appliedCoinGrantIds: number[];
   grantCoins: (amount: number, grantId?: number) => void;
   coinMultiplier: () => number;
   isVipActive: () => boolean;
@@ -441,8 +494,6 @@ export const useEventStore = create<EventState>()(
   persist(
     (set, get) => ({
       coins: 0,
-      coinsUpdatedAt: 0,
-      appliedCoinGrantIds: [],
       redeemHistory: [],
       streakDay: 0,
       lastCheckIn: null,
@@ -522,7 +573,6 @@ export const useEventStore = create<EventState>()(
           lastCheckIn: today,
           claimedCheckInDay: today,
           coins: s.coins + reward,
-          coinsUpdatedAt: Date.now(),
           totalEarned: s.totalEarned + reward,
         });
         return { ok: true, coins: reward, message: `+${reward} xu · Ngày ${next}/7` };
@@ -586,7 +636,6 @@ export const useEventStore = create<EventState>()(
         };
         set({
           coins: state.coins - amt,
-          coinsUpdatedAt: Date.now(),
           redeemHistory: [req, ...(state.redeemHistory || [])].slice(0, 50),
         });
         return { ok: true, request: req };
@@ -598,7 +647,6 @@ export const useEventStore = create<EventState>()(
         if (!item || item.status !== "pending") return false;
         set({
           coins: state.coins + item.coins,
-          coinsUpdatedAt: Date.now(),
           redeemHistory: list.map((r) =>
             r.id === id ? { ...r, status: "rejected" as RedeemStatus } : r
           ),
@@ -625,7 +673,6 @@ export const useEventStore = create<EventState>()(
           missionProgress: { ...s.missionProgress, [id]: nextProg },
           missionClaimCount: { ...s.missionClaimCount, [id]: nextClaims },
           coins: s.coins + gain,
-          coinsUpdatedAt: Date.now(),
           totalEarned: s.totalEarned + gain,
           // vipPoints không đổi — xu nhiệm vụ không tính vào VIP
         });
@@ -644,7 +691,6 @@ export const useEventStore = create<EventState>()(
         }
         set({
           coins: s.coins - cost,
-          coinsUpdatedAt: Date.now(),
           unlocks: [
             ...s.unlocks.filter((u) => u.key !== key),
             {
@@ -691,26 +737,13 @@ export const useEventStore = create<EventState>()(
 
       grantCoins: (amount, grantId) => {
         const n = Math.floor(Number(amount) || 0);
-        // Cho phép âm (admin xóa xu) hoặc dương (cấp xu)
-        if (!Number.isFinite(n) || n === 0) return;
-        const s = get();
-        const applied = Array.isArray((s as any).appliedCoinGrantIds)
-          ? ([...(s as any).appliedCoinGrantIds] as number[])
-          : [];
-        if (grantId != null) {
-          const gid = Number(grantId);
-          if (applied.includes(gid)) return;
-          if ((s as any)._coinGrantId === gid) return;
-          applied.push(gid);
-        }
-        const next = Math.max(0, (s.coins || 0) + n);
+        if (n < 1) return;
+        const s = get() as any;
+        if (grantId != null && s._coinGrantId === grantId) return;
         set({
-          coins: next,
-          coinsUpdatedAt: Date.now(),
-          totalEarned:
-            n > 0 ? (s.totalEarned || 0) + n : s.totalEarned || 0,
-          appliedCoinGrantIds: applied.slice(-80),
-          ...(grantId != null ? { _coinGrantId: Number(grantId) } : {}),
+          coins: (s.coins || 0) + n,
+          totalEarned: (s.totalEarned || 0) + n,
+          ...(grantId != null ? { _coinGrantId: grantId } : {}),
         } as any);
       },
 
@@ -725,50 +758,48 @@ coinMultiplier: () => {
         return !!(exp && exp > Date.now());
       },
 
-      buyShopItem: (shopId, qty = 1) => {
+      buyShopItem: (shopId) => {
         const def = SHOP_ITEMS.find((x) => x.id === shopId);
         if (!def) return { ok: false, message: "Không có vật phẩm" };
-        const q = Math.min(999, Math.max(1, Math.floor(Number(qty) || 1)));
         const s = get();
-        const totalCost = def.cost * q;
-        if (s.coins < totalCost) {
-          return { ok: false, message: `Cần ${totalCost.toLocaleString("vi-VN")} xu (có ${s.coins.toLocaleString("vi-VN")})` };
-        }
+        if (s.coins < def.cost) return { ok: false, message: `Cần ${def.cost} xu` };
 
+        // Pass XP — ưu tiên gọi qua UI (buyXpPack); fallback trừ xu + cộng XP qua localStorage bridge
         if (def.kind === "pass_xp") {
-          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0) * q;
-          set({ coins: s.coins - totalCost, coinsUpdatedAt: Date.now() });
+          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
+          set({ coins: s.coins - def.cost });
           try {
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("opus-pass-add-xp", { detail: { xp: add } }));
             }
           } catch { /* */ }
           get().pushLive(`+${add} Pass XP`);
-          return { ok: true, message: `×${q} · +${add} Pass XP` };
+          return { ok: true, message: `+${add} Pass XP` };
         }
 
+        // Nâng điểm VIP bằng xu (không cộng totalEarned làm điểm VIP)
         if (def.kind === "vip_xp") {
-          const add = Math.max(0, parseInt(def.meta || "1000", 10) || 1000) * q;
+          const add = Math.max(0, parseInt(def.meta || "1000", 10) || 1000);
           set({
-            coins: s.coins - totalCost,
-            coinsUpdatedAt: Date.now(),
+            coins: s.coins - def.cost,
             vipPoints: (s.vipPoints || 0) + add,
           });
           get().pushLive(`+${add} điểm VIP`);
-          return { ok: true, message: `×${q} · +${add} điểm VIP` };
+          return { ok: true, message: `+${add} điểm VIP (tiến cấp)` };
         }
 
+        // Gói xu: cộng thẳng — không cộng điểm VIP
         if (def.kind === "coins") {
-          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0) * q;
+          const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
           set({
-            coins: s.coins - totalCost + add,
-            coinsUpdatedAt: Date.now(),
+            coins: s.coins - def.cost + add,
             totalEarned: s.totalEarned + add,
           });
           get().pushLive(`Nhận gói +${add} xu`);
-          return { ok: true, message: `×${q} · +${add} xu vào ví` };
+          return { ok: true, message: `+${add} xu vào ví` };
         }
 
+        // Hộp quà / vật phẩm khác → vào kho (hộp mở sau)
         const finalName = def.name;
         const finalKind = def.kind;
         const finalMeta = def.meta;
@@ -776,7 +807,7 @@ coinMultiplier: () => {
         const existing = inv.find(
           (i) => i.kind === finalKind && i.meta === finalMeta && i.name === finalName
         );
-        if (existing) existing.qty += q;
+        if (existing) existing.qty += 1;
         else {
           inv.unshift({
             id: `inv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -784,13 +815,89 @@ coinMultiplier: () => {
             name: finalName,
             kind: finalKind as InventoryItem["kind"],
             meta: finalMeta,
-            qty: q,
+            qty: 1,
             acquiredAt: Date.now(),
           });
         }
-        set({ coins: s.coins - totalCost, coinsUpdatedAt: Date.now(), inventory: inv });
-        get().pushLive(`Đổi ${finalName} ×${q}`);
-        return { ok: true, message: `Đã đổi ${finalName} ×${q}` };
+        set({ coins: s.coins - def.cost, inventory: inv });
+        get().pushLive(`Bạn vừa đổi ${finalName}`);
+        return { ok: true, message: `Đã thêm vào kho: ${finalName}` };
+      },
+
+      equipItem: (invId) => {
+        const item = (get().inventory || []).find((i) => i.id === invId);
+        if (!item) return { ok: false, message: "Không tìm thấy" };
+        if (item.kind === "frame") {
+          const frame = item.meta || null;
+          set({ equippedFrame: frame });
+          try {
+            const raw = localStorage.getItem("opusfilm-settings");
+            if (raw && frame) {
+              const j = JSON.parse(raw);
+              const state = j?.state || j;
+              if (state) {
+                state.avatarFrame = frame;
+                if (state.profile) state.profile.avatarFrame = frame;
+                localStorage.setItem("opusfilm-settings", JSON.stringify(j.state ? j : { state }));
+              }
+            }
+          } catch { /* */ }
+          return { ok: true, message: "Đã trang bị khung viền" };
+        }
+        if (item.kind === "badge") {
+          set({ equippedBadge: item.meta || null });
+          return { ok: true, message: "Đã trang bị huy hiệu" };
+        }
+        return { ok: false, message: "Không trang bị được vật phẩm này" };
+      },
+
+      activateItem: (invId) => {
+        const s = get();
+        const inv = [...(s.inventory || [])];
+        const idx = inv.findIndex((i) => i.id === invId);
+        if (idx < 0) return { ok: false, message: "Không tìm thấy" };
+        const item = inv[idx];
+        if (item.kind === "boost") {
+          item.qty -= 1;
+          if (item.qty <= 0) inv.splice(idx, 1);
+          const DAY = 86400000;
+          const base = Math.max(Date.now(), s.boostExpiresAt || 0);
+          const until = base + DAY;
+          set({ inventory: inv, boostExpiresAt: until });
+          const h = Math.round((until - Date.now()) / 3600000);
+          return { ok: true, message: `x2 xu · còn ~${h}h (cộng dồn)` };
+        }
+        if (item.kind === "vip") {
+          item.qty -= 1;
+          if (item.qty <= 0) inv.splice(idx, 1);
+          let hours = 24;
+          if (item.meta === "vip12") hours = 12;
+          if (item.meta === "vip72") hours = 72;
+          if (item.meta === "vip168") hours = 168;
+          const MS = hours * 3600000;
+          const base = Math.max(Date.now(), s.vipExpiresAt || 0);
+          const until = base + MS;
+          set({ inventory: inv, vipExpiresAt: until });
+          const h = Math.round((until - Date.now()) / 3600000);
+          return { ok: true, message: `VIP · còn ~${h}h (cộng dồn)` };
+        }
+        if (item.kind === "unlock") {
+          const key =
+            item.meta === "movie"
+              ? `credit:movie:${Date.now()}`
+              : `credit:episode:${Date.now()}`;
+          item.qty -= 1;
+          if (item.qty <= 0) inv.splice(idx, 1);
+          set({
+            inventory: inv,
+            unlocks: [
+              ...s.unlocks,
+              { key, permanent: true, expiresAt: null, spent: 0, at: Date.now() },
+            ],
+          });
+          return { ok: true, message: "Đã kích hoạt thẻ mở khóa" };
+        }
+        return { ok: false, message: "Dùng Trang bị cho khung/huy hiệu" };
       },
 
       openMysteryBox: (invId) => {
@@ -847,58 +954,6 @@ coinMultiplier: () => {
         return { ok: true, message: `Nhận được: ${pick.name}` };
       },
 
-      equipItem: (invId) => {
-        const s = get();
-        const item = (s.inventory || []).find((i) => i.id === invId);
-        if (!item) return { ok: false, message: "Không có vật phẩm" };
-        if (item.kind === "frame") {
-          set({ equippedFrame: item.meta || null });
-          try {
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(
-                new CustomEvent("opus-equip-frame", { detail: { frame: item.meta || "frame:none" } })
-              );
-            }
-          } catch { /* */ }
-          return { ok: true, message: `Đã trang bị khung: ${item.name}` };
-        }
-        if (item.kind === "badge") {
-          set({ equippedBadge: item.meta || null });
-          return { ok: true, message: `Đã trang bị huy hiệu: ${item.name}` };
-        }
-        return { ok: false, message: "Vật phẩm này không trang bị được" };
-      },
-
-      activateItem: (invId) => {
-        const s = get();
-        const inv = [...(s.inventory || [])];
-        const idx = inv.findIndex((i) => i.id === invId);
-        if (idx < 0) return { ok: false, message: "Không có vật phẩm" };
-        const item = inv[idx];
-        const now = Date.now();
-        if (item.kind === "vip") {
-          const hours = Math.max(1, parseInt(item.meta || "24", 10) || 24);
-          const base = Math.max(s.vipExpiresAt || 0, now);
-          set({ vipExpiresAt: base + hours * 3600_000 });
-        } else if (item.kind === "boost") {
-          const hours = Math.max(1, parseInt(item.meta || "24", 10) || 24);
-          const base = Math.max(s.boostExpiresAt || 0, now);
-          set({ boostExpiresAt: base + hours * 3600_000 });
-        } else if (item.kind === "unlock") {
-          const key = item.meta || item.shopId || item.id;
-          const unlocks = [...(s.unlocks || [])];
-          if (!unlocks.some((u) => u.key === key)) {
-            unlocks.push({ key, permanent: true, expiresAt: null, spent: 0, at: now });
-          }
-          set({ unlocks });
-        } else {
-          return { ok: false, message: "Vật phẩm này không kích hoạt được (dùng Trang bị hoặc Mở hộp)" };
-        }
-        if (item.qty > 1) inv[idx] = { ...item, qty: item.qty - 1 };
-        else inv.splice(idx, 1);
-        set({ inventory: inv });
-        return { ok: true, message: `Đã kích hoạt: ${item.name}` };
-      },
 
       luckySpin: () => {
         const s = get();

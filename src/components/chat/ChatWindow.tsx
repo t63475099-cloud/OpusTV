@@ -55,6 +55,7 @@ export default function ChatWindow({
   const notifyTyping = useChatStore((s) => s.notifyTyping);
   const pollTyping = useChatStore((s) => s.pollTyping);
   const typingPeers = useChatStore((s) => s.typingPeers);
+  const pinMessage = useChatStore((s) => s.pinMessage);
   const getUser = useChatStore((s) => s.getUser);
   const markConversationRead = useChatStore((s) => s.markConversationRead);
   const forwardMessage = useChatStore((s) => s.forwardMessage);
@@ -258,6 +259,29 @@ export default function ChatWindow({
         data-chat-scroll
         className="flex-1 overflow-y-auto opus-chat-scroll custom-scroll overscroll-contain px-3 py-3 min-h-0"
       >
+        {conversation.pinnedMessageId ? (
+          <div className="mb-2 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 sticky top-0 z-10 backdrop-blur-md">
+            <Pin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-amber-200 mb-0.5">Tin đã ghim</p>
+              <p className="text-zinc-300 line-clamp-2">
+                {messages.find((x) => x.id === conversation.pinnedMessageId)?.text || "Tin nhắn media / đính kèm"}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="text-[10px] text-zinc-400 hover:text-white shrink-0"
+              onClick={() => pinMessage(conversation.id, null)}
+            >
+              Bỏ ghim
+            </button>
+          </div>
+        ) : null}
+        {searchQ.trim() && (
+          <p className="text-[11px] text-zinc-500 mb-2 px-1">
+            {filtered.length} kết quả cho &ldquo;{searchQ.trim()}&rdquo;
+          </p>
+        )}
         {filtered.map((m, i) => {
           const prev = filtered[i - 1];
           const showDay =

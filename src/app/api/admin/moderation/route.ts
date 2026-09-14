@@ -100,7 +100,50 @@ export async function POST(req: NextRequest) {
     const db = sql();
     await ensure(db);
 
-    if (action === "close_alert") {
+    
+    
+    if (action === "bulk_ban") {
+      const raw = String(body.uids || body.list || "");
+      const level = Math.min(5, Math.max(1, Math.floor(Number(body.level) || 1)));
+      const reason = String(body.reason || "Khóa hàng loạt").slice(0, 500);
+      const kind = String(body.kind || "other").slice(0, 40);
+      const parts = raw.split(/[\s,;\n]+/).map((x: string) => x.trim()).filter(Boolean);
+      const unique = [...new Set(parts)].slice(0, 100);
+      if (!unique.length) {
+        return NextResponse.json({ ok: false, error: "Danh sách UID trống" }, { status: 400 });
+      }
+      const daysMap: Record<number, number> = { 1: 1, 2: 3, 3: 7, 4: 30, 5: 0 };
+      const days = daysMap[level] ?? 1;
+      const permanent = level >= 5;
+      let banUntil: string | null = null;
+      if (!permanent) {
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        banUntil = d.toISOString();
+      }
+      const results: { uid: string; ok: boolean; error?: string }[] = [];
+      for (const token of unique) {
+        const resolved = await resolveUserByUidOrUsername(token);
+        if (!resolved) {
+          results.push({ uid: token, ok: false, error: "Không tìm thấy" });
+          continue;
+        }
+        try {
+          await db`
+            INSERT INTO user_bans (user_id, username, level, reason, kind, ban_until, permanent, ip_block)
+            VALUES (${resolved.id}, ${resolved.username}, ${level}, ${reason}, ${kind}, ${banUntil}, ${permanent}, ${""})
+          `;
+          results.push({ uid: token, ok: true });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Lỗi";
+          results.push({ uid: token, ok: false, error: msg });
+        }
+      }
+      const okCount = results.filter((r) => r.ok).length;
+      return NextResponse.json({ ok: true, okCount, total: results.length, results });
+    }
+
+if (action === "close_alert") {
       const id = Number(body.id || 0);
       if (!id) return NextResponse.json({ ok: false, error: "Thiếu id" }, { status: 400 });
       await db`UPDATE moderation_alerts SET status = 'closed' WHERE id = ${id}`;

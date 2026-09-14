@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BadgeCheck,
   Loader2,
@@ -14,10 +14,13 @@ import {
   AlertTriangle,
   Ban,
   FileText,
+  Users,
+  Copy,
+  Search,
 } from "lucide-react";
 import { BAN_DURATIONS, VIOLATION_LABELS, type ViolationKind } from "@/lib/moderation";
 
-type Tab = "verify" | "streak" | "coins" | "mod" | "appeals" | "stats";
+type Tab = "verify" | "streak" | "coins" | "mod" | "appeals" | "accounts" | "stats";
 
 type VerifyItem = {
   id: number;
@@ -51,7 +54,22 @@ export default function AdminVerifyPage() {
   const [coinRecent, setCoinRecent] = useState<{ id: number; username: string; amount: number; created_at: string }[]>([]);
   const [alerts, setAlerts] = useState<Record<string, unknown>[]>([]);
   const [bans, setBans] = useState<Record<string, unknown>[]>([]);
-  const [appeals, setAppeals] = useState<Record<string, unknown>[]>([])
+  const [appeals, setAppeals] = useState<Record<string, unknown>[]>([]);
+  const [accountList, setAccountList] = useState<
+    {
+      id: number;
+      username: string;
+      uid: string | null;
+      verified: number;
+      created_at: string;
+      last_login: string | null;
+    }[]
+  >([]);
+  const [accountTotal, setAccountTotal] = useState(0);
+  const [accountQ, setAccountQ] = useState("");
+  const [accountLive, setAccountLive] = useState(true);
+  const [accountUpdatedAt, setAccountUpdatedAt] = useState<string | null>(null);
+
   const [stats, setStats] = useState<Record<string, number> | null>(null);
 
   const [grantUser, setGrantUser] = useState("");
@@ -110,12 +128,59 @@ export default function AdminVerifyPage() {
       }
       const apd = await ap.json().catch(() => ({}));
       if (apd.ok) setAppeals(apd.appeals || []);
+      // danh sách tài khoản
+      try {
+        const ur = await fetch("/api/admin/users", { headers: headers() });
+        const ud = await ur.json();
+        if (ud.ok) {
+          setAccountList((ud.users || []).map((u: Record<string, unknown>) => ({
+            id: Number(u.id),
+            username: String(u.username || ""),
+            uid: u.uid != null ? String(u.uid) : null,
+            verified: Number(u.verified) || 0,
+            created_at: String(u.created_at || ""),
+            last_login: u.last_login ? String(u.last_login) : null,
+          })));
+          setAccountTotal(Number(ud.total) || 0);
+          setAccountUpdatedAt(ud.serverTime || new Date().toISOString());
+        }
+      } catch { /* */ }
     } catch {
       setErr("Lỗi mạng");
     } finally {
       setBusy(false);
     }
   };
+
+
+  const loadAccounts = useCallback(async (q?: string) => {
+    if (!secret.trim()) return;
+    try {
+      const qs = new URLSearchParams();
+      const query = (q ?? accountQ).trim();
+      if (query) qs.set("q", query);
+      const res = await fetch(`/api/admin/users?${qs.toString()}`, {
+        headers: { "x-admin-secret": secret.trim() },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setAccountList(
+          (data.users || []).map((u: Record<string, unknown>) => ({
+            id: Number(u.id),
+            username: String(u.username || ""),
+            uid: u.uid != null ? String(u.uid) : null,
+            verified: Number(u.verified) || 0,
+            created_at: String(u.created_at || ""),
+            last_login: u.last_login ? String(u.last_login) : null,
+          }))
+        );
+        setAccountTotal(Number(data.total) || 0);
+        setAccountUpdatedAt(data.serverTime || new Date().toISOString());
+      }
+    } catch {
+      /* silent poll */
+    }
+  }, [secret, accountQ]);
 
   const post = async (url: string, body: object, okMsg: string) => {
     setBusy(true);
@@ -140,6 +205,15 @@ export default function AdminVerifyPage() {
     }
   };
 
+
+  // Cập nhật realtime danh sách tài khoản khi mở tab
+  useEffect(() => {
+    if (!unlocked || tab !== "accounts" || !accountLive) return;
+    void loadAccounts();
+    const t = setInterval(() => void loadAccounts(), 5000);
+    return () => clearInterval(t);
+  }, [unlocked, tab, accountLive, loadAccounts]);
+
   const tabs: { id: Tab; label: string; icon: typeof Shield; count?: number }[] = [
     { id: "verify", label: "Tích xanh", icon: BadgeCheck, count: items.length },
     { id: "streak", label: "Chuỗi", icon: Flame, count: streakPending.length },
@@ -150,6 +224,12 @@ export default function AdminVerifyPage() {
       label: "Khiếu nại",
       icon: FileText,
       count: appeals.filter((a) => String(a.status) === "pending").length,
+    },
+    {
+      id: "accounts",
+      label: "Tài khoản",
+      icon: Users,
+      count: accountTotal || accountList.length,
     },
   ];
 
@@ -688,7 +768,143 @@ export default function AdminVerifyPage() {
               </div>
             )}
             
-            {tab === "appeals" && (
+            
+            {tab === "accounts" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">
+                      Tất cả tài khoản · {accountTotal || accountList.length}
+                    </h3>
+                    <p className="text-[11px] text-zinc-500">
+                      {accountLive
+                        ? "Đang làm mới mỗi 5 giây khi có tài khoản mới"
+                        : "Tạm dừng cập nhật realtime"}
+                      {accountUpdatedAt
+                        ? ` · ${new Date(accountUpdatedAt).toLocaleTimeString("vi-VN")}`
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAccountLive((v) => !v)}
+                      className={`text-[11px] px-3 py-1.5 rounded-full border transition duration-500 ${
+                        accountLive
+                          ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
+                          : "border-white/15 text-zinc-400"
+                      }`}
+                    >
+                      {accountLive ? "Realtime: Bật" : "Realtime: Tắt"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void loadAccounts()}
+                      className="text-[11px] px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${busy ? "animate-spin" : ""}`} />
+                      Làm mới
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input
+                    value={accountQ}
+                    onChange={(e) => setAccountQ(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void loadAccounts(accountQ);
+                    }}
+                    placeholder="Tìm username hoặc UID…"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-sky-500/50 transition duration-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void loadAccounts(accountQ)}
+                  className="text-xs text-sky-400 hover:underline"
+                >
+                  Áp dụng tìm kiếm
+                </button>
+
+                <div className="rounded-2xl border border-white/10 bg-black/25 overflow-hidden">
+                  <div className="hidden sm:grid grid-cols-[1fr_120px_72px_1fr] gap-2 px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-500 border-b border-white/5">
+                    <span>Username</span>
+                    <span>UID</span>
+                    <span>TT</span>
+                    <span>Tạo / Đăng nhập</span>
+                  </div>
+                  <ul className="max-h-[min(60vh,520px)] overflow-y-auto divide-y divide-white/5">
+                    {accountList.length === 0 ? (
+                      <li className="px-4 py-8 text-center text-sm text-zinc-500">
+                        Chưa có tài khoản hoặc đang tải…
+                      </li>
+                    ) : (
+                      accountList.map((u) => (
+                        <li
+                          key={u.id}
+                          className="px-3 py-3 sm:grid sm:grid-cols-[1fr_120px_72px_1fr] sm:gap-2 sm:items-center hover:bg-white/[0.03] transition duration-300"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm text-white font-medium truncate">
+                              @{u.username}
+                            </p>
+                            <p className="text-[10px] text-zinc-600 sm:hidden">
+                              ID #{u.id}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
+                            <code className="text-xs text-sky-300 font-mono tabular-nums">
+                              {u.uid || "—"}
+                            </code>
+                            {u.uid ? (
+                              <button
+                                type="button"
+                                title="Sao chép UID"
+                                className="p-1 rounded-md hover:bg-white/10 text-zinc-400"
+                                onClick={() => {
+                                  void navigator.clipboard?.writeText(u.uid || "");
+                                  setMsg(`Đã copy UID ${u.uid}`);
+                                }}
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="mt-1 sm:mt-0">
+                            {u.verified ? (
+                              <span className="text-[10px] text-sky-300 border border-sky-500/30 rounded-full px-2 py-0.5">
+                                Verified
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-zinc-600">—</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-zinc-500 mt-1 sm:mt-0 leading-snug">
+                            <div>
+                              Tạo:{" "}
+                              {u.created_at
+                                ? new Date(u.created_at).toLocaleString("vi-VN")
+                                : "—"}
+                            </div>
+                            <div>
+                              Login:{" "}
+                              {u.last_login
+                                ? new Date(u.last_login).toLocaleString("vi-VN")
+                                : "chưa"}
+                            </div>
+                          </div>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+{tab === "appeals" && (
               <div className="space-y-3">
                 <p className="text-xs text-zinc-500">
                   Đơn khiếu nại khóa tài khoản. Duyệt = gỡ khóa; Từ chối = giữ nguyên.

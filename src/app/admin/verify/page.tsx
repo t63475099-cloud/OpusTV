@@ -676,33 +676,31 @@ export default function AdminVerifyPage() {
                 )}
               </div>
             )}
+            {tab === "stats" && (
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  ["users", "Người dùng"],
+                  ["verified", "Tích xanh"],
+                  ["bans", "Đang khóa"],
+                  ["alerts", "Cảnh báo"],
+                  ["coinGrants", "Lần cấp xu"],
+                  ["streakGrants", "Đơn chuỗi"],
+                ].map(([k, label]) => (
+                  <div
+                    key={k}
+                    className="rounded-2xl border border-white/10 bg-black/30 p-4 text-center"
+                  >
+                    <p className="text-2xl font-bold text-white tabular-nums">
+                      {stats?.[k] ?? "—"}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 mt-1">{label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
-
-        {tab === "stats" && (
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[
-              ["users", "Người dùng"],
-              ["verified", "Tích xanh"],
-              ["bans", "Đang khóa"],
-              ["alerts", "Cảnh báo"],
-              ["coinGrants", "Lần cấp xu"],
-              ["streakGrants", "Đơn chuỗi"],
-            ].map(([k, label]) => (
-              <div
-                key={k}
-                className="rounded-2xl border border-white/10 bg-black/30 p-4 text-center"
-              >
-                <p className="text-2xl font-bold text-white tabular-nums">
-                  {stats?.[k] ?? "—"}
-                </p>
-                <p className="text-[11px] text-zinc-500 mt-1">{label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
   );
 }

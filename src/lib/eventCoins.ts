@@ -168,6 +168,22 @@ export const SHOP_ITEMS: ShopItemDef[] = [
   { id: "coin_pack_50", name: "Gói 50 xu", desc: "Nhận ngay 50 xu", cost: 40, kind: "coins", meta: "50", icon: "🪙" },
   { id: "coin_pack_120", name: "Gói 120 xu", desc: "Nhận ngay 120 xu", cost: 90, kind: "coins", meta: "120", icon: "🪙" },
   { id: "coin_pack_300", name: "Gói 300 xu", desc: "Nhận ngay 300 xu", cost: 200, kind: "coins", meta: "300", icon: "💰" },
+  // ── Mùa Opus Season 2 ──
+  { id: "s2_frame_aurora", name: "Khung Aurora S2", desc: "Viền mùa 2 cực quang", cost: 220, kind: "frame", meta: "frame:northern-lights", icon: "🌌" },
+  { id: "s2_frame_meteor", name: "Khung Meteor S2", desc: "Viền mưa sao băng", cost: 240, kind: "frame", meta: "frame:meteor-shower", icon: "☄️" },
+  { id: "s2_frame_phoenix", name: "Khung Phoenix S2", desc: "Viền phượng hoàng", cost: 280, kind: "frame", meta: "frame:phoenix-ash", icon: "🔥" },
+  { id: "s2_badge_pioneer", name: "Huy hiệu Pioneer S2", desc: "Danh hiệu mùa 2", cost: 180, kind: "badge", meta: "badge:pioneer", icon: "🏅" },
+  { id: "s2_badge_season2", name: "Huy hiệu Season 2", desc: "Đặc quyền mùa mới", cost: 200, kind: "badge", meta: "badge:season", icon: "🎌" },
+  { id: "s2_boost_x3", name: "Nhân xu x3 (12h)", desc: "Boost xu mạnh S2", cost: 350, kind: "boost", meta: "boost:x3:12", icon: "⚡" },
+  { id: "s2_boost_x2_48", name: "Nhân xu x2 (48h)", desc: "Boost dài hạn", cost: 400, kind: "boost", meta: "boost:x2:48", icon: "⚡" },
+  { id: "s2_mystery_gold", name: "Hộp vàng S2", desc: "Quà ngẫu nhiên cao cấp", cost: 300, kind: "mystery", meta: "mystery:gold", icon: "🎁" },
+  { id: "s2_mystery_legend", name: "Hộp huyền thoại S2", desc: "Tỷ lệ khung hiếm cao", cost: 500, kind: "mystery", meta: "mystery:legend", icon: "💎" },
+  { id: "s2_card_marathon", name: "Thẻ marathon 5 tập", desc: "Mở 5 tập", cost: 180, kind: "unlock", meta: "episode", icon: "🎬" },
+  { id: "s2_card_binge", name: "Thẻ binge cả bộ", desc: "Trọn bộ ưu đãi S2", cost: 260, kind: "unlock", meta: "movie", icon: "🍿" },
+  { id: "s2_vip_14d", name: "VIP 14 ngày S2", desc: "VIP nửa tháng", cost: 1800, kind: "vip", meta: "vip336", icon: "👑" },
+  { id: "s2_pass_xp_2k", name: "Pass XP 2000 S2", desc: "XP Pass mùa 2", cost: 1100, kind: "pass_xp", meta: "2000", icon: "🎫" },
+  { id: "s2_coin_pack_500", name: "Gói 500 xu S2", desc: "Đổi xu sự kiện", cost: 0, kind: "coins", meta: "500", icon: "🪙" },
+  { id: "s2_coin_pack_1k", name: "Gói 1000 xu S2", desc: "Đổi xu sự kiện", cost: 0, kind: "coins", meta: "1000", icon: "🪙" },
 ];
 
 /**
@@ -200,24 +216,7 @@ export function getVipProgress(vipPoints: number) {
   for (let i = 0; i < VIP_LEVELS.length; i++) {
     if (earned >= VIP_LEVELS[i].need) {
       cur = VIP_LEVELS[i];
-      next = VIP_LEVELS[Math.min(i + 1, VIP_LEVELS.length - 1)
-  // ── Mùa Opus Season 2 ──
-  { id: "s2_frame_aurora", name: "Khung Aurora S2", desc: "Viền mùa 2 cực quang", cost: 220, kind: "frame", meta: "frame:northern-lights", icon: "🌌" },
-  { id: "s2_frame_meteor", name: "Khung Meteor S2", desc: "Viền mưa sao băng", cost: 240, kind: "frame", meta: "frame:meteor-shower", icon: "☄️" },
-  { id: "s2_frame_phoenix", name: "Khung Phoenix S2", desc: "Viền phượng hoàng", cost: 280, kind: "frame", meta: "frame:phoenix-ash", icon: "🔥" },
-  { id: "s2_badge_pioneer", name: "Huy hiệu Pioneer S2", desc: "Danh hiệu mùa 2", cost: 180, kind: "badge", meta: "badge:pioneer", icon: "🏅" },
-  { id: "s2_badge_season2", name: "Huy hiệu Season 2", desc: "Đặc quyền mùa mới", cost: 200, kind: "badge", meta: "badge:season", icon: "🎌" },
-  { id: "s2_boost_x3", name: "Nhân xu x3 (12h)", desc: "Boost xu mạnh S2", cost: 350, kind: "boost", meta: "boost:x3:12", icon: "⚡" },
-  { id: "s2_boost_x2_48", name: "Nhân xu x2 (48h)", desc: "Boost dài hạn", cost: 400, kind: "boost", meta: "boost:x2:48", icon: "⚡" },
-  { id: "s2_mystery_gold", name: "Hộp vàng S2", desc: "Quà ngẫu nhiên cao cấp", cost: 300, kind: "mystery", meta: "mystery:gold", icon: "🎁" },
-  { id: "s2_mystery_legend", name: "Hộp huyền thoại S2", desc: "Tỷ lệ khung hiếm cao", cost: 500, kind: "mystery", meta: "mystery:legend", icon: "💎" },
-  { id: "s2_card_marathon", name: "Thẻ marathon 5 tập", desc: "Mở 5 tập", cost: 180, kind: "unlock", meta: "episode", icon: "🎬" },
-  { id: "s2_card_binge", name: "Thẻ binge cả bộ", desc: "Trọn bộ ưu đãi S2", cost: 260, kind: "unlock", meta: "movie", icon: "🍿" },
-  { id: "s2_vip_14d", name: "VIP 14 ngày S2", desc: "VIP nửa tháng", cost: 1800, kind: "vip", meta: "vip336", icon: "👑" },
-  { id: "s2_pass_xp_2k", name: "Pass XP 2000 S2", desc: "XP Pass mùa 2", cost: 1100, kind: "pass_xp", meta: "2000", icon: "🎫" },
-  { id: "s2_coin_pack_500", name: "Gói 500 xu S2", desc: "Đổi xu sự kiện", cost: 0, kind: "coins", meta: "500", icon: "🪙" },
-  { id: "s2_coin_pack_1k", name: "Gói 1000 xu S2", desc: "Đổi xu sự kiện", cost: 0, kind: "coins", meta: "1000", icon: "🪙" },
-];
+      next = VIP_LEVELS[Math.min(i + 1, VIP_LEVELS.length - 1)];
     }
   }
   const span = Math.max(1, next.need - cur.need);

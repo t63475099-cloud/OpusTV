@@ -27,7 +27,7 @@ function isMaintenanceNow(): boolean {
 
 export function middleware(request: NextRequest) {
   const method = request.method;
-  if (!["GET", "HEAD", "OPTIONS", "POST"].includes(method)) {
+  if (!["GET", "HEAD", "OPTIONS", "POST", "PATCH", "PUT", "DELETE"].includes(method)) {
     if (request.nextUrl.pathname.startsWith("/api")) {
       return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
     }

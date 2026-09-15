@@ -953,9 +953,10 @@ export default function AdminVerifyPage() {
                                 setBusy(true);
                                 try {
                                   const res = await fetch("/api/ban/appeal", {
-                                    method: "PATCH",
+                                    method: "POST",
                                     headers: headers(),
                                     body: JSON.stringify({
+                                      action: "resolve",
                                       id: a.id,
                                       status: "approved",
                                       note: "Admin duyệt khiếu nại",
@@ -986,9 +987,10 @@ export default function AdminVerifyPage() {
                                 setBusy(true);
                                 try {
                                   const res = await fetch("/api/ban/appeal", {
-                                    method: "PATCH",
+                                    method: "POST",
                                     headers: headers(),
                                     body: JSON.stringify({
+                                      action: "resolve",
                                       id: a.id,
                                       status: "rejected",
                                       note: "Từ chối",

@@ -53,7 +53,7 @@ export interface CollabRoom {
 
 export type PeerMessage =
   | { type: "hello"; name: string; color: string; avatar?: string | null }
-  | { type: "code"; content: string; rev: number }
+  | { type: "code"; content: string; rev: number; fromId?: string }
   | { type: "cursor"; cursor: CursorPosition }
   | { type: "ping"; t: number }
   | { type: "pong"; t: number }

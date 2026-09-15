@@ -72,9 +72,42 @@ export default function OpusCodeLayout() {
     const st = useCodeStore.getState();
     const id = st.activeId;
     if (!id) return;
+    const file = st.getFile(id);
+    if (file?.content === content) return;
+
+    type Ed = {
+      getValue?: () => string;
+      setValue?: (v: string) => void;
+      getPosition?: () => { lineNumber: number; column: number } | null;
+      setPosition?: (p: { lineNumber: number; column: number }) => void;
+      getSelection?: () => unknown;
+      setSelection?: (s: unknown) => void;
+      revealPositionInCenterIfOutsideViewport?: (p: { lineNumber: number; column: number }) => void;
+    };
+    const ed = (window as unknown as { __opusCodeEditor?: Ed }).__opusCodeEditor;
+    if (ed?.getValue?.() === content) return;
+
+    // Giữ con trỏ / selection — không nhảy về đầu dòng
+    const pos = ed?.getPosition?.() || null;
+    const sel = ed?.getSelection?.() || null;
+
     st.updateContent(id, content);
-    const ed = (window as unknown as { __opusCodeEditor?: { setValue?: (v: string) => void } }).__opusCodeEditor;
-    ed?.setValue?.(content);
+    if (ed?.setValue) {
+      ed.setValue(content);
+      if (pos) {
+        try {
+          const modelLines = content.split("\n").length;
+          const line = Math.min(pos.lineNumber, Math.max(1, modelLines));
+          const lineText = content.split("\n")[line - 1] || "";
+          const column = Math.min(pos.column, Math.max(1, lineText.length + 1));
+          ed.setPosition?.({ lineNumber: line, column });
+          if (sel) ed.setSelection?.(sel);
+          ed.revealPositionInCenterIfOutsideViewport?.({ lineNumber: line, column });
+        } catch {
+          /* */
+        }
+      }
+    }
   }, []);
 
   const pair = usePairProgramming(onRemoteCode);

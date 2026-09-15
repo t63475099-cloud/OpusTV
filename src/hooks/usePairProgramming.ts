@@ -100,6 +100,8 @@ export function usePairProgramming(
   const bcRef = useRef<BroadcastChannel | null>(null);
   const revRef = useRef(0);
   const applyingRemote = useRef(false);
+  const lastSentRef = useRef<string>("");
+  const myIdRef = useRef<string>("");
   const nameRef = useRef("Guest");
   const colorRef = useRef(COLORS[0]);
   const onRemoteCodeRef = useRef(onRemoteCode);
@@ -148,8 +150,11 @@ export function usePairProgramming(
           break;
         }
         case "code": {
-          if (msg.rev <= revRef.current) break;
-          revRef.current = msg.rev;
+          // Bỏ qua echo của chính mình (BroadcastChannel gửi cho cả tab hiện tại)
+          if (msg.fromId && myIdRef.current && msg.fromId === myIdRef.current) break;
+          if (msg.content === lastSentRef.current) break;
+          if (msg.rev <= revRef.current && msg.fromId !== "force") break;
+          if (msg.rev > revRef.current) revRef.current = msg.rev;
           applyingRemote.current = true;
           setRemoteCode(msg.content);
           onRemoteCodeRef.current?.(msg.content);
@@ -278,6 +283,7 @@ export function usePairProgramming(
       colorRef.current = genColor(name + rid);
       setStatus("hosting");
       setRoomId(rid);
+      myIdRef.current = rid;
       setupBroadcast(rid);
 
       try {
@@ -293,6 +299,7 @@ export function usePairProgramming(
           setTimeout(() => resolve(), 2500);
         });
         setMyPeerId(peer.id || rid);
+        myIdRef.current = peer.id || rid;
         peer.on("connection", (conn: unknown) => {
           wireConn(conn as DataConn);
         });
@@ -300,6 +307,7 @@ export function usePairProgramming(
       } catch (e) {
         // vẫn dùng BroadcastChannel
         setMyPeerId(rid);
+        myIdRef.current = rid;
         setStatus("connected");
         setError(
           e instanceof Error
@@ -325,6 +333,7 @@ export function usePairProgramming(
       colorRef.current = genColor(name + clean);
       setStatus("joining");
       setRoomId(clean);
+      myIdRef.current = myIdRef.current || `guest-${Date.now().toString(36)}`;
       setupBroadcast(clean);
 
       // chào qua BroadcastChannel ngay
@@ -344,11 +353,14 @@ export function usePairProgramming(
           setTimeout(() => resolve(), 2500);
         });
         setMyPeerId(peer.id);
+        myIdRef.current = peer.id;
         const conn = peer.connect(clean);
         wireConn(conn);
         setStatus("connected");
       } catch (e) {
-        setMyPeerId(`guest-${Date.now().toString(36)}`);
+        const gid = `guest-${Date.now().toString(36)}`;
+        setMyPeerId(gid);
+        myIdRef.current = gid;
         setStatus("connected");
         setConnected(true);
         setError(
@@ -365,8 +377,15 @@ export function usePairProgramming(
     (content: string) => {
       if (applyingRemote.current) return;
       if (readOnly) return;
+      if (content === lastSentRef.current) return;
+      lastSentRef.current = content;
       revRef.current += 1;
-      sendAll({ type: "code", content, rev: revRef.current });
+      sendAll({
+        type: "code",
+        content,
+        rev: revRef.current,
+        fromId: myIdRef.current || "local",
+      });
     },
     [readOnly, sendAll]
   );

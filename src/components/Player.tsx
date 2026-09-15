@@ -1,4 +1,5 @@
 "use client";
+import PlayerShortcutsHint from "@/components/PlayerShortcutsHint";
 import { useXpStore } from "@/lib/xpStore";
 import { useEventStore } from "@/lib/eventCoins";
 import { useStreakStore } from "@/lib/streak";
@@ -1313,6 +1314,7 @@ const showControls = useCallback(() => {
               >
                 PiP
               </button>
+              <PlayerShortcutsHint />
               <button
                 type="button"
                 onClick={toggleMute}

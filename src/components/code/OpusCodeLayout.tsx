@@ -1,5 +1,11 @@
 "use client";
 
+import CodeTemplatesSelect from "@/components/code/CodeTemplatesSelect";
+
+import { CODE_TEMPLATES } from "@/lib/codeTemplates";
+
+import { useCodePrefsStore } from "@/lib/codePrefs";
+
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -26,6 +32,28 @@ import CodeEditor from "./CodeEditor";
 import TerminalPanel from "./TerminalPanel";
 import MobileSuggest from "./MobileSuggest";
 import FloatingLivePreview from "./FloatingLivePreview";
+
+function CodePrefBar() {
+  const fontSize = useCodePrefsStore((s) => s.fontSize);
+  const setFontSize = useCodePrefsStore((s) => s.setFontSize);
+  const wordWrap = useCodePrefsStore((s) => s.wordWrap);
+  const setWordWrap = useCodePrefsStore((s) => s.setWordWrap);
+  return (
+    <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+      <span>Cỡ chữ</span>
+      <button type="button" className="px-1.5 py-0.5 rounded bg-white/10" onClick={() => setFontSize(fontSize - 1)}>−</button>
+      <span className="tabular-nums w-5 text-center text-zinc-300">{fontSize}</span>
+      <button type="button" className="px-1.5 py-0.5 rounded bg-white/10" onClick={() => setFontSize(fontSize + 1)}>+</button>
+      <button
+        type="button"
+        className={`ml-2 px-2 py-0.5 rounded border text-[10px] ${wordWrap ? "border-emerald-500/40 text-emerald-300" : "border-white/10"}`}
+        onClick={() => setWordWrap(!wordWrap)}
+      >
+        Wrap
+      </button>
+    </div>
+  );
+}
 
 export default function OpusCodeLayout() {
   const [mounted, setMounted] = useState(false);
@@ -276,6 +304,7 @@ export default function OpusCodeLayout() {
         </Link>
         <Code2 className="hidden h-5 w-5 text-sky-400 sm:block" />
         <span className="text-sm font-semibold text-white tracking-tight">Opus Code</span>
+        <div className="hidden sm:block ml-2"><CodePrefBar /></div>
         <span className="hidden text-xs text-zinc-400 sm:inline truncate max-w-[40vw]">
           {active ? getPath(active.id) : "workspace"}
         </span>
@@ -324,7 +353,8 @@ export default function OpusCodeLayout() {
             </button>
           ) : (
             <>
-              <button
+              <CodeTemplatesSelect />
+          <button
                 type="button"
                 onClick={() => void onRunMode("terminal")}
                 title="Chạy trong Terminal (có thể nhập liệu)"

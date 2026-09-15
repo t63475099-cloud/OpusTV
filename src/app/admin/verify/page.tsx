@@ -55,6 +55,7 @@ export default function AdminVerifyPage() {
   const [alerts, setAlerts] = useState<Record<string, unknown>[]>([]);
   const [bans, setBans] = useState<Record<string, unknown>[]>([]);
   const [appeals, setAppeals] = useState<Record<string, unknown>[]>([]);
+  const [streamReports, setStreamReports] = useState<Record<string, unknown>[]>([]);
   const [accountList, setAccountList] = useState<
     {
       id: number;
@@ -106,6 +107,7 @@ export default function AdminVerifyPage() {
         fetch("/api/admin/moderation", { headers: headers() }),
         fetch("/api/admin/stats", { headers: headers() }),
         fetch("/api/ban/appeal", { headers: headers() }),
+        fetch("/api/report-stream", { headers: headers() }),
       ]);
       const vd = await v.json();
       if (!v.ok || !vd.ok) {
@@ -131,6 +133,11 @@ export default function AdminVerifyPage() {
       }
       const apd = await ap.json().catch(() => ({}));
       if (apd.ok) setAppeals(apd.appeals || []);
+      try {
+        const rr = await fetch("/api/report-stream", { headers: headers() });
+        const rd = await rr.json();
+        if (rd.ok) setStreamReports(rd.reports || []);
+      } catch { /* */ }
       // danh sách tài khoản
       try {
         const ur = await fetch("/api/admin/users", { headers: headers() });
@@ -155,6 +162,24 @@ export default function AdminVerifyPage() {
     }
   };
 
+
+
+  const exportAccountsCsv = () => {
+    const header = "id,username,uid,verified,created_at,last_login\n";
+    const rows = accountList
+      .map(
+        (u) =>
+          `${u.id},"${u.username}",${u.uid || ""},${u.verified},"${u.created_at}","${u.last_login || ""}"`
+      )
+      .join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `opusfilm-users-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const loadAccounts = useCallback(async (q?: string) => {
     if (!secret.trim()) return;
@@ -758,6 +783,20 @@ export default function AdminVerifyPage() {
                   </div>
                 </div>
 
+                <div className="rounded-2xl border border-white/10 bg-black/25 p-3 space-y-2">
+                  <p className="text-xs text-zinc-400">Báo lỗi phát ({streamReports.length})</p>
+                  {streamReports.length === 0 ? (
+                    <p className="text-[11px] text-zinc-600">Chưa có</p>
+                  ) : (
+                    <ul className="max-h-40 overflow-y-auto space-y-1 text-[11px] text-zinc-400">
+                      {streamReports.slice(0, 30).map((r) => (
+                        <li key={String(r.id)}>
+                          {String(r.slug)} · {String(r.episode || "")} · @{String(r.username || "?")}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <p className="text-sm text-zinc-400">
                   Cảnh báo tự động từ web ({alerts.length})
                 </p>
@@ -860,6 +899,14 @@ export default function AdminVerifyPage() {
                     >
                       <RefreshCw className={`w-3 h-3 ${busy ? "animate-spin" : ""}`} />
                       Làm mới
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exportAccountsCsv}
+                      disabled={!accountList.length}
+                      className="text-[11px] px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 disabled:opacity-40"
+                    >
+                      Xuất CSV
                     </button>
                   </div>
                 </div>

@@ -13,21 +13,22 @@ export interface MiniTrack {
 
 interface MiniState {
   track: MiniTrack | null;
+  queue: MiniTrack[];
   playing: boolean;
   expanded: boolean;
   setTrack: (t: MiniTrack | null, autoPlay?: boolean) => void;
   setPlaying: (v: boolean) => void;
   setExpanded: (v: boolean) => void;
   setProgress: (sec: number) => void;
+  addToQueue: (t: MiniTrack) => void;
+  playNext: () => void;
+  clearQueue: () => void;
   stop: () => void;
 }
 
-/**
- * Không persist track — reload trang thì playbox nhạc biến mất.
- * Mốc thời gian vẫn lưu qua resumeStore khi user mở lại bài.
- */
 export const useMusicPlayerStore = create<MiniState>()((set, get) => ({
   track: null,
+  queue: [],
   playing: false,
   expanded: false,
   setTrack: (t, autoPlay = true) => {
@@ -63,8 +64,25 @@ export const useMusicPlayerStore = create<MiniState>()((set, get) => ({
       currentTime: next.currentTime,
     });
   },
+  addToQueue: (t) => {
+    if (!t?.id) return;
+    set((s) => ({
+      queue: [...s.queue.filter((x) => x.id !== t.id), t].slice(0, 50),
+    }));
+  },
+  playNext: () => {
+    const q = get().queue;
+    if (!q.length) {
+      get().stop();
+      return;
+    }
+    const [next, ...rest] = q;
+    set({ queue: rest });
+    get().setTrack(next, true);
+  },
+  clearQueue: () => set({ queue: [] }),
   stop: () => {
-    set({ track: null, playing: false, expanded: false });
+    set({ track: null, playing: false, expanded: false, queue: [] });
     useActiveMediaStore.getState().clearMusic();
   },
 }));

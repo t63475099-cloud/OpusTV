@@ -1,5 +1,7 @@
 "use client";
 
+import { useWatchLaterStore } from "@/lib/watchLater";
+
 import AmbientGlow from "@/components/AmbientGlow";
 import FloatingReactions from "@/components/FloatingReactions";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -14,6 +16,7 @@ import { useHistoryStore } from "@/lib/history";
 import VideoSocial from "@/components/VideoSocial";
 import RelatedInfinite from "@/components/RelatedInfinite";
 import { useEventStore } from "@/lib/eventCoins";
+import { useOfflineQueue } from "@/lib/offlineQueue";
 import {
   Copy,
   ExternalLink,
@@ -74,6 +77,10 @@ export default function WatchPageClient({
   const [epIdx, setEpIdx] = useState(0);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [reportMsg, setReportMsg] = useState("");
+  const laterHas = useWatchLaterStore((s) => s.has(movie.slug));
+  const laterAdd = useWatchLaterStore((s) => s.add);
+  const laterRemove = useWatchLaterStore((s) => s.remove);
   const [theater, setTheater] = useState(false);
   const [resumed, setResumed] = useState(false);
 
@@ -168,6 +175,29 @@ export default function WatchPageClient({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       prompt("Sao chép link:", m3u8);
+    }
+  };
+
+
+  const reportStream = async () => {
+    try {
+      const res = await fetch("/api/report-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          slug: movie.slug || movie._id,
+          episode: currentEpisode?.name || currentEpisode?.slug || "",
+          note: "Nguồn không phát được",
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setReportMsg("Đã gửi báo lỗi");
+        try { useEventStore.getState().addMissionProgress("report"); } catch {}
+      } else setReportMsg(data.error || "Không gửi được");
+    } catch {
+      setReportMsg("Lỗi mạng");
     }
   };
 
@@ -391,6 +421,45 @@ export default function WatchPageClient({
                   >
                     <Share2 className="w-4 h-4" />
                     {shared ? "Đã copy" : "Chia sẻ"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void reportStream()}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-zinc-300 transition"
+                  >
+                    {reportMsg || "Báo lỗi tập"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (laterHas) laterRemove(movie.slug);
+                      else
+                        laterAdd({
+                          slug: movie.slug,
+                          name: movie.name,
+                          poster: movie.poster_url || movie.thumb_url,
+                        });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm bg-zinc-800 border border-zinc-700 text-zinc-300"
+                  >
+                    {laterHas ? "Đã lưu xem sau" : "Xem sau"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      useOfflineQueue.getState().add({
+                        slug: movie.slug,
+                        name: movie.name,
+                        poster: movie.poster_url || movie.thumb_url,
+                        episodeName: currentEpisode?.name,
+                        episodeSlug: currentEpisode?.slug,
+                        quality: movie.quality || "HD",
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm bg-zinc-800 border border-zinc-700 text-zinc-300 hover:border-emerald-500/50"
+                  >
+                    <Download className="w-4 h-4" />
+                    Tải offline
                   </button>
                   <button
                     type="button"

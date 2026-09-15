@@ -18,7 +18,7 @@ import {
   Copy,
   Search,
 } from "lucide-react";
-import { BAN_DURATIONS, VIOLATION_LABELS, type ViolationKind } from "@/lib/moderation";
+import { BAN_DURATIONS, BAN_REASON_TEMPLATES, VIOLATION_LABELS, type ViolationKind } from "@/lib/moderation";
 
 type Tab = "verify" | "streak" | "coins" | "mod" | "appeals" | "accounts" | "stats";
 
@@ -79,6 +79,9 @@ export default function AdminVerifyPage() {
   const [banUser, setBanUser] = useState("");
   const [banLevel, setBanLevel] = useState("1");
   const [banReason, setBanReason] = useState("");
+  const [banTemplateId, setBanTemplateId] = useState("custom_empty");
+  const [banKind, setBanKind] = useState("other");
+  const [banReasonRows, setBanReasonRows] = useState(4);
   const [bulkUids, setBulkUids] = useState("");
   const [bulkLevel, setBulkLevel] = useState("1");
   const [bulkReason, setBulkReason] = useState("Khóa hàng loạt");
@@ -641,16 +644,68 @@ export default function AdminVerifyPage() {
                       ))}
                     </select>
                   </div>
-                  <input
-                    value={banReason}
-                    onChange={(e) => setBanReason(e.target.value)}
-                    placeholder="Lý do khóa"
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
-                  />
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] text-zinc-400">Mẫu thông báo</label>
+                    <select
+                      value={banTemplateId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setBanTemplateId(id);
+                        const tpl = BAN_REASON_TEMPLATES.find((x) => x.id === id);
+                        if (tpl) {
+                          setBanKind(tpl.kind);
+                          if (tpl.text) setBanReason(tpl.text);
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm"
+                    >
+                      {BAN_REASON_TEMPLATES.map((tpl) => (
+                        <option key={tpl.id} value={tpl.id}>
+                          {tpl.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-[11px] text-zinc-400">Lý do khóa</label>
+                      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+                        <span>Giãn dòng</span>
+                        <button
+                          type="button"
+                          className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/15"
+                          onClick={() => setBanReasonRows((n) => Math.max(2, n - 1))}
+                        >
+                          −
+                        </button>
+                        <span className="tabular-nums w-4 text-center">{banReasonRows}</span>
+                        <button
+                          type="button"
+                          className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/15"
+                          onClick={() => setBanReasonRows((n) => Math.min(12, n + 1))}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      value={banReason}
+                      onChange={(e) => {
+                        setBanReason(e.target.value);
+                        if (banTemplateId !== "custom_empty") setBanTemplateId("custom_empty");
+                      }}
+                      rows={banReasonRows}
+                      placeholder="Chọn mẫu bên trên hoặc tự viết lý do gửi cho người dùng…"
+                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm leading-relaxed resize-y min-h-[4.5rem] outline-none focus:border-rose-400/40"
+                    />
+                  </div>
+
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !banUser.trim()}
                       onClick={() =>
                         void post(
                           "/api/admin/moderation",
@@ -658,37 +713,37 @@ export default function AdminVerifyPage() {
                             action: "ban",
                             uid: banUser.trim(),
                             level: Number(banLevel),
-                            reason: banReason,
-                            kind: "other",
+                            reason: banReason.trim(),
+                            kind: banKind,
                           },
                           `Đã khóa ${banUser}`
                         )
                       }
-                      className="px-4 py-2 rounded-xl bg-rose-600 text-sm font-semibold"
+                      className="px-4 py-2 rounded-xl bg-rose-600 text-sm font-semibold disabled:opacity-40"
                     >
                       Khóa
                     </button>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !banUser.trim()}
                       onClick={() =>
                         void post(
                           "/api/admin/moderation",
                           {
                             action: "warn",
                             uid: banUser.trim(),
-                            reason: banReason || "Cảnh báo chuẩn mực",
+                            reason: banReason.trim() || "Cảnh báo theo nội quy",
                           },
                           `Đã cảnh báo ${banUser}`
                         )
                       }
-                      className="px-4 py-2 rounded-xl bg-amber-600/80 text-sm font-semibold"
+                      className="px-4 py-2 rounded-xl bg-amber-600/80 text-sm font-semibold disabled:opacity-40"
                     >
                       Cảnh báo
                     </button>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={busy || !banUser.trim()}
                       onClick={() =>
                         void post(
                           "/api/admin/moderation",
@@ -696,7 +751,7 @@ export default function AdminVerifyPage() {
                           `Đã mở khóa ${banUser}`
                         )
                       }
-                      className="px-4 py-2 rounded-xl bg-white/10 text-sm"
+                      className="px-4 py-2 rounded-xl bg-white/10 text-sm disabled:opacity-40"
                     >
                       Mở khóa
                     </button>

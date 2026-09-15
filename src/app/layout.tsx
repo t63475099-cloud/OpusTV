@@ -29,8 +29,8 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description:
-    "OpusFilm — xem phim online theo sở thích: bộ, lẻ, Hàn, hành động, tình cảm, kinh dị và nhiều thể loại khác.",
-  keywords: ["opusfilm", "xem phim online", "phim bộ", "phim lẻ", "phim hàn", "phim hành động"],
+    "OpusFilm — xem phim online.",
+  keywords: ["opusfilm", "xem phim"],
   robots: {
     index: true,
     follow: true,
@@ -72,8 +72,7 @@ export default function RootLayout({
           <FloatingMiniPlayer />
           <footer className="border-t border-white/10 py-8 px-4 text-center text-zinc-500 text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))] bg-black/20 backdrop-blur-md">
             <p className="font-semibold text-zinc-300">{APP_NAME}</p>
-            <p className="mt-1">{APP_TAGLINE}</p>
-            <p className="mt-2 text-xs">OpusFilm</p>
+            <p className="mt-1 text-xs text-zinc-500">{APP_TAGLINE}</p>
           </footer>
         </GsapScrollProvider>
       </body>

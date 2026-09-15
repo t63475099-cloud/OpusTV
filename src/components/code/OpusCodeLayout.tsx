@@ -281,6 +281,32 @@ export default function OpusCodeLayout() {
     ]
   );
 
+  // Vào phòng từ ?room= (hooks phải trước early return)
+  useEffect(() => {
+    if (!mounted) return;
+    const room = searchParams?.get("room");
+    if (room && pair.status === "idle") {
+      void pair.joinRoom(room, "Guest");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, searchParams]);
+
+  // Đồng bộ code khi nội dung file đổi
+  const activeContent = activeId ? getFile(activeId)?.content : "";
+  useEffect(() => {
+    if (!mounted) return;
+    if (!pair.roomId || pair.readOnly) return;
+    if (activeContent == null) return;
+    if (pairDebounce.current) clearTimeout(pairDebounce.current);
+    pairDebounce.current = setTimeout(() => {
+      pair.broadcastCode(activeContent || "");
+    }, 280);
+    return () => {
+      if (pairDebounce.current) clearTimeout(pairDebounce.current);
+    };
+    // không phụ thuộc cả object pair (tránh loop)
+  }, [mounted, activeContent, pair.roomId, pair.readOnly, pair.broadcastCode]);
+
   if (!mounted) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-[#0d0d14]/95 backdrop-blur-xl text-zinc-500 text-sm">
@@ -291,30 +317,6 @@ export default function OpusCodeLayout() {
 
   const active = activeId ? getFile(activeId) : null;
   const meta = active?.langId ? getLangMeta(active.langId) : null;
-
-
-  // Vào phòng từ ?room=
-  useEffect(() => {
-    const room = searchParams?.get("room");
-    if (room && pair.status === "idle") {
-      void pair.joinRoom(room, "Guest");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  // Đồng bộ code khi nội dung file đổi
-  const activeContent = activeId ? getFile(activeId)?.content : "";
-  useEffect(() => {
-    if (!pair.roomId || pair.readOnly) return;
-    if (activeContent == null) return;
-    if (pairDebounce.current) clearTimeout(pairDebounce.current);
-    pairDebounce.current = setTimeout(() => {
-      pair.broadcastCode(activeContent || "");
-    }, 280);
-    return () => {
-      if (pairDebounce.current) clearTimeout(pairDebounce.current);
-    };
-  }, [activeContent, pair.roomId, pair.readOnly, pair]);
 
   return (
     <div

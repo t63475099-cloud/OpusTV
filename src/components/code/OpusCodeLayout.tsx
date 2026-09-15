@@ -7,7 +7,8 @@ import { CODE_TEMPLATES } from "@/lib/codeTemplates";
 import { useCodePrefsStore } from "@/lib/codePrefs";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ClipboardPaste,
@@ -21,7 +22,12 @@ import {
   Trash2,
   Lightbulb,
   AppWindow,
+  Sparkles,
+  Users,
 } from "lucide-react";
+import PairStatusBar from "@/components/code/PairStatusBar";
+import SnippetHubModal from "@/components/code/SnippetHubModal";
+import { usePairProgramming } from "@/hooks/usePairProgramming";
 import { useCodeStore } from "@/lib/codeStore";
 import { getLangMeta } from "@/lib/codeLanguages";
 import { runCode, type RunMode } from "@/lib/codeRunner";
@@ -58,6 +64,20 @@ function CodePrefBar() {
 export default function OpusCodeLayout() {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [snippetOpen, setSnippetOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const pairDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onRemoteCode = useCallback((content: string) => {
+    const st = useCodeStore.getState();
+    const id = st.activeId;
+    if (!id) return;
+    st.updateContent(id, content);
+    const ed = (window as unknown as { __opusCodeEditor?: { setValue?: (v: string) => void } }).__opusCodeEditor;
+    ed?.setValue?.(content);
+  }, []);
+
+  const pair = usePairProgramming(onRemoteCode);
 
   const sidebarOpen = useCodeStore((s) => s.sidebarOpen);
   const setSidebarOpen = useCodeStore((s) => s.setSidebarOpen);
@@ -272,6 +292,30 @@ export default function OpusCodeLayout() {
   const active = activeId ? getFile(activeId) : null;
   const meta = active?.langId ? getLangMeta(active.langId) : null;
 
+
+  // Vào phòng từ ?room=
+  useEffect(() => {
+    const room = searchParams?.get("room");
+    if (room && pair.status === "idle") {
+      void pair.joinRoom(room, "Guest");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Đồng bộ code khi nội dung file đổi
+  const activeContent = activeId ? getFile(activeId)?.content : "";
+  useEffect(() => {
+    if (!pair.roomId || pair.readOnly) return;
+    if (activeContent == null) return;
+    if (pairDebounce.current) clearTimeout(pairDebounce.current);
+    pairDebounce.current = setTimeout(() => {
+      pair.broadcastCode(activeContent || "");
+    }, 280);
+    return () => {
+      if (pairDebounce.current) clearTimeout(pairDebounce.current);
+    };
+  }, [activeContent, pair.roomId, pair.readOnly, pair]);
+
   return (
     <div
       className="opus-code-shell fixed inset-0 z-[80] flex flex-col overflow-hidden bg-[#0d0d14]/95 backdrop-blur-xl text-[#cccccc]"
@@ -309,6 +353,15 @@ export default function OpusCodeLayout() {
           {active ? getPath(active.id) : "workspace"}
         </span>
         <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSnippetOpen(true)}
+            className="hidden sm:flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 border border-white/10"
+            title="Snippet Hub"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            <span className="text-[11px]">Snippet</span>
+          </button>
           <button
             type="button"
             className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"
@@ -382,6 +435,18 @@ export default function OpusCodeLayout() {
           )}
         </div>
       </header>
+
+      <div className="relative z-[85] border-b border-[#2b2b2b] bg-[#2d2d2d]/90 px-2 py-1.5 flex flex-wrap items-center gap-2">
+        <PairStatusBar pair={pair} displayName="Bạn" className="flex-1 min-w-0" />
+        <button
+          type="button"
+          onClick={() => setSnippetOpen(true)}
+          className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border border-white/10 text-zinc-300"
+        >
+          <Sparkles className="w-3 h-3 text-amber-300" />
+          Snippet
+        </button>
+      </div>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Desktop activity bar */}
@@ -466,6 +531,7 @@ export default function OpusCodeLayout() {
             <MobileSuggest />
           </div>
           <TerminalPanel />
+      <SnippetHubModal open={snippetOpen} onClose={() => setSnippetOpen(false)} />
       <FloatingLivePreview />
         </div>
       </div>

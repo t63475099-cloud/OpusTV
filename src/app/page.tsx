@@ -126,27 +126,6 @@ export default function LandingPage() {
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-1 text-sm text-zinc-400">
-            {[
-              { href: "#film", label: "Film" },
-              { href: "#chat", label: "Chat" },
-              { href: "#code", label: "Code" },
-              { href: "#music", label: "Music" },
-              { href: "#pass", label: "Pass" },
-            ].map((i) => (
-              <a
-                key={i.href}
-                href={i.href}
-                className={cn(
-                  "px-3 py-1.5 rounded-full hover:text-white hover:bg-white/5 transition-all",
-                  ease
-                )}
-              >
-                {i.label}
-              </a>
-            ))}
-          </nav>
-
           <div className="flex items-center gap-2">
             <Link
               href="/tai-khoan?next=/home"
@@ -178,15 +157,6 @@ export default function LandingPage() {
         <section className="relative pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6">
           <div className="mx-auto max-w-6xl">
             <div className="text-center max-w-3xl mx-auto">
-              <div
-                className={cn(
-                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium",
-                  "border border-white/12 bg-white/[0.04] text-zinc-300 mb-6"
-                )}
-              >
-                Xem phim · Chat · Code · Nhạc · Pass
-              </div>
-
               <KineticHeadline line1="Một nền tảng." line2="Năm vũ trụ trải nghiệm." />
 
               <p className="mt-5 sm:mt-6 text-sm sm:text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">

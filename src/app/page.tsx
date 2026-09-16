@@ -109,7 +109,7 @@ export default function LandingPage() {
       {/* ===== NAV ===== */}
       <header
         className={cn(
-          "fixed top-0 inset-x-0 z-[60] transition-all",
+          "fixed top-0 inset-x-0 z-[60] transition-all pt-[env(safe-area-inset-top,0px)]",
           ease,
           scrolled
             ? "bg-[#070709]/75 backdrop-blur-2xl border-b border-white/10 shadow-lg shadow-black/40"
@@ -154,7 +154,7 @@ export default function LandingPage() {
 
       <main>
         {/* ===== HERO ===== */}
-        <section className="relative pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6">
+        <section className="relative pt-[calc(5.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-16 sm:pb-24 px-4 sm:px-6">
           <div className="mx-auto max-w-6xl">
             <div className="text-center max-w-3xl mx-auto">
               <KineticHeadline line1="Một nền tảng." line2="Năm vũ trụ trải nghiệm." />

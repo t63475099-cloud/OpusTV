@@ -72,7 +72,7 @@ export default function KineticHeadline({
   return (
     <h1
       className={cn(
-        "relative z-10 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.12] min-h-[2.4em]",
+        "relative z-10 mt-2 sm:mt-3 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.15] min-h-[2.6em] sm:min-h-[2.8em]",
         className
       )}
       aria-label={`${line1} ${line2}`}

@@ -13,7 +13,6 @@ import {
 import { FEATURED_PICKS } from "@/lib/constants";
 import { CURATED_MOVIES } from "@/lib/curatedMovies";
 import type { MovieListItem } from "@/lib/types";
-import RandomMovieButton from "@/components/RandomMovieButton";
 
 export const revalidate = 1800;
 
@@ -145,7 +144,6 @@ export default async function HomePage() {
   return (
     <div className="fpt-home min-h-screen pb-16 app-content-offset">
       <div className="relative w-full">
-        <div className="px-3 md:px-6 pt-2"><RandomMovieButton /></div>
       <BannerSlider movies={bannerMovies} />
         <nav className="fpt-home-cats flex gap-2 overflow-x-auto scrollbar-hide px-3 sm:px-4 md:px-6 lg:px-8 py-3 -mt-1">
           {[

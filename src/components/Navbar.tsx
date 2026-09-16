@@ -79,7 +79,7 @@ export default function Navbar() {
   }, []);
 
   const drawerCore = [
-    { href: "/", name: t(lang, "home"), icon: Home },
+    { href: "/home", name: t(lang, "home"), icon: Home },
     { href: "/su-kien", name: t(lang, "streakEvents"), icon: Gift },
     { href: "/tin-nhan", name: t(lang, "chat"), icon: MessageCircle },
     { href: "/nhac", name: t(lang, "music"), icon: Music2 },
@@ -228,7 +228,7 @@ export default function Navbar() {
           aria-label="Menu chính"
         >
           {drawerCore.map((item) => {
-            if (item.href === "/") {
+            if (item.href === "/home") {
               return (
                 <div key="home-block" className="rounded-xl overflow-hidden">
                   <div className="flex items-stretch gap-0.5">
@@ -238,7 +238,7 @@ export default function Navbar() {
                       className={cn(
                         "flex flex-1 items-center gap-3 px-3 py-2.5 rounded-xl text-sm min-w-0",
                         "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
-                        pathname === "/"
+                        pathname === "/home" || pathname === "/"
                           ? "bg-white/10 text-white font-medium"
                           : "text-zinc-200 hover:bg-white/8"
                       )}

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-/** Ẩn Navbar + Sidebar trên các trang cài đặt / tài khoản / admin / khóa */
+/** Ẩn Navbar + Sidebar trên landing, cài đặt, tài khoản, admin, khóa… */
 const HIDE_PREFIXES = [
   "/cai-dat",
   "/tai-khoan",
@@ -20,9 +20,9 @@ export default function ChromeGuard() {
   const path = usePathname() || "";
 
   useEffect(() => {
-    const hide = HIDE_PREFIXES.some(
-      (p) => path === p || path.startsWith(p + "/")
-    );
+    const hide =
+      path === "/" ||
+      HIDE_PREFIXES.some((p) => path === p || path.startsWith(p + "/"));
     const root = document.documentElement;
     if (hide) {
       root.classList.add("opus-chrome-hide");

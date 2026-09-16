@@ -18,6 +18,7 @@ import {
   Ghost,
   Sparkles,
   Flame,
+  Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +38,8 @@ type NavItem = {
 };
 
 const ITEMS: NavItem[] = [
-  { href: "/", label: "Trang chủ", icon: Home, expandable: true },
+  { href: "/home", label: "Trang chủ", icon: Home, expandable: true },
+  { href: "/xem-sau", label: "Xem sau", icon: Bookmark },
   { href: "/yeu-thich", label: "Yêu thích", icon: Heart },
   { href: "/lich-su", label: "Đã xem", icon: History },
   { href: "/nhac", label: "Opus Music", icon: Music2 },

@@ -38,7 +38,7 @@ export const FEATURED_XIANXIA = FEATURED_PICKS;
 
 /** Menu chính gọn — thể loại nằm trong dropdown Trang chủ */
 export const NAV_CATEGORIES = [
-  { name: "Trang chủ", href: "/" },
+  { name: "Trang chủ", href: "/home" },
   { name: "Yêu thích", href: "/yeu-thich" },
   { name: "Lịch sử", href: "/lich-su" },
   { name: "Opus Music", href: "/nhac" },

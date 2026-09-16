@@ -7,25 +7,22 @@ import {
   MessageSquare,
   Code2,
   Music2,
-  Sparkles,
-  Flame,
   ArrowRight,
   Compass,
   Users,
   Terminal,
-  Zap,
   Clapperboard,
   ShieldCheck,
-  Radio,
-  GitFork,
   Headphones,
   Crown,
-  ChevronRight,
   Film,
+  Tv,
+  Flame,
+  GitFork,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import LandingCanvas from "@/components/landing/LandingCanvas";
-import TiltGlassCard from "@/components/landing/opus3d/TiltGlassCard";
+import KineticHeadline from "@/components/landing/KineticHeadline";
+import ParallaxBanner from "@/components/landing/ParallaxBanner";
 import type { OpusCategory } from "@/components/landing/opus3d/types";
 import { cn } from "@/lib/utils";
 
@@ -111,17 +108,17 @@ export default function LandingPage() {
       {/* ===== NAV ===== */}
       <header
         className={cn(
-          "fixed top-0 inset-x-0 z-50 transition-all",
+          "fixed top-0 inset-x-0 z-[60] transition-all",
           ease,
           scrolled
             ? "bg-[#070709]/75 backdrop-blur-2xl border-b border-white/10 shadow-lg shadow-black/40"
             : "bg-transparent"
         )}
       >
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 overflow-visible">
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-violet-600 flex items-center justify-center shadow-lg shadow-rose-900/40">
-              <Sparkles className="w-4 h-4 text-white" />
+              <Tv className="w-4.5 h-4.5 text-white" />
             </span>
             <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-rose-100 to-violet-200 bg-clip-text text-transparent">
               Opus
@@ -151,18 +148,18 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/tai-khoan"
+              href="/tai-khoan?next=/home"
               className={cn(
-                "hidden sm:inline-flex px-3.5 py-2 rounded-full text-sm border border-white/10 bg-white/[0.04] backdrop-blur hover:bg-white/10 transition-all",
+                "hidden sm:inline-flex px-3.5 py-2 rounded-full text-sm border border-white/10 bg-white/[0.04] backdrop-blur hover:bg-white/10 transition-all shrink-0",
                 ease
               )}
             >
               Đăng nhập
             </Link>
             <Link
-              href="/tai-khoan"
+              href="/tai-khoan?next=/home"
               className={cn(
-                "inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-full text-sm font-semibold text-white",
+                "inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-full text-sm font-semibold text-white shrink-0",
                 "bg-gradient-to-r from-rose-600 to-fuchsia-600 hover:from-rose-500 hover:to-fuchsia-500",
                 "shadow-lg shadow-rose-900/30 border border-white/10 transition-all",
                 ease
@@ -183,21 +180,13 @@ export default function LandingPage() {
               <div
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-medium",
-                  "border border-rose-500/30 bg-rose-500/10 text-rose-200 mb-6",
-                  "shadow-[0_0_24px_rgba(244,63,94,0.15)]"
+                  "border border-white/12 bg-white/[0.04] text-zinc-300 mb-6"
                 )}
               >
-                <Zap className="w-3.5 h-3.5 text-amber-300" />
-                Hệ sinh thái Giải trí & Công nghệ All-in-One thế hệ mới
+                Xem phim · Chat · Code · Nhạc · Pass
               </div>
 
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.08]">
-                <span className="text-white">Một nền tảng.</span>
-                <br />
-                <span className="bg-gradient-to-r from-rose-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-                  Năm vũ trụ trải nghiệm.
-                </span>
-              </h1>
+              <KineticHeadline line1="Một nền tảng." line2="Năm vũ trụ trải nghiệm." />
 
               <p className="mt-5 sm:mt-6 text-sm sm:text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
                 Opus kết nối xem phim, trò chuyện, lập trình và âm nhạc trong cùng
@@ -206,7 +195,7 @@ export default function LandingPage() {
 
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
-                  href="/tai-khoan"
+                  href="/tai-khoan?next=/home"
                   className={cn(
                     "w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white",
                     "bg-gradient-to-r from-rose-600 via-fuchsia-600 to-violet-600",
@@ -231,9 +220,10 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Mock dashboard */}
+            {/* Mock dashboard — parallax */}
+            <ParallaxBanner className="mt-12 sm:mt-16 mx-auto max-w-4xl" strength={28}>
             <Glass
-              className="mt-12 sm:mt-16 mx-auto max-w-4xl p-3 sm:p-5"
+              className="p-3 sm:p-5"
               hover={false}
             >
               <div className="rounded-2xl border border-white/8 bg-[#0d0e12]/90 overflow-hidden">
@@ -247,7 +237,7 @@ export default function LandingPage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 sm:p-4">
                   {[
-                    { icon: Clapperboard, label: "Film", color: "from-rose-600/40 to-amber-600/20", t: "text-rose-300" },
+                    { icon: Film, label: "Film", color: "from-rose-600/40 to-amber-600/20", t: "text-rose-300" },
                     { icon: MessageSquare, label: "Chat", color: "from-indigo-600/40 to-violet-600/20", t: "text-indigo-300" },
                     { icon: Code2, label: "Code", color: "from-cyan-600/40 to-emerald-600/20", t: "text-cyan-300" },
                     { icon: Music2, label: "Music", color: "from-pink-600/40 to-blue-600/20", t: "text-pink-300" },
@@ -267,6 +257,7 @@ export default function LandingPage() {
                 </div>
               </div>
             </Glass>
+            </ParallaxBanner>
           </div>
         </section>
 
@@ -278,7 +269,7 @@ export default function LandingPage() {
                 Năm trụ cột. Một hệ sinh thái.
               </h2>
               <p className="text-sm text-zinc-500 mt-2 max-w-lg">
-                Mỗi mảnh ghép độc lập nhưng kết nối với nhau — xem, chat, code, nghe nhạc và thăng hạng VIP.
+                Xem phim, nhắn tin, viết code, nghe nhạc và sự kiện trong cùng một tài khoản.
               </p>
             </div>
 
@@ -292,12 +283,11 @@ export default function LandingPage() {
                     </span>
                     <div>
                       <h3 className="text-lg font-semibold text-white">Opus Film</h3>
-                      <p className="text-xs text-rose-300/90 mt-0.5">Điện ảnh & phòng chiếu không giới hạn</p>
+                      <p className="text-xs text-rose-300/90 mt-0.5">Xem phim online</p>
                     </div>
                   </div>
                   <p className="mt-4 text-sm text-zinc-400 leading-relaxed">
-                    Streaming độ nét cao, đa phụ đề và thuyết minh, tua thông minh bỏ qua mở đầu.
-                    Watch Party xem chung thời gian thực, Danmaku mưa bình luận, và Picture-in-Picture xuyên trang.
+                    Phim bộ, phim lẻ, nhiều thể loại. Có phụ đề, chọn tập và server khi nguồn lỗi.
                   </p>
                   <div className="mt-5 rounded-2xl border border-white/8 bg-black/40 aspect-[16/8] relative overflow-hidden flex items-center justify-center">
                     <div className="absolute inset-0 bg-gradient-to-tr from-rose-900/40 via-transparent to-amber-900/20" />
@@ -323,7 +313,7 @@ export default function LandingPage() {
                     <MessageSquare className="w-5 h-5 text-white" />
                   </span>
                   <h3 className="mt-4 text-lg font-semibold text-white">Opus Chat</h3>
-                  <p className="text-xs text-indigo-300 mt-0.5">Trò chuyện thế hệ mới</p>
+                  <p className="text-xs text-indigo-300 mt-0.5">Nhắn tin & gọi</p>
                   <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
                     Nhắn tin 1-1 và nhóm, gọi thoại, gửi ảnh/file. Rich Presence biết bạn bè đang xem phim hay nghe nhạc — kèm nút tham gia.
                   </p>
@@ -501,11 +491,11 @@ export default function LandingPage() {
                   Sẵn sàng bước vào Opus?
                 </h2>
                 <p className="mt-3 text-sm text-zinc-400 max-w-md mx-auto">
-                  Tạo tài khoản miễn phí, đồng bộ trên mọi thiết bị và mở khóa toàn bộ Film · Chat · Code · Music · Pass.
+                  Đăng nhập một lần, dùng chung trên điện thoại và máy tính.
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link
-                    href="/tai-khoan"
+                    href="/tai-khoan?next=/home"
                     className={cn(
                       "w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl text-sm font-semibold text-white",
                       "bg-white text-zinc-900 hover:bg-zinc-100 transition-all shadow-xl",
@@ -536,7 +526,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row gap-8 sm:gap-6 justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-rose-400" />
+              <Crown className="w-4 h-4 text-amber-400" />
               <span className="font-semibold text-white">Opus Platform</span>
             </div>
             <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
@@ -553,7 +543,7 @@ export default function LandingPage() {
             </div>
             <div className="space-y-2">
               <p className="text-zinc-300 font-medium">Tài khoản</p>
-              <Link href="/tai-khoan" className="block hover:text-white transition-colors">Đăng nhập</Link>
+              <Link href="/tai-khoan?next=/home" className="block hover:text-white transition-colors">Đăng nhập</Link>
               <Link href="/su-kien" className="block hover:text-white transition-colors">Sự kiện</Link>
               <Link href="/dieu-khoan" className="block hover:text-white transition-colors">Điều khoản</Link>
             </div>

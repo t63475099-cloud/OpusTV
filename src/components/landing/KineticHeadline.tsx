@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * Typewriter một dòng — gõ liên tục, không xuống dòng, lặp vô hạn.
  */
 export default function KineticHeadline({
-  text = "Một hệ sinh thái duy nhất.",
+  text = "Hệ sinh thái duy nhất. Trải nghiệm liền mạch.",
   className,
   /** @deprecated dùng text */
   line1,

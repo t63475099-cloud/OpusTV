@@ -23,8 +23,16 @@ import {
   ChevronRight,
   Film,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import LandingCanvas from "@/components/landing/LandingCanvas";
+import TiltGlassCard from "@/components/landing/opus3d/TiltGlassCard";
+import type { OpusCategory } from "@/components/landing/opus3d/types";
 import { cn } from "@/lib/utils";
+
+const OpusHeroScene = dynamic(
+  () => import("@/components/landing/opus3d/OpusHeroScene"),
+  { ssr: false }
+);
 
 const ease = "duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]";
 
@@ -85,6 +93,7 @@ function Metric({
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const [category, setCategory] = useState<OpusCategory>("idle");
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -95,7 +104,9 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#070709] text-zinc-100 relative overflow-x-hidden">
-      <LandingCanvas />
+      <OpusHeroScene category={category} className="fixed inset-0 -z-10 opacity-90" />
+      {/* Soft blur overlay so text stays readable */}
+      <div className="pointer-events-none fixed inset-0 -z-[9] bg-[#070709]/45 backdrop-blur-[2px]" />
 
       {/* ===== NAV ===== */}
       <header
@@ -274,7 +285,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 auto-rows-fr">
               {/* Film - large */}
               <Glass className="md:col-span-2 lg:col-span-4 p-5 sm:p-6">
-                <div id="film" className="scroll-mt-24">
+                <div id="film" onMouseEnter={() => setCategory("film")} onFocus={() => setCategory("film")} className="scroll-mt-24">
                   <div className="flex items-start gap-3">
                     <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-500 to-amber-500 flex items-center justify-center shrink-0">
                       <Film className="w-5 h-5 text-white" />
@@ -307,7 +318,7 @@ export default function LandingPage() {
 
               {/* Chat */}
               <Glass className="md:col-span-1 lg:col-span-2 p-5 sm:p-6">
-                <div id="chat" className="scroll-mt-24">
+                <div id="chat" onMouseEnter={() => setCategory("chat")} onFocus={() => setCategory("chat")} className="scroll-mt-24">
                   <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
                     <MessageSquare className="w-5 h-5 text-white" />
                   </span>
@@ -339,7 +350,7 @@ export default function LandingPage() {
 
               {/* Code */}
               <Glass className="md:col-span-2 lg:col-span-3 p-5 sm:p-6">
-                <div id="code" className="scroll-mt-24">
+                <div id="code" onMouseEnter={() => setCategory("code")} onFocus={() => setCategory("code")} className="scroll-mt-24">
                   <div className="flex items-center gap-3">
                     <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-emerald-600 flex items-center justify-center">
                       <Terminal className="w-5 h-5 text-white" />
@@ -374,7 +385,7 @@ export default function LandingPage() {
 
               {/* Music */}
               <Glass className="md:col-span-1 lg:col-span-2 p-5 sm:p-6">
-                <div id="music" className="scroll-mt-24">
+                <div id="music" onMouseEnter={() => setCategory("music")} onFocus={() => setCategory("music")} className="scroll-mt-24">
                   <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-pink-500 to-blue-600 flex items-center justify-center">
                     <Headphones className="w-5 h-5 text-white" />
                   </span>
@@ -405,7 +416,7 @@ export default function LandingPage() {
 
               {/* Pass */}
               <Glass className="md:col-span-1 lg:col-span-1 p-5 sm:p-6 bg-gradient-to-b from-amber-500/10 to-transparent">
-                <div id="pass" className="scroll-mt-24">
+                <div id="pass" onMouseEnter={() => setCategory("idle")} onFocus={() => setCategory("idle")} className="scroll-mt-24">
                   <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center">
                     <Crown className="w-5 h-5 text-white" />
                   </span>

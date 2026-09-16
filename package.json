@@ -1,6 +1,6 @@
 {
   "name": "opusfilm",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -28,7 +28,10 @@
     "@monaco-editor/react": "^4.7.0",
     "monaco-editor": "^0.52.2",
     "gsap": "^3.12.5",
-    "lenis": "^1.1.18"
+    "lenis": "^1.1.18",
+    "three": "^0.172.0",
+    "@react-three/fiber": "^9.0.4",
+    "@react-three/drei": "^10.0.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

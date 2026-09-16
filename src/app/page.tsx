@@ -157,7 +157,7 @@ export default function LandingPage() {
         <section className="relative pt-[calc(5.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(7rem+env(safe-area-inset-top,0px))] pb-16 sm:pb-24 px-4 sm:px-6">
           <div className="mx-auto max-w-6xl">
             <div className="text-center max-w-3xl mx-auto">
-              <KineticHeadline line1="Một nền tảng." line2="Năm vũ trụ trải nghiệm." />
+              <KineticHeadline text="Một hệ sinh thái duy nhất." />
 
               <p className="mt-5 sm:mt-6 text-sm sm:text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
                 Opus kết nối xem phim, trò chuyện, lập trình và âm nhạc trong cùng

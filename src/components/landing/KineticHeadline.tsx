@@ -4,20 +4,22 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Typewriter (write) animation — gõ từng ký tự, lặp vô hạn.
- * Giống hiệu ứng “AI đang viết”, không chạy marquee ngang.
+ * Typewriter một dòng — gõ liên tục, không xuống dòng, lặp vô hạn.
  */
 export default function KineticHeadline({
+  text = "Một hệ sinh thái duy nhất.",
+  className,
+  /** @deprecated dùng text */
   line1,
   line2,
-  className,
 }: {
-  line1: string;
-  line2: string;
+  text?: string;
   className?: string;
+  line1?: string;
+  line2?: string;
 }) {
-  const full = `${line1}\n${line2}`;
-  const [text, setText] = useState("");
+  const full = (text || [line1, line2].filter(Boolean).join(" ")).replace(/\n/g, " ").trim();
+  const [shown, setShown] = useState("");
   const [phase, setPhase] = useState<"write" | "hold" | "erase">("write");
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export default function KineticHeadline({
 
     const tickWrite = () => {
       i += 1;
-      setText(full.slice(0, i));
+      setShown(full.slice(0, i));
       if (i >= full.length) {
         setPhase("hold");
         schedule(() => {
@@ -42,58 +44,52 @@ export default function KineticHeadline({
         }, 2200);
         return;
       }
-      schedule(tickWrite, 48 + (full[i - 1] === " " ? 40 : 0));
+      const ch = full[i - 1];
+      schedule(tickWrite, ch === " " || ch === "." ? 70 : 46);
     };
 
     const tickErase = () => {
       i -= 1;
       if (i <= 0) {
         i = 0;
-        setText("");
+        setShown("");
         setPhase("write");
-        schedule(tickWrite, 500);
+        schedule(tickWrite, 480);
         return;
       }
-      setText(full.slice(0, i));
-      schedule(tickErase, 22);
+      setShown(full.slice(0, i));
+      schedule(tickErase, 20);
     };
 
-    schedule(tickWrite, 400);
+    setShown("");
+    setPhase("write");
+    schedule(tickWrite, 350);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
   }, [full]);
 
-  const [shown1, shown2 = ""] = text.split("\n");
-  const onLine2 = text.includes("\n");
   const showCursor = phase !== "hold";
 
   return (
     <h1
       className={cn(
-        "relative z-10 mt-2 sm:mt-3 text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.15] min-h-[2.6em] sm:min-h-[2.8em]",
+        "relative z-10 mt-2 sm:mt-3 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.2]",
+        "min-h-[1.4em] max-w-full px-1",
         className
       )}
-      aria-label={`${line1} ${line2}`}
+      aria-label={full}
     >
-      <span className="text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.55)]">
-        {shown1}
-        {!onLine2 && showCursor && (
-          <span className="inline-block w-[0.08em] h-[0.9em] ml-0.5 align-[-0.08em] bg-rose-400 animate-pulse" />
+      <span className="bg-gradient-to-r from-white via-fuchsia-200 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)]">
+        {shown}
+        {showCursor && (
+          <span
+            className="inline-block w-[0.07em] h-[0.85em] ml-0.5 align-[-0.06em] bg-rose-400 animate-pulse"
+            aria-hidden
+          />
         )}
       </span>
-      {onLine2 && (
-        <>
-          <br />
-          <span className="bg-gradient-to-r from-rose-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-            {shown2}
-            {showCursor && (
-              <span className="inline-block w-[0.08em] h-[0.9em] ml-0.5 align-[-0.08em] bg-fuchsia-400 animate-pulse" />
-            )}
-          </span>
-        </>
-      )}
     </h1>
   );
 }

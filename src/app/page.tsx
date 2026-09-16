@@ -19,6 +19,7 @@ import {
   Tv,
   Flame,
   GitFork,
+  ChevronRight,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import KineticHeadline from "@/components/landing/KineticHeadline";

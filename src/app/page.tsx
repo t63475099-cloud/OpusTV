@@ -4,6 +4,7 @@ import Link from "next/link";
 import BackgroundMesh from "@/components/ecosystem/BackgroundMesh";
 import EcosystemGrid from "@/components/ecosystem/EcosystemGrid";
 import PortalNav from "@/components/ecosystem/PortalNav";
+import KineticHeadline from "@/components/landing/KineticHeadline";
 import { markEnterSection } from "@/lib/routeManager";
 
 export default function EcosystemHubPage() {
@@ -14,31 +15,31 @@ export default function EcosystemHubPage() {
 
       <main className="relative z-0">
         <section
-          className="mx-auto max-w-3xl text-center"
+          className="mx-auto max-w-4xl text-center"
           style={{
-            paddingTop: "calc(6.25rem + env(safe-area-inset-top, 0px))",
+            paddingTop: "calc(6.5rem + env(safe-area-inset-top, 0px))",
             paddingBottom: "clamp(2rem, 5vw, 3rem)",
             paddingLeft: "clamp(1.5rem, 5vw, 2.5rem)",
             paddingRight: "clamp(1.5rem, 5vw, 2.5rem)",
           }}
         >
-          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-zinc-500 mb-5">
+          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-zinc-500 mb-5">
             OPUSTV · UNIFIED ENTERTAINMENT ECOSYSTEM
           </p>
 
-          {/* Wrapper for 3D breath — transform on wrapper, gradient on text */}
-          <div className="opus-hero-breath mx-auto max-w-full px-1">
-            <h1 className="opus-hero-rainbow text-[1.4rem] sm:text-4xl md:text-[2.6rem] font-bold tracking-tight leading-[1.28]">
-              Một Hệ Sinh Thái — Không Giới Hạn Không Gian Giải Trí
-            </h1>
+          <div className="opus-hero-breath mx-auto inline-block max-w-full">
+            <KineticHeadline
+              text="Một Hệ Sinh Thái — Không Giới Hạn Không Gian Giải Trí"
+              className="!text-xl sm:!text-3xl md:!text-4xl lg:!text-5xl"
+            />
           </div>
 
-          <p className="mt-6 text-sm sm:text-[15px] text-zinc-400 leading-relaxed px-1">
-            Cổng kết nối tập trung: điện ảnh, âm nhạc, lập trình trên trình duyệt và trò chuyện
-            với cùng một tài khoản. Mở đúng phần cần dùng — quay lại cổng khi muốn đổi hướng.
+          <p className="mt-6 text-sm sm:text-base text-zinc-400 leading-relaxed max-w-2xl mx-auto">
+            Cổng kết nối tập trung đưa toàn bộ nhu cầu số về một tọa độ duy nhất.
+            Điện ảnh, nhạc, code và chat — một tài khoản, nhiều trải nghiệm.
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 px-1">
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/home"
               onClick={() => markEnterSection("film")}
@@ -56,7 +57,7 @@ export default function EcosystemHubPage() {
         </section>
 
         <section
-          className="mx-auto max-w-3xl mb-10 sm:mb-14"
+          className="mx-auto max-w-3xl mb-10 sm:mb-12"
           style={{
             paddingLeft: "clamp(1.5rem, 5vw, 2.5rem)",
             paddingRight: "clamp(1.5rem, 5vw, 2.5rem)",
@@ -66,9 +67,8 @@ export default function EcosystemHubPage() {
             Vì sao gom năm mảng vào một chỗ
           </h2>
           <p className="text-sm text-zinc-400 leading-relaxed">
-            Thay vì mở nhiều app và nhiều tài khoản, OpusTV giữ một phiên đăng nhập và chia rõ
-            Film, Music, Code, Chat, Pass. Nút quay lại trong từng mảng đưa về trang chủ của
-            mảng đó — không kéo về cổng giới thiệu giữa chừng.
+            Thay vì mở nhiều app rời, OpusTV gom Film, Music, Code, Chat và Pass trong một tài khoản.
+            Back trong từng mảng về trang chủ mảng — không về cổng trừ khi bạn chọn.
           </p>
         </section>
 
@@ -105,44 +105,39 @@ export default function EcosystemHubPage() {
           display: inline-block;
           max-width: 100%;
           transform-origin: center center;
-          animation: opus-title-breath 3.8s ease-in-out infinite;
+          animation: opus-title-breath 3.6s ease-in-out infinite;
           will-change: transform, filter;
         }
         .opus-hero-rainbow {
           background: linear-gradient(
             110deg,
             #c084fc 0%,
-            #f472b6 16%,
-            #fb923c 32%,
-            #facc15 48%,
-            #22d3ee 68%,
-            #34d399 84%,
+            #f472b6 18%,
+            #fb923c 36%,
+            #facc15 52%,
+            #22d3ee 70%,
+            #34d399 88%,
             #c084fc 100%
           );
-          background-size: 240% 100%;
+          background-size: 240% auto;
           -webkit-background-clip: text;
           background-clip: text;
           color: transparent;
           animation: opus-rainbow-shift 7s linear infinite;
-          filter: drop-shadow(0 0 14px rgba(192, 132, 252, 0.4));
+          filter: drop-shadow(0 0 14px rgba(192, 132, 252, 0.35));
         }
         @keyframes opus-rainbow-shift {
-          0% {
-            background-position: 0% 50%;
-          }
-          100% {
-            background-position: 240% 50%;
-          }
+          0% { background-position: 0% center; }
+          100% { background-position: 240% center; }
         }
         @keyframes opus-title-breath {
-          0%,
-          100% {
-            transform: scale(0.94) translateZ(0);
-            filter: brightness(0.88);
+          0%, 100% {
+            transform: scale(0.94);
+            filter: brightness(0.9);
           }
           50% {
-            transform: scale(1.06) translateZ(0);
-            filter: brightness(1.12);
+            transform: scale(1.06);
+            filter: brightness(1.15);
           }
         }
         @media (prefers-reduced-motion: reduce) {

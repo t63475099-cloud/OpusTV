@@ -3,98 +3,109 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Organic mesh / aurora backdrop — HyperOS-inspired, CSS + canvas noise, 60fps budget.
+ * Organic aurora mesh — HyperOS-inspired radial blobs + pointer reactive rim.
  */
 export default function BackgroundMesh() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pointer = useRef({ x: 0.5, y: 0.4 });
 
   useEffect(() => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const ctx = c.getContext("2d", { alpha: true });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
     let raf = 0;
+    let w = 0;
+    let h = 0;
     let t = 0;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const resize = () => {
-      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
-      c.width = Math.floor(window.innerWidth * dpr);
-      c.height = Math.floor(window.innerHeight * dpr);
-      c.style.width = "100%";
-      c.style.height = "100%";
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    resize();
-    window.addEventListener("resize", resize, { passive: true });
+
+    const onMove = (e: PointerEvent) => {
+      pointer.current.x = e.clientX / Math.max(1, w);
+      pointer.current.y = e.clientY / Math.max(1, h);
+    };
 
     const blobs = [
-      { x: 0.2, y: 0.25, r: 0.35, color: [0, 200, 255], phase: 0 },
-      { x: 0.75, y: 0.3, r: 0.32, color: [168, 85, 247], phase: 1.2 },
-      { x: 0.5, y: 0.75, r: 0.4, color: [236, 72, 153], phase: 2.4 },
-      { x: 0.15, y: 0.7, r: 0.28, color: [56, 189, 248], phase: 3.1 },
+      { c: [0, 240, 255], r: 0.38, ox: 0.2, oy: 0.25, sp: 0.31 },
+      { c: [121, 40, 202], r: 0.42, ox: 0.75, oy: 0.35, sp: 0.22 },
+      { c: [255, 0, 85], r: 0.32, ox: 0.45, oy: 0.7, sp: 0.27 },
+      { c: [7, 7, 9], r: 0.5, ox: 0.55, oy: 0.15, sp: 0.18 },
     ];
 
     const draw = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      t += 0.0045;
       ctx.clearRect(0, 0, w, h);
-      ctx.globalCompositeOperation = "lighter";
-      t += reduce ? 0.004 : 0.008;
-      for (const b of blobs) {
-        const ox = Math.sin(t * 0.7 + b.phase) * 0.08;
-        const oy = Math.cos(t * 0.55 + b.phase * 1.3) * 0.07;
-        const x = (b.x + ox) * w;
-        const y = (b.y + oy) * h;
-        const radius = b.r * Math.min(w, h) * (1 + Math.sin(t + b.phase) * 0.08);
-        const g = ctx.createRadialGradient(x, y, 0, x, y, radius);
-        const [r, gch, bl] = b.color;
-        g.addColorStop(0, `rgba(${r},${gch},${bl},0.28)`);
-        g.addColorStop(0.45, `rgba(${r},${gch},${bl},0.08)`);
-        g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = "#070709";
+      ctx.fillRect(0, 0, w, h);
+
+      const px = pointer.current.x;
+      const py = pointer.current.y;
+
+      for (let i = 0; i < blobs.length; i++) {
+        const b = blobs[i];
+        const nx = b.ox + Math.sin(t * b.sp + i * 1.7) * 0.12 + (px - 0.5) * 0.06;
+        const ny = b.oy + Math.cos(t * b.sp * 0.9 + i) * 0.1 + (py - 0.5) * 0.05;
+        const radius = Math.max(w, h) * b.r;
+        const g = ctx.createRadialGradient(
+          nx * w,
+          ny * h,
+          0,
+          nx * w,
+          ny * h,
+          radius
+        );
+        const [r, gch, bl] = b.c;
+        g.addColorStop(0, `rgba(${r},${gch},${bl},0.55)`);
+        g.addColorStop(0.45, `rgba(${r},${gch},${bl},0.18)`);
+        g.addColorStop(1, "rgba(7,7,9,0)");
+        ctx.globalCompositeOperation = i === 3 ? "source-over" : "lighter";
         ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.arc(nx * w, ny * h, radius, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalCompositeOperation = "source-over";
       raf = requestAnimationFrame(draw);
     };
-    raf = requestAnimationFrame(draw);
+
+    resize();
+    draw();
+    window.addEventListener("resize", resize);
+    window.addEventListener("pointermove", onMove, { passive: true });
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("pointermove", onMove);
     };
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(165deg, #07070c 0%, #0a0e18 40%, #0b1220 100%)",
-        }}
+    <>
+      <canvas
+        ref={canvasRef}
+        className="pointer-events-none fixed inset-0 -z-10"
+        aria-hidden
       />
-      <canvas ref={canvasRef} className="absolute inset-0 opacity-90" />
       <div
-        className="absolute inset-0 opacity-[0.35]"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-80"
         style={{
           backdropFilter: "blur(80px) saturate(180%)",
           WebkitBackdropFilter: "blur(80px) saturate(180%)",
         }}
+        aria-hidden
       />
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(ellipse at center, black 30%, transparent 80%)",
-        }}
-      />
-    </div>
+    </>
   );
 }

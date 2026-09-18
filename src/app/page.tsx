@@ -16,26 +16,29 @@ export default function EcosystemHubPage() {
         <section
           className="mx-auto max-w-3xl text-center"
           style={{
-            paddingTop: "calc(5.75rem + env(safe-area-inset-top, 0px))",
-            paddingBottom: "clamp(1.75rem, 4vw, 2.5rem)",
-            paddingLeft: "clamp(1.25rem, 4vw, 2rem)",
-            paddingRight: "clamp(1.25rem, 4vw, 2rem)",
+            paddingTop: "calc(6.25rem + env(safe-area-inset-top, 0px))",
+            paddingBottom: "clamp(2rem, 5vw, 3rem)",
+            paddingLeft: "clamp(1.5rem, 5vw, 2.5rem)",
+            paddingRight: "clamp(1.5rem, 5vw, 2.5rem)",
           }}
         >
           <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-zinc-500 mb-5">
             OPUSTV · UNIFIED ENTERTAINMENT ECOSYSTEM
           </p>
 
-          <h1 className="opus-hero-title text-[1.45rem] sm:text-4xl md:text-[2.65rem] font-bold tracking-tight leading-[1.25]">
-            Một Hệ Sinh Thái — Không Giới Hạn Không Gian Giải Trí
-          </h1>
+          {/* Wrapper for 3D breath — transform on wrapper, gradient on text */}
+          <div className="opus-hero-breath mx-auto max-w-full px-1">
+            <h1 className="opus-hero-rainbow text-[1.4rem] sm:text-4xl md:text-[2.6rem] font-bold tracking-tight leading-[1.28]">
+              Một Hệ Sinh Thái — Không Giới Hạn Không Gian Giải Trí
+            </h1>
+          </div>
 
-          <p className="mt-5 sm:mt-6 text-sm sm:text-[15px] text-zinc-400 leading-relaxed">
+          <p className="mt-6 text-sm sm:text-[15px] text-zinc-400 leading-relaxed px-1">
             Cổng kết nối tập trung: điện ảnh, âm nhạc, lập trình trên trình duyệt và trò chuyện
             với cùng một tài khoản. Mở đúng phần cần dùng — quay lại cổng khi muốn đổi hướng.
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 px-1">
             <Link
               href="/home"
               onClick={() => markEnterSection("film")}
@@ -53,10 +56,10 @@ export default function EcosystemHubPage() {
         </section>
 
         <section
-          className="mx-auto max-w-3xl mb-10 sm:mb-12"
+          className="mx-auto max-w-3xl mb-10 sm:mb-14"
           style={{
-            paddingLeft: "clamp(1.25rem, 4vw, 2rem)",
-            paddingRight: "clamp(1.25rem, 4vw, 2rem)",
+            paddingLeft: "clamp(1.5rem, 5vw, 2.5rem)",
+            paddingRight: "clamp(1.5rem, 5vw, 2.5rem)",
           }}
         >
           <h2 className="text-lg sm:text-xl font-semibold text-white tracking-tight mb-3">
@@ -73,8 +76,8 @@ export default function EcosystemHubPage() {
           <div
             className="mx-auto max-w-6xl mb-6 sm:mb-8"
             style={{
-              paddingLeft: "clamp(1.25rem, 4vw, 2rem)",
-              paddingRight: "clamp(1.25rem, 4vw, 2rem)",
+              paddingLeft: "clamp(1.5rem, 5vw, 2.5rem)",
+              paddingRight: "clamp(1.5rem, 5vw, 2.5rem)",
             }}
           >
             <h2 className="text-lg sm:text-xl font-semibold text-white tracking-tight">
@@ -88,8 +91,9 @@ export default function EcosystemHubPage() {
       <footer
         className="relative z-0 border-t border-white/[0.07] py-8 text-center text-xs text-zinc-500"
         style={{
-          paddingLeft: "clamp(1.25rem, 4vw, 2rem)",
-          paddingRight: "clamp(1.25rem, 4vw, 2rem)",
+          paddingLeft: "clamp(1.5rem, 5vw, 2.5rem)",
+          paddingRight: "clamp(1.5rem, 5vw, 2.5rem)",
+          paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
         }}
       >
         <p className="text-zinc-400 font-medium">OpusTV</p>
@@ -97,43 +101,54 @@ export default function EcosystemHubPage() {
       </footer>
 
       <style jsx global>{`
-        .opus-hero-title {
+        .opus-hero-breath {
+          display: inline-block;
+          max-width: 100%;
+          transform-origin: center center;
+          animation: opus-title-breath 3.8s ease-in-out infinite;
+          will-change: transform, filter;
+        }
+        .opus-hero-rainbow {
           background: linear-gradient(
             110deg,
             #c084fc 0%,
-            #f472b6 18%,
-            #fb923c 36%,
-            #facc15 52%,
-            #22d3ee 72%,
-            #34d399 88%,
+            #f472b6 16%,
+            #fb923c 32%,
+            #facc15 48%,
+            #22d3ee 68%,
+            #34d399 84%,
             #c084fc 100%
           );
-          background-size: 220% 100%;
+          background-size: 240% 100%;
           -webkit-background-clip: text;
           background-clip: text;
           color: transparent;
-          animation: opus-rainbow-shift 8s linear infinite,
-            opus-title-breath 4.5s ease-in-out infinite;
-          filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.35));
-          will-change: transform, filter, background-position;
+          animation: opus-rainbow-shift 7s linear infinite;
+          filter: drop-shadow(0 0 14px rgba(192, 132, 252, 0.4));
         }
         @keyframes opus-rainbow-shift {
           0% {
             background-position: 0% 50%;
           }
           100% {
-            background-position: 220% 50%;
+            background-position: 240% 50%;
           }
         }
         @keyframes opus-title-breath {
           0%,
           100% {
-            transform: scale(0.97);
-            filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.25));
+            transform: scale(0.94) translateZ(0);
+            filter: brightness(0.88);
           }
           50% {
-            transform: scale(1.03);
-            filter: drop-shadow(0 0 18px rgba(244, 114, 182, 0.45));
+            transform: scale(1.06) translateZ(0);
+            filter: brightness(1.12);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .opus-hero-breath,
+          .opus-hero-rainbow {
+            animation: none !important;
           }
         }
       `}</style>

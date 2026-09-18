@@ -3,7 +3,12 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
-import { resolveSmartBack, isSectionRoot, getActiveSection, SECTION_HOME } from "@/lib/routeManager";
+import {
+  resolveSmartBack,
+  isSectionRoot,
+  getActiveSection,
+  SECTION_HOME,
+} from "@/lib/routeManager";
 import { cn } from "@/lib/utils";
 
 export default function SmartBack({ className }: { className?: string }) {
@@ -41,7 +46,8 @@ export default function SmartBack({ className }: { className?: string }) {
       onClick={onBack}
       aria-label="Quay lại"
       className={cn(
-        "fixed z-[55] left-3 sm:left-4 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))]",
+        "fixed z-[55] left-[max(0.75rem,env(safe-area-inset-left))] sm:left-4",
+        "top-[max(4.75rem,calc(env(safe-area-inset-top)+3.75rem))]",
         "flex h-9 w-9 items-center justify-center rounded-full",
         "border border-white/12 bg-black/50 backdrop-blur-xl text-white",
         "hover:bg-white/10 transition-colors duration-300",

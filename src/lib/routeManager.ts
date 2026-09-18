@@ -1,7 +1,3 @@
-/**
- * Smart routing — nested → section home; section home never forced to portal.
- */
-
 export type OpusSection =
   | "film"
   | "chat"
@@ -23,10 +19,22 @@ export const SECTION_HOME: Record<Exclude<OpusSection, "portal">, string> = {
 };
 
 const KEY_SECTION = "opus-nav-section";
+const KEY_LOCK = "opus-section-lock";
 
 export function markEnterSection(section: Exclude<OpusSection, "portal">) {
   try {
     sessionStorage.setItem(KEY_SECTION, section);
+    sessionStorage.setItem(KEY_LOCK, "1");
+  } catch {
+    /* */
+  }
+}
+
+/** Cho phép về Hub (khi user bấm Cổng / logo portal) */
+export function allowPortalReturn() {
+  try {
+    sessionStorage.removeItem(KEY_LOCK);
+    sessionStorage.setItem(KEY_SECTION, "portal");
   } catch {
     /* */
   }
@@ -40,7 +48,14 @@ export function getActiveSection(): OpusSection {
   if (p.startsWith("/code")) return "code";
   if (p.startsWith("/nhac")) return "music";
   if (p.startsWith("/su-kien")) return "pass";
-  if (p.startsWith("/cai-dat") || p.startsWith("/hop-thu") || p.startsWith("/chinh-sach") || p.startsWith("/dieu-khoan") || p.startsWith("/faq") || p.startsWith("/ho-tro"))
+  if (
+    p.startsWith("/cai-dat") ||
+    p.startsWith("/hop-thu") ||
+    p.startsWith("/chinh-sach") ||
+    p.startsWith("/dieu-khoan") ||
+    p.startsWith("/faq") ||
+    p.startsWith("/ho-tro")
+  )
     return "settings";
   if (p.startsWith("/tai-khoan") || p.startsWith("/u/")) return "account";
   if (
@@ -64,15 +79,16 @@ export function getActiveSection(): OpusSection {
 }
 
 export function isSectionRoot(pathname: string): boolean {
-  const roots = Object.values(SECTION_HOME);
-  return roots.some((r) => pathname === r || pathname === r + "/");
+  return Object.values(SECTION_HOME).some(
+    (r) => pathname === r || pathname === r + "/"
+  );
 }
 
-/** nested → section home; on section home → null (history.back / stay) */
 export function resolveSmartBack(pathname: string): string | null {
   const section = getActiveSection();
   if (section === "portal") return null;
-  const home = SECTION_HOME[section];
+  const home = SECTION_HOME[section as keyof typeof SECTION_HOME];
+  if (!home) return null;
   if (!isSectionRoot(pathname)) return home;
   return null;
 }

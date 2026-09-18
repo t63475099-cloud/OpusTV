@@ -13,6 +13,7 @@ import ChromeGuard from "@/components/ChromeGuard";
 import BehaviorMonitor from "@/components/BehaviorMonitor";
 import OpusPreloader from "@/components/OpusPreloader";
 import SmartBack from "@/components/ecosystem/SmartBack";
+import SectionRouteGuard from "@/components/ecosystem/SectionRouteGuard";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -67,6 +68,7 @@ export default function RootLayout({
           <BehaviorMonitor />
           <ScrollNavFab />
           <SmartBack />
+          <SectionRouteGuard />
           <Navbar />
           <div data-shell="1" className="flex flex-1 w-full max-w-[1920px] mx-auto">
             <Sidebar />

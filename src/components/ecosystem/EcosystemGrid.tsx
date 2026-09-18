@@ -234,7 +234,7 @@ function SectionCard({ item }: { item: CardDef }) {
 
 export default function EcosystemGrid() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-[clamp(1.25rem,4vw,2rem)]">
+    <div className="mx-auto w-full max-w-6xl px-[clamp(1.5rem,5vw,2.5rem)]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 items-stretch">
         {CARDS.map((c) => (
           <SectionCard key={c.section} item={c} />

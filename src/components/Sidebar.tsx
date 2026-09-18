@@ -21,6 +21,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { markEnterSection } from "@/lib/routeManager";
 
 const GENRES = [
   { href: "/danh-sach/phim-moi-cap-nhat", label: "Thịnh hành", icon: Flame },

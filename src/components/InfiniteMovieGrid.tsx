@@ -85,7 +85,7 @@ export default function InfiniteMovieGrid({
   return (
     <>
       {/* Lưới poster dọc — giống trang danh sách phim cũ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
         {items.map((movie, i) => (
           <div key={movie.slug || movie._id || String(i)} className="min-w-0 [&_a]:!w-full">
             <MovieCard movie={movie} priority={i < 8} variant="poster" />

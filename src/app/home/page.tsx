@@ -142,7 +142,7 @@ export default async function HomePage() {
   ).slice(0, 14);
 
   return (
-    <div className="fpt-home min-h-screen pb-16 app-content-offset">
+    <div className="fpt-home min-h-screen pb-28 app-content-offset">
       <div className="relative w-full">
       <BannerSlider movies={bannerMovies} />
         <nav className="fpt-home-cats flex gap-2 overflow-x-auto scrollbar-hide px-3 sm:px-4 md:px-6 lg:px-8 py-3 -mt-1">

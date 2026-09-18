@@ -50,7 +50,7 @@ export default function SmartBack({ className }: { className?: string }) {
       aria-label="Quay lại"
       className={cn(
         "fixed z-[55] left-[max(0.75rem,env(safe-area-inset-left))] sm:left-4",
-        "top-[max(4.75rem,calc(env(safe-area-inset-top)+3.75rem))]",
+        "top-[max(3.75rem,calc(env(safe-area-inset-top)+2.85rem))]",
         "flex h-9 w-9 items-center justify-center rounded-full",
         "border border-white/12 bg-black/50 backdrop-blur-xl text-white",
         "hover:bg-white/10 transition-colors duration-300",

@@ -600,7 +600,7 @@ body {
 }
 
 .app-content-offset {
-  padding-top: calc(var(--nav-h) + var(--nav-safe) + 0.25rem);
+  padding-top: calc(var(--nav-h) + env(safe-area-inset-top, 0px) + 0.35rem) + var(--nav-safe) + 0.25rem);
 }
 html[data-nav-chips="1"] .app-content-offset {
   padding-top: calc(var(--nav-h) + var(--nav-chips-h) + var(--nav-safe) + 0.25rem);
@@ -2711,13 +2711,21 @@ html.opus-preloading body {
 
 
 
-/* GlassDock content clearances */
+/* GlassDock — luôn đáy, không padding-top thừa */
 html[data-dock="1"] main {
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 768px) {
   html[data-dock="1"] main {
-    padding-bottom: 1.5rem;
-    padding-top: 5.25rem;
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Hover glow chỉ trên chuột thật — tránh blob kẹt trên cảm ứng */
+@media (hover: hover) and (pointer: fine) {
+  .opus-glass-dock button:hover > span:first-child {
+    opacity: 0.45 !important;
+    transform: scale(0.96);
+  }
+}
+

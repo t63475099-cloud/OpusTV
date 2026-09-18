@@ -147,6 +147,14 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => {
+                  if (item.href.startsWith("/code")) markEnterSection("code");
+                  else if (item.href.startsWith("/nhac")) markEnterSection("music");
+                  else if (item.href.startsWith("/tin-nhan")) markEnterSection("chat");
+                  else if (item.href.startsWith("/su-kien")) markEnterSection("pass");
+                  else if (item.href.startsWith("/cai-dat")) markEnterSection("settings");
+                  else markEnterSection("film");
+                }}
                 className={cn(
                   "flex items-center gap-4 rounded-xl px-3 py-2.5 text-sm transition-all duration-500",
                   active

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { markEnterSection } from "@/lib/routeManager";
@@ -11,16 +11,16 @@ type DockItem = {
   href: string;
   label: string;
   icon: string;
-  section?: "film" | "chat" | "music" | "code" | "settings";
-  lightIcon?: boolean;
+  section?: "film" | "chat" | "music" | "code" | "settings" | "pass" | "account";
 };
 
 const ITEMS: DockItem[] = [
   { id: "home", href: "/home", label: "Trang chủ", icon: "/dock/home.png", section: "film" },
   { id: "chat", href: "/tin-nhan", label: "Trò chuyện", icon: "/dock/chat.png", section: "chat" },
   { id: "film", href: "/danh-sach/phim-moi-cap-nhat", label: "Xem phim", icon: "/dock/youtube.png", section: "film" },
-  { id: "music", href: "/nhac", label: "Music", icon: "/dock/music.png", section: "music", lightIcon: true },
+  { id: "music", href: "/nhac", label: "Music", icon: "/dock/music.png", section: "music" },
   { id: "code", href: "/code", label: "Code", icon: "/dock/code.png", section: "code" },
+  { id: "event", href: "/su-kien", label: "Sự kiện", icon: "/dock/event.png", section: "pass" },
   { id: "settings", href: "/cai-dat", label: "Cài đặt", icon: "/dock/settings.png", section: "settings" },
 ];
 
@@ -41,7 +41,8 @@ function activeIndex(path: string): number {
   if (path.startsWith("/danh-sach") || path.startsWith("/the-loai") || path.startsWith("/quoc-gia")) return 2;
   if (path.startsWith("/nhac")) return 3;
   if (path.startsWith("/code")) return 4;
-  if (path.startsWith("/cai-dat")) return 5;
+  if (path.startsWith("/su-kien")) return 5;
+  if (path.startsWith("/cai-dat")) return 6;
   return 0;
 }
 
@@ -53,14 +54,14 @@ export default function GlassDock() {
   const [mounted, setMounted] = useState(false);
   const [idx, setIdx] = useState(0);
   const [lensX, setLensX] = useState(0);
-  const [lensSize, setLensSize] = useState(56);
+  const [lensW, setLensW] = useState(56);
   const [dragging, setDragging] = useState(false);
   const [ready, setReady] = useState(false);
   const dragOrigin = useRef({ pointerX: 0, lensX: 0 });
+  const moved = useRef(false);
   const hide = shouldHideDock(path);
 
   useEffect(() => setMounted(true), []);
-  useEffect(() => setIdx(activeIndex(path)), [path]);
 
   useEffect(() => {
     document.documentElement.dataset.dock = hide ? "0" : "1";
@@ -69,58 +70,39 @@ export default function GlassDock() {
     };
   }, [hide]);
 
-  const measureLens = useCallback(() => {
-    const mobile = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
-    return mobile ? 56 : 68;
+  /** Căn lens đúng tâm nút i — 1 lớp duy nhất */
+  const placeLensOn = useCallback((i: number, grow = false) => {
+    const el = itemRefs.current[i];
+    const dock = dockRef.current;
+    if (!el || !dock) return;
+    const dockRect = dock.getBoundingClientRect();
+    const itemRect = el.getBoundingClientRect();
+    const base = Math.min(itemRect.width, itemRect.height) - 4;
+    const size = grow ? base + 14 : base;
+    const x = itemRect.left - dockRect.left + (itemRect.width - size) / 2;
+    setLensW(size);
+    setLensX(Math.max(0, x));
+    setIdx(i);
   }, []);
 
-  const snapTo = useCallback(
-    (i: number) => {
-      const el = itemRefs.current[i];
-      const dock = dockRef.current;
-      if (!el || !dock) return;
-      const size = measureLens();
-      setLensSize(size);
-      const dockRect = dock.getBoundingClientRect();
-      const itemRect = el.getBoundingClientRect();
-      const x = itemRect.left - dockRect.left + (itemRect.width - size) / 2;
-      setLensX(Math.max(0, x));
-      setIdx(i);
-    },
-    [measureLens]
-  );
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (hide || !mounted) return;
-    const run = () => {
-      snapTo(activeIndex(path));
-      setReady(true);
-    };
-    const id = requestAnimationFrame(run);
-    window.addEventListener("resize", run);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener("resize", run);
-    };
-  }, [path, hide, mounted, snapTo]);
+    const i = activeIndex(path);
+    placeLensOn(i, false);
+    setReady(true);
+    const onResize = () => placeLensOn(activeIndex(path), false);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [path, hide, mounted, placeLensOn]);
 
-  const go = useCallback(
-    (item: DockItem, i: number) => {
-      snapTo(i);
-      if (item.section) markEnterSection(item.section);
-      router.push(item.href);
-    },
-    [router, snapTo]
-  );
-
-  const nearestIndex = useCallback((centerX: number) => {
+  const nearestIndex = useCallback((clientX: number) => {
     let best = 0;
     let bestDist = Infinity;
     itemRefs.current.forEach((el, i) => {
       if (!el) return;
       const r = el.getBoundingClientRect();
       const c = r.left + r.width / 2;
-      const d = Math.abs(c - centerX);
+      const d = Math.abs(c - clientX);
       if (d < bestDist) {
         bestDist = d;
         best = i;
@@ -129,13 +111,24 @@ export default function GlassDock() {
     return best;
   }, []);
 
+  const navigate = useCallback(
+    (i: number) => {
+      const item = ITEMS[i];
+      placeLensOn(i, false);
+      if (item.section) markEnterSection(item.section);
+      router.push(item.href);
+    },
+    [placeLensOn, router]
+  );
+
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0 && e.pointerType === "mouse") return;
+    // Chỉ chuột trái hoặc touch/pen
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     e.preventDefault();
+    moved.current = false;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     setDragging(true);
-    // Phóng lens lớn hơn dock một chút khi kéo
-    setLensSize(measureLens() + 12);
+    placeLensOn(idx, true);
     dragOrigin.current = { pointerX: e.clientX, lensX };
     window.getSelection()?.removeAllRanges();
   };
@@ -143,19 +136,20 @@ export default function GlassDock() {
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging || !dockRef.current) return;
     e.preventDefault();
-    window.getSelection()?.removeAllRanges();
-    const rect = dockRef.current.getBoundingClientRect();
-    const size = measureLens() + 12;
-    const delta = e.clientX - dragOrigin.current.pointerX;
-    let next = dragOrigin.current.lensX + delta;
+    const dx = e.clientX - dragOrigin.current.pointerX;
+    if (Math.abs(dx) > 4) moved.current = true;
+
+    const dock = dockRef.current;
+    const rect = dock.getBoundingClientRect();
+    const size = lensW;
+    let next = dragOrigin.current.lensX + dx;
     const max = Math.max(0, rect.width - size);
-    next = Math.min(max, Math.max(-6, next));
+    next = Math.min(max, Math.max(0, next));
     setLensX(next);
 
-    // Highlight tab gần nhất khi kéo
     const center = rect.left + next + size / 2;
     const near = nearestIndex(center);
-    setIdx(near);
+    if (near !== idx) setIdx(near);
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -166,35 +160,42 @@ export default function GlassDock() {
     } catch {
       /* ignore */
     }
+
     const dock = dockRef.current;
-    if (!dock) return;
+    if (!dock) {
+      placeLensOn(idx, false);
+      return;
+    }
     const rect = dock.getBoundingClientRect();
-    const size = measureLens() + 12;
-    const center = rect.left + lensX + size / 2;
+    const center = rect.left + lensX + lensW / 2;
     const best = nearestIndex(center);
-    setLensSize(measureLens());
-    go(ITEMS[best], best);
+    placeLensOn(best, false);
+
+    // Chỉ điều hướng nếu đã kéo hoặc click đúng tab
+    if (moved.current || best !== activeIndex(path)) {
+      navigate(best);
+    } else {
+      // click cùng tab — vẫn snap lens
+      placeLensOn(best, false);
+    }
   };
 
-  // Chuột di chuyển trên desktop (không cần giữ): lens theo hover
-  const onItemEnter = (i: number) => {
-    if (dragging) return;
-    // Chỉ fine pointer
-    if (typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-      snapTo(i);
-    }
+  const onItemClick = (e: React.MouseEvent, i: number) => {
+    e.stopPropagation();
+    // Click nhanh không qua drag
+    if (moved.current) return;
+    navigate(i);
   };
 
   if (!mounted || hide) return null;
 
-  const dock = (
+  const ui = (
     <>
       <svg width="0" height="0" className="absolute overflow-hidden" aria-hidden>
         <defs>
-          <filter id="opus-dock-glass" x="-40%" y="-40%" width="180%" height="180%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="3" result="noise" />
-            <feGaussianBlur in="noise" stdDeviation="1.4" result="blur" />
-            <feDisplacementMap in="SourceGraphic" in2="blur" scale={dragging ? 42 : 28} xChannelSelector="R" yChannelSelector="G" />
+          <filter id="opus-dock-refract" x="-50%" y="-50%" width="200%" height="200%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" seed="7" result="n" />
+            <feDisplacementMap in="SourceGraphic" in2="n" scale={dragging ? 36 : 22} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
@@ -202,8 +203,7 @@ export default function GlassDock() {
       <nav
         aria-label="Opus Dock"
         className={cn(
-          "opus-glass-dock",
-          "fixed z-[60] left-1/2 -translate-x-1/2",
+          "opus-glass-dock fixed z-[60] left-1/2 -translate-x-1/2",
           "bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
           "pointer-events-none select-none"
         )}
@@ -213,14 +213,12 @@ export default function GlassDock() {
           ref={dockRef}
           className={cn(
             "pointer-events-auto relative flex items-center justify-center",
-            "gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2",
+            "gap-0.5 sm:gap-1 px-1.5 sm:px-2.5 py-1.5",
             "rounded-full",
-            // overflow visible khi kéo để lens nhô ra
             dragging ? "overflow-visible" : "overflow-hidden",
-            "border border-white/25",
-            "bg-white/[0.12] backdrop-blur-xl",
+            "border border-white/25 bg-white/[0.12] backdrop-blur-xl",
             "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
-            "max-w-[min(100vw-1rem,520px)]",
+            "max-w-[min(100vw-0.75rem,560px)]",
             dragging ? "cursor-grabbing" : "cursor-grab"
           )}
           onPointerDown={onPointerDown}
@@ -228,29 +226,27 @@ export default function GlassDock() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          {/* Liquid lens — kéo được, phóng to, khúc xạ */}
+          {/* 1 lớp lens duy nhất — chỉ di chuyển khi kéo giữ */}
           <div
+            aria-hidden
             className={cn(
-              "absolute top-1/2 z-[5] pointer-events-none",
-              "rounded-[22px]",
-              "border border-white/45",
-              "bg-white/[0.18]",
-              "shadow-[inset_0_0_20px_rgba(255,255,255,0.55),0_6px_24px_rgba(0,0,0,0.3)]",
-              "backdrop-blur-[12px]",
-              !dragging && "transition-[transform,width,height] duration-400 ease-[cubic-bezier(0.25,1,0.5,1)]"
+              "absolute top-1/2 z-[1] pointer-events-none rounded-[18px]",
+              "border border-white/40 bg-white/[0.16]",
+              "shadow-[inset_0_0_16px_rgba(255,255,255,0.45),0_4px_16px_rgba(0,0,0,0.25)]",
+              "backdrop-blur-md",
+              !dragging && "transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
             )}
             style={{
-              width: lensSize,
-              height: lensSize,
-              transform: `translate3d(${lensX}px, -50%, 0) scale(${dragging ? 1.12 : 1})`,
-              filter: ready ? "url(#opus-dock-glass)" : undefined,
+              width: lensW,
+              height: lensW,
+              transform: `translate3d(${lensX}px, -50%, 0) scale(${dragging ? 1.08 : 1})`,
+              filter: ready ? "url(#opus-dock-refract)" : undefined,
               opacity: ready ? 1 : 0,
             }}
           />
 
           {ITEMS.map((item, i) => {
             const active = i === idx;
-            const underLens = active;
             return (
               <button
                 key={item.id}
@@ -258,26 +254,16 @@ export default function GlassDock() {
                   itemRefs.current[i] = el;
                 }}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!dragging) go(item, i);
-                }}
-                onPointerEnter={() => onItemEnter(i)}
+                onClick={(e) => onItemClick(e, i)}
                 className={cn(
                   "relative z-[2] flex flex-col items-center justify-center gap-0.5",
-                  "min-w-[52px] sm:min-w-[64px] h-[52px] sm:h-[60px] px-1.5",
-                  "rounded-2xl outline-none",
-                  "transition-[opacity,transform,filter] duration-300 ease-out",
-                  "cursor-pointer"
+                  "w-[48px] sm:w-[56px] h-[48px] sm:h-[56px]",
+                  "rounded-2xl outline-none bg-transparent",
+                  "transition-[opacity,transform] duration-300 ease-out"
                 )}
                 style={{
-                  opacity: underLens ? 1 : 0.5,
-                  transform: underLens
-                    ? `scale(${dragging ? 1.28 : 1.14}) skewX(${dragging ? -3 : -1.5}deg)`
-                    : "scale(1)",
-                  filter: underLens
-                    ? "drop-shadow(0 0 12px rgba(255,255,255,0.5))"
-                    : "none",
+                  opacity: active ? 1 : 0.55,
+                  transform: active ? `scale(${dragging ? 1.2 : 1.08})` : "scale(1)",
                 }}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
@@ -288,14 +274,15 @@ export default function GlassDock() {
                   alt=""
                   draggable={false}
                   className={cn(
-                    "relative z-[1] w-6 h-6 sm:w-7 sm:h-7 object-contain pointer-events-none",
-                    !item.lightIcon && "brightness-0 invert"
+                    "w-6 h-6 sm:w-7 sm:h-7 object-contain pointer-events-none",
+                    // Tất cả icon → trắng, không nền thừa
+                    "brightness-0 invert"
                   )}
                 />
                 <span
                   className={cn(
-                    "relative z-[1] text-[9px] sm:text-[10px] font-medium leading-none max-w-[64px] truncate",
-                    underLens ? "text-white opacity-100" : "text-white/55 opacity-80"
+                    "text-[8px] sm:text-[9px] font-medium leading-none max-w-[52px] truncate",
+                    active ? "text-white" : "text-white/60"
                   )}
                 >
                   {item.label}
@@ -308,5 +295,5 @@ export default function GlassDock() {
     </>
   );
 
-  return createPortal(dock, document.body);
+  return createPortal(ui, document.body);
 }

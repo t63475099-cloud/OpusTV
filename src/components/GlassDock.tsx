@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { markEnterSection } from "@/lib/routeManager";
@@ -23,6 +23,8 @@ const ITEMS: DockItem[] = [
   { id: "event", href: "/su-kien", label: "Sự kiện", icon: "/dock/event.png", section: "pass" },
   { id: "settings", href: "/cai-dat", label: "Cài đặt", icon: "/dock/settings.png", section: "settings" },
 ];
+
+const N = ITEMS.length;
 
 function shouldHideDock(path: string): boolean {
   if (path === "/") return true;
@@ -53,12 +55,9 @@ export default function GlassDock() {
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [mounted, setMounted] = useState(false);
   const [idx, setIdx] = useState(0);
-  const [lensX, setLensX] = useState(0);
-  const [lensW, setLensW] = useState(56);
   const [dragging, setDragging] = useState(false);
-  const [ready, setReady] = useState(false);
-  const dragOrigin = useRef({ pointerX: 0, lensX: 0 });
   const moved = useRef(false);
+  const startX = useRef(0);
   const hide = shouldHideDock(path);
 
   useEffect(() => setMounted(true), []);
@@ -70,30 +69,9 @@ export default function GlassDock() {
     };
   }, [hide]);
 
-  /** Căn lens đúng tâm nút i — 1 lớp duy nhất */
-  const placeLensOn = useCallback((i: number, grow = false) => {
-    const el = itemRefs.current[i];
-    const dock = dockRef.current;
-    if (!el || !dock) return;
-    const dockRect = dock.getBoundingClientRect();
-    const itemRect = el.getBoundingClientRect();
-    const base = Math.min(itemRect.width, itemRect.height) - 4;
-    const size = grow ? base + 14 : base;
-    const x = itemRect.left - dockRect.left + (itemRect.width - size) / 2;
-    setLensW(size);
-    setLensX(Math.max(0, x));
-    setIdx(i);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (hide || !mounted) return;
-    const i = activeIndex(path);
-    placeLensOn(i, false);
-    setReady(true);
-    const onResize = () => placeLensOn(activeIndex(path), false);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [path, hide, mounted, placeLensOn]);
+  useEffect(() => {
+    setIdx(activeIndex(path));
+  }, [path]);
 
   const nearestIndex = useCallback((clientX: number) => {
     let best = 0;
@@ -114,42 +92,31 @@ export default function GlassDock() {
   const navigate = useCallback(
     (i: number) => {
       const item = ITEMS[i];
-      placeLensOn(i, false);
+      setIdx(i);
       if (item.section) markEnterSection(item.section);
       router.push(item.href);
     },
-    [placeLensOn, router]
+    [router]
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
-    // Chỉ chuột trái hoặc touch/pen
     if (e.pointerType === "mouse" && e.button !== 0) return;
     e.preventDefault();
     moved.current = false;
+    startX.current = e.clientX;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     setDragging(true);
-    placeLensOn(idx, true);
-    dragOrigin.current = { pointerX: e.clientX, lensX };
+    // Cập nhật tab gần điểm chạm ngay
+    setIdx(nearestIndex(e.clientX));
     window.getSelection()?.removeAllRanges();
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging || !dockRef.current) return;
+    if (!dragging) return;
     e.preventDefault();
-    const dx = e.clientX - dragOrigin.current.pointerX;
-    if (Math.abs(dx) > 4) moved.current = true;
-
-    const dock = dockRef.current;
-    const rect = dock.getBoundingClientRect();
-    const size = lensW;
-    let next = dragOrigin.current.lensX + dx;
-    const max = Math.max(0, rect.width - size);
-    next = Math.min(max, Math.max(0, next));
-    setLensX(next);
-
-    const center = rect.left + next + size / 2;
-    const near = nearestIndex(center);
-    if (near !== idx) setIdx(near);
+    if (Math.abs(e.clientX - startX.current) > 6) moved.current = true;
+    // Chỉ đổi index — lens luôn bám % theo idx, không bao giờ lệch pixel
+    setIdx(nearestIndex(e.clientX));
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -160,42 +127,39 @@ export default function GlassDock() {
     } catch {
       /* ignore */
     }
-
-    const dock = dockRef.current;
-    if (!dock) {
-      placeLensOn(idx, false);
-      return;
-    }
-    const rect = dock.getBoundingClientRect();
-    const center = rect.left + lensX + lensW / 2;
-    const best = nearestIndex(center);
-    placeLensOn(best, false);
-
-    // Chỉ điều hướng nếu đã kéo hoặc click đúng tab
+    const best = nearestIndex(e.clientX);
+    setIdx(best);
     if (moved.current || best !== activeIndex(path)) {
       navigate(best);
-    } else {
-      // click cùng tab — vẫn snap lens
-      placeLensOn(best, false);
     }
   };
 
   const onItemClick = (e: React.MouseEvent, i: number) => {
     e.stopPropagation();
-    // Click nhanh không qua drag
     if (moved.current) return;
     navigate(i);
   };
 
   if (!mounted || hide) return null;
 
+  // Lens: đúng 1 ô tab theo % — không dùng pixel → không lệch
+  const slot = 100 / N;
+  const lensLeft = `calc(${idx * slot}% + 3px)`;
+  const lensWidth = `calc(${slot}% - 6px)`;
+
   const ui = (
     <>
       <svg width="0" height="0" className="absolute overflow-hidden" aria-hidden>
         <defs>
-          <filter id="opus-dock-refract" x="-50%" y="-50%" width="200%" height="200%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="2" seed="7" result="n" />
-            <feDisplacementMap in="SourceGraphic" in2="n" scale={dragging ? 36 : 22} xChannelSelector="R" yChannelSelector="G" />
+          <filter id="opus-dock-refract" x="-30%" y="-30%" width="160%" height="160%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="5" result="n" />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="n"
+              scale={dragging ? 28 : 16}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
           </filter>
         </defs>
       </svg>
@@ -205,20 +169,17 @@ export default function GlassDock() {
         className={cn(
           "opus-glass-dock fixed z-[60] left-1/2 -translate-x-1/2",
           "bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
-          "pointer-events-none select-none"
+          "pointer-events-none select-none w-[min(100vw-0.75rem,560px)]"
         )}
         style={{ userSelect: "none", WebkitUserSelect: "none", touchAction: "none" }}
       >
         <div
           ref={dockRef}
           className={cn(
-            "pointer-events-auto relative flex items-center justify-center",
-            "gap-0.5 sm:gap-1 px-1.5 sm:px-2.5 py-1.5",
-            "rounded-full",
-            dragging ? "overflow-visible" : "overflow-hidden",
+            "pointer-events-auto relative flex items-stretch w-full",
+            "px-1.5 py-1.5 rounded-full overflow-hidden",
             "border border-white/25 bg-white/[0.12] backdrop-blur-xl",
             "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
-            "max-w-[min(100vw-0.75rem,560px)]",
             dragging ? "cursor-grabbing" : "cursor-grab"
           )}
           onPointerDown={onPointerDown}
@@ -226,22 +187,22 @@ export default function GlassDock() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          {/* 1 lớp lens duy nhất — chỉ di chuyển khi kéo giữ */}
+          {/* Viên thuốc active — 1 lớp, % chính xác theo tab */}
           <div
             aria-hidden
             className={cn(
-              "absolute top-1/2 z-[1] pointer-events-none rounded-[18px]",
-              "border border-white/40 bg-white/[0.16]",
-              "shadow-[inset_0_0_16px_rgba(255,255,255,0.45),0_4px_16px_rgba(0,0,0,0.25)]",
+              "absolute top-1.5 bottom-1.5 z-[1] pointer-events-none",
+              "rounded-full",
+              "border border-white/35 bg-white/[0.18]",
+              "shadow-[inset_0_0_14px_rgba(255,255,255,0.4),0_2px_10px_rgba(0,0,0,0.2)]",
               "backdrop-blur-md",
-              !dragging && "transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+              "transition-[left,width,transform] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
             )}
             style={{
-              width: lensW,
-              height: lensW,
-              transform: `translate3d(${lensX}px, -50%, 0) scale(${dragging ? 1.08 : 1})`,
-              filter: ready ? "url(#opus-dock-refract)" : undefined,
-              opacity: ready ? 1 : 0,
+              left: lensLeft,
+              width: lensWidth,
+              transform: dragging ? "scale(1.06)" : "scale(1)",
+              filter: "url(#opus-dock-refract)",
             }}
           />
 
@@ -256,14 +217,13 @@ export default function GlassDock() {
                 type="button"
                 onClick={(e) => onItemClick(e, i)}
                 className={cn(
-                  "relative z-[2] flex flex-col items-center justify-center gap-0.5",
-                  "w-[48px] sm:w-[56px] h-[48px] sm:h-[56px]",
-                  "rounded-2xl outline-none bg-transparent",
+                  "relative z-[2] flex flex-1 flex-col items-center justify-center gap-0.5",
+                  "min-w-0 h-[52px] sm:h-[56px] rounded-full outline-none bg-transparent",
                   "transition-[opacity,transform] duration-300 ease-out"
                 )}
                 style={{
                   opacity: active ? 1 : 0.55,
-                  transform: active ? `scale(${dragging ? 1.2 : 1.08})` : "scale(1)",
+                  transform: active && dragging ? "scale(1.12)" : active ? "scale(1.04)" : "scale(1)",
                 }}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
@@ -273,15 +233,11 @@ export default function GlassDock() {
                   src={item.icon}
                   alt=""
                   draggable={false}
-                  className={cn(
-                    "w-6 h-6 sm:w-7 sm:h-7 object-contain pointer-events-none",
-                    // Tất cả icon → trắng, không nền thừa
-                    "brightness-0 invert"
-                  )}
+                  className="w-6 h-6 sm:w-7 sm:h-7 object-contain pointer-events-none brightness-0 invert"
                 />
                 <span
                   className={cn(
-                    "text-[8px] sm:text-[9px] font-medium leading-none max-w-[52px] truncate",
+                    "text-[8px] sm:text-[9px] font-medium leading-none max-w-full px-0.5 truncate",
                     active ? "text-white" : "text-white/60"
                   )}
                 >

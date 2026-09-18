@@ -29,10 +29,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "OpusTV — Unified Entertainment Ecosystem",
+    default: "OpusFilm - Xem phim online",
     template: `%s | ${APP_NAME}`,
   },
-  description: "OpusTV — Unified Entertainment Ecosystem.",
+  description: "Xem phim, nghe nhạc trên OpusFilm.",
   keywords: ["opusfilm", "xem phim"],
   robots: {
     index: true,

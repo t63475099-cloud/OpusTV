@@ -415,7 +415,7 @@ function NhacInner() {
             <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">Opus Music</h1>
             <div className="mt-2 mb-1"><MusicSleepTimer /></div>
           </div>
-          <p className="text-[11px] text-[#aaa]">Đề xuất YouTube · Cuộn tải thêm</p>
+          
         </div>
       </div>
 

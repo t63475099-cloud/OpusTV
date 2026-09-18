@@ -20,7 +20,6 @@ export default function SmartBack({ className }: { className?: string }) {
 
   useEffect(() => setMounted(true), []);
 
-  // Ẩn trên portal / admin / root mảng — vẫn hiện khi xem phim
   const hide =
     path === "/" ||
     path.startsWith("/admin") ||
@@ -59,26 +58,16 @@ export default function SmartBack({ className }: { className?: string }) {
       type="button"
       onClick={onBack}
       aria-label="Quay lại"
+      data-smart-back="1"
       className={cn(
-        "opus-smart-back fixed z-[70] left-[max(0.75rem,env(safe-area-inset-left))]",
-        onWatch
-          ? "top-[max(0.65rem,calc(env(safe-area-inset-top,0px)+0.5rem))]"
-          : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+2.85rem))]",
-        "flex h-10 w-10 items-center justify-center rounded-full",
-        "border border-white/20 bg-black/55 backdrop-blur-xl text-white shadow-lg",
-        "hover:bg-white/15 active:scale-95 transition-colors duration-300",
+        "opus-smart-back",
+        onWatch ? "opus-smart-back--watch" : "opus-smart-back--page",
         className
       )}
-      style={{
-        // Ép fixed theo viewport — không bị transform của parent kéo theo
-        position: "fixed",
-        transform: "none",
-      }}
     >
       <ArrowLeft className="h-5 w-5" />
     </button>
   );
 
-  // Portal ra body để tránh transform/filter của GsapScrollProvider làm hỏng fixed
   return createPortal(btn, document.body);
 }

@@ -124,7 +124,12 @@ export default function FloatingMiniPlayer() {
       hlsRef.current = hls;
       hls.loadSource(film.m3u8);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, seekResume);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        seekResume();
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith(`/phim/${film.slug}`)) {
+          video.play().then(() => setFilmPlaying(true)).catch(() => {});
+        }
+      });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = film.m3u8;
       video.addEventListener("loadedmetadata", seekResume);
@@ -179,6 +184,48 @@ export default function FloatingMiniPlayer() {
       setFilmPlaying(false);
     }
   }, [path, film?.slug]);
+
+  // Tự phát khi playbox hiện (rời trang xem phim)
+  useEffect(() => {
+    if (!mounted || !film?.m3u8) return;
+    if (path.startsWith(`/phim/${film.slug}`)) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    let cancelled = false;
+    const tryPlay = async () => {
+      if (cancelled) return;
+      const t = Math.max(film.currentTime || 0, loadFilmResume(film.slug, film.episodeSlug), displayTime);
+      if (t > 5) {
+        try {
+          if (Math.abs(video.currentTime - t) > 1.5) video.currentTime = t;
+        } catch {}
+      }
+      try {
+        await video.play();
+        if (!cancelled) setFilmPlaying(true);
+      } catch {
+        /* autoplay policy — user can tap play */
+      }
+    };
+
+    video.addEventListener("canplay", tryPlay);
+    const t1 = setTimeout(tryPlay, 300);
+    const t2 = setTimeout(tryPlay, 900);
+    return () => {
+      cancelled = true;
+      video.removeEventListener("canplay", tryPlay);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [mounted, path, film?.slug, film?.episodeSlug, film?.m3u8, film?.currentTime, displayTime]);
+
+  // Music: tự phát khi rời /nhac
+  useEffect(() => {
+    if (!mounted || !track) return;
+    if (path.startsWith("/nhac")) return;
+    setPlaying(true);
+  }, [mounted, path, track?.id, setPlaying]);
 
   useEffect(() => {
     if (!mounted) return;

@@ -1,3 +1,32 @@
+
+/* Nút Quay lại — fixed viewport, không trôi theo scroll */
+.opus-smart-back {
+  position: fixed !important;
+  z-index: 80 !important;
+  left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transform: none !important;
+  margin: 0 !important;
+  inset: auto auto auto max(0.75rem, env(safe-area-inset-left, 0px));
+}
+.opus-smart-back--watch {
+  top: max(0.65rem, calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
+}
+.opus-smart-back--page {
+  top: max(3.75rem, calc(env(safe-area-inset-top, 0px) + 2.85rem)) !important;
+}
+
 @import "tailwindcss";
 
 :root {

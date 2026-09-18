@@ -24,10 +24,6 @@ const ITEMS: DockItem[] = [
   { id: "settings", href: "/cai-dat", label: "Cài đặt", icon: "/dock/settings.png", section: "settings" },
 ];
 
-const N = ITEMS.length;
-/** Đường kính vòng tròn cố định (px) — luôn tròn thật */
-const CIRCLE = 44;
-
 function shouldHideDock(path: string): boolean {
   if (path.startsWith("/admin")) return true;
   if (path.startsWith("/bao-tri")) return true;
@@ -140,10 +136,6 @@ export default function GlassDock() {
 
   if (!mounted || hide) return null;
 
-  // Tâm vòng tròn = tâm tab idx (theo %)
-  // left = (idx + 0.5) * (100/N)% - CIRCLE/2
-  const lensLeft = `calc(${(idx + 0.5) * (100 / N)}% - ${CIRCLE / 2}px)`;
-
   const ui = (
     <nav
       aria-label="Opus Dock"
@@ -157,7 +149,7 @@ export default function GlassDock() {
       <div
         className={cn(
           "pointer-events-auto relative flex items-stretch w-full",
-          "px-1.5 py-1.5 rounded-full overflow-hidden",
+          "px-1 py-1 rounded-full",
           "border border-white/25 bg-white/[0.12] backdrop-blur-xl",
           "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
           dragging ? "cursor-grabbing" : "cursor-grab"
@@ -167,25 +159,6 @@ export default function GlassDock() {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        {/* Vòng tròn hoàn hảo: width === height (px), không filter méo */}
-        <div
-          aria-hidden
-          className={cn(
-            "absolute z-[1] pointer-events-none rounded-full",
-            "border border-white/40 bg-white/[0.2]",
-            "shadow-[inset_0_0_12px_rgba(255,255,255,0.45),0_2px_8px_rgba(0,0,0,0.2)]",
-            "backdrop-blur-md",
-            "transition-[left,transform] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
-          )}
-          style={{
-            left: lensLeft,
-            top: "50%",
-            width: CIRCLE,
-            height: CIRCLE,
-            transform: `translateY(-50%) scale(${dragging ? 1.1 : 1})`,
-          }}
-        />
-
         {ITEMS.map((item, i) => {
           const active = i === idx;
           return (
@@ -197,24 +170,51 @@ export default function GlassDock() {
               type="button"
               onClick={(e) => onItemClick(e, i)}
               className={cn(
-                "relative z-[2] flex flex-1 flex-col items-center justify-center gap-0.5",
-                "min-w-0 h-[52px] sm:h-[56px] rounded-full outline-none bg-transparent",
-                "transition-[opacity,transform] duration-300 ease-out"
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5",
+                "min-w-0 h-[56px] sm:h-[60px] outline-none bg-transparent",
+                "transition-opacity duration-300"
               )}
-              style={{
-                opacity: active ? 1 : 0.55,
-                transform: active && dragging ? "scale(1.1)" : active ? "scale(1.04)" : "scale(1)",
-              }}
+              style={{ opacity: active ? 1 : 0.55 }}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.icon}
-                alt=""
-                draggable={false}
-                className="w-6 h-6 sm:w-7 sm:h-7 object-contain pointer-events-none brightness-0 invert"
-              />
+              {/* Hộp cố định: vòng tròn + icon cùng tâm */}
+              <span
+                className={cn(
+                  "relative flex items-center justify-center",
+                  "w-11 h-11 sm:w-12 sm:h-12 shrink-0"
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute inset-0 rounded-full",
+                    "border border-white/40 bg-white/[0.22]",
+                    "shadow-[inset_0_0_12px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)]",
+                    "backdrop-blur-md pointer-events-none",
+                    "transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]",
+                    active ? "opacity-100 scale-100" : "opacity-0 scale-75"
+                  )}
+                  style={{
+                    transform: active
+                      ? `scale(${dragging ? 1.1 : 1})`
+                      : "scale(0.75)",
+                  }}
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.icon}
+                  alt=""
+                  draggable={false}
+                  className={cn(
+                    "relative z-[1] w-6 h-6 sm:w-[26px] sm:h-[26px]",
+                    "object-contain pointer-events-none brightness-0 invert",
+                    "transition-transform duration-300",
+                    active && dragging && "scale-105"
+                  )}
+                />
+              </span>
+
               <span
                 className={cn(
                   "text-[8px] sm:text-[9px] font-medium leading-none max-w-full px-0.5 truncate",

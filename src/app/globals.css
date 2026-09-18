@@ -2721,11 +2721,10 @@ html[data-dock="1"] main {
   }
 }
 
-/* Hover glow chỉ trên chuột thật — tránh blob kẹt trên cảm ứng */
+/* Dock lens: chỉ hover chuột thật, không sticky trên cảm ứng */
 @media (hover: hover) and (pointer: fine) {
-  .opus-glass-dock button:hover > span:first-child {
-    opacity: 0.45 !important;
-    transform: scale(0.96);
+  .opus-glass-dock button:hover {
+    opacity: 1;
   }
 }
 

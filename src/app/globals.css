@@ -599,6 +599,15 @@ body {
   }
 }
 
+
+/* Playbox luôn trên Dock menu */
+html[data-dock="1"] [data-mini-player] {
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)) !important;
+}
+html[data-dock="0"] [data-mini-player] {
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px)) !important;
+}
+
 .app-content-offset {
   /* Navbar sticky nằm trong flow — không cần cộng chiều cao nav */
   padding-top: 0;

@@ -202,8 +202,10 @@ export default function FloatingMiniPlayer() {
   const mode: "music" | "film" | null = showFilm ? "film" : showMusic ? "music" : null;
   if (!mode) return null;
 
+  // Đẩy playbox lên trên Dock (dock ~56px + safe-area)
   const shellClass = cn(
-    "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-[60]",
+    "fixed right-3 z-[55]",
+    "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]",
     "w-[min(92vw,320px)]",
     "transition-all duration-300 ease-in-out",
     visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-3 scale-95 pointer-events-none"

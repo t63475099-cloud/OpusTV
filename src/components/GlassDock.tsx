@@ -27,7 +27,6 @@ const ITEMS: DockItem[] = [
 const N = ITEMS.length;
 
 function shouldHideDock(path: string): boolean {
-  if (path === "/") return true;
   if (path.startsWith("/admin")) return true;
   if (path.startsWith("/bao-tri")) return true;
   if (path.startsWith("/get-key")) return true;
@@ -187,21 +186,22 @@ export default function GlassDock() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          {/* Viên thuốc active — 1 lớp, % chính xác theo tab */}
+          {/* Khung hover hình tròn — 1 lớp, căn % theo tab */}
           <div
             aria-hidden
             className={cn(
-              "absolute top-1.5 bottom-1.5 z-[1] pointer-events-none",
-              "rounded-full",
-              "border border-white/35 bg-white/[0.18]",
-              "shadow-[inset_0_0_14px_rgba(255,255,255,0.4),0_2px_10px_rgba(0,0,0,0.2)]",
+              "absolute z-[1] pointer-events-none",
+              "rounded-full aspect-square",
+              "border border-white/40 bg-white/[0.18]",
+              "shadow-[inset_0_0_14px_rgba(255,255,255,0.45),0_2px_10px_rgba(0,0,0,0.22)]",
               "backdrop-blur-md",
               "transition-[left,width,transform] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
             )}
             style={{
               left: lensLeft,
               width: lensWidth,
-              transform: dragging ? "scale(1.06)" : "scale(1)",
+              top: "50%",
+              transform: `translateY(-50%) scale(${dragging ? 1.08 : 1})`,
               filter: "url(#opus-dock-refract)",
             }}
           />

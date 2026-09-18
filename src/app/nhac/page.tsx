@@ -1,4 +1,8 @@
 "use client";
+
+import MusicSleepTimer from "@/components/MusicSleepTimer";
+
+import MusicPlaylistPanel from "@/components/MusicPlaylistPanel";
 import { useEventStore } from "@/lib/eventCoins";
 
 import { useSearchParams } from "next/navigation";
@@ -401,13 +405,16 @@ function NhacInner() {
   };
 
   return (
-    <div className="min-h-screen pt-[6.75rem] lg:pt-16 pb-24 px-3 sm:px-4 md:px-6 max-w-[1400px] mx-auto">
+    <div className="min-h-screen app-content-offset pb-28 px-3 sm:px-4 md:px-6 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-9 h-9 rounded-full bg-[#ff0000] flex items-center justify-center shrink-0">
           <Music2 className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">Opus Music</h1>
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">Opus Music</h1>
+            <div className="mt-2 mb-1"><MusicSleepTimer /></div>
+          </div>
           <p className="text-[11px] text-[#aaa]">Đề xuất YouTube · Cuộn tải thêm</p>
         </div>
       </div>
@@ -745,6 +752,7 @@ export default function NhacPage() {
   return (
     <Suspense fallback={<div className="min-h-[50vh] pt-20 text-center text-zinc-500 text-sm">Đang tải nhạc…</div>}>
       <NhacInner />
+      <div className="px-4 pb-8 max-w-3xl mx-auto"><MusicPlaylistPanel /></div>
     </Suspense>
   );
 }

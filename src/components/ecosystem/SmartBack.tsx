@@ -15,11 +15,13 @@ export default function SmartBack({ className }: { className?: string }) {
   const path = usePathname() || "/";
   const router = useRouter();
 
+  // Ẩn trên: portal, admin, trang chủ mảng, trang xem phim
   const hide =
     path === "/" ||
     path.startsWith("/admin") ||
     path.startsWith("/bao-tri") ||
     path.startsWith("/get-key") ||
+    path.startsWith("/phim/") ||
     isSectionRoot(path);
 
   const onBack = useCallback(() => {
@@ -28,13 +30,14 @@ export default function SmartBack({ className }: { className?: string }) {
       router.push(dest);
       return;
     }
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
+    // Không bao giờ về "/" — về trang chủ mảng
     const section = getActiveSection();
     if (section !== "portal" && section in SECTION_HOME) {
       router.push(SECTION_HOME[section as keyof typeof SECTION_HOME]);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
     }
   }, [path, router]);
 

@@ -25,6 +25,8 @@ const ITEMS: DockItem[] = [
 ];
 
 const N = ITEMS.length;
+/** Đường kính vòng tròn cố định (px) — luôn tròn thật */
+const CIRCLE = 44;
 
 function shouldHideDock(path: string): boolean {
   if (path.startsWith("/admin")) return true;
@@ -50,7 +52,6 @@ function activeIndex(path: string): number {
 export default function GlassDock() {
   const path = usePathname() || "/";
   const router = useRouter();
-  const dockRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [mounted, setMounted] = useState(false);
   const [idx, setIdx] = useState(0);
@@ -105,7 +106,6 @@ export default function GlassDock() {
     startX.current = e.clientX;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     setDragging(true);
-    // Cập nhật tab gần điểm chạm ngay
     setIdx(nearestIndex(e.clientX));
     window.getSelection()?.removeAllRanges();
   };
@@ -114,7 +114,6 @@ export default function GlassDock() {
     if (!dragging) return;
     e.preventDefault();
     if (Math.abs(e.clientX - startX.current) > 6) moved.current = true;
-    // Chỉ đổi index — lens luôn bám % theo idx, không bao giờ lệch pixel
     setIdx(nearestIndex(e.clientX));
   };
 
@@ -141,114 +140,94 @@ export default function GlassDock() {
 
   if (!mounted || hide) return null;
 
-  // Lens: đúng 1 ô tab theo % — không dùng pixel → không lệch
-  const slot = 100 / N;
-  const lensLeft = `calc(${idx * slot}% + 3px)`;
-  const lensWidth = `calc(${slot}% - 6px)`;
+  // Tâm vòng tròn = tâm tab idx (theo %)
+  // left = (idx + 0.5) * (100/N)% - CIRCLE/2
+  const lensLeft = `calc(${(idx + 0.5) * (100 / N)}% - ${CIRCLE / 2}px)`;
 
   const ui = (
-    <>
-      <svg width="0" height="0" className="absolute overflow-hidden" aria-hidden>
-        <defs>
-          <filter id="opus-dock-refract" x="-30%" y="-30%" width="160%" height="160%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="5" result="n" />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="n"
-              scale={dragging ? 28 : 16}
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </defs>
-      </svg>
-
-      <nav
-        aria-label="Opus Dock"
+    <nav
+      aria-label="Opus Dock"
+      className={cn(
+        "opus-glass-dock fixed z-[60] left-1/2 -translate-x-1/2",
+        "bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
+        "pointer-events-none select-none w-[min(100vw-0.75rem,560px)]"
+      )}
+      style={{ userSelect: "none", WebkitUserSelect: "none", touchAction: "none" }}
+    >
+      <div
         className={cn(
-          "opus-glass-dock fixed z-[60] left-1/2 -translate-x-1/2",
-          "bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
-          "pointer-events-none select-none w-[min(100vw-0.75rem,560px)]"
+          "pointer-events-auto relative flex items-stretch w-full",
+          "px-1.5 py-1.5 rounded-full overflow-hidden",
+          "border border-white/25 bg-white/[0.12] backdrop-blur-xl",
+          "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
+          dragging ? "cursor-grabbing" : "cursor-grab"
         )}
-        style={{ userSelect: "none", WebkitUserSelect: "none", touchAction: "none" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
+        {/* Vòng tròn hoàn hảo: width === height (px), không filter méo */}
         <div
-          ref={dockRef}
+          aria-hidden
           className={cn(
-            "pointer-events-auto relative flex items-stretch w-full",
-            "px-1.5 py-1.5 rounded-full overflow-hidden",
-            "border border-white/25 bg-white/[0.12] backdrop-blur-xl",
-            "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
-            dragging ? "cursor-grabbing" : "cursor-grab"
+            "absolute z-[1] pointer-events-none rounded-full",
+            "border border-white/40 bg-white/[0.2]",
+            "shadow-[inset_0_0_12px_rgba(255,255,255,0.45),0_2px_8px_rgba(0,0,0,0.2)]",
+            "backdrop-blur-md",
+            "transition-[left,transform] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
           )}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-        >
-          {/* Khung hover hình tròn — 1 lớp, căn % theo tab */}
-          <div
-            aria-hidden
-            className={cn(
-              "absolute z-[1] pointer-events-none",
-              "rounded-full aspect-square",
-              "border border-white/40 bg-white/[0.18]",
-              "shadow-[inset_0_0_14px_rgba(255,255,255,0.45),0_2px_10px_rgba(0,0,0,0.22)]",
-              "backdrop-blur-md",
-              "transition-[left,width,transform] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
-            )}
-            style={{
-              left: lensLeft,
-              width: lensWidth,
-              top: "50%",
-              transform: `translateY(-50%) scale(${dragging ? 1.08 : 1})`,
-              filter: "url(#opus-dock-refract)",
-            }}
-          />
+          style={{
+            left: lensLeft,
+            top: "50%",
+            width: CIRCLE,
+            height: CIRCLE,
+            transform: `translateY(-50%) scale(${dragging ? 1.1 : 1})`,
+          }}
+        />
 
-          {ITEMS.map((item, i) => {
-            const active = i === idx;
-            return (
-              <button
-                key={item.id}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                type="button"
-                onClick={(e) => onItemClick(e, i)}
+        {ITEMS.map((item, i) => {
+          const active = i === idx;
+          return (
+            <button
+              key={item.id}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
+              type="button"
+              onClick={(e) => onItemClick(e, i)}
+              className={cn(
+                "relative z-[2] flex flex-1 flex-col items-center justify-center gap-0.5",
+                "min-w-0 h-[52px] sm:h-[56px] rounded-full outline-none bg-transparent",
+                "transition-[opacity,transform] duration-300 ease-out"
+              )}
+              style={{
+                opacity: active ? 1 : 0.55,
+                transform: active && dragging ? "scale(1.1)" : active ? "scale(1.04)" : "scale(1)",
+              }}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.icon}
+                alt=""
+                draggable={false}
+                className="w-6 h-6 sm:w-7 sm:h-7 object-contain pointer-events-none brightness-0 invert"
+              />
+              <span
                 className={cn(
-                  "relative z-[2] flex flex-1 flex-col items-center justify-center gap-0.5",
-                  "min-w-0 h-[52px] sm:h-[56px] rounded-full outline-none bg-transparent",
-                  "transition-[opacity,transform] duration-300 ease-out"
+                  "text-[8px] sm:text-[9px] font-medium leading-none max-w-full px-0.5 truncate",
+                  active ? "text-white" : "text-white/60"
                 )}
-                style={{
-                  opacity: active ? 1 : 0.55,
-                  transform: active && dragging ? "scale(1.12)" : active ? "scale(1.04)" : "scale(1)",
-                }}
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.icon}
-                  alt=""
-                  draggable={false}
-                  className="w-6 h-6 sm:w-7 sm:h-7 object-contain pointer-events-none brightness-0 invert"
-                />
-                <span
-                  className={cn(
-                    "text-[8px] sm:text-[9px] font-medium leading-none max-w-full px-0.5 truncate",
-                    active ? "text-white" : "text-white/60"
-                  )}
-                >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-    </>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 
   return createPortal(ui, document.body);

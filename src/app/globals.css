@@ -1,31 +1,33 @@
 
-/* Nút Quay lại — fixed viewport, không trôi theo scroll */
-.opus-smart-back {
+/* Back trên khung chiếu phim — fixed viewport, không theo scroll */
+.opus-smart-back.opus-smart-back--watch {
   position: fixed !important;
-  z-index: 80 !important;
+  z-index: 90 !important;
+  /* Dưới thanh OpusFilm (~3.5rem) + safe-area, góc trái player */
+  top: calc(env(safe-area-inset-top, 0px) + 3.75rem + 0.5rem) !important;
   left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
   display: flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  background: rgba(0, 0, 0, 0.55) !important;
+  color: #fff !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   transform: none !important;
-  margin: 0 !important;
-  inset: auto auto auto max(0.75rem, env(safe-area-inset-left, 0px));
+  -webkit-transform: none !important;
+  will-change: auto;
+  pointer-events: auto !important;
 }
-.opus-smart-back--watch {
-  top: max(0.65rem, calc(env(safe-area-inset-top, 0px) + 0.5rem)) !important;
-}
-.opus-smart-back--page {
-  top: max(3.75rem, calc(env(safe-area-inset-top, 0px) + 2.85rem)) !important;
-}
+
 
 @import "tailwindcss";
 

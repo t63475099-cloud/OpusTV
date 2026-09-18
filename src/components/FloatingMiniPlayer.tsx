@@ -350,32 +350,48 @@ export default function FloatingMiniPlayer() {
     const progress =
       film.duration > 0 ? Math.min(100, Math.round((resumeSec / film.duration) * 100)) : 0;
 
-    const togglePlay = async () => {
+    const togglePlay = async (e?: React.MouseEvent) => {
+      e?.stopPropagation?.();
+      e?.preventDefault?.();
       const v = videoRef.current;
-      if (!v || !film.m3u8) {
-        router.push(filmPageHref({ ...film, currentTime: resumeSec }));
-        return;
-      }
+      if (!v) return;
+      // Chỉ play/pause trong playbox — không chuyển trang xem phim
       if (v.paused) {
         const t = getResumeSec();
-        const doSeek = () => {
-          if (t > 5) {
+        if (t > 5) {
+          try {
+            v.currentTime = t;
+          } catch {}
+        }
+        // Gắn lại stream nếu chưa có
+        if (!v.src && !hlsRef.current && film.m3u8) {
+          if (Hls.isSupported()) {
             try {
-              v.currentTime = t;
+              hlsRef.current?.destroy();
             } catch {}
+            const hls = new Hls({ enableWorker: true, maxBufferLength: 30 });
+            hlsRef.current = hls;
+            hls.loadSource(film.m3u8);
+            hls.attachMedia(v);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              if (t > 5) {
+                try {
+                  v.currentTime = t;
+                } catch {}
+              }
+              v.play().then(() => setFilmPlaying(true)).catch(() => {});
+            });
+            return;
           }
-        };
-        doSeek();
+          if (v.canPlayType("application/vnd.apple.mpegurl")) {
+            v.src = film.m3u8;
+          }
+        }
         try {
           await v.play();
           setFilmPlaying(true);
-          requestAnimationFrame(() => {
-            doSeek();
-            setTimeout(doSeek, 200);
-            setTimeout(doSeek, 600);
-          });
         } catch {
-          router.push(filmPageHref({ ...film, currentTime: t }));
+          /* autoplay policy */
         }
       } else {
         v.pause();

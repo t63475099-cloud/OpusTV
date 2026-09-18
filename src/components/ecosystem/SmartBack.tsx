@@ -4,15 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import {
-  resolveSmartBack,
-  isSectionRoot,
-  getActiveSection,
-  SECTION_HOME,
-} from "@/lib/routeManager";
-import { cn } from "@/lib/utils";
 
-export default function SmartBack({ className }: { className?: string }) {
+/**
+ * Chỉ hiện trên trang xem phim — cố định góc trên trái khung player (dưới header),
+ * không trôi theo scroll.
+ */
+export default function SmartBack() {
   const path = usePathname() || "/";
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -20,54 +17,26 @@ export default function SmartBack({ className }: { className?: string }) {
 
   useEffect(() => setMounted(true), []);
 
-  const hide =
-    path === "/" ||
-    path.startsWith("/admin") ||
-    path.startsWith("/bao-tri") ||
-    path.startsWith("/get-key") ||
-    (!onWatch && isSectionRoot(path));
-
   const onBack = useCallback(() => {
-    if (onWatch) {
-      if (typeof window !== "undefined" && window.history.length > 1) {
-        router.back();
-        return;
-      }
-      router.push("/home");
-      return;
-    }
-    const dest = resolveSmartBack(path);
-    if (dest) {
-      router.push(dest);
-      return;
-    }
-    const section = getActiveSection();
-    if (section !== "portal" && section in SECTION_HOME) {
-      router.push(SECTION_HOME[section as keyof typeof SECTION_HOME]);
-      return;
-    }
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
+      return;
     }
-  }, [path, router, onWatch]);
+    router.push("/home");
+  }, [router]);
 
-  if (!mounted || hide) return null;
+  if (!mounted || !onWatch) return null;
 
-  const btn = (
+  return createPortal(
     <button
       type="button"
       onClick={onBack}
       aria-label="Quay lại"
       data-smart-back="1"
-      className={cn(
-        "opus-smart-back",
-        onWatch ? "opus-smart-back--watch" : "opus-smart-back--page",
-        className
-      )}
+      className="opus-smart-back opus-smart-back--watch"
     >
       <ArrowLeft className="h-5 w-5" />
-    </button>
+    </button>,
+    document.body
   );
-
-  return createPortal(btn, document.body);
 }

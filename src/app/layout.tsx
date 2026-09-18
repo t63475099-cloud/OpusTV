@@ -6,6 +6,7 @@ import LanguageSync from "@/components/LanguageSync";
 import SyncBootstrap from "@/components/SyncBootstrap";
 import ScrollNavFab from "@/components/ScrollNavFab";
 import Sidebar from "@/components/Sidebar";
+import GlassDock from "@/components/GlassDock";
 import FloatingMiniPlayer from "@/components/FloatingMiniPlayer";
 import AmbientBackdrop from "@/components/AmbientBackdrop";
 import GsapScrollProvider from "@/components/GsapScrollProvider";
@@ -70,6 +71,7 @@ export default function RootLayout({
           <SmartBack />
           <SectionRouteGuard />
           <Navbar />
+          <GlassDock />
           <div data-shell="1" className="flex flex-1 w-full max-w-[1920px] mx-auto">
             <Sidebar />
             <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>

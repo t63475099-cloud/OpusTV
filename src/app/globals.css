@@ -2642,3 +2642,82 @@ html.opus-chrome-hide [data-shell="1"] {
 html.opus-chrome-hide footer {
   display: none !important;
 }
+
+
+/* Opus preloader — khóa scroll khi đang load */
+html.opus-preloading,
+html.opus-preloading body {
+  overflow: hidden !important;
+  height: 100%;
+}
+
+
+/* iOS-style 3-dot loader */
+@keyframes opus-dot-bounce {
+  0%, 80%, 100% {
+    transform: translateY(0) scale(0.92);
+    opacity: 0.55;
+  }
+  40% {
+    transform: translateY(-10px) scale(1);
+    opacity: 1;
+  }
+}
+.opus-dot-bounce {
+  animation: opus-dot-bounce 0.9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Hero title rainbow + breath */
+@keyframes opus-rainbow-shift {
+  0% { background-position: 0% center; }
+  100% { background-position: 240% center; }
+}
+@keyframes opus-title-breath {
+  0%, 100% {
+    transform: scale(0.94);
+    filter: brightness(0.9);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: brightness(1.15);
+  }
+}
+.opus-hero-breath {
+  display: inline-block;
+  max-width: 100%;
+  transform-origin: center center;
+  animation: opus-title-breath 3.8s ease-in-out infinite;
+  will-change: transform, filter;
+}
+.opus-hero-rainbow {
+  background: linear-gradient(
+    110deg,
+    #c084fc 0%,
+    #f472b6 16%,
+    #fb923c 32%,
+    #facc15 48%,
+    #22d3ee 68%,
+    #34d399 84%,
+    #c084fc 100%
+  );
+  background-size: 240% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: opus-rainbow-shift 7s linear infinite;
+  filter: drop-shadow(0 0 14px rgba(192, 132, 252, 0.35));
+}
+
+
+
+/* GlassDock content clearances */
+html[data-dock="1"] main {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  html[data-dock="1"] main {
+    padding-bottom: 1.5rem;
+    padding-top: 5.25rem;
+  }
+}

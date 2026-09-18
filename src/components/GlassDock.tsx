@@ -45,7 +45,7 @@ function activeIndex(path: string): number {
   return 0;
 }
 
-/** Icon trắng: mask luminance để bỏ nền đen (Music) / giữ silhouette */
+/** Silhouette icon (mask) — bỏ nền PNG */
 function DockIcon({ src, className }: { src: string; className?: string }) {
   return (
     <span
@@ -162,14 +162,14 @@ export default function GlassDock() {
       className={cn(
         "opus-glass-dock fixed z-[60] left-1/2 -translate-x-1/2",
         "bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
-        "pointer-events-none select-none w-[min(100vw-0.75rem,560px)]"
+        "pointer-events-none select-none w-[min(100vw-1rem,420px)]"
       )}
       style={{ userSelect: "none", WebkitUserSelect: "none", touchAction: "none" }}
     >
       <div
         className={cn(
-          "pointer-events-auto relative flex items-stretch w-full",
-          "px-1 py-1.5 rounded-full overflow-hidden",
+          "pointer-events-auto relative flex items-center justify-between w-full",
+          "h-14 px-1.5 rounded-full overflow-hidden",
           "border border-white/25 bg-white/[0.12] backdrop-blur-xl",
           "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
           dragging ? "cursor-grabbing" : "cursor-grab"
@@ -190,55 +190,45 @@ export default function GlassDock() {
               type="button"
               onClick={(e) => onItemClick(e, i)}
               className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-0.5",
-                "min-w-0 h-[58px] outline-none bg-transparent overflow-hidden",
+                "relative flex flex-1 items-center justify-center",
+                "h-full min-w-0 outline-none bg-transparent",
                 "transition-opacity duration-300"
               )}
-              style={{ opacity: active ? 1 : 0.55 }}
+              style={{ opacity: active ? 1 : 0.5 }}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
+              title={item.label}
             >
-              {/* Icon + vòng tròn cùng hộp */}
-              <span className="relative flex items-center justify-center w-10 h-10 shrink-0">
+              {/* Ô vuông cố định — icon + vòng tròn luôn giữa ô */}
+              <span className="relative flex items-center justify-center w-11 h-11 shrink-0">
                 <span
                   aria-hidden
                   className={cn(
                     "absolute inset-0 rounded-full",
-                    "border border-white/40 bg-white/[0.22]",
-                    "shadow-[inset_0_0_10px_rgba(255,255,255,0.35)]",
+                    "border border-white/45 bg-white/[0.22]",
+                    "shadow-[inset_0_0_12px_rgba(255,255,255,0.4)]",
                     "pointer-events-none transition-all duration-300 ease-out",
                     active ? "opacity-100 scale-100" : "opacity-0 scale-75"
                   )}
                   style={{
-                    transform: active ? `scale(${dragging ? 1.08 : 1})` : "scale(0.75)",
+                    transform: active ? `scale(${dragging ? 1.1 : 1})` : "scale(0.75)",
                   }}
                 />
                 {item.id === "music" ? (
-                  // Music PNG nền đen → chỉ lấy nốt trắng, bỏ khối thừa
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={item.icon}
                     alt=""
                     draggable={false}
-                    className="relative z-[1] w-5 h-5 sm:w-6 sm:h-6 object-contain pointer-events-none"
+                    className="relative z-[1] w-5 h-5 object-contain pointer-events-none"
                     style={{
                       filter: "invert(1) brightness(1.2)",
                       mixBlendMode: "screen",
                     }}
                   />
                 ) : (
-                  <DockIcon src={item.icon} className="relative z-[1] w-5 h-5 sm:w-6 sm:h-6" />
+                  <DockIcon src={item.icon} className="relative z-[1] w-5 h-5" />
                 )}
-              </span>
-
-              {/* Label luôn trong dock, truncate */}
-              <span
-                className={cn(
-                  "w-full text-center text-[8px] font-medium leading-tight px-0.5 truncate",
-                  active ? "text-white" : "text-white/55"
-                )}
-              >
-                {item.label}
               </span>
             </button>
           );

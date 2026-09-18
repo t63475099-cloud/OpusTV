@@ -27,11 +27,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: `${APP_NAME} - ${APP_TAGLINE}`,
+    default: "OpusTV — Unified Entertainment Ecosystem",
     template: `%s | ${APP_NAME}`,
   },
-  description:
-    "OpusFilm — xem phim online.",
+  description: "OpusTV — Unified Entertainment Ecosystem.",
   keywords: ["opusfilm", "xem phim"],
   robots: {
     index: true,
@@ -40,7 +39,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: APP_NAME,
+    title: "OpusTV",
   },
   formatDetection: { telephone: false },
 };

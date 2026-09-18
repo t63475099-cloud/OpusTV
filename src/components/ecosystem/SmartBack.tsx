@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
-import { resolveSmartBack, isSectionRoot, getActiveSection } from "@/lib/routeManager";
+import { resolveSmartBack, isSectionRoot, getActiveSection, SECTION_HOME } from "@/lib/routeManager";
 import { cn } from "@/lib/utils";
 
 export default function SmartBack({ className }: { className?: string }) {
@@ -12,7 +12,6 @@ export default function SmartBack({ className }: { className?: string }) {
 
   const hide =
     path === "/" ||
-    path.startsWith("/tai-khoan") ||
     path.startsWith("/admin") ||
     path.startsWith("/bao-tri") ||
     path.startsWith("/get-key") ||
@@ -29,15 +28,8 @@ export default function SmartBack({ className }: { className?: string }) {
       return;
     }
     const section = getActiveSection();
-    if (section !== "portal") {
-      const map: Record<string, string> = {
-        film: "/home",
-        chat: "/tin-nhan",
-        code: "/code",
-        music: "/nhac",
-        pass: "/su-kien",
-      };
-      router.push(map[section] || "/home");
+    if (section !== "portal" && section in SECTION_HOME) {
+      router.push(SECTION_HOME[section as keyof typeof SECTION_HOME]);
     }
   }, [path, router]);
 

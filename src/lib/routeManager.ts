@@ -1,10 +1,16 @@
 /**
- * Smart routing for Opus sub-apps.
- * Nested page → section home.
- * Section home → stay (browser history) — only logo / "Cổng" returns to portal.
+ * Smart routing — nested → section home; section home never forced to portal.
  */
 
-export type OpusSection = "film" | "chat" | "code" | "music" | "pass" | "portal";
+export type OpusSection =
+  | "film"
+  | "chat"
+  | "code"
+  | "music"
+  | "pass"
+  | "settings"
+  | "account"
+  | "portal";
 
 export const SECTION_HOME: Record<Exclude<OpusSection, "portal">, string> = {
   film: "/home",
@@ -12,6 +18,8 @@ export const SECTION_HOME: Record<Exclude<OpusSection, "portal">, string> = {
   code: "/code",
   music: "/nhac",
   pass: "/su-kien",
+  settings: "/cai-dat",
+  account: "/tai-khoan",
 };
 
 const KEY_SECTION = "opus-nav-section";
@@ -19,14 +27,6 @@ const KEY_SECTION = "opus-nav-section";
 export function markEnterSection(section: Exclude<OpusSection, "portal">) {
   try {
     sessionStorage.setItem(KEY_SECTION, section);
-  } catch {
-    /* */
-  }
-}
-
-export function clearSectionMark() {
-  try {
-    sessionStorage.removeItem(KEY_SECTION);
   } catch {
     /* */
   }
@@ -40,6 +40,9 @@ export function getActiveSection(): OpusSection {
   if (p.startsWith("/code")) return "code";
   if (p.startsWith("/nhac")) return "music";
   if (p.startsWith("/su-kien")) return "pass";
+  if (p.startsWith("/cai-dat") || p.startsWith("/hop-thu") || p.startsWith("/chinh-sach") || p.startsWith("/dieu-khoan") || p.startsWith("/faq") || p.startsWith("/ho-tro"))
+    return "settings";
+  if (p.startsWith("/tai-khoan") || p.startsWith("/u/")) return "account";
   if (
     p.startsWith("/home") ||
     p.startsWith("/phim") ||
@@ -61,25 +64,16 @@ export function getActiveSection(): OpusSection {
 }
 
 export function isSectionRoot(pathname: string): boolean {
-  return Object.values(SECTION_HOME).some(
-    (r) => pathname === r || pathname === r + "/"
-  );
+  const roots = Object.values(SECTION_HOME);
+  return roots.some((r) => pathname === r || pathname === r + "/");
 }
 
-/**
- * Back target:
- * - Nested under a section → that section's home
- * - Already on section home → null (use browser history / stay)
- * - Portal → null
- */
+/** nested → section home; on section home → null (history.back / stay) */
 export function resolveSmartBack(pathname: string): string | null {
   const section = getActiveSection();
   if (section === "portal") return null;
-
   const home = SECTION_HOME[section];
   if (!isSectionRoot(pathname)) return home;
-
-  // On section home: do NOT force portal — leave history alone
   return null;
 }
 

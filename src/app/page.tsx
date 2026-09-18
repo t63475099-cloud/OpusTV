@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import BackgroundMesh from "@/components/ecosystem/BackgroundMesh";
-import KineticMarquee from "@/components/ecosystem/KineticMarquee";
 import EcosystemGrid from "@/components/ecosystem/EcosystemGrid";
 import PortalNav from "@/components/ecosystem/PortalNav";
 import { markEnterSection } from "@/lib/routeManager";
@@ -18,24 +17,22 @@ export default function EcosystemHubPage() {
           className="mx-auto max-w-3xl text-center"
           style={{
             paddingTop: "calc(5.75rem + env(safe-area-inset-top, 0px))",
-            paddingBottom: "clamp(1.5rem, 3vw, 2.25rem)",
+            paddingBottom: "clamp(1.75rem, 4vw, 2.5rem)",
             paddingLeft: "clamp(1.25rem, 4vw, 2rem)",
             paddingRight: "clamp(1.25rem, 4vw, 2rem)",
           }}
         >
-          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-zinc-500 mb-4">
+          <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-zinc-500 mb-5">
             OPUSTV · UNIFIED ENTERTAINMENT ECOSYSTEM
           </p>
 
-          <h1 className="text-[1.55rem] sm:text-4xl md:text-[2.75rem] font-bold tracking-tight leading-[1.25] text-white">
+          <h1 className="opus-hero-title text-[1.45rem] sm:text-4xl md:text-[2.65rem] font-bold tracking-tight leading-[1.25]">
             Một Hệ Sinh Thái — Không Giới Hạn Không Gian Giải Trí
           </h1>
 
-          <p className="mt-5 text-sm sm:text-[15px] text-zinc-400 leading-relaxed">
-            Khám phá cổng kết nối tập trung đưa toàn bộ nhu cầu số của bạn về một tọa độ
-            duy nhất. Trải nghiệm điện ảnh, âm nhạc, lập trình trên trình duyệt và trò chuyện
-            với cùng một tài khoản định danh — mở đúng phần cần dùng, quay lại cổng khi muốn
-            đổi hướng.
+          <p className="mt-5 sm:mt-6 text-sm sm:text-[15px] text-zinc-400 leading-relaxed">
+            Cổng kết nối tập trung: điện ảnh, âm nhạc, lập trình trên trình duyệt và trò chuyện
+            với cùng một tài khoản. Mở đúng phần cần dùng — quay lại cổng khi muốn đổi hướng.
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -55,11 +52,8 @@ export default function EcosystemHubPage() {
           </div>
         </section>
 
-        <KineticMarquee className="mb-8 sm:mb-12" />
-
-        {/* Extra intro strip */}
         <section
-          className="mx-auto max-w-3xl mb-10 sm:mb-14"
+          className="mx-auto max-w-3xl mb-10 sm:mb-12"
           style={{
             paddingLeft: "clamp(1.25rem, 4vw, 2rem)",
             paddingRight: "clamp(1.25rem, 4vw, 2rem)",
@@ -68,23 +62,14 @@ export default function EcosystemHubPage() {
           <h2 className="text-lg sm:text-xl font-semibold text-white tracking-tight mb-3">
             Vì sao gom năm mảng vào một chỗ
           </h2>
-          <p className="text-sm text-zinc-400 leading-relaxed mb-3">
-            Nhiều người phải mở riêng app xem phim, app nghe nhạc, IDE trên máy và một app
-            chat khác — mỗi nơi một tài khoản, một lịch sử. OpusTV giữ một phiên đăng nhập
-            và chia rõ Film, Music, Code, Chat, Pass. Bạn không bị ép dùng hết mọi thứ cùng
-            lúc; chỉ cần vào đúng không gian đang cần. Nút quay lại trong từng mảng đưa về
-            trang chủ của mảng đó, không kéo bạn ra cổng giới thiệu giữa chừng.
-          </p>
-          <p className="text-sm text-zinc-500 leading-relaxed">
-            Phía dưới là mô tả chi tiết từng phân hệ. Đọc xong, chọn thẻ để vào thẳng trang
-            chủ tương ứng.
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            Thay vì mở nhiều app và nhiều tài khoản, OpusTV giữ một phiên đăng nhập và chia rõ
+            Film, Music, Code, Chat, Pass. Nút quay lại trong từng mảng đưa về trang chủ của
+            mảng đó — không kéo về cổng giới thiệu giữa chừng.
           </p>
         </section>
 
-        <section
-          className="pb-[clamp(3rem,8vw,5rem)]"
-          aria-label="Các phân hệ Opus"
-        >
+        <section className="pb-[clamp(3rem,8vw,5rem)]" aria-label="Các phân hệ Opus">
           <div
             className="mx-auto max-w-6xl mb-6 sm:mb-8"
             style={{
@@ -95,9 +80,6 @@ export default function EcosystemHubPage() {
             <h2 className="text-lg sm:text-xl font-semibold text-white tracking-tight">
               Chọn không gian
             </h2>
-            <p className="text-sm text-zinc-500 mt-1.5">
-              Nội dung trải dọc, có hình minh họa — không sát viền màn hình.
-            </p>
           </div>
           <EcosystemGrid />
         </section>
@@ -113,6 +95,48 @@ export default function EcosystemHubPage() {
         <p className="text-zinc-400 font-medium">OpusTV</p>
         <p className="mt-1">Film · Music · Code · Chat · Pass</p>
       </footer>
+
+      <style jsx global>{`
+        .opus-hero-title {
+          background: linear-gradient(
+            110deg,
+            #c084fc 0%,
+            #f472b6 18%,
+            #fb923c 36%,
+            #facc15 52%,
+            #22d3ee 72%,
+            #34d399 88%,
+            #c084fc 100%
+          );
+          background-size: 220% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          animation: opus-rainbow-shift 8s linear infinite,
+            opus-title-breath 4.5s ease-in-out infinite;
+          filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.35));
+          will-change: transform, filter, background-position;
+        }
+        @keyframes opus-rainbow-shift {
+          0% {
+            background-position: 0% 50%;
+          }
+          100% {
+            background-position: 220% 50%;
+          }
+        }
+        @keyframes opus-title-breath {
+          0%,
+          100% {
+            transform: scale(0.97);
+            filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.25));
+          }
+          50% {
+            transform: scale(1.03);
+            filter: drop-shadow(0 0 18px rgba(244, 114, 182, 0.45));
+          }
+        }
+      `}</style>
     </div>
   );
 }

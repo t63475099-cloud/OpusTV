@@ -11,6 +11,8 @@ import AmbientBackdrop from "@/components/AmbientBackdrop";
 import GsapScrollProvider from "@/components/GsapScrollProvider";
 import ChromeGuard from "@/components/ChromeGuard";
 import BehaviorMonitor from "@/components/BehaviorMonitor";
+import OpusPreloader from "@/components/OpusPreloader";
+import SmartBack from "@/components/ecosystem/SmartBack";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -58,12 +60,14 @@ export default function RootLayout({
     <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full min-h-[100dvh] flex flex-col bg-[#0a0a0f] text-zinc-100 relative overflow-x-clip overflow-y-auto">
         <AmbientBackdrop />
+        <OpusPreloader oncePerSession />
         <GsapScrollProvider>
           <LanguageSync />
           <SyncBootstrap />
           <ChromeGuard />
           <BehaviorMonitor />
           <ScrollNavFab />
+          <SmartBack />
           <Navbar />
           <div data-shell="1" className="flex flex-1 w-full max-w-[1920px] mx-auto">
             <Sidebar />

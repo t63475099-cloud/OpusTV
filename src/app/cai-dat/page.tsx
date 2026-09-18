@@ -750,36 +750,6 @@ function SettingsInner() {
           </div>
         )}
 
-        
-              <button
-                type="button"
-                className="w-full mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 text-left transition duration-500"
-                onClick={() => {
-                  if (!confirm("Xóa cache tạm (không xóa tài khoản đăng nhập)?")) return;
-                  try {
-                    const keep = ["opus-account", "opusfilm-session"];
-                    const keys = Object.keys(localStorage);
-                    for (const k of keys) {
-                      if (keep.some((x) => k.includes(x))) continue;
-                      if (k.startsWith("opus") || k.startsWith("xianxia") || k.includes("music") || k.includes("history")) {
-                        // giữ auth-related
-                      }
-                    }
-                    // chỉ xóa cache phim/api gợi ý nếu có
-                    for (const k of Object.keys(localStorage)) {
-                      if (k.includes("cache") || k.includes("search-recent") || k.includes("suggest")) {
-                        localStorage.removeItem(k);
-                      }
-                    }
-                    alert("Đã xóa cache tạm.");
-                  } catch {
-                    alert("Không xóa được.");
-                  }
-                }}
-              >
-                Xóa cache trình duyệt (tìm kiếm / gợi ý)
-              </button>
-
         {section === "more" && (
           <div className="max-h-[70vh] overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
             {MORE_KEYS.map((f) => (

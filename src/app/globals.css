@@ -600,13 +600,14 @@ body {
 }
 
 .app-content-offset {
-  padding-top: calc(var(--nav-h, 3.5rem) + env(safe-area-inset-top, 0px) + 0.25rem);
+  /* Navbar sticky nằm trong flow — không cần cộng chiều cao nav */
+  padding-top: 0;
 }
 html[data-nav-chips="1"] .app-content-offset {
-  padding-top: calc(var(--nav-h, 3.5rem) + var(--nav-chips-h, 0px) + env(safe-area-inset-top, 0px) + 0.25rem);
+  padding-top: 0;
 }
 html[data-nav-minimal="1"] .app-content-offset {
-  padding-top: calc(var(--nav-h, 3.5rem) + env(safe-area-inset-top, 0px) + 0.15rem);
+  padding-top: 0;
 }
 
 
@@ -1795,10 +1796,8 @@ html[data-nav-minimal="1"] .app-content-offset {
     font-size: 1.2rem;
   }
 }
-.fpt-home .banner-slider,
 .fpt-home [data-banner] {
-  border-radius: 0 0 1rem 1rem;
-  overflow: hidden;
+  margin-top: 0;
 }
 @media (min-width: 1024px) {
   .fpt-home .banner-slider,
@@ -2638,6 +2637,9 @@ html.opus-chrome-hide [data-shell="1"] {
   max-width: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
+}
+html.opus-chrome-hide .app-content-offset {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 html.opus-chrome-hide footer {
   display: none !important;

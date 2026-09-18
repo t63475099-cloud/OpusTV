@@ -405,7 +405,7 @@ function NhacInner() {
   };
 
   return (
-    <div className="min-h-screen app-content-offset pb-28 px-3 sm:px-4 md:px-6 max-w-[1400px] mx-auto">
+    <div className="min-h-screen pb-28 px-3 sm:px-4 md:px-6 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-9 h-9 rounded-full bg-[#ff0000] flex items-center justify-center shrink-0">
           <Music2 className="w-5 h-5 text-white" />

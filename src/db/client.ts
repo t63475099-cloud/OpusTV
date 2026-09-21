@@ -4,15 +4,11 @@ import * as schema from "./schema";
 import { resolveDatabaseUrl } from "@/lib/neonSql";
 
 /**
- * Neon HTTP + Drizzle — Render / mọi host Node.
+ * Neon HTTP + Drizzle — phù hợp Vercel Serverless (không giữ pool lớn).
+ * Chỉ dùng phía server (API routes / Server Components).
  */
 export function getDb() {
   const url = resolveDatabaseUrl();
-  if (!url) {
-    throw new Error(
-      "DATABASE_URL chưa được cấu hình. Thêm DATABASE_URL (Neon) vào Environment Variables trên Render."
-    );
-  }
   const sql = neon(url);
   return drizzle(sql, { schema });
 }

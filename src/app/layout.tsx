@@ -16,6 +16,7 @@ import OpusPreloader from "@/components/OpusPreloader";
 import SmartBack from "@/components/ecosystem/SmartBack";
 import SectionRouteGuard from "@/components/ecosystem/SectionRouteGuard";
 import PwaRegister from "@/components/PwaRegister";
+import IosInstallGuide from "@/components/IosInstallGuide";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -35,7 +36,10 @@ export const metadata: Metadata = {
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   title: {
     default: "OpusFilm - Xem phim online",
@@ -50,7 +54,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "OpusTV",
+    title: "OpusFilm",
   },
   formatDetection: { telephone: false },
 };
@@ -72,6 +76,7 @@ export default function RootLayout({
         <AmbientBackdrop />
         <OpusPreloader oncePerSession />
         <PwaRegister />
+        <IosInstallGuide />
         <GsapScrollProvider>
           <LanguageSync />
           <SyncBootstrap />

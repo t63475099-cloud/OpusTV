@@ -36,6 +36,7 @@ function shouldHideDock(path: string): boolean {
   if (path.startsWith("/tai-khoan")) return true;
   if (path.startsWith("/hop-thu")) return true;
   if (path.startsWith("/dieu-khoan") || path.startsWith("/chinh-sach")) return true;
+  if (path.startsWith("/cai-dat")) return true;
   return false;
 }
 

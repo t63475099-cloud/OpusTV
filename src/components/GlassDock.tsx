@@ -15,7 +15,6 @@ type MainItem = {
   section?: "film" | "chat" | "music" | "code" | "settings" | "pass";
 };
 
-/** 5 mục dock chính — giữa là dấu + mở sheet Code / Event */
 const MAIN: MainItem[] = [
   { id: "home", href: "/home", label: "Trang chủ", icon: "/dock/home.png", kind: "link", section: "film" },
   { id: "music", href: "/nhac", label: "Music", icon: "/dock/music.png", kind: "link", section: "music" },
@@ -61,7 +60,6 @@ function isMoreActive(path: string): boolean {
   return path.startsWith("/code") || path.startsWith("/su-kien");
 }
 
-/** Icon silhouette qua CSS mask — căn giữa tuyệt đối */
 function DockIcon({
   src,
   className,
@@ -101,22 +99,33 @@ function DockIcon({
   );
 }
 
+/** Nền kính: màu đặc trước → blur sau, tránh flash trong suốt */
+const GLASS =
+  "bg-[#1c1c22]/92 backdrop-blur-2xl border border-white/20 " +
+  "shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.12)]";
+
 export default function GlassDock() {
   const path = usePathname() || "/";
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [ready, setReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const plusRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    // Đợi 1 frame để backdrop-filter sẵn sàng rồi mới hiện
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setReady(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
-  // Đóng sheet khi đổi route
   useEffect(() => {
     setSheetOpen(false);
   }, [path]);
 
-  // Click ngoài / Escape đóng sheet
   useEffect(() => {
     if (!sheetOpen) return;
     const onDown = (e: MouseEvent | TouchEvent) => {
@@ -154,39 +163,36 @@ export default function GlassDock() {
   const ui = (
     <div
       data-opus-dock="1"
-      className="fixed inset-x-0 z-[60] pointer-events-none flex flex-col items-center"
+      className={cn(
+        "fixed z-[60] pointer-events-none",
+        "left-1/2 -translate-x-1/2",
+        "flex flex-col items-center",
+        "transition-opacity duration-300 ease-out",
+        ready ? "opacity-100" : "opacity-0"
+      )}
       style={{
-        bottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
-        paddingLeft: "max(0.75rem, env(safe-area-inset-left))",
-        paddingRight: "max(0.75rem, env(safe-area-inset-right))",
+        bottom: "calc(0.65rem + env(safe-area-inset-bottom, 0px))",
+        width: "max-content",
+        maxWidth: "calc(100vw - 1.5rem)",
       }}
     >
-      {/* ── Sheet Code / Event (mở từ nút +) ── */}
+      {/* Sheet Code / Event */}
       <div
         ref={sheetRef}
         className={cn(
-          "pointer-events-auto mb-3 w-[min(280px,calc(100vw-2rem))]",
-          "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          "origin-bottom",
+          "pointer-events-auto mb-2.5 w-[min(260px,calc(100vw-2rem))]",
+          "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] origin-bottom",
           sheetOpen
             ? "opacity-100 translate-y-0 scale-100 visible"
-            : "opacity-0 translate-y-3 scale-95 invisible pointer-events-none"
+            : "opacity-0 translate-y-2 scale-95 invisible pointer-events-none"
         )}
         aria-hidden={!sheetOpen}
       >
-        <div
-          className={cn(
-            "relative rounded-[28px] px-3 pt-2 pb-3",
-            "bg-white/[0.12] backdrop-blur-2xl",
-            "border border-white/30",
-            "shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.25)]"
-          )}
-        >
-          {/* Mũi tên đóng / mở — xoay 180° khi mở */}
+        <div className={cn("relative rounded-[24px] px-2.5 pt-1.5 pb-2.5", GLASS)}>
           <button
             type="button"
             onClick={() => setSheetOpen(false)}
-            className="mx-auto mb-2 flex h-7 w-10 items-center justify-center rounded-full
+            className="mx-auto mb-1.5 flex h-7 w-10 items-center justify-center rounded-full
               text-white/80 hover:text-white hover:bg-white/10 transition-colors duration-300"
             aria-label="Đóng"
           >
@@ -206,7 +212,7 @@ export default function GlassDock() {
             </svg>
           </button>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {MORE.map((item) => {
               const active =
                 (item.id === "code" && path.startsWith("/code")) ||
@@ -217,18 +223,18 @@ export default function GlassDock() {
                   type="button"
                   onClick={() => go(item.href, item.section)}
                   className={cn(
-                    "w-full flex items-center justify-center gap-2.5",
-                    "h-11 rounded-full px-4",
+                    "w-full flex items-center justify-center gap-2",
+                    "h-10 rounded-full px-3",
                     "border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                     active
-                      ? "bg-white/25 border-white/45 text-white shadow-[inset_0_0_12px_rgba(255,255,255,0.2)]"
-                      : "bg-white/[0.08] border-white/20 text-white/90 hover:bg-white/15 hover:border-white/35"
+                      ? "bg-white/20 border-white/40 text-white"
+                      : "bg-white/[0.06] border-white/15 text-white/90 hover:bg-white/12"
                   )}
                 >
-                  <span className="flex items-center justify-center w-6 h-6 shrink-0">
+                  <span className="flex items-center justify-center w-5 h-5 shrink-0">
                     <DockIcon src={item.icon} className="w-5 h-5" />
                   </span>
-                  <span className="text-sm font-medium tracking-wide">{item.label}</span>
+                  <span className="text-[13px] font-medium tracking-wide">{item.label}</span>
                 </button>
               );
             })}
@@ -236,17 +242,15 @@ export default function GlassDock() {
         </div>
       </div>
 
-      {/* ── Dock chính 5 nút ── */}
+      {/* Dock pill — chỉ rộng bằng nội dung 5 icon */}
       <nav
         className={cn(
-          "pointer-events-auto",
-          "flex items-center justify-center gap-1 sm:gap-1.5",
-          "h-[56px] sm:h-[60px] px-2 sm:px-2.5",
+          "pointer-events-auto inline-flex items-center justify-center",
+          "h-[52px] sm:h-[56px] px-1.5 sm:px-2 gap-0.5 sm:gap-1",
           "rounded-full",
-          "bg-white/[0.12] backdrop-blur-2xl",
-          "border border-white/30",
-          "shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.22)]"
+          GLASS
         )}
+        style={{ width: "max-content" }}
         aria-label="Điều hướng"
       >
         {MAIN.map((item) => {
@@ -261,23 +265,22 @@ export default function GlassDock() {
                 aria-label={sheetOpen ? "Đóng menu thêm" : "Mở Code & Sự kiện"}
                 aria-expanded={sheetOpen}
                 className={cn(
-                  "relative flex items-center justify-center",
-                  "w-12 h-12 sm:w-[52px] sm:h-[52px] shrink-0",
-                  "rounded-full outline-none",
+                  "relative flex items-center justify-center shrink-0",
+                  "w-11 h-11 sm:w-12 sm:h-12 rounded-full outline-none",
                   "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                   openOrMore
-                    ? "bg-white/25 border border-white/40 scale-105"
-                    : "bg-white/10 border border-white/25 hover:bg-white/18 active:scale-95"
+                    ? "bg-white/20 border border-white/35 scale-105"
+                    : "bg-white/10 border border-white/20 hover:bg-white/16 active:scale-95"
                 )}
               >
                 <span
                   className={cn(
-                    "flex items-center justify-center w-6 h-6",
+                    "flex items-center justify-center w-5 h-5",
                     "transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                     sheetOpen ? "rotate-45" : "rotate-0"
                   )}
                 >
-                  <DockIcon src={item.icon} className="w-6 h-6" invert />
+                  <DockIcon src={item.icon} className="w-5 h-5" invert />
                 </span>
               </button>
             );
@@ -293,24 +296,21 @@ export default function GlassDock() {
               aria-current={active ? "page" : undefined}
               title={item.label}
               className={cn(
-                "relative flex items-center justify-center",
-                "w-11 h-11 sm:w-12 sm:h-12 shrink-0",
-                "rounded-full outline-none",
+                "relative flex items-center justify-center shrink-0",
+                "w-10 h-10 sm:w-11 sm:h-11 rounded-full outline-none",
                 "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
               )}
             >
-              {/* Vòng active căn giữa icon */}
               <span
                 aria-hidden
                 className={cn(
-                  "absolute inset-0 m-auto w-10 h-10 sm:w-11 sm:h-11 rounded-full",
-                  "border border-white/45 bg-white/[0.22]",
-                  "shadow-[inset_0_0_12px_rgba(255,255,255,0.35)]",
+                  "absolute inset-0 m-auto w-9 h-9 sm:w-10 sm:h-10 rounded-full",
+                  "border border-white/40 bg-white/15",
                   "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                   active ? "opacity-100 scale-100" : "opacity-0 scale-75"
                 )}
               />
-              <span className="relative z-[1] flex items-center justify-center w-5 h-5 sm:w-[22px] sm:h-[22px]">
+              <span className="relative z-[1] flex items-center justify-center w-5 h-5">
                 <DockIcon
                   src={item.icon!}
                   className="w-full h-full"

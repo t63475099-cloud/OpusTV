@@ -1122,13 +1122,15 @@ export default function AccountPage() {
                   <label className="text-xs font-medium leading-none text-slate-600">
                     Mã kích hoạt <span className="text-rose-500">*</span>
                   </label>
-                  <Link
-                    href="/get-key"
+                  <a
+                    href="https://link4m.org/FBlS5LG8"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex h-7 items-center gap-1 rounded-full border border-amber-400/50 bg-amber-50 px-2.5 text-xs font-semibold leading-none text-amber-700 hover:bg-amber-100 transition"
                   >
                     <KeyRound className="w-3.5 h-3.5 shrink-0" />
                     Get Key
-                  </Link>
+                  </a>
                 </div>
                 <input
                   value={inviteKey}

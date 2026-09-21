@@ -701,11 +701,43 @@ const showControls = useCallback(() => {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+      const v = videoRef.current;
+      if (!v) return;
+      const k = e.key.toLowerCase();
       if (e.key === "Escape") {
         const el = wrapRef.current;
-        if (el?.classList.contains("player-fs-css")) {
-          exitCssFs();
-        }
+        if (el?.classList.contains("player-fs-css")) exitCssFs();
+        return;
+      }
+      if (k === " " || k === "k") {
+        e.preventDefault();
+        if (v.paused) v.play().catch(() => {});
+        else v.pause();
+        showControls();
+      } else if (k === "j" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        seekBy(k === "j" ? -10 : -5);
+      } else if (k === "l" || e.key === "ArrowRight") {
+        e.preventDefault();
+        seekBy(k === "l" ? 10 : 5);
+      } else if (k === "m") {
+        e.preventDefault();
+        v.muted = !v.muted;
+        setMuted?.(v.muted);
+        showControls();
+      } else if (k === "f") {
+        e.preventDefault();
+        toggleFs?.();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        v.volume = Math.min(1, v.volume + 0.05);
+        showControls();
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        v.volume = Math.max(0, v.volume - 0.05);
+        showControls();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -1382,6 +1414,38 @@ const showControls = useCallback(() => {
           </div>
         </div>
       )}
+      
+      {currentTime < 90 && currentTime >= 0 && (
+        <button
+          type="button"
+          data-controls
+          onClick={() => {
+            const v = videoRef.current;
+            if (!v) return;
+            v.currentTime = Math.min((v.duration || 90), 85);
+            setCurrentTime(85);
+            showControls();
+          }}
+          className="absolute bottom-24 right-4 z-30 px-3 py-2 rounded-full text-xs font-medium
+            bg-white/10 backdrop-blur-xl border border-white/20 text-white
+            hover:bg-white/20 transition-all duration-500"
+        >
+          Bỏ qua giới thiệu (+85s)
+        </button>
+      )}
+      {duration > 0 && duration - currentTime <= 60 && duration - currentTime > 0 && nextEpisode && (
+        <button
+          type="button"
+          data-controls
+          onClick={() => onNextEpisode?.()}
+          className="absolute bottom-24 right-4 z-30 px-3 py-2 rounded-full text-xs font-medium
+            bg-red-600/90 backdrop-blur border border-red-400/40 text-white
+            hover:bg-red-500 transition-all duration-500"
+        >
+          Tập tiếp theo
+        </button>
+      )}
+
       {showNext && nextEpisode && (
         <div
           data-controls

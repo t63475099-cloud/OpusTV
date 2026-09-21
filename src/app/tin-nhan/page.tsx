@@ -10,13 +10,9 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInfoPanel from "@/components/chat/ChatInfoPanel";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
 import IncomingCallBanner from "@/components/chat/IncomingCallBanner";
+import { startSmartPoll } from "@/lib/smartPoll";
 
 export default function TinNhanPage() {
-  // Đánh thức Neon trước khi sync chat (Render cold start)
-  useEffect(() => {
-    void fetch("/api/health/db", { credentials: "include" }).catch(() => {});
-  }, []);
-
   const username = useAccountStore((s) => s.username);
   const setMe = useChatStore((s) => s.setMe);
   const syncFromServer = useChatStore((s) => s.syncFromServer);
@@ -57,18 +53,21 @@ export default function TinNhanPage() {
 
   useEffect(() => {
     if (!username) return;
-    const tick = () => {
-      try {
-        void syncFromServer();
-        const st = useChatStore.getState();
-        const c = st.conversations.find((x) => x.id === st.activeId);
-        if (c?.peerUsername) void loadThread(c.peerUsername);
-      } catch {
-        /* ignore */
-      }
-    };
-    const id = window.setInterval(tick, 6000);
-    return () => window.clearInterval(id);
+    return startSmartPoll({
+      activeMs: 8000,
+      idleMs: 30000,
+      idleAfterMs: 60000,
+      onTick: async () => {
+        try {
+          await syncFromServer();
+          const st = useChatStore.getState();
+          const c = st.conversations.find((x) => x.id === st.activeId);
+          if (c?.peerUsername) await loadThread(c.peerUsername);
+        } catch {
+          /* ignore */
+        }
+      },
+    });
   }, [username, syncFromServer, loadThread]);
 
   // Khi activeId đổi (kết bạn / openDirect), mobile tự mở thread
@@ -128,18 +127,10 @@ export default function TinNhanPage() {
       }}
     >
       {error && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%]">
-          <div className="flex items-start gap-2 text-xs text-amber-100 bg-amber-500/15 border border-amber-500/30 rounded-lg px-3 py-2 shadow-lg">
-            <p className="flex-1 text-center leading-snug">{error}</p>
-            <button
-              type="button"
-              className="shrink-0 text-amber-200/80 hover:text-white px-1"
-              aria-label="Đóng"
-              onClick={() => useChatStore.getState().clearError?.() || useChatStore.setState({ error: null })}
-            >
-              ✕
-            </button>
-          </div>
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[90%]">
+          <p className="text-xs text-amber-200 bg-amber-500/15 border border-amber-500/30 rounded-lg px-3 py-2 text-center">
+            {error}
+          </p>
         </div>
       )}
 

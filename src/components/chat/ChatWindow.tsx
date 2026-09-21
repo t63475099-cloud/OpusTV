@@ -90,8 +90,12 @@ export default function ChatWindow({
 
   useEffect(() => {
     if (!peerId || conversation?.isGroup) return;
-    const id = window.setInterval(() => void pollTyping(peerId), 2500);
-    return () => clearInterval(id);
+    return startSmartPoll({
+      activeMs: 4000,
+      idleMs: 20000,
+      idleAfterMs: 60000,
+      onTick: () => pollTyping(peerId),
+    });
   }, [peerId, pollTyping, conversation?.isGroup]);
 
   useEffect(() => {

@@ -15,6 +15,7 @@ import BehaviorMonitor from "@/components/BehaviorMonitor";
 import OpusPreloader from "@/components/OpusPreloader";
 import SmartBack from "@/components/ecosystem/SmartBack";
 import SectionRouteGuard from "@/components/ecosystem/SectionRouteGuard";
+import PwaRegister from "@/components/PwaRegister";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -28,6 +29,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  manifest: "/manifest.json",
   title: {
     default: "OpusFilm - Xem phim online",
     template: `%s | ${APP_NAME}`,
@@ -62,6 +64,7 @@ export default function RootLayout({
       <body className="min-h-full min-h-[100dvh] flex flex-col bg-[#0a0a0f] text-zinc-100 relative overflow-x-clip overflow-y-auto">
         <AmbientBackdrop />
         <OpusPreloader oncePerSession />
+        <PwaRegister />
         <GsapScrollProvider>
           <LanguageSync />
           <SyncBootstrap />

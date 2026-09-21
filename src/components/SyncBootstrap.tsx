@@ -1,5 +1,7 @@
 "use client";
 
+import { startSmartPoll } from "@/lib/smartPoll";
+
 import { useEffect, useState, useRef, Component, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useAccountStore } from "@/lib/account";
@@ -142,14 +144,7 @@ export default function SyncBootstrap() {
     try {
       await waitAllHydrated();
       await refreshMe();
-
-      const u = useAccountStore.getState().username;
-      if (!u) return;
-
-      // Đồng bộ cloud trước
-      await syncNow();
-
-      // Áp dụng grant chuỗi từ admin (độc lập)
+      // Áp dụng grant chuỗi từ admin (nếu có)
       try {
         const sr = await fetch("/api/streak/me", { credentials: "include" });
         const sd = await sr.json();
@@ -171,40 +166,34 @@ export default function SyncBootstrap() {
                 dedupeKey: `streak-grant-${gid}`,
               });
             } catch {}
-          }
-        }
-      } catch {}
 
-      // Grant xu admin — chỉ unclaimed trên server, claim sau khi áp dụng
-      let coinsChanged = false;
       try {
-        const { applyPendingCoinGrants } = await import("@/lib/applyCoinGrants");
-        const { gained, appliedIds } = await applyPendingCoinGrants();
-        if (appliedIds.length) {
-          coinsChanged = true;
-          if (gained !== 0) {
-            try {
-              useNotifStore.getState().add({
-                kind: "system",
-                title: gained < 0 ? "Admin đã trừ xu" : "Nhận xu từ Admin",
-                body:
-                  gained < 0
-                    ? `Ví Sự kiện bị trừ ${Math.abs(gained).toLocaleString("vi-VN")} xu.`
-                    : `Bạn được cấp ${gained.toLocaleString("vi-VN")} xu.`,
-                href: "/su-kien",
-                dedupeKey: `coin-grant-batch-${appliedIds.join("-")}`,
-              });
-            } catch {}
+        const cr = await fetch("/api/coins/me", { credentials: "include" });
+        const cd = await cr.json();
+        if (cd?.ok && cd.grant?.amount) {
+          const gid = Number(cd.grant.id);
+          const amt = Number(cd.grant.amount);
+          try {
+            useEventStore.getState().grantCoins?.(amt, gid);
+          } catch {}
+          try {
+            useNotifStore.getState().add({
+              kind: "system",
+              title: "Nhận xu từ Admin",
+              body: `Bạn được cấp ${amt} xu.`,
+              href: "/su-kien",
+              dedupeKey: `coin-grant-${gid}`,
+            });
+          } catch {}
+        }
+      } catch {}
           }
         }
       } catch {}
 
-      if (coinsChanged) {
-        try {
-          await syncNow();
-        } catch {}
-      }
-
+      const u = useAccountStore.getState().username;
+      if (!u) return;
+      await syncNow();
       lastSyncRef.current = Date.now();
       // Chat
       try {
@@ -259,36 +248,43 @@ export default function SyncBootstrap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, username]);
 
-  // 4) Interval dự phòng (60s)
+  // 4) Interval dự phòng — smart poll (ẩn tab = dừng)
   useEffect(() => {
     if (!username) return;
-    const id = window.setInterval(() => void fullSync("interval"), 60 * 1000);
-    return () => window.clearInterval(id);
+    return startSmartPoll({
+      activeMs: 90_000,
+      idleMs: 180_000,
+      idleAfterMs: 60_000,
+      onTick: () => fullSync("interval"),
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);
 
-  // Chat heartbeat riêng khi đang ở /tin-nhan
+  // Chat heartbeat — chỉ khi /tin-nhan + tab visible
   useEffect(() => {
     if (!username || !isChat) return;
-    let intervalId = 0;
+    let stop: (() => void) | null = null;
     let cancelled = false;
     (async () => {
       try {
         const { useChatStore } = await import("@/lib/chatStore");
         if (cancelled) return;
-        const tick = () => {
-          try {
-            void useChatStore.getState().heartbeat();
-            void useChatStore.getState().syncFromServer();
-          } catch {}
-        };
-        tick();
-        intervalId = window.setInterval(tick, 8000);
+        stop = startSmartPoll({
+          activeMs: 12_000,
+          idleMs: 45_000,
+          idleAfterMs: 60_000,
+          onTick: async () => {
+            try {
+              await useChatStore.getState().heartbeat();
+              await useChatStore.getState().syncFromServer();
+            } catch {}
+          },
+        });
       } catch {}
     })();
     return () => {
       cancelled = true;
-      if (intervalId) window.clearInterval(intervalId);
+      stop?.();
     };
   }, [username, isChat]);
 

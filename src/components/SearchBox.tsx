@@ -351,7 +351,7 @@ export default function SearchBox({
         /* PC: luôn căn giữa, full container — không justify-end */
         "flex justify-center",
         /* Mobile: căn phải khi thu nhỏ */
-        "max-lg:justify-end",
+        "max-lg:justify-start",
         className
       )}
       onMouseEnter={() => setHovered(true)}

@@ -73,11 +73,12 @@ export default function Navbar() {
       <div
         className={cn(
           "h-14 px-3 sm:px-4 max-w-[1920px] mx-auto w-full",
-          "grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3"
+          "flex items-center gap-2 sm:gap-3",
+          "lg:grid lg:grid-cols-[1fr_minmax(280px,36rem)_1fr]"
         )}
       >
         {/* Trái: back (trang xem) + logo */}
-        <div className="flex items-center gap-2 min-w-0 justify-self-start">
+        <div className="flex items-center gap-2 min-w-0 shrink-0 lg:justify-self-start">
           {isWatch && (
             <button
               type="button"
@@ -114,22 +115,24 @@ export default function Navbar() {
         </div>
 
         {/* Giữa: search — căn giữa thanh bar (PC) */}
-        <div className="justify-self-center w-full max-w-md lg:max-w-xl min-w-0 px-1">
+        <div className="flex-1 min-w-0 lg:justify-self-center lg:w-full lg:max-w-xl px-0.5">
           {showSearch ? (
             <SearchBox onExpandChange={onExpandChange} />
           ) : (
-            <span className="block w-full max-w-md lg:max-w-xl" aria-hidden />
+            <span className="block w-full" aria-hidden />
           )}
         </div>
 
         {/* Phải: streak + bell — căn phải, bề rộng tương đương trái để search thật sự giữa */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-self-end">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto lg:ml-0 lg:justify-self-end">
           {!pathname.startsWith("/tin-nhan") && (
             <>
               <div className="hidden sm:block">
                 <StreakBadge />
               </div>
-              <NotificationBell />
+              <div className="hidden sm:block">
+                <NotificationBell />
+              </div>
             </>
           )}
         </div>

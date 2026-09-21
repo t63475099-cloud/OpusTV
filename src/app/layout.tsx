@@ -17,6 +17,7 @@ import SmartBack from "@/components/ecosystem/SmartBack";
 import SectionRouteGuard from "@/components/ecosystem/SectionRouteGuard";
 import PwaRegister from "@/components/PwaRegister";
 import IosInstallGuide from "@/components/IosInstallGuide";
+import AuthRedirector from "@/components/AuthRedirector";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -76,6 +77,7 @@ export default function RootLayout({
         <AmbientBackdrop />
         <OpusPreloader oncePerSession />
         <PwaRegister />
+        <AuthRedirector />
         <IosInstallGuide />
         <GsapScrollProvider>
           <LanguageSync />

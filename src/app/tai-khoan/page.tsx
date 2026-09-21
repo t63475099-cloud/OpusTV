@@ -13,6 +13,7 @@ import {
   LogOut,
   RefreshCw,
   Shield,
+  PlayCircle,
   Check,
   X,
   Loader2,
@@ -169,19 +170,8 @@ function AuthCanvas() {
 function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl border border-white/15 bg-white/[0.06] shadow-[0_24px_64px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-2xl ${className}`}
-      style={{
-        WebkitBackdropFilter: "blur(24px) saturate(1.4)",
-        backdropFilter: "blur(24px) saturate(1.4)",
-      }}
+      className={`relative overflow-hidden rounded-2xl bg-transparent ${className}`}
     >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 20% 0%, rgba(244,63,94,0.15), transparent 50%), radial-gradient(ellipse 60% 40% at 90% 100%, rgba(168,85,247,0.12), transparent 50%)",
-        }}
-      />
       <div className="relative z-[1]">{children}</div>
     </div>
   );
@@ -223,20 +213,20 @@ function FloatingField({
           autoComplete={autoComplete}
           inputMode={inputMode}
           placeholder=" "
-          className={`peer block w-full h-[54px] rounded-2xl border bg-white/[0.06] backdrop-blur-md pl-4 ${
+          className={`peer block w-full h-[48px] rounded-xl border bg-slate-50 pl-4 ${
             rightSlot ? "pr-11" : "pr-4"
-          } pt-[20px] pb-2 text-[15px] leading-none text-white outline-none transition-[border-color,box-shadow,background-color] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          } pt-[18px] pb-2 text-[14px] leading-none text-slate-800 outline-none transition-[border-color,box-shadow,background-color] duration-300 ease-out ${
             error
-              ? "border-red-500/50 focus:border-red-400"
-              : "border-white/12 focus:border-rose-400/70 focus:bg-white/[0.08] focus:shadow-[0_0_0_3px_rgba(244,63,94,0.2)]"
+              ? "border-red-400 focus:border-red-500"
+              : "border-slate-200 focus:border-emerald-500/70 focus:bg-white focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
           }`}
         />
         <label
           htmlFor={id}
           className={`pointer-events-none absolute left-4 z-[1] origin-left will-change-transform ${
             filled
-              ? "top-[8px] translate-y-0 scale-[0.72] text-rose-300/95 font-medium"
-              : "top-1/2 -translate-y-1/2 scale-100 text-zinc-500 peer-focus:top-[8px] peer-focus:translate-y-0 peer-focus:scale-[0.72] peer-focus:text-rose-300/95 peer-focus:font-medium"
+              ? "top-[7px] translate-y-0 scale-[0.72] text-emerald-600 font-medium"
+              : "top-1/2 -translate-y-1/2 scale-100 text-slate-400 peer-focus:top-[7px] peer-focus:translate-y-0 peer-focus:scale-[0.72] peer-focus:text-emerald-600 peer-focus:font-medium"
           }`}
           style={{
             transition:
@@ -546,7 +536,7 @@ export default function AccountPage() {
     <button
       type="button"
       onClick={toggle}
-      className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-xl text-zinc-400 hover:bg-white/10 hover:text-white transition"
+      className="absolute right-2.5 top-1/2 z-10 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
       tabIndex={-1}
       aria-label={show ? "Ẩn" : "Hiện"}
     >
@@ -972,41 +962,41 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] w-full overflow-hidden px-4 pb-20 pt-10 sm:pt-14">
-      <AuthCanvas />
-      <div className="pointer-events-none fixed inset-0 z-[1] bg-neutral-950/40 backdrop-blur-[2px]" aria-hidden />
-      <div className={`relative z-10 mx-auto w-full max-w-[420px] px-4 ${mounted ? "auth-enter" : "opacity-0"}`}>
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-red-600 to-orange-500 shadow-[0_8px_32px_rgba(244,63,94,0.45)] ring-1 ring-white/25 transition-transform duration-500 hover:scale-105">
-            <Shield className="h-7 w-7 text-white" />
+    <div className="relative min-h-[100dvh] w-full overflow-hidden flex items-center justify-center px-4 py-10 sm:py-14 bg-gradient-to-br from-slate-50 via-white to-sky-50">
+      <div className={`relative z-10 mx-auto w-full max-w-[420px] ${mounted ? "auth-enter" : "opacity-0"}`}>
+        <div className="rounded-[28px] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)] border border-slate-100 p-6 sm:p-8">
+        <div className="mb-5 text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 shadow-lg shadow-rose-500/25">
+            <PlayCircle className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold leading-tight tracking-tight text-white">{titles[mode]}</h1>
-          <p className="mt-1.5 text-xs leading-none text-zinc-500">OpusFilm</p>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-slate-900">OpusFilm</h1>
+          <p className="mt-1.5 text-sm leading-snug text-slate-500">Xem phim · Nhạc · Chat · Code</p>
         </div>
 
-        <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-white/12 bg-white/[0.04] p-1 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden">
+        <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 overflow-hidden">
           {(
             [
-              ["login", "Đăng nhập", LogIn],
-              ["register", "Đăng ký", UserPlus],
-              ["recover", "Quên MK", KeyRound],
+              ["login", "Đăng Nhập", LogIn],
+              ["register", "Đăng Ký Tài Khoản", UserPlus],
             ] as const
           ).map(([m, label, Icon]) => (
             <button
               key={m}
               type="button"
               onClick={() => switchMode(m)}
-              className={`flex h-10 items-center justify-center gap-1.5 rounded-xl px-1 text-xs font-semibold leading-none transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] sm:text-sm ${
-                mode === m ? "bg-white text-black shadow-lg" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+              className={`flex h-10 items-center justify-center gap-1.5 rounded-xl px-2 text-xs font-semibold leading-none transition-all duration-300 sm:text-sm ${
+                mode === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <Icon className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate leading-none">{label}</span>
             </button>
           ))}
         </div>
+        {mode === "recover" && (
+          <p className="mb-3 text-center text-xs text-slate-500">Khôi phục mật khẩu</p>
+        )}
 
-        <GlassCard className="auth-glass rounded-3xl p-5 sm:p-7 lg-shimmer overflow-hidden">
+        <GlassCard className="rounded-2xl p-0 overflow-visible">
           <form onSubmit={onSubmit} noValidate>
             {mode === "register" && (
               <FloatingField
@@ -1107,19 +1097,19 @@ export default function AccountPage() {
 
             {mode === "login" && (
               <div className="mb-5 flex items-center justify-between gap-3 px-0.5">
-                <label className="flex cursor-pointer items-center gap-2.5 text-sm leading-none text-zinc-300">
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm leading-none text-slate-600">
                   <input
                     type="checkbox"
                     checked={remember}
                     onChange={(e) => setRemember(e.target.checked)}
-                    className="h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600 align-middle"
+                    className="h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600 align-middle"
                   />
                   <span className="leading-none">Ghi nhớ</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => switchMode("recover")}
-                  className="text-sm font-medium leading-none text-rose-400 hover:text-rose-300"
+                  className="text-sm font-medium leading-none text-emerald-600 hover:text-emerald-700"
                 >
                   Quên mật khẩu?
                 </button>
@@ -1129,12 +1119,12 @@ export default function AccountPage() {
             {mode === "register" && (
               <div className="mb-4 space-y-2">
                 <div className="flex items-center justify-between gap-2 px-0.5">
-                  <label className="text-xs font-medium leading-none text-zinc-400">
-                    Mã kích hoạt <span className="text-rose-400">*</span>
+                  <label className="text-xs font-medium leading-none text-slate-600">
+                    Mã kích hoạt <span className="text-rose-500">*</span>
                   </label>
                   <Link
                     href="/get-key"
-                    className="inline-flex h-7 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 text-xs font-semibold leading-none text-amber-300 hover:text-amber-200 transition"
+                    className="inline-flex h-7 items-center gap-1 rounded-full border border-amber-400/50 bg-amber-50 px-2.5 text-xs font-semibold leading-none text-amber-700 hover:bg-amber-100 transition"
                   >
                     <KeyRound className="w-3.5 h-3.5 shrink-0" />
                     Get Key
@@ -1148,10 +1138,10 @@ export default function AccountPage() {
                   }}
                   onBlur={() => setTouched((t) => ({ ...t, key: true }))}
                   placeholder="OF-XXXX-XXXX-XXXX"
-                  className={`block w-full h-[48px] rounded-2xl border bg-white/[0.05] px-4 text-[15px] leading-none font-mono tracking-wider text-white outline-none transition-all duration-300 placeholder:text-zinc-600 ${
+                  className={`block w-full h-[48px] rounded-xl border bg-slate-50 px-4 text-[15px] leading-none font-mono tracking-wider text-slate-800 outline-none transition-all duration-300 placeholder:text-slate-400 ${
                     errors.key
-                      ? "border-red-500/60 focus:border-red-400"
-                      : "border-white/12 focus:border-rose-400/60 focus:shadow-[0_0_0_3px_rgba(244,63,94,0.18)]"
+                      ? "border-red-400 focus:border-red-500"
+                      : "border-slate-200 focus:border-emerald-500/70 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
                   }`}
                   autoComplete="off"
                   spellCheck={false}
@@ -1159,8 +1149,8 @@ export default function AccountPage() {
                 {errors.key ? (
                   <p className="flex items-center gap-1.5 pl-1 text-xs leading-snug text-red-400">{errors.key}</p>
                 ) : (
-                  <p className="pl-0.5 text-[11px] leading-snug text-zinc-500">
-                    Chưa có key? Bấm <strong className="text-amber-300">Get Key</strong> để nhận mã.
+                  <p className="pl-0.5 text-[11px] leading-snug text-slate-500">
+                    Chưa có key? Bấm <strong className="text-amber-700">Get Key</strong> để nhận mã.
                   </p>
                 )}
               </div>
@@ -1168,7 +1158,7 @@ export default function AccountPage() {
 
 {mode === "register" && (
               <div className="mb-5 px-0.5">
-                <label className="flex cursor-pointer items-start gap-2.5 text-sm leading-snug text-zinc-300">
+                <label className="flex cursor-pointer items-start gap-2.5 text-sm leading-snug text-slate-600">
                   <input
                     type="checkbox"
                     checked={terms}
@@ -1176,15 +1166,15 @@ export default function AccountPage() {
                       setTerms(e.target.checked);
                       setTouched((t) => ({ ...t, terms: true }));
                     }}
-                    className="mt-[3px] h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-rose-600"
+                    className="mt-[3px] h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-600"
                   />
                   <span className="leading-snug">
                     Đồng ý{" "}
-                    <Link href="/dieu-khoan" className="text-sky-400 hover:underline" target="_blank">
+                    <Link href="/dieu-khoan" className="text-emerald-600 hover:underline" target="_blank">
                       Điều khoản
                     </Link>{" "}
                     &{" "}
-                    <Link href="/dieu-khoan#bao-mat" className="text-sky-400 hover:underline" target="_blank">
+                    <Link href="/dieu-khoan#bao-mat" className="text-emerald-600 hover:underline" target="_blank">
                       Chính sách
                     </Link>
                   </span>
@@ -1196,42 +1186,50 @@ export default function AccountPage() {
             <button
               type="submit"
               disabled={busy || !formValid}
-              className="auth-btn-primary auth-btn-shimmer relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-2xl text-sm font-bold leading-none text-white disabled:opacity-40"
+              className="auth-btn-primary relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-full text-sm font-bold leading-none text-white disabled:opacity-40"
             >
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : mode === "login" ? (
-                <>
-                  <LogIn className="h-4 w-4" /> Đăng nhập
-                </>
+                <>Vào xem phim</>
               ) : mode === "register" ? (
-                <>
-                  <UserPlus className="h-4 w-4" /> Tạo tài khoản
-                </>
+                <>Tạo tài khoản</>
               ) : (
-                <>
-                  <KeyRound className="h-4 w-4" /> Đặt lại mật khẩu
-                </>
+                <>Đặt lại mật khẩu</>
               )}
             </button>
           </form>
         </GlassCard>
 
         {err && (
-          <p className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-center text-sm text-red-300">
+          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-600">
             {err}
           </p>
         )}
         {msg && (
-          <p className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-center text-sm text-emerald-300">
+          <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-sm text-emerald-700">
             {msg}
           </p>
         )}
 
-        <div className="mt-6 text-center">
-          <Link href="/cai-dat" className="text-sm text-rose-400 hover:underline">
-            ← Cài đặt
-          </Link>
+        {mode !== "recover" && (
+          <button
+            type="button"
+            onClick={() => switchMode("recover")}
+            className="mt-4 w-full text-center text-sm text-slate-500 hover:text-emerald-600 transition-colors"
+          >
+            Quên mật khẩu?
+          </button>
+        )}
+        {mode === "recover" && (
+          <button
+            type="button"
+            onClick={() => switchMode("login")}
+            className="mt-4 w-full text-center text-sm text-slate-500 hover:text-emerald-600 transition-colors"
+          >
+            ← Về đăng nhập
+          </button>
+        )}
         </div>
       </div>
       <AuthStyles />
@@ -1298,13 +1296,13 @@ function AuthStyles() {
         overflow: hidden;
       }
       .auth-btn-primary {
-        background: linear-gradient(135deg, #e11d48, #f43f5e 45%, #fb7185);
-        box-shadow: 0 8px 28px rgba(244, 63, 94, 0.35);
-        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s, box-shadow 0.25s;
+        background: #10b981;
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+        transition: transform 0.25s ease, filter 0.25s, box-shadow 0.25s;
       }
       .auth-btn-primary:hover:not(:disabled) {
-        filter: brightness(1.08);
-        box-shadow: 0 12px 36px rgba(244, 63, 94, 0.45);
+        filter: brightness(1.05);
+        box-shadow: 0 10px 28px rgba(16, 185, 129, 0.4);
       }
       .auth-btn-primary:active:not(:disabled) {
         transform: scale(0.96);

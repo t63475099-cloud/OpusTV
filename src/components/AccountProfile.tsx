@@ -246,7 +246,7 @@ export default function AccountProfile() {
   const expPct = Math.min(100, Math.round((expNow / Math.max(1, expNext)) * 100));
 
   return (
-    <div className="min-h-[100dvh] bg-[#000] text-white">
+    <div data-profile-ui="social-v2" className="min-h-[100dvh] bg-[#000] text-white">
       {/* Container responsive: edge-to-edge mobile, card desktop */}
       <div className="mx-auto w-full max-w-[900px] lg:px-6 lg:py-6">
         <div className="bg-[#000] lg:overflow-hidden lg:rounded-3xl lg:border lg:border-[#1c1c1e] lg:bg-[#0a0a0a]">

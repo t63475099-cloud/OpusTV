@@ -328,13 +328,17 @@ export default function AccountProfile() {
 
         {/* Identity */}
         <section className="px-4 pb-4 pt-5">
-          <div className="flex gap-4">
-            <div className="relative shrink-0">
+          {/* Hàng avatar + thống kê */}
+          <div className="flex items-center gap-4">
+            <div
+              className="relative shrink-0"
+              style={{ width: 88, height: 88 }}
+            >
               <UserAvatar profile={avatarProfile} size={88} showBadge />
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border border-[#27272a] bg-[#18181b]"
+                className="absolute bottom-0 right-0 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-[#3f3f46] bg-[#18181b] text-white shadow-md"
                 aria-label="Đổi ảnh"
               >
                 <Camera className="h-3.5 w-3.5" />
@@ -349,70 +353,85 @@ export default function AccountProfile() {
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="mb-3 grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-lg font-bold tabular-nums">VIP {vipLevel}</p>
-                  <p className="text-xs text-zinc-500">{vipLabel(vipLevel)}</p>
+              <div className="grid grid-cols-3 gap-1 text-center">
+                <div className="px-0.5">
+                  <p className="text-base font-bold tabular-nums leading-tight sm:text-lg">
+                    VIP {vipLevel}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-tight text-zinc-500">
+                    {vipLabel(vipLevel)}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-lg font-bold tabular-nums">Lv.{xpLevel}</p>
-                  <p className="text-xs text-zinc-500">
+                <div className="px-0.5">
+                  <p className="text-base font-bold tabular-nums leading-tight sm:text-lg">
+                    Lv.{xpLevel}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-tight text-zinc-500">
                     {expNow}/{expNext} EXP
                   </p>
                 </div>
-                <div>
-                  <p className="text-lg font-bold tabular-nums">{streak}</p>
-                  <p className="text-xs text-zinc-500">Chuỗi ngày</p>
+                <div className="px-0.5">
+                  <p className="text-base font-bold tabular-nums leading-tight sm:text-lg">
+                    {streak}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-tight text-zinc-500">
+                    Chuỗi ngày
+                  </p>
                 </div>
               </div>
-
-              <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-zinc-800">
                 <div
                   className="h-full rounded-full bg-[#0084ff] transition-all duration-500"
                   style={{ width: `${expPct}%` }}
                 />
               </div>
-
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-lg font-bold tracking-tight">{showName}</h1>
-                {profile?.verified ? <VerifiedBadge size={16} /> : null}
-              </div>
-              <p className="text-sm text-zinc-500">{handle}</p>
-              {profile?.bio ? (
-                <p className="mt-2 text-sm leading-snug text-zinc-300">{profile.bio}</p>
-              ) : (
-                <p className="mt-2 text-sm text-zinc-600">Chưa có tiểu sử</p>
-              )}
-              <p className="mt-2 text-xs text-zinc-500">
-                Số dư{" "}
-                <span className="font-semibold tabular-nums text-zinc-200">
-                  {formatCoins(coins)} xu
-                </span>
-              </p>
             </div>
           </div>
 
+          {/* Tên / bio / số dư — full width, thẳng hàng */}
+          <div className="mt-4">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h1 className="text-[17px] font-bold leading-tight tracking-tight">
+                {showName}
+              </h1>
+              {profile?.verified ? <VerifiedBadge size={16} /> : null}
+            </div>
+            <p className="mt-0.5 text-sm leading-snug text-zinc-500">{handle}</p>
+            {profile?.bio ? (
+              <p className="mt-2 text-sm leading-snug text-zinc-300">{profile.bio}</p>
+            ) : (
+              <p className="mt-2 text-sm text-zinc-600">Chưa có tiểu sử</p>
+            )}
+            <p className="mt-2 text-sm text-zinc-400">
+              Số dư{" "}
+              <span className="font-semibold tabular-nums text-zinc-100">
+                {formatCoins(coins)} xu
+              </span>
+            </p>
+          </div>
+
+          {/* Nút hành động */}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setTab("security")}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold"
+              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold min-w-[40%]"
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5 shrink-0" />
               Sửa hồ sơ
             </button>
             <button
               type="button"
               onClick={() => void copyUid()}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold"
+              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold min-w-[40%]"
             >
-              <Copy className="h-3.5 w-3.5" />
-              UID {uid || "—"}
+              <Copy className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">UID {uid || "—"}</span>
             </button>
             {!profile?.verified ? (
               <Link
                 href="/cai-dat"
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold"
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold"
               >
                 <Shield className="h-3.5 w-3.5 text-[#0084ff]" />
                 Xác minh
@@ -428,7 +447,7 @@ export default function AccountProfile() {
             <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-500"
-                style={{ width: `${vipPct}%` }}
+                style={{ width: `${Math.min(100, Math.max(0, vipPct))}%` }}
               />
             </div>
           </div>
@@ -531,57 +550,53 @@ export default function AccountProfile() {
             <div className="space-y-3">
               <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
                 <p className="mb-3 text-sm font-semibold">Thông tin</p>
-                <label className="mb-1 block text-xs text-zinc-500">Tên hiển thị</label>
-                <div className="mb-3 flex gap-2">
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value.slice(0, 40))}
-                    maxLength={40}
-                    className="h-11 flex-1 rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-sm outline-none focus:border-[#0084ff]"
-                  />
-                  <button
-                    type="button"
-                    onClick={saveName}
-                    className="h-11 shrink-0 rounded-xl bg-[#0084ff] px-4 text-sm font-semibold"
-                  >
-                    Lưu
-                  </button>
-                </div>
-                <label className="mb-1 block text-xs text-zinc-500">Tiểu sử</label>
-                <div className="flex gap-2">
-                  <input
-                    value={editBio}
-                    onChange={(e) => setEditBio(e.target.value.slice(0, 100))}
-                    maxLength={100}
-                    placeholder="Giới thiệu ngắn"
-                    className="h-11 flex-1 rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-sm outline-none focus:border-[#0084ff]"
-                  />
-                  <button
-                    type="button"
-                    onClick={saveBio}
-                    className="h-11 shrink-0 rounded-xl bg-[#1c1c1e] px-4 text-sm font-semibold"
-                  >
-                    Lưu
-                  </button>
-                </div>
+                <label className="mb-1.5 block text-xs text-zinc-500">Tên hiển thị</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value.slice(0, 40))}
+                  maxLength={40}
+                  className="mb-2 h-11 w-full rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-sm outline-none focus:border-[#0084ff]"
+                />
+                <button
+                  type="button"
+                  onClick={saveName}
+                  className="mb-4 h-10 w-full rounded-xl bg-[#0084ff] text-sm font-semibold"
+                >
+                  Lưu tên
+                </button>
+                <label className="mb-1.5 block text-xs text-zinc-500">Tiểu sử</label>
+                <input
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value.slice(0, 100))}
+                  maxLength={100}
+                  placeholder="Giới thiệu ngắn"
+                  className="mb-2 h-11 w-full rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-sm outline-none focus:border-[#0084ff]"
+                />
+                <button
+                  type="button"
+                  onClick={saveBio}
+                  className="h-10 w-full rounded-xl bg-[#1c1c1e] text-sm font-semibold"
+                >
+                  Lưu tiểu sử
+                </button>
               </div>
 
               <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
                 <p className="mb-1 text-sm font-semibold">Mã PIN khôi phục</p>
                 <p className="mb-3 text-xs text-zinc-500">6 chữ số</p>
-                <div className="flex gap-2">
-                  <input
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    type={showPin ? "text" : "password"}
-                    inputMode="numeric"
-                    placeholder="••••••"
-                    className="h-11 flex-1 rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-center font-mono text-lg tracking-[0.3em] outline-none focus:border-[#0084ff]"
-                  />
+                <input
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  type={showPin ? "text" : "password"}
+                  inputMode="numeric"
+                  placeholder="••••••"
+                  className="mb-2 h-11 w-full rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-center font-mono text-lg tracking-[0.35em] outline-none focus:border-[#0084ff]"
+                />
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setShowPin((v) => !v)}
-                    className="h-11 rounded-xl bg-[#1c1c1e] px-3 text-xs font-semibold text-zinc-400"
+                    className="h-10 rounded-xl bg-[#1c1c1e] text-sm font-semibold text-zinc-300"
                   >
                     {showPin ? "Ẩn" : "Hiện"}
                   </button>
@@ -589,9 +604,9 @@ export default function AccountProfile() {
                     type="button"
                     disabled={pinBusy}
                     onClick={() => void savePin()}
-                    className="h-11 shrink-0 rounded-xl bg-[#0084ff] px-4 text-sm font-semibold disabled:opacity-50"
+                    className="h-10 rounded-xl bg-[#0084ff] text-sm font-semibold disabled:opacity-50"
                   >
-                    Lưu
+                    Lưu PIN
                   </button>
                 </div>
               </div>

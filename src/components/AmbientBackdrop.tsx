@@ -3,14 +3,18 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-/** Nền gradient — tắt hoàn toàn trên Opus Chat để tránh crash renderer */
+/** Nền gradient — tắt trên Chat, Tài khoản, Cài đặt */
 export default function AmbientBackdrop() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const ref = useRef<HTMLCanvasElement>(null);
-  const isChat = pathname?.startsWith("/tin-nhan");
+  const disabled =
+    pathname.startsWith("/tin-nhan") ||
+    pathname.startsWith("/tai-khoan") ||
+    pathname.startsWith("/cai-dat") ||
+    pathname.startsWith("/admin");
 
   useEffect(() => {
-    if (isChat) return;
+    if (disabled) return;
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -50,9 +54,9 @@ export default function AmbientBackdrop() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
     };
-  }, [isChat]);
+  }, [disabled]);
 
-  if (isChat) return null;
+  if (disabled) return null;
   return (
     <canvas
       ref={ref}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import BannerSlider from "@/components/BannerSlider";
 import MovieRow from "@/components/MovieRow";
 import ContinueWatching from "@/components/ContinueWatching";
+import HomeInfiniteFeed from "@/components/HomeInfiniteFeed";
 import {
   getNewestMovies,
   getMoviesByCategory,
@@ -180,6 +181,8 @@ export default async function HomePage() {
         <MovieRow title="Phim bộ" movies={phimBo} href="/danh-sach/phim-bo" />
         <MovieRow title="Phim lẻ" movies={phimLe} href="/danh-sach/phim-le" />
         <MovieRow title="Hoạt hình" movies={hoathinh} href="/danh-sach/hoathinh" />
+
+        <HomeInfiniteFeed />
       </div>
     </div>
   );

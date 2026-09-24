@@ -32,7 +32,7 @@ export default function FavoritesPage() {
       {favorites.length === 0 ? (
         <p className="text-zinc-500">Chưa có phim yêu thích.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="flex flex-wrap gap-3 sm:gap-4">
           {favorites.map((item) => (
             <div key={item.slug} className="relative group">
               <Link href={`/phim/${item.slug}`}>

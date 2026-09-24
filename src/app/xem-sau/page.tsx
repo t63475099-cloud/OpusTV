@@ -35,7 +35,7 @@ export default function XemSauPage() {
           Chưa có phim nào. Vào trang phim bấm &quot;Xem sau&quot; để thêm.
         </p>
       ) : (
-        <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <ul className="flex flex-wrap gap-3 sm:gap-4">
           {items.map((m) => (
             <li key={m.slug} className="group relative">
               <Link href={`/phim/${m.slug}`} className="block">

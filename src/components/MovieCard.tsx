@@ -6,48 +6,44 @@ import type { MovieListItem } from "@/lib/types";
 interface MovieCardProps {
   movie: MovieListItem;
   priority?: boolean;
-  variant?: "poster" | "thumb";
 }
 
-export default function MovieCard({
-  movie,
-  priority = false,
-  variant = "poster",
-}: MovieCardProps) {
+export default function MovieCard({ movie, priority = false }: MovieCardProps) {
   const poster = getImageUrl(movie.poster_url || movie.thumb_url);
 
-  // poster: hàng ngang (flex-shrink) hoặc lưới (w-full nhờ parent)
   return (
-    <Link data-movie-card="1" data-gsap-card
+    <Link
+      data-movie-card="1"
       href={`/phim/${movie.slug}`}
-      className="movie-card-glass bounce-press group movie-card-hover relative flex-shrink-0 w-[118px] sm:w-[148px] md:w-[168px] lg:w-[188px] max-w-full card-lift block"
+      className="group relative block flex-shrink-0 w-[42vw] max-w-[160px] sm:w-[140px] md:w-[156px] lg:w-[172px] transition-transform duration-300 ease-out hover:-translate-y-1 active:scale-[0.98]"
     >
-      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#272727] ring-1 ring-white/5">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-zinc-900/80 ring-1 ring-white/10 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)]">
         <Image
           src={poster}
           alt={movie.name}
           fill
-          sizes="(max-width:640px) 40vw, 188px"
-          className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+          sizes="(max-width:640px) 42vw, 172px"
+          className="object-cover transition duration-500 ease-out group-hover:scale-105"
           priority={priority}
           unoptimized
         />
-        {movie.episode_current && (
-          <span className="absolute bottom-1.5 right-1.5 bg-black/85 text-white text-[11px] font-medium px-1.5 py-0.5 rounded">
-            {movie.episode_current}
-          </span>
-        )}
-        {movie.quality && (
-          <span className="absolute top-1.5 left-1.5 bg-red-600/90 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
+        {movie.quality ? (
+          <span className="absolute top-2 left-2 rounded-md bg-rose-600/95 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-sm">
             {movie.quality}
           </span>
-        )}
+        ) : null}
+        {movie.episode_current ? (
+          <span className="absolute bottom-2 right-2 rounded-md bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-zinc-100 backdrop-blur-sm">
+            {movie.episode_current}
+          </span>
+        ) : null}
       </div>
-      <div className="mt-2 px-0.5">
-        <h3 className="text-[13px] sm:text-sm font-semibold text-zinc-100 line-clamp-2 group-hover:text-red-400 transition-colors">
+      <div className="mt-2.5 px-0.5">
+        <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-zinc-100 transition-colors duration-300 group-hover:text-rose-300 sm:text-sm">
           {movie.name}
         </h3>
-        <p className="text-[11px] text-zinc-500 mt-0.5 line-clamp-1">
+        <p className="mt-0.5 line-clamp-1 text-[11px] text-zinc-500">
           {[movie.origin_name, movie.year].filter(Boolean).join(" · ")}
         </p>
       </div>

@@ -3,105 +3,104 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import MovieCard from "./MovieCard";
 import type { MovieListItem } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+
+type FeedType = "list" | "category" | "country" | "search";
 
 interface Props {
-  type: "list" | "category" | "country" | "search";
-  slug?: string;
-  keyword?: string;
+  type: FeedType;
+  slug: string;
   initialItems: MovieListItem[];
   initialPage?: number;
   totalPages?: number;
+  query?: string;
 }
 
+/**
+ * Danh sách phim cuộn vô hạn — layout flex wrap (không dùng CSS grid).
+ */
 export default function InfiniteMovieGrid({
   type,
-  slug = "",
-  keyword = "",
+  slug,
   initialItems,
   initialPage = 1,
-  totalPages: initialTotal = 1,
+  totalPages = 1,
+  query = "",
 }: Props) {
-  const [items, setItems] = useState<MovieListItem[]>(initialItems);
+  const [items, setItems] = useState(initialItems);
   const [page, setPage] = useState(initialPage);
-  const [totalPages, setTotalPages] = useState(initialTotal);
+  const [maxPage, setMaxPage] = useState(totalPages);
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(initialPage >= initialTotal);
-  const sentinel = useRef<HTMLDivElement>(null);
-  const busy = useRef(false);
+  const [done, setDone] = useState(initialPage >= totalPages);
+  const sentinel = useRef<HTMLDivElement | null>(null);
 
   const loadMore = useCallback(async () => {
-    if (busy.current || done || loading) return;
-    if (page >= totalPages) {
+    if (loading || done) return;
+    const next = page + 1;
+    if (next > maxPage) {
       setDone(true);
       return;
     }
-    busy.current = true;
     setLoading(true);
-    const next = page + 1;
     try {
-      const qs = new URLSearchParams({ type, page: String(next) });
-      if (slug) qs.set("slug", slug);
-      if (keyword) qs.set("q", keyword);
-      const res = await fetch(`/api/movies?${qs}`);
+      let url = "";
+      if (type === "list") url = `/api/movies?type=list&slug=${encodeURIComponent(slug)}&page=${next}`;
+      else if (type === "category")
+        url = `/api/movies?type=category&slug=${encodeURIComponent(slug)}&page=${next}`;
+      else if (type === "country")
+        url = `/api/movies?type=country&slug=${encodeURIComponent(slug)}&page=${next}`;
+      else
+        url = `/api/search?q=${encodeURIComponent(query || slug)}&page=${next}`;
+
+      const res = await fetch(url);
       const data = await res.json();
-      const more: MovieListItem[] = data.items || [];
-      setItems((prev) => {
-        const seen = new Set(prev.map((m) => m.slug || m._id));
-        const merged = [...prev];
-        more.forEach((m) => {
-          const k = m.slug || m._id;
-          if (k && !seen.has(k)) {
-            seen.add(k);
-            merged.push(m);
-          }
+      const batch: MovieListItem[] = data?.data?.items || data?.items || [];
+      const tp = data?.data?.params?.pagination?.totalPages || maxPage;
+      setMaxPage(tp);
+      if (!batch.length) {
+        setDone(true);
+      } else {
+        setItems((prev) => {
+          const seen = new Set(prev.map((m) => m.slug));
+          const add = batch.filter((m) => m?.slug && !seen.has(m.slug));
+          return [...prev, ...add];
         });
-        return merged;
-      });
-      setPage(next);
-      if (data.totalPages) setTotalPages(data.totalPages);
-      if (next >= (data.totalPages || totalPages) || more.length === 0) setDone(true);
+        setPage(next);
+        if (next >= tp) setDone(true);
+      }
     } catch {
-      /* keep */
+      /* ignore */
     } finally {
       setLoading(false);
-      busy.current = false;
     }
-  }, [done, loading, page, totalPages, type, slug, keyword]);
+  }, [done, loading, maxPage, page, query, slug, type]);
 
   useEffect(() => {
     const el = sentinel.current;
     if (!el) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) loadMore();
+        if (entries[0]?.isIntersecting) void loadMore();
       },
-      { rootMargin: "400px" }
+      { rootMargin: "320px" }
     );
     io.observe(el);
     return () => io.disconnect();
   }, [loadMore]);
 
   return (
-    <>
-      {/* Lưới poster dọc — giống trang danh sách phim cũ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-        {items.map((movie, i) => (
-          <div key={movie.slug || movie._id || String(i)} className="min-w-0 [&_a]:!w-full">
-            <MovieCard movie={movie} priority={i < 8} variant="poster" />
-          </div>
+    <div className="w-full">
+      <div className="flex flex-wrap gap-3 sm:gap-4 justify-start">
+        {items.map((m, i) => (
+          <MovieCard key={m.slug || m._id || String(i)} movie={m} priority={i < 8} />
         ))}
       </div>
-      <div ref={sentinel} className="h-12 flex items-center justify-center mt-8">
-        {loading && (
-          <div className="flex items-center gap-2 text-sm text-[#aaa]">
-            <Loader2 className="w-4 h-4 animate-spin" /> Đang tải thêm...
-          </div>
-        )}
-        {done && items.length > 0 && (
-          <p className="text-xs text-[#717171]">Đã hết danh sách</p>
-        )}
-      </div>
-    </>
+      <div ref={sentinel} className="h-8 w-full" />
+      {loading ? (
+        <p className="py-4 text-center text-xs text-zinc-500">Đang tải thêm…</p>
+      ) : null}
+      {done && items.length > 0 ? (
+        <p className="py-3 text-center text-[11px] text-zinc-600">Hết danh sách</p>
+      ) : null}
+    </div>
   );
 }

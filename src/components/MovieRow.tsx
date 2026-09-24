@@ -9,33 +9,29 @@ interface MovieRowProps {
   href?: string;
 }
 
-/** Hàng poster ngang — giao diện phim OpusFilm (không dùng grid YouTube) */
+/** Hàng poster cuộn ngang — không dùng CSS grid */
 export default function MovieRow({ title, movies, href }: MovieRowProps) {
   if (!movies?.length) return null;
 
   return (
-    <section data-gsap-row data-gsap-reveal data-movie-row className="mb-6 md:mb-8 px-3 sm:px-4 md:px-6 lg:px-8 bounce-in">
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <h2 className="text-base md:text-lg font-bold text-white tracking-tight">{title}</h2>
-        {href && (
+    <section data-movie-row className="relative py-3 sm:py-4">
+      <div className="mb-3 flex items-end justify-between gap-3 px-3 sm:px-4 md:px-6 lg:px-8">
+        <h2 className="row-title text-base font-bold tracking-tight text-white sm:text-lg md:text-xl">
+          {title}
+        </h2>
+        {href ? (
           <Link
             href={href}
-            className="flex items-center gap-0.5 text-xs md:text-sm text-[#aaa] hover:text-white transition shrink-0"
+            className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-zinc-400 transition hover:text-rose-400 sm:text-sm"
           >
             Xem tất cả
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="h-4 w-4" />
           </Link>
-        )}
+        ) : null}
       </div>
-
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide row-scroll pb-1">
-        {movies.map((movie, i) => (
-          <MovieCard
-            key={movie.slug || movie._id}
-            movie={movie}
-            priority={i < 5}
-            variant="poster"
-          />
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide px-3 pb-1 sm:gap-4 sm:px-4 md:px-6 lg:px-8">
+        {movies.map((m, i) => (
+          <MovieCard key={m.slug || m._id || String(i)} movie={m} priority={i < 4} />
         ))}
       </div>
     </section>

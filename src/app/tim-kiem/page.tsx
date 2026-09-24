@@ -55,7 +55,7 @@ export default async function SearchPage({ searchParams }: Props) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-6 md:gap-6">
+          <div className="flex flex-wrap gap-3 sm:gap-4">
             {items.map((movie) => (
               <MovieCard key={movie._id || movie.slug} movie={movie} />
             ))}

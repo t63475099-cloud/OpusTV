@@ -331,14 +331,14 @@ export default function AccountProfile() {
           {/* Hàng avatar + thống kê */}
           <div className="flex items-center gap-4">
             <div
-              className="relative shrink-0"
+              className="group/avatar relative shrink-0"
               style={{ width: 88, height: 88 }}
             >
               <UserAvatar profile={avatarProfile} size={88} showBadge />
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="absolute bottom-0 right-0 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-[#3f3f46] bg-[#18181b] text-white shadow-md"
+                className="avatar-cam-btn absolute bottom-0 right-0 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-[#3f3f46] bg-[#18181b] text-white shadow-md opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover/avatar:opacity-100 focus-visible:opacity-100"
                 aria-label="Đổi ảnh"
               >
                 <Camera className="h-3.5 w-3.5" />

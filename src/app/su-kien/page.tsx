@@ -66,11 +66,6 @@ function pushMissionNotif(title: string, body: string) {
 
 
 
-const WHEEL_COLORS = [
-  "#ef4444", "#f59e0b", "#22c55e", "#06b6d4",
-  "#3b82f6", "#8b5cf6", "#ec4899", "#eab308",
-];
-
 function fmtRemain(ms: number) {
   if (ms <= 0) return "Hết hạn";
   const s = Math.floor(ms / 1000);

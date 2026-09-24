@@ -116,6 +116,25 @@ export default function SyncBootstrap() {
   const refreshMe = useAccountStore((s) => s.refreshMe);
   const pathname = usePathname();
   const isChat = pathname?.startsWith("/tin-nhan");
+  // Đẩy xu / sự kiện lên server khi thay đổi (đa thiết bị)
+  useEffect(() => {
+    if (!username) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let last = useEventStore.getState().coins;
+    const unsub = useEventStore.subscribe((s) => {
+      if (s.coins === last) return;
+      last = s.coins;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void useAccountStore.getState().syncNow();
+      }, 800);
+    });
+    return () => {
+      unsub();
+      if (timer) clearTimeout(timer);
+    };
+  }, [username]);
+
   const syncingRef = useRef(false);
   const lastSyncRef = useRef(0);
 
@@ -247,6 +266,26 @@ export default function SyncBootstrap() {
     void fullSync("route");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, username]);
+
+  // 4b) Đổi xu / sự kiện → đẩy cloud (debounce) để thiết bị khác thấy đúng số
+  useEffect(() => {
+    if (!username) return;
+    let timer: number | null = null;
+    let lastAt = useEventStore.getState().updatedAt;
+    const unsub = useEventStore.subscribe((state) => {
+      if (state.updatedAt === lastAt) return;
+      lastAt = state.updatedAt;
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void fullSync("coins");
+      }, 800);
+    });
+    return () => {
+      unsub();
+      if (timer) window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username]);
 
   // 4) Interval dự phòng — smart poll (ẩn tab = dừng)
   useEffect(() => {

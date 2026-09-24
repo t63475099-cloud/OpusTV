@@ -16,6 +16,20 @@ export function yesterdayKey() {
   return dayKey(d);
 }
 
+
+/** Hiển thị xu đầy đủ kiểu Việt: 100.000 / 100.000.000 (không rút gọn) */
+export function formatCoins(n: number | null | undefined): string {
+  const raw = Number(n);
+  const v = Number.isFinite(raw) ? Math.trunc(raw) : 0;
+  const neg = v < 0;
+  const s = String(Math.abs(v));
+  const parts: string[] = [];
+  for (let i = s.length; i > 0; i -= 3) {
+    parts.unshift(s.slice(Math.max(0, i - 3), i));
+  }
+  return (neg ? "-" : "") + parts.join(".");
+}
+
 export const CHECKIN_REWARDS = [10, 15, 20, 30, 40, 55, 100] as const;
 
 export const UNLOCK_COST = {
@@ -260,6 +274,7 @@ export type MissionId =
   | "watch5"
   | "watch15"
   | "watch30"
+  | "watch60"
   | "favorite"
   | "favorite3"
   | "comment"
@@ -273,7 +288,10 @@ export type MissionId =
   | "code"
   | "spin"
   | "checkin"
-  | "profile";
+  | "profile"
+  | "report"
+  | "mailbox"
+  | "continue";
 
 export interface MissionDef {
   id: MissionId;
@@ -403,6 +421,35 @@ export const DAILY_MISSIONS: MissionDef[] = [
     target: 1,
     unit: "count",
   },
+
+  {
+    id: "watch60",
+    title: "Xem phim 60 phút",
+    desc: "Xem liên tục khoảng 1 giờ",
+    target: 60 * 60,
+    unit: "sec",
+  },
+  {
+    id: "continue",
+    title: "Xem tiếp 1 phim dở",
+    desc: "Mở lại phim đang xem dở",
+    target: 1,
+    unit: "count",
+  },
+  {
+    id: "report",
+    title: "Báo lỗi 1 tập phim",
+    desc: "Gửi báo lỗi nguồn phát",
+    target: 1,
+    unit: "count",
+  },
+  {
+    id: "mailbox",
+    title: "Mở hòm thư",
+    desc: "Vào mục hòm thư / thông báo",
+    target: 1,
+    unit: "count",
+  },
 ];
 
 export interface UnlockRecord {
@@ -449,6 +496,8 @@ export interface EventState {
   boostExpiresAt: number | null;
   vipExpiresAt: number | null;
   liveFeed: LiveFeedItem[];
+  /** Mốc ghi nhận để đồng bộ xu đa thiết bị (LWW) */
+  updatedAt: number;
 
   ensureMissionDay: () => void;
   getStreakStatus: () => {
@@ -510,6 +559,7 @@ export const useEventStore = create<EventState>()(
       boostExpiresAt: null,
       vipExpiresAt: null,
       liveFeed: [],
+      updatedAt: 0,
 
       ensureMissionDay: () => {
         const today = dayKey();
@@ -573,6 +623,7 @@ export const useEventStore = create<EventState>()(
           claimedCheckInDay: today,
           coins: s.coins + reward,
           totalEarned: s.totalEarned + reward,
+          updatedAt: Date.now(),
         });
         return { ok: true, coins: reward, message: `+${reward} xu · Ngày ${next}/7` };
       },
@@ -636,6 +687,7 @@ export const useEventStore = create<EventState>()(
         set({
           coins: state.coins - amt,
           redeemHistory: [req, ...(state.redeemHistory || [])].slice(0, 50),
+          updatedAt: Date.now(),
         });
         return { ok: true, request: req };
       },
@@ -649,6 +701,7 @@ export const useEventStore = create<EventState>()(
           redeemHistory: list.map((r) =>
             r.id === id ? { ...r, status: "rejected" as RedeemStatus } : r
           ),
+          updatedAt: Date.now(),
         });
         return true;
       },
@@ -673,7 +726,8 @@ export const useEventStore = create<EventState>()(
           missionClaimCount: { ...s.missionClaimCount, [id]: nextClaims },
           coins: s.coins + gain,
           totalEarned: s.totalEarned + gain,
-          // vipPoints không đổi — xu nhiệm vụ không tính vào VIP
+          // vipPoints không đổi — xu nhiệm vụ không tính vào VIP,
+          updatedAt: Date.now(),
         });
         return {
           ok: true,
@@ -700,6 +754,7 @@ export const useEventStore = create<EventState>()(
               at: Date.now(),
             },
           ],
+          updatedAt: Date.now(),
         });
         return { ok: true, message: permanent ? "Mở vĩnh viễn" : "Mở 24h" };
       },
@@ -766,7 +821,9 @@ coinMultiplier: () => {
         // Pass XP — ưu tiên gọi qua UI (buyXpPack); fallback trừ xu + cộng XP qua localStorage bridge
         if (def.kind === "pass_xp") {
           const add = Math.max(0, parseInt(def.meta || "0", 10) || 0);
-          set({ coins: s.coins - def.cost });
+          set({ coins: s.coins - def.cost,
+          updatedAt: Date.now(),
+        });
           try {
             if (typeof window !== "undefined") {
               window.dispatchEvent(new CustomEvent("opus-pass-add-xp", { detail: { xp: add } }));
@@ -782,7 +839,8 @@ coinMultiplier: () => {
           set({
             coins: s.coins - def.cost,
             vipPoints: (s.vipPoints || 0) + add,
-          });
+          updatedAt: Date.now(),
+        });
           get().pushLive(`+${add} điểm VIP`);
           return { ok: true, message: `+${add} điểm VIP (tiến cấp)` };
         }
@@ -793,7 +851,8 @@ coinMultiplier: () => {
           set({
             coins: s.coins - def.cost + add,
             totalEarned: s.totalEarned + add,
-          });
+          updatedAt: Date.now(),
+        });
           get().pushLive(`Nhận gói +${add} xu`);
           return { ok: true, message: `+${add} xu vào ví` };
         }
@@ -818,7 +877,9 @@ coinMultiplier: () => {
             acquiredAt: Date.now(),
           });
         }
-        set({ coins: s.coins - def.cost, inventory: inv });
+        set({ coins: s.coins - def.cost, inventory: inv,
+          updatedAt: Date.now(),
+        });
         get().pushLive(`Bạn vừa đổi ${finalName}`);
         return { ok: true, message: `Đã thêm vào kho: ${finalName}` };
       },
@@ -928,7 +989,8 @@ coinMultiplier: () => {
             inventory: inv,
             coins: s.coins + bonus,
             totalEarned: s.totalEarned + bonus,
-          });
+          updatedAt: Date.now(),
+        });
           get().pushLive(`Mở hộp: +${bonus} xu`);
           return { ok: true, message: `Mở hộp nhận +${bonus} xu` };
         }
@@ -967,7 +1029,9 @@ coinMultiplier: () => {
             break;
           }
         }
-        set({ coins: s.coins - SPIN_COST });
+        set({ coins: s.coins - SPIN_COST,
+          updatedAt: Date.now(),
+        });
         if (pick.coins) {
           set((st) => ({
             coins: st.coins + (pick.coins || 0),

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -18,6 +19,8 @@ import SectionRouteGuard from "@/components/ecosystem/SectionRouteGuard";
 import PwaRegister from "@/components/PwaRegister";
 import IosInstallGuide from "@/components/IosInstallGuide";
 import AuthRedirector from "@/components/AuthRedirector";
+import { ThemeLocaleProvider } from "@/components/ThemeLocaleProvider";
+import { THEME_LOCALE_BOOT_SCRIPT } from "@/lib/themeLocale";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -72,8 +75,12 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full min-h-[100dvh] flex flex-col bg-[#0a0a0f] text-zinc-100 relative overflow-x-clip overflow-y-auto">
+        <Script id="opus-theme-boot" strategy="beforeInteractive">
+          {THEME_LOCALE_BOOT_SCRIPT}
+        </Script>
+        <ThemeLocaleProvider>
         <AmbientBackdrop />
         <OpusPreloader oncePerSession />
         <PwaRegister />
@@ -99,6 +106,7 @@ export default function RootLayout({
             <p className="mt-1 text-xs text-zinc-500">{APP_TAGLINE}</p>
           </footer>
         </GsapScrollProvider>
+        </ThemeLocaleProvider>
       </body>
     </html>
   );

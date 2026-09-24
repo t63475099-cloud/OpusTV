@@ -25,6 +25,74 @@
   --safe-top: env(safe-area-inset-top, 0px);
 }
 
+/* Theme tokens — html[data-theme] */
+html[data-theme="dark"] {
+  --bg-main: #000000;
+  --bg-card: #121212;
+  --bg-elevated: #1c1c1e;
+  --text-main: #f5f5f5;
+  --text-muted: #a1a1aa;
+  --border: #27272a;
+  --accent-blue: #0084ff;
+  color-scheme: dark;
+}
+html[data-theme="light"] {
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --accent-blue: #0084ff;
+  color-scheme: light;
+}
+html[data-theme="light"] body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+html[data-theme="light"] [data-profile-ui],
+html[data-theme="light"] [data-event-ui] {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+html[data-theme="light"] [data-profile-ui] .bg-black,
+html[data-theme="light"] [data-event-ui].bg-black {
+  background-color: var(--bg-main) !important;
+}
+html[data-theme="light"] [data-profile-ui] .bg-\[\#121212\],
+html[data-theme="light"] [data-event-ui] .bg-\[\#121212\],
+html[data-theme="light"] [data-profile-ui] .bg-\[\#1c1c1e\],
+html[data-theme="light"] [data-event-ui] .bg-\[\#1c1c1e\] {
+  background-color: var(--bg-card) !important;
+}
+html[data-theme="light"] [data-profile-ui] .border-\[\#27272a\],
+html[data-theme="light"] [data-event-ui] .border-\[\#27272a\],
+html[data-theme="light"] [data-profile-ui] .border-\[\#1a1a1a\],
+html[data-theme="light"] [data-event-ui] .border-\[\#1a1a1a\] {
+  border-color: var(--border) !important;
+}
+html[data-theme="light"] [data-profile-ui] .text-zinc-500,
+html[data-theme="light"] [data-event-ui] .text-zinc-500,
+html[data-theme="light"] [data-profile-ui] .text-zinc-400,
+html[data-theme="light"] [data-event-ui] .text-zinc-400 {
+  color: var(--text-muted) !important;
+}
+html[data-theme="light"] [data-profile-ui] .text-white,
+html[data-theme="light"] [data-event-ui] .text-white,
+html[data-theme="light"] [data-profile-ui] .text-zinc-100,
+html[data-theme="light"] [data-event-ui] .text-zinc-100,
+html[data-theme="light"] [data-profile-ui] .text-zinc-200,
+html[data-theme="light"] [data-event-ui] .text-zinc-200 {
+  color: var(--text-main) !important;
+}
+html[data-theme="light"] [data-profile-ui] header,
+html[data-theme="light"] [data-event-ui] header {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+  border-color: var(--border) !important;
+}
+
+
+
 @media (min-width: 768px) {
   :root {
     --nav-h: 64px;

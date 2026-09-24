@@ -83,37 +83,49 @@ function fmtRemain(ms: number) {
   return `${m}p ${String(sec).padStart(2, "0")}s`;
 }
 
-function WheelFace({ labels, colors }: { labels: string[]; colors: string[] }) {
-  const n = labels.length;
+const WHEEL_COLORS = [
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#a855f7",
+  "#ec4899",
+];
+
+function WheelFace({ labels }: { labels: string[] }) {
+  const n = Math.max(labels.length, 1);
   const stops = labels
     .map((_, i) => {
       const a0 = (i / n) * 360;
       const a1 = ((i + 1) / n) * 360;
-      return `${colors[i % colors.length]} ${a0}deg ${a1}deg`;
+      const c = WHEEL_COLORS[i % WHEEL_COLORS.length];
+      return `${c} ${a0}deg ${a1}deg`;
     })
     .join(", ");
   return (
-    <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(from -90deg, ${stops})` }}>
-      {/* divider lines */}
+    <div
+      className="absolute inset-0 rounded-full shadow-[inset_0_0_0_3px_rgba(255,255,255,0.25)]"
+      style={{ background: `conic-gradient(from -90deg, ${stops})` }}
+    >
       {labels.map((_, i) => (
         <div
-          key={i}
-          className="absolute left-1/2 top-1/2 w-[1px] h-1/2 origin-top bg-black/40"
+          key={`d-${i}`}
+          className="absolute left-1/2 top-1/2 h-[48%] w-[2px] origin-top bg-black/25"
           style={{ transform: `rotate(${(i / n) * 360 - 90}deg)` }}
         />
       ))}
-      {/* labels */}
       {labels.map((lb, i) => {
         const mid = ((i + 0.5) / n) * 360 - 90;
         const rad = (mid * Math.PI) / 180;
-        // place text outward from center
-        const r = 34; // %
+        const r = 36;
         const x = 50 + r * Math.cos(rad);
         const y = 50 + r * Math.sin(rad);
         return (
           <span
-            key={i}
-            className="absolute text-[9px] sm:text-[10px] md:text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] whitespace-nowrap pointer-events-none"
+            key={`l-${i}`}
+            className="pointer-events-none absolute max-w-[28%] truncate text-center text-[10px] font-extrabold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:text-[11px]"
             style={{
               left: `${x}%`,
               top: `${y}%`,
@@ -124,7 +136,8 @@ function WheelFace({ labels, colors }: { labels: string[]; colors: string[] }) {
           </span>
         );
       })}
-      <div className="absolute inset-[28%] sm:inset-[30%] rounded-full bg-neutral-950/95 border border-white/20 shadow-inner" />
+      <div className="absolute inset-[30%] rounded-full border-2 border-white/30 bg-[#0a0a0a] shadow-inner" />
+      <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow" />
     </div>
   );
 }
@@ -310,7 +323,7 @@ export default function SuKienPage() {
 
   return (
     <div
-      data-event-ui="social-v2"
+      data-event-ui="social-v3"
       className="min-h-[100dvh] bg-black text-white"
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
     >
@@ -340,7 +353,7 @@ export default function SuKienPage() {
           </div>
         </header>
 
-        <section className="px-4 pb-3 pt-5">
+        <section className="px-4 pb-2 pt-3">
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
               <p className="text-lg font-bold tabular-nums">
@@ -412,8 +425,8 @@ export default function SuKienPage() {
           </div>
         </div>
 
-        <div className="space-y-4 px-3 py-4 sm:px-4">
-          <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+        <div className="space-y-3 px-3 py-3 sm:px-4">
+          <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <Disc3 className="h-4 w-4 text-amber-400" />
@@ -426,19 +439,7 @@ export default function SuKienPage() {
                 className="absolute inset-0 rounded-full border border-[#3f3f46] transition-transform duration-[2800ms] ease-out"
                 style={{ transform: `rotate(${spinDeg}deg)` }}
               >
-                <WheelFace
-                  labels={wheelLabels}
-                  colors={[
-                    "#1c1c1e",
-                    "#27272a",
-                    "#1c1c1e",
-                    "#27272a",
-                    "#1c1c1e",
-                    "#27272a",
-                    "#1c1c1e",
-                    "#27272a",
-                  ]}
-                />
+                <WheelFace labels={wheelLabels} />
               </div>
               <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1">
                 <div className="h-0 w-0 border-l-[8px] border-r-[8px] border-t-[14px] border-l-transparent border-r-transparent border-t-amber-400" />
@@ -459,7 +460,7 @@ export default function SuKienPage() {
 
           {tab === "missions" && (
             <>
-              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="flex items-center gap-2 text-sm font-semibold">
                     <Flame className="h-4 w-4 text-orange-400" />
@@ -508,7 +509,7 @@ export default function SuKienPage() {
                 </button>
               </section>
 
-              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-sm font-semibold">Nhiệm vụ ngày</h2>
                   <span className="text-xs text-zinc-500">{summary.pct}%</span>
@@ -552,7 +553,7 @@ export default function SuKienPage() {
                 </ul>
               </section>
 
-              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
                 <h2 className="mb-2 text-sm font-semibold">Đổi xu lấy tiền</h2>
                 <RedeemCashPanel />
               </section>

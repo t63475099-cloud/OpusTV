@@ -30,13 +30,15 @@ import { useEventStore, formatCoins, getVipProgress } from "@/lib/eventCoins";
 import { useXpStore } from "@/lib/xpStore";
 import { useStreakStore } from "@/lib/streak";
 import UserAvatar, { VerifiedBadge } from "@/components/UserAvatar";
+import { useThemeLocale } from "@/components/ThemeLocaleProvider";
+import { THEME_OPTIONS, LOCALE_OPTIONS, type ThemeMode, type LocaleCode } from "@/lib/themeLocale";
 
 type Tab = "services" | "frames" | "security";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "services", label: "Dịch vụ" },
-  { id: "frames", label: "Khung ảnh" },
-  { id: "security", label: "Bảo mật" },
+const TAB_KEYS: { id: Tab; key: string }[] = [
+  { id: "services", key: "profile.tab.services" },
+  { id: "frames", key: "profile.tab.frames" },
+  { id: "security", key: "profile.tab.security" },
 ];
 
 const FRAME_IDS = [
@@ -94,6 +96,7 @@ function vipLabel(level: number) {
 
 export default function AccountProfile() {
   const router = useRouter();
+  const { theme, locale, setTheme, setLocale, t } = useThemeLocale();
 
   const username = useAccountStore((s) => s.username);
   const lastSyncAt = useAccountStore((s) => s.lastSyncAt);
@@ -182,7 +185,7 @@ export default function AccountProfile() {
       const data = String(reader.result || "");
       if (data.startsWith("data:image")) {
         setAvatar(data);
-        showToast("Đã cập nhật ảnh");
+        showToast(t("profile.avatarUpdated"));
       }
     };
     reader.readAsDataURL(file);
@@ -195,7 +198,7 @@ export default function AccountProfile() {
     }
     try {
       await navigator.clipboard.writeText(uid);
-      showToast("Đã sao chép UID");
+      showToast(t("profile.copiedUid"));
     } catch {
       showToast("Không sao chép được");
     }
@@ -208,12 +211,12 @@ export default function AccountProfile() {
       return;
     }
     updateProfile({ name: n });
-    showToast("Đã lưu tên");
+    showToast(t("profile.savedName"));
   };
 
   const saveBio = () => {
     updateProfile({ bio: editBio.trim().slice(0, 100) });
-    showToast("Đã lưu tiểu sử");
+    showToast(t("profile.savedBio"));
   };
 
   const savePin = async () => {
@@ -232,7 +235,7 @@ export default function AccountProfile() {
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.ok !== false) {
         setPin("");
-        showToast("Đã lưu mã PIN");
+        showToast(t("profile.savedPin"));
       } else {
         showToast(data?.error || "Không lưu được PIN");
       }
@@ -247,7 +250,7 @@ export default function AccountProfile() {
     setSyncing(true);
     try {
       await syncNow?.();
-      showToast("Đã đồng bộ");
+      showToast(t("profile.synced"));
     } catch {
       showToast("Đồng bộ thất bại");
     } finally {
@@ -257,7 +260,7 @@ export default function AccountProfile() {
 
   const selectFrame = (id: string) => {
     updateProfile({ avatarFrame: id });
-    showToast("Đã đổi khung");
+    showToast(t("profile.frameChanged"));
   };
 
   const services = [
@@ -267,7 +270,7 @@ export default function AccountProfile() {
       icon: Gift,
       title: "Sự kiện",
       desc: "Xu & nhiệm vụ",
-      badge: `${formatCoins(coins)} xu`,
+      badge: `${formatCoins(coins)} {t("profile.coins")}`,
     },
     { href: "/tin-nhan", icon: MessageCircle, title: "Opus Chat", desc: "Tin nhắn", badge: null },
     { href: "/code", icon: Code2, title: "Opus Code", desc: "Lập trình", badge: null },
@@ -400,12 +403,12 @@ export default function AccountProfile() {
             {profile?.bio ? (
               <p className="mt-2 text-sm leading-snug text-zinc-300">{profile.bio}</p>
             ) : (
-              <p className="mt-2 text-sm text-zinc-600">Chưa có tiểu sử</p>
+              <p className="mt-2 text-sm text-zinc-600">{t("profile.noBio")}</p>
             )}
             <p className="mt-2 text-sm text-zinc-400">
-              Số dư{" "}
+              {t("profile.balance")}{" "}
               <span className="font-semibold tabular-nums text-zinc-100">
-                {formatCoins(coins)} xu
+                {formatCoins(coins)} {t("profile.coins")}
               </span>
             </p>
           </div>
@@ -456,17 +459,17 @@ export default function AccountProfile() {
         {/* Tabs */}
         <div className="sticky top-12 z-20 border-b border-[#1a1a1a] bg-black/95 backdrop-blur-md">
           <div className="flex">
-            {TABS.map((t) => (
+            {TAB_KEYS.map((item) => (
               <button
-                key={t.id}
+                key={item.id}
                 type="button"
-                onClick={() => setTab(t.id)}
+                onClick={() => setTab(item.id)}
                 className={`relative flex-1 py-3 text-center text-sm font-semibold transition-colors ${
-                  tab === t.id ? "text-white" : "text-zinc-500"
+                  tab === item.id ? "text-white" : "text-zinc-500"
                 }`}
               >
-                {t.label}
-                {tab === t.id ? (
+                {t(item.key)}
+                {tab === item.id ? (
                   <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-white" />
                 ) : null}
               </button>
@@ -643,13 +646,71 @@ export default function AccountProfile() {
                 </Link>
               </div>
 
+              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+                <p className="mb-3 text-sm font-semibold">{t("profile.theme")}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {THEME_OPTIONS.map((o) => {
+                    const on = theme === o.value;
+                    const label = locale === "en" ? o.labelEn : o.labelVi;
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => {
+                          setTheme(o.value as ThemeMode);
+                          showToast(label);
+                        }}
+                        className={`h-11 rounded-xl text-sm font-semibold transition ${
+                          on
+                            ? "bg-[#0084ff] text-white"
+                            : "bg-[#1c1c1e] text-zinc-300"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+                <p className="mb-3 text-sm font-semibold">{t("profile.language")}</p>
+                <div className="space-y-1">
+                  {LOCALE_OPTIONS.map((o) => {
+                    const on = locale === o.value;
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => {
+                          setLocale(o.value as LocaleCode);
+                          showToast(o.native);
+                        }}
+                        className={`flex h-11 w-full items-center justify-between rounded-xl px-3 text-sm font-semibold transition ${
+                          on ? "bg-[#0084ff]/15 text-white" : "bg-[#0a0a0a] text-zinc-300"
+                        }`}
+                      >
+                        <span>{o.native}</span>
+                        {on ? (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0084ff] text-[10px]">
+                            ✓
+                          </span>
+                        ) : (
+                          <span className="h-5 w-5 rounded-full border border-[#3f3f46]" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={() => void logout?.()}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 text-sm font-semibold text-red-400"
               >
                 <LogOut className="h-4 w-4" />
-                Đăng xuất
+                {t("profile.logout")}
               </button>
             </div>
           )}

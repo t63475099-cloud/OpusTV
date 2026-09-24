@@ -18,6 +18,8 @@ interface Props {
   className?: string;
   ring?: boolean;
   showBadge?: boolean;
+  /** Preview khung (không ghi profile) */
+  frameOverride?: string;
 }
 
 /** Huy hiệu tích xanh kiểu Instagram / TikTok */
@@ -46,8 +48,9 @@ export default function UserAvatar({
   className = "",
   ring = false,
   showBadge = false,
+  frameOverride,
 }: Props) {
-  const frame = getAvatarFrame(profile.avatarFrame);
+  const frame = getAvatarFrame(frameOverride || profile.avatarFrame);
   const hasFrame = !!(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
   const pad = hasFrame ? Math.max(3, Math.round(size * 0.06)) : 0;
   const inner = size - pad * 2;

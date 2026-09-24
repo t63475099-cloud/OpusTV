@@ -26,6 +26,7 @@ import {
   SHOP_ITEMS,
   SPIN_COST,
   SPIN_REWARDS,
+  formatCoins,
   type MissionId,
 } from "@/lib/eventCoins";
 import RedeemCashPanel from "@/components/RedeemCashPanel";
@@ -43,193 +44,6 @@ const COMMUNITY_TICKER = [
   "@StarNight đổi VIP OpusFilm 1 ngày",
   "@CodeWithMe mở Hộp quà bí ẩn",
 ];
-
-function EventCanvas() {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let raf = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let w = 0;
-    let h = 0;
-    const particles = Array.from({ length: 32 }, () => ({
-      x: Math.random(),
-      y: Math.random(),
-      r: 1 + Math.random() * 2.8,
-      vx: (Math.random() - 0.5) * 0.00022,
-      vy: -0.00012 - Math.random() * 0.0003,
-      a: 0.25 + Math.random() * 0.55,
-    }));
-    const resize = () => {
-      w = canvas.clientWidth;
-      h = canvas.clientHeight;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-    const t0 = performance.now();
-    const draw = (now: number) => {
-      const t = (now - t0) / 1000;
-      ctx.clearRect(0, 0, w, h);
-      const g = ctx.createLinearGradient(0, 0, w, h);
-      g.addColorStop(0, `hsla(${150 + t * 6}, 40%, 10%, 0.95)`);
-      g.addColorStop(0.45, `hsla(${280 + t * 5}, 35%, 9%, 0.92)`);
-      g.addColorStop(1, `hsla(${220 + t * 4}, 45%, 10%, 0.95)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, w, h);
-      for (let i = 0; i < 3; i++) {
-        const cx = w * (0.2 + i * 0.3 + 0.04 * Math.sin(t * 0.35 + i));
-        const cy = h * (0.35 + 0.15 * Math.cos(t * 0.3 + i));
-        const r = Math.min(w, h) * (0.18 + 0.04 * Math.sin(t + i));
-        const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        rg.addColorStop(0, `hsla(${40 + i * 50}, 80%, 50%, 0.16)`);
-        rg.addColorStop(1, "transparent");
-        ctx.fillStyle = rg;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.y < -0.05) {
-          p.y = 1.05;
-          p.x = Math.random();
-        }
-        if (p.x < 0) p.x = 1;
-        if (p.x > 1) p.x = 0;
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(255,210,130,${p.a * (0.55 + 0.45 * Math.sin(t * 2 + p.x * 8))})`;
-        ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, []);
-  return (
-    <canvas
-      ref={ref}
-      className="absolute inset-0 w-full h-full rounded-2xl pointer-events-none"
-      aria-hidden
-    />
-  );
-}
-
-/** Hello Apple: chroma-key bỏ nền trắng, nét chữ sáng, căn giữa, lặp mãi */
-function AppleHello() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  useEffect(() => {
-    const out = canvasRef.current;
-    if (!out) return;
-
-    const video = document.createElement("video");
-    videoRef.current = video;
-    video.src = "/hello-apple.mp4";
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.setAttribute("playsinline", "true");
-    video.preload = "auto";
-    video.crossOrigin = "anonymous";
-
-    let raf = 0;
-    let running = true;
-    const tmp = document.createElement("canvas");
-    const tctx = tmp.getContext("2d", { willReadFrequently: true });
-    const octx = out.getContext("2d");
-    if (!tctx || !octx) return;
-
-    const draw = () => {
-      if (!running) return;
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      if (vw > 0 && vh > 0 && !video.paused) {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const cw = out.clientWidth || 320;
-        const ch = out.clientHeight || 180;
-        if (out.width !== Math.floor(cw * dpr) || out.height !== Math.floor(ch * dpr)) {
-          out.width = Math.floor(cw * dpr);
-          out.height = Math.floor(ch * dpr);
-        }
-        octx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        octx.clearRect(0, 0, cw, ch);
-
-        // Phóng to chữ Hello và căn giữa tuyệt đối canvas
-        const scale = Math.min((cw * 0.92) / vw, (ch * 0.78) / vh);
-        const dw = vw * scale;
-        const dh = vh * scale;
-        const dx = (cw - dw) / 2;
-        const dy = (ch - dh) / 2;
-
-        tmp.width = Math.max(1, Math.floor(dw * dpr));
-        tmp.height = Math.max(1, Math.floor(dh * dpr));
-        tctx.setTransform(1, 0, 0, 1, 0, 0);
-        tctx.clearRect(0, 0, tmp.width, tmp.height);
-        tctx.drawImage(video, 0, 0, tmp.width, tmp.height);
-
-        const img = tctx.getImageData(0, 0, tmp.width, tmp.height);
-        const d = img.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const r = d[i];
-          const g = d[i + 1];
-          const b = d[i + 2];
-          const avg = (r + g + b) / 3;
-          // Nền trắng / gần trắng → trong suốt
-          if (avg > 235 || (r > 230 && g > 230 && b > 230)) {
-            d[i + 3] = 0;
-          } else {
-            // Nét đen → trắng sáng để hiện trên canvas tối
-            const strength = Math.min(1, (1 - avg / 255) * 1.5);
-            d[i] = 255;
-            d[i + 1] = 255;
-            d[i + 2] = 255;
-            d[i + 3] = Math.floor(255 * strength);
-          }
-        }
-        tctx.putImageData(img, 0, 0);
-        octx.drawImage(tmp, dx, dy, dw, dh);
-      }
-      raf = requestAnimationFrame(draw);
-    };
-
-    const start = () => {
-      video.play().catch(() => {});
-      raf = requestAnimationFrame(draw);
-    };
-    video.addEventListener("loadeddata", start);
-    video.load();
-
-    return () => {
-      running = false;
-      cancelAnimationFrame(raf);
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-      videoRef.current = null;
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="apple-hello-canvas"
-      aria-hidden
-    />
-  );
-}
 
 function fmtProgress(cur: number, target: number, unit: "sec" | "count") {
   const c = Math.max(0, cur);
@@ -315,10 +129,9 @@ function WheelFace({ labels, colors }: { labels: string[]; colors: string[] }) {
   );
 }
 
+
 export default function SuKienPage() {
   const coins = useEventStore((s) => s.coins);
-  const totalEarned = useEventStore((s) => s.totalEarned);
-  const vipPoints = useEventStore((s) => s.vipPoints || 0);
   const missionProgress = useEventStore((s) => s.missionProgress);
   const missionClaimCount = useEventStore((s) => s.missionClaimCount);
   const inventory = useEventStore((s) => s.inventory);
@@ -341,8 +154,6 @@ export default function SuKienPage() {
   const addNotif = useNotifStore((s) => s.add);
 
   const [tab, setTab] = useState<TabId>("missions");
-  /** Số lượng đổi cửa hàng (1–999) */
-  const [buyQty, setBuyQty] = useState(1);
   const [toast, setToast] = useState("");
   const [spinning, setSpinning] = useState(false);
   const [spinDeg, setSpinDeg] = useState(0);
@@ -357,7 +168,11 @@ export default function SuKienPage() {
     todayReward: 10,
     cycleDay: 1,
   });
-  const [summary, setSummary] = useState({ done: 0, total: DAILY_MISSIONS.length, pct: 0 });
+  const [summary, setSummary] = useState({
+    done: 0,
+    total: DAILY_MISSIONS.length,
+    pct: 0,
+  });
 
   useEffect(() => {
     try {
@@ -369,27 +184,6 @@ export default function SuKienPage() {
       console.error(e);
     }
   }, [addMissionProgress, dailyMissionSummary, ensureMissionDay, getStreakStatus]);
-
-  // Nhận xu admin (chỉ grant chưa claim trên server)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { applyPendingCoinGrants } = await import("@/lib/applyCoinGrants");
-        const { gained } = await applyPendingCoinGrants();
-        if (cancelled || gained === 0) return;
-        setToast(
-          gained > 0
-            ? `+${gained.toLocaleString("vi-VN")} xu từ Admin`
-            : `−${Math.abs(gained).toLocaleString("vi-VN")} xu (Admin trừ)`
-        );
-        window.setTimeout(() => setToast(""), 4000);
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTick(Date.now()), 1000);
@@ -410,7 +204,11 @@ export default function SuKienPage() {
     const r = claimCheckIn();
     flash(r.message);
     if (r.ok) {
-      useOpusPassStore.getState().addXp(40);
+      try {
+        useOpusPassStore.getState().addXp(40);
+      } catch {
+        /* */
+      }
       addNotif({ kind: "mission", title: "Điểm danh", body: r.message, href: "/su-kien" });
       setStatus(getStreakStatus());
     }
@@ -420,19 +218,36 @@ export default function SuKienPage() {
     const r = claimMission(id);
     flash(r.message);
     if (r.ok) {
-      useOpusPassStore.getState().addXp(60);
-      addNotif({ kind: "mission", title: "Nhiệm vụ", body: `${title}: ${r.message}`, href: "/su-kien" });
+      try {
+        useOpusPassStore.getState().addXp(60);
+      } catch {
+        /* */
+      }
+      addNotif({
+        kind: "mission",
+        title: "Nhiệm vụ",
+        body: `${title}: ${r.message}`,
+        href: "/su-kien",
+      });
       setSummary(dailyMissionSummary());
     }
   };
 
   const onBuy = (shopId: string) => {
-    const q = Math.min(999, Math.max(1, Math.floor(buyQty) || 1));
-    const r = buyShopItem(shopId, q);
-    flash(r.message);
-    if (r.ok) {
-      addNotif({ kind: "mission", title: "Cửa hàng", body: r.message, href: "/su-kien" });
+    if (shopId.startsWith("pass_xp_")) {
+      try {
+        const r = useOpusPassStore.getState().buyXpPack(shopId);
+        flash(r.message);
+        if (r.ok)
+          addNotif({ kind: "mission", title: "Pass XP", body: r.message, href: "/su-kien" });
+      } catch (e) {
+        flash("Không mua được gói Pass");
+      }
+      return;
     }
+    const r = buyShopItem(shopId);
+    flash(r.message);
+    if (r.ok) addNotif({ kind: "mission", title: "Cửa hàng", body: r.message, href: "/su-kien" });
   };
 
   const onEquip = (id: string) => {
@@ -455,7 +270,9 @@ export default function SuKienPage() {
     }
   };
 
-  const wheelLabels = SPIN_REWARDS.map((r) => r.label.replace("Hộp quà", "Hộp").replace("Thẻ 1 tập", "1 tập"));
+  const wheelLabels = SPIN_REWARDS.map((r) =>
+    r.label.replace("Hộp quà", "Hộp").replace("Thẻ 1 tập", "1 tập")
+  );
 
   const onSpin = () => {
     if (spinning) return;
@@ -467,578 +284,431 @@ export default function SuKienPage() {
     setSpinning(true);
     setBurst(false);
     setPrizeModal(null);
-    // Align roughly to segment (equal slices)
-    const n = SPIN_REWARDS.length;
-    const idx = Math.max(0, SPIN_REWARDS.findIndex((x) => x.label === preview.label || x.id === (preview as { label?: string }).label));
-    const seg = 360 / n;
-    const targetMid = idx >= 0 ? idx * seg + seg / 2 : Math.random() * 360;
-    const extra = 360 * 5 + (360 - (targetMid % 360));
+    const n = SPIN_REWARDS.length || 8;
+    const extra = 360 * 5 + Math.floor(Math.random() * 360);
     setSpinDeg((d) => d + extra);
     window.setTimeout(() => {
       setSpinning(false);
       setSpinLabel(preview.label || preview.message);
       setBurst(true);
-      setPrizeModal({ label: preview.label || "Phần thưởng", message: preview.message });
+      setPrizeModal({
+        label: preview.label || "Phần thưởng",
+        message: preview.message,
+      });
       flash(preview.message);
       addNotif({ kind: "mission", title: "Vòng quay", body: preview.message, href: "/su-kien" });
       window.setTimeout(() => setBurst(false), 1600);
-    }, 3200);
+    }, 2800);
   };
 
-  const boostOn = !!(boostExpiresAt && boostExpiresAt > Date.now());
-  const vipOn = !!(vipExpiresAt && vipExpiresAt > Date.now());
-
   const tabs: { id: TabId; label: string; icon: typeof Flame }[] = [
-    { id: "missions", label: "Điểm danh", icon: Flame },
-    { id: "pass", label: "Opus Pass", icon: Ticket },
+    { id: "missions", label: "Nhiệm vụ", icon: Flame },
     { id: "shop", label: "Cửa hàng", icon: ShoppingBag },
     { id: "inventory", label: "Kho đồ", icon: Package },
+    { id: "pass", label: "Pass", icon: Crown },
   ];
 
   return (
-    <div className="min-h-[100dvh] pt-[calc(var(--nav-h,3.5rem)+env(safe-area-inset-top,0px)+0.5rem)] pb-28 px-3 sm:px-4 md:px-6 max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto relative">
-      {/* Canvas + Hello giữ nguyên */}
-      <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] max-h-[220px] rounded-2xl overflow-hidden mb-3 border border-white/10 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
-        <EventCanvas />
-        <AppleHello />
-        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-      </div>
-
-      {/* Live ticker */}
-      <div className="mb-3 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-md">
-        <div className="flex items-center gap-2 px-3 py-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-          <div className="overflow-hidden flex-1">
-            <div className="flex gap-8 whitespace-nowrap animate-[ticker_28s_linear_infinite] text-[11px] text-zinc-300">
-              {tickerItems.concat(tickerItems).map((t, i) => (
-                <span key={i}>{t}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition"
+    <div
+      data-event-ui="social-v2"
+      className="min-h-[100dvh] bg-black text-white"
+      style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
+    >
+      <div className="mx-auto w-full max-w-lg sm:max-w-xl lg:max-w-2xl">
+        <header
+          className="sticky top-0 z-30 flex items-center gap-2 border-b border-[#1a1a1a] bg-black/95 px-3 backdrop-blur-md"
+          style={{
+            paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+            paddingBottom: "0.5rem",
+          }}
         >
-          <ArrowLeft className="w-4 h-4" />
-          Trang chủ
-        </Link>
-        <div className="flex items-center gap-2">
-          {vipOn && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30 flex items-center gap-1 tabular-nums">
-              <Crown className="w-3 h-3" /> VIP {fmtRemain((vipExpiresAt || 0) - nowTick)}
-            </span>
-          )}
-          {boostOn && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 flex items-center gap-1 tabular-nums">
-              <Zap className="w-3 h-3" /> x2 {fmtRemain((boostExpiresAt || 0) - nowTick)}
-            </span>
-          )}
-          <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-amber-500/15 border border-amber-400/30 text-amber-200 text-sm font-semibold">
-            <Coins className="w-4 h-4" />
-            {coins}
+          <Link
+            href="/home"
+            className="flex h-10 w-10 items-center justify-center rounded-full active:bg-white/10"
+            aria-label="Quay lại"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-semibold">Sự kiện</p>
           </div>
-        </div>
-      </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-[#1c1c1e] px-3 py-1.5">
+            <Coins className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-sm font-semibold tabular-nums">
+              {formatCoins(coins)}
+            </span>
+          </div>
+        </header>
 
-      {toast && (
-        <div className="mb-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100 backdrop-blur-md">
-          {toast}
-        </div>
-      )}
+        <section className="px-4 pb-3 pt-5">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
+              <p className="text-lg font-bold tabular-nums">
+                {formatCoins(coins)}
+              </p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Xu hiện có</p>
+            </div>
+            <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
+              <p className="text-lg font-bold tabular-nums">{status.streakDay}</p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Chuỗi ngày</p>
+            </div>
+            <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
+              <p className="text-lg font-bold tabular-nums">
+                {summary.done}/{summary.total}
+              </p>
+              <p className="mt-0.5 text-[11px] text-zinc-500">Nhiệm vụ</p>
+            </div>
+          </div>
 
-      {/* Tabs */}
-      <div className="grid grid-cols-4 gap-1 p-1 mb-4 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl">
-        {tabs.map((t) => {
-          const Icon = t.icon;
-          const on = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`relative flex flex-col items-center gap-0.5 rounded-xl px-0.5 py-2 text-[9px] sm:text-[11px] transition-all duration-300 ${
-                on
-                  ? "bg-white/10 text-white shadow-[0_0_20px_rgba(244,63,94,0.25)]"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              <Icon className={`w-4 h-4 ${on ? "text-rose-400" : ""}`} />
-              <span className="leading-tight text-center line-clamp-2">{t.label}</span>
-            </button>
-          );
-        })}
-      </div>
+          {(boostExpiresAt > nowTick || vipExpiresAt > nowTick) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {boostExpiresAt > nowTick && (
+                <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                  x2 xu · còn {fmtRemain(boostExpiresAt - nowTick)}
+                </span>
+              )}
+              {vipExpiresAt > nowTick && (
+                <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                  VIP · còn {fmtRemain(vipExpiresAt - nowTick)}
+                </span>
+              )}
+            </div>
+          )}
 
-      {/* Lucky Spin — luôn hiện phía trên nội dung tab */}
-      
-      {/* Lucky Spin */}
-      <section className="rounded-2xl sm:rounded-3xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 sm:p-5 md:p-6 mb-4 relative overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
-        <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
-          <h2 className="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
-            <Disc3 className={`w-4 h-4 sm:w-5 sm:h-5 text-rose-400 ${spinning ? "animate-spin" : ""}`} />
-            Vòng quay may mắn
-          </h2>
-          <span className="text-[10px] sm:text-xs text-zinc-400 shrink-0">{SPIN_COST} xu / lượt</span>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
-          <div className="relative w-[min(72vw,260px)] h-[min(72vw,260px)] sm:w-[280px] sm:h-[280px] md:w-[300px] md:h-[300px] shrink-0">
+          <div className="mt-3 overflow-hidden rounded-xl border border-[#27272a] bg-[#121212]">
             <div
-              className="absolute inset-0 rounded-full border-[3px] sm:border-4 border-white/25 shadow-[0_0_40px_rgba(244,63,94,0.3)] transition-transform duration-[3200ms] ease-out"
-              style={{ transform: `rotate(${spinDeg}deg)` }}
+              className="flex whitespace-nowrap py-2 text-[11px] text-zinc-400"
+              style={{ animation: "event-ticker 28s linear infinite" }}
             >
-              <WheelFace labels={wheelLabels} colors={WHEEL_COLORS} />
-            </div>
-            <div className="absolute inset-[28%] sm:inset-[30%] rounded-full bg-neutral-950/95 border border-white/15 flex items-center justify-center text-center px-2 z-10 pointer-events-none">
-              <span className="text-[10px] sm:text-xs text-zinc-200 leading-snug font-medium">
-                {spinLabel || "Chúc may mắn"}
-              </span>
-            </div>
-            {/* pointer */}
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 drop-shadow-lg">
-              <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-rose-400" />
-            </div>
-            {burst && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-30">
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="absolute w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping"
-                    style={{
-                      transform: `rotate(${i * (360 / 14)}deg) translateY(-46%)`,
-                      animationDuration: "0.9s",
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 w-full min-w-0 space-y-3">
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              Mỗi phần trên vòng là một phần thưởng riêng. Kim chỉ vào ô trúng.
-            </p>
-            <ul className="grid grid-cols-2 gap-1.5 text-[10px] sm:text-[11px] text-zinc-300">
-              {SPIN_REWARDS.map((r, i) => (
-                <li
-                  key={r.id}
-                  className="flex items-center gap-1.5 rounded-lg bg-white/[0.04] border border-white/10 px-2 py-1"
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/20"
-                    style={{ background: WHEEL_COLORS[i % WHEEL_COLORS.length] }}
-                  />
-                  <span className="truncate">{r.label}</span>
-                </li>
+              {[...tickerItems, ...tickerItems].map((tx, i) => (
+                <span key={i} className="mx-4 shrink-0">
+                  {tx}
+                </span>
               ))}
-            </ul>
+            </div>
+          </div>
+        </section>
+
+        <div className="sticky top-12 z-20 border-b border-[#1a1a1a] bg-black/95 backdrop-blur-md">
+          <div className="flex">
+            {tabs.map((item) => {
+              const on = tab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTab(item.id)}
+                  className={`relative flex-1 py-3 text-center text-sm font-semibold transition-colors ${
+                    on ? "text-white" : "text-zinc-500"
+                  }`}
+                >
+                  {item.label}
+                  {on ? (
+                    <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-white" />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-4 px-3 py-4 sm:px-4">
+          <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Disc3 className="h-4 w-4 text-amber-400" />
+                Vòng quay
+              </h2>
+              <span className="text-xs text-zinc-500">{SPIN_COST} xu / lượt</span>
+            </div>
+            <div className="relative mx-auto mb-3 h-52 w-52">
+              <div
+                className="absolute inset-0 rounded-full border border-[#3f3f46] transition-transform duration-[2800ms] ease-out"
+                style={{ transform: `rotate(${spinDeg}deg)` }}
+              >
+                <WheelFace
+                  labels={wheelLabels}
+                  colors={[
+                    "#1c1c1e",
+                    "#27272a",
+                    "#1c1c1e",
+                    "#27272a",
+                    "#1c1c1e",
+                    "#27272a",
+                    "#1c1c1e",
+                    "#27272a",
+                  ]}
+                />
+              </div>
+              <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1">
+                <div className="h-0 w-0 border-l-[8px] border-r-[8px] border-t-[14px] border-l-transparent border-r-transparent border-t-amber-400" />
+              </div>
+              {burst ? (
+                <div className="pointer-events-none absolute inset-0 animate-pulse rounded-full bg-amber-400/10" />
+              ) : null}
+            </div>
             <button
               type="button"
               disabled={spinning || coins < SPIN_COST}
               onClick={onSpin}
-              className="w-full rounded-xl py-2.5 sm:py-3 text-sm font-semibold bg-gradient-to-r from-rose-600 to-fuchsia-600 text-white disabled:opacity-40 bounce-press shadow-[0_0_24px_rgba(244,63,94,0.35)] transition-all duration-500"
+              className="h-11 w-full rounded-xl bg-[#0084ff] text-sm font-semibold disabled:opacity-40"
             >
-              {spinning ? "Đang quay…" : `Quay · ${SPIN_COST} xu`}
+              {spinning ? "Đang quay…" : spinLabel ? `Kết quả: ${spinLabel}` : "Quay ngay"}
             </button>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* Prize modal liquid glass */}
-      {prizeModal && (
+          {tab === "missions" && (
+            <>
+              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold">
+                    <Flame className="h-4 w-4 text-orange-400" />
+                    Điểm danh {status.cycleDay}/7
+                  </h2>
+                  <span className="text-xs text-zinc-500">
+                    Chuỗi <strong className="text-white">{status.streakDay}</strong>
+                  </span>
+                </div>
+                {status.missed ? (
+                  <p className="mb-2 text-[11px] text-rose-400">
+                    Đã mất chuỗi — bắt đầu lại từ ngày 1.
+                  </p>
+                ) : null}
+                <div className="mb-3 grid grid-cols-7 gap-1.5">
+                  {CHECKIN_REWARDS.map((rw, i) => {
+                    const day = i + 1;
+                    const done = status.streakDay > i;
+                    const today = status.cycleDay === day;
+                    return (
+                      <div
+                        key={day}
+                        className={`rounded-lg border py-2 text-center text-[10px] ${
+                          done
+                            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                            : today
+                              ? "border-[#0084ff]/50 bg-[#0084ff]/15 text-white"
+                              : "border-[#27272a] bg-[#0a0a0a] text-zinc-500"
+                        }`}
+                      >
+                        <div className="font-medium">D{day}</div>
+                        <div>+{rw}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  disabled={!status.canClaim}
+                  onClick={onCheckIn}
+                  className="h-11 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-sm font-semibold text-black disabled:opacity-40"
+                >
+                  {status.canClaim
+                    ? `Nhận +${status.todayReward} xu`
+                    : "Đã điểm danh hôm nay"}
+                </button>
+              </section>
+
+              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold">Nhiệm vụ ngày</h2>
+                  <span className="text-xs text-zinc-500">{summary.pct}%</span>
+                </div>
+                <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-[#0084ff] transition-all duration-500"
+                    style={{ width: `${summary.pct}%` }}
+                  />
+                </div>
+                <ul className="space-y-2">
+                  {DAILY_MISSIONS.map((m) => {
+                    const prog = missionProgress?.[m.id] ?? 0;
+                    const claimed = missionClaimCount?.[m.id] ?? 0;
+                    const max = m.maxClaims ?? 10;
+                    const doneEnough = prog >= m.target;
+                    const canClaim = doneEnough && claimed < max;
+                    return (
+                      <li
+                        key={m.id}
+                        className="flex items-center gap-3 rounded-xl border border-[#1f1f1f] bg-[#0a0a0a] p-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{m.title}</p>
+                          <p className="text-[11px] text-zinc-500">
+                            {fmtProgress(prog, m.target, m.unit)} · {MISSION_REWARD} xu
+                            {claimed > 0 ? ` · đã nhận ${claimed}/${max}` : ""}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!canClaim}
+                          onClick={() => onClaimMission(m.id, m.title)}
+                          className="h-9 shrink-0 rounded-lg bg-[#0084ff] px-3 text-xs font-semibold disabled:bg-[#1c1c1e] disabled:text-zinc-500"
+                        >
+                          {claimed >= max ? "Xong" : canClaim ? "Nhận" : "Chưa đủ"}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+
+              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+                <h2 className="mb-2 text-sm font-semibold">Đổi xu lấy tiền</h2>
+                <RedeemCashPanel />
+              </section>
+            </>
+          )}
+
+          {tab === "pass" && (
+            <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3 sm:p-4">
+              <OpusPassPanel />
+            </section>
+          )}
+
+          {tab === "shop" && (
+            <section className="space-y-2">
+              <p className="px-1 text-xs text-zinc-500">
+                Mở khóa khoảng {formatCoins(UNLOCK_COST)} xu / lần
+              </p>
+              {SHOP_ITEMS.map((item) => {
+                const afford = coins >= item.cost;
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 rounded-2xl border border-[#27272a] bg-[#121212] p-3"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1c1c1e]">
+                      <Gift className="h-5 w-5 text-zinc-300" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{item.name}</p>
+                      <p className="line-clamp-2 text-[11px] text-zinc-500">{item.desc}</p>
+                      <p className="mt-0.5 text-xs font-semibold tabular-nums text-amber-400">
+                        {item.cost.toLocaleString("vi-VN")} xu
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!afford}
+                      onClick={() => onBuy(item.id)}
+                      className="h-9 shrink-0 rounded-lg bg-[#0084ff] px-3 text-xs font-semibold disabled:opacity-40"
+                    >
+                      Đổi
+                    </button>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
+          {tab === "inventory" && (
+            <section className="space-y-2">
+              {(equippedFrame || equippedBadge) && (
+                <div className="mb-1 flex flex-wrap gap-2">
+                  {equippedFrame ? (
+                    <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                      Khung đang dùng
+                    </span>
+                  ) : null}
+                  {equippedBadge ? (
+                    <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                      Huy hiệu đang dùng
+                    </span>
+                  ) : null}
+                </div>
+              )}
+              {!(inventory || []).length ? (
+                <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-8 text-center text-sm text-zinc-500">
+                  Kho đồ trống. Đổi quà ở Cửa hàng hoặc quay Vòng quay.
+                </div>
+              ) : (
+                (inventory || []).map((it) => {
+                  const isEquip = it.kind === "frame" || it.kind === "badge";
+                  const isAct =
+                    it.kind === "boost" || it.kind === "vip" || it.kind === "unlock";
+                  return (
+                    <div
+                      key={it.id}
+                      className="flex items-center gap-3 rounded-2xl border border-[#27272a] bg-[#121212] p-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{it.name}</p>
+                        <p className="text-[11px] text-zinc-500">
+                          x{it.qty}
+                          {it.meta ? ` · ${it.meta}` : ""}
+                        </p>
+                      </div>
+                      {it.kind === "mystery" ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenBox(it.id)}
+                          className="h-9 rounded-lg bg-amber-500/20 px-3 text-xs font-semibold text-amber-200"
+                        >
+                          Mở
+                        </button>
+                      ) : null}
+                      {isEquip ? (
+                        <button
+                          type="button"
+                          onClick={() => onEquip(it.id)}
+                          className="h-9 rounded-lg bg-[#1c1c1e] px-3 text-xs font-semibold"
+                        >
+                          Trang bị
+                        </button>
+                      ) : null}
+                      {isAct ? (
+                        <button
+                          type="button"
+                          onClick={() => onActivate(it.id)}
+                          className="h-9 rounded-lg bg-[#0084ff]/20 px-3 text-xs font-semibold text-sky-300"
+                        >
+                          Kích hoạt
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </section>
+          )}
+        </div>
+      </div>
+
+      {toast ? (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm transition-opacity duration-500"
-          onClick={() => setPrizeModal(null)}
+          role="status"
+          className="fixed left-1/2 z-[200] max-w-[90vw] -translate-x-1/2 rounded-full border border-[#27272a] bg-[#1c1c1e] px-4 py-2.5 text-sm font-medium shadow-2xl"
+          style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
         >
-          <div
-            className="w-full max-w-sm rounded-3xl border border-white/15 bg-white/[0.08] backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 text-center animate-[fadeUp_0.5s_ease]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400/30 to-rose-500/30 border border-white/20 flex items-center justify-center text-2xl">
-              🎁
-            </div>
-            <p className="text-xs uppercase tracking-wider text-zinc-400 mb-1">Phần thưởng</p>
-            <h3 className="text-xl font-bold text-white mb-2">{prizeModal.label}</h3>
-            <p className="text-sm text-zinc-300 mb-5">{prizeModal.message}</p>
+          {toast}
+        </div>
+      ) : null}
+
+      {prizeModal ? (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#27272a] bg-[#121212] p-5 text-center">
+            <Sparkles className="mx-auto mb-2 h-8 w-8 text-amber-400" />
+            <h3 className="mb-2 text-lg font-bold">{prizeModal.label}</h3>
+            <p className="mb-5 text-sm text-zinc-400">{prizeModal.message}</p>
             <button
               type="button"
               onClick={() => setPrizeModal(null)}
-              className="w-full rounded-xl py-2.5 text-sm font-semibold bg-white text-black transition-all duration-500 hover:scale-[1.02] active:scale-95"
+              className="h-11 w-full rounded-xl bg-[#0084ff] text-sm font-semibold"
             >
               Đóng
             </button>
           </div>
         </div>
-      )}
-{tab === "missions" && (
-        <>
-          <section className="glass-panel p-4 mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Flame className="w-4 h-4 text-orange-400" />
-                Chuỗi {status.cycleDay}/7
-              </h2>
-              <span className="text-xs text-zinc-400">
-                Chuỗi: <strong className="text-white">{status.streakDay}</strong>
-              </span>
-            </div>
-            {status.missed && (
-              <p className="text-[11px] text-rose-300/90 mb-2">Đã mất chuỗi — bắt đầu lại từ ngày 1.</p>
-            )}
-            <div className="grid grid-cols-7 gap-1.5 mb-3">
-              {CHECKIN_REWARDS.map((rw, i) => {
-                const day = i + 1;
-                const done = status.streakDay >= day && !status.canClaim
-                  ? true
-                  : status.streakDay > i;
-                const today = status.cycleDay === day;
-                return (
-                  <div
-                    key={day}
-                    className={`rounded-lg py-2 text-center border text-[10px] ${
-                      done
-                        ? "bg-emerald-500/15 border-emerald-400/30 text-emerald-200"
-                        : today
-                          ? "bg-rose-500/15 border-rose-400/40 text-rose-100"
-                          : "bg-white/5 border-white/10 text-zinc-500"
-                    }`}
-                  >
-                    <div className="font-medium">D{day}</div>
-                    <div>+{rw}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              disabled={!status.canClaim}
-              onClick={onCheckIn}
-              className="w-full rounded-xl py-2.5 text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-black disabled:opacity-40 bounce-press"
-            >
-              {status.canClaim ? `Nhận điểm danh +${status.todayReward} xu` : "Đã điểm danh hôm nay"}
-            </button>
-          </section>
-
-          <section className="glass-panel p-4 mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Gift className="w-4 h-4 text-violet-400" />
-                Nhiệm vụ ngày
-              </h2>
-              <span className="text-[11px] text-zinc-400">
-                Đã nhận {summary.done} lần
-              </span>
-            </div>
-            <ul className="space-y-2.5 max-h-[55vh] overflow-y-auto custom-scroll">
-              {DAILY_MISSIONS.map((m) => {
-                const claims = missionClaimCount?.[m.id] || 0;
-                const cur = missionProgress?.[m.id] || 0;
-                const inCycle =
-                  cur % m.target === 0 && cur > 0 ? m.target : cur % m.target;
-                const displayCur =
-                  cur >= m.target
-                    ? Math.min(m.target, inCycle || m.target)
-                    : cur % m.target;
-                const pct = Math.min(100, Math.round((displayCur / m.target) * 100));
-                const canClaim = cur >= m.target;
-                return (
-                  <li
-                    key={m.id}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-3"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="min-w-0">
-                        <p className="text-sm text-white font-medium">{m.title}</p>
-                        <p className="text-[11px] text-zinc-500">
-                          {m.desc} · Đã nhận {claims} lần · Không giới hạn
-                        </p>
-                      </div>
-                      <span className="text-xs text-amber-300 shrink-0 font-semibold">
-                        +{MISSION_REWARD}
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden mb-2">
-                      <div
-                        className="h-full bg-gradient-to-r from-sky-400 to-violet-500 rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-zinc-500">
-                        {fmtProgress(displayCur, m.target, m.unit)}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={!canClaim}
-                        onClick={() => onClaimMission(m.id, m.title)}
-                        className="text-xs px-3 py-1 rounded-full font-medium disabled:opacity-40 bg-amber-500/20 text-amber-200 border border-amber-400/30 bounce-press"
-                      >
-                        {canClaim ? `Nhận +${MISSION_REWARD}` : "Đang làm"}
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
-          <RedeemCashPanel />
-
-          <section className="glass-panel p-4 text-sm text-zinc-400 space-y-2">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Lock className="w-4 h-4" /> Dùng xu
-            </h2>
-            <p>
-              1 tập: <strong className="text-amber-300">{UNLOCK_COST.episode} xu</strong> · Cả
-              phim: <strong className="text-amber-300">{UNLOCK_COST.movie} xu</strong>
-            </p>
-            <p className="text-xs">
-              Tổng đã kiếm: <span className="text-white">{totalEarned.toLocaleString("vi-VN")}</span> xu
-            </p>
-            <p className="text-xs">
-              Điểm VIP: <span className="text-amber-300">{vipPoints.toLocaleString("vi-VN")}</span> (đổi xu trong Cửa hàng để tăng)
-            </p>
-          </section>
-        </>
-      )}
-
-      {tab === "pass" && (
-        <OpusPassPanel
-          onFlash={flash}
-          onNotif={(title, body) => addNotif({ kind: "mission", title, body, href: "/su-kien" })}
-        />
-      )}
-
-      {tab === "shop" && (
-        <section className="space-y-4">
-          <p className="text-xs text-zinc-400 px-1">
-            Vuốt ngang từng hàng để xem quà. Đổi xong vào <strong className="text-zinc-200">Kho đồ</strong> để trang bị / kích hoạt.
-          </p>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-white">Số lượng mỗi lần đổi</p>
-              <span className="text-sm font-bold text-amber-300 tabular-nums">×{buyQty}</span>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={999}
-              value={buyQty}
-              onChange={(e) => setBuyQty(Math.min(999, Math.max(1, Number(e.target.value) || 1)))}
-              className="w-full accent-rose-500 h-2 cursor-pointer"
-            />
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setBuyQty((q) => Math.max(1, q - 1))}
-                className="px-2.5 py-1 rounded-lg bg-white/10 text-xs text-white"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                min={1}
-                max={999}
-                value={buyQty}
-                onChange={(e) =>
-                  setBuyQty(Math.min(999, Math.max(1, Math.floor(Number(e.target.value) || 1))))
-                }
-                className="w-20 px-2 py-1 rounded-lg bg-black/40 border border-white/10 text-sm text-center tabular-nums"
-              />
-              <button
-                type="button"
-                onClick={() => setBuyQty((q) => Math.min(999, q + 1))}
-                className="px-2.5 py-1 rounded-lg bg-white/10 text-xs text-white"
-              >
-                +
-              </button>
-              <div className="flex gap-1 ml-auto">
-                {[1, 10, 50, 100, 999].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setBuyQty(n)}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-medium ${
-                      buyQty === n ? "bg-rose-600 text-white" : "bg-white/10 text-zinc-300"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <p className="text-[10px] text-zinc-500">
-              Xu bị trừ = giá 1 món × số lượng (tối đa 999 / lượt).
-            </p>
-          </div>
-          {(
-            [
-              { key: "vip_xp", title: "Nâng điểm VIP", hint: "Đổi xu → điểm VIP" },
-              { key: "pass_xp", title: "Pass XP", hint: "Mua XP Opus Pass" },
-              { key: "vip", title: "Gói VIP thời hạn", hint: "Xem phim ưu tiên" },
-              { key: "unlock", title: "Mở khóa phim", hint: "Thẻ tập / trọn bộ" },
-              { key: "boost", title: "Tăng tốc xu", hint: "Nhân đôi trong thời gian" },
-              { key: "mystery", title: "Hộp quà", hint: "Mở trong Kho đồ" },
-              { key: "frame", title: "Khung viền", hint: "Trang bị avatar" },
-              { key: "badge", title: "Huy hiệu", hint: "Hiện cạnh tên" },
-              { key: "coins", title: "Gói xu", hint: "Đổi gói xu nhanh" },
-            ] as const
-          ).map((row) => {
-            const items = SHOP_ITEMS.filter((x) => x.kind === row.key);
-            if (!items.length) return null;
-            return (
-              <div
-                key={row.key}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] overflow-hidden"
-              >
-                <div className="flex items-end justify-between gap-2 px-3 pt-3 pb-1.5">
-                  <div>
-                    <p className="text-sm font-semibold text-white leading-none">{row.title}</p>
-                    <p className="text-[10px] text-zinc-500 mt-1">{row.hint}</p>
-                  </div>
-                  <span className="text-[10px] text-zinc-600 shrink-0">Vuốt →</span>
-                </div>
-                <div
-                  className="flex gap-2.5 overflow-x-auto px-3 pb-3 pt-1 snap-x snap-mandatory custom-scroll"
-                  style={{ WebkitOverflowScrolling: "touch" }}
-                >
-                  {items.map((item) => {
-                    const can = coins >= item.cost * buyQty;
-                    return (
-                      <div
-                        key={item.id}
-                        className="snap-start shrink-0 w-[148px] sm:w-[160px] rounded-xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-2.5 flex flex-col min-h-[148px] transition-transform duration-300 hover:scale-[1.02] hover:border-white/20"
-                      >
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-xl leading-none w-9 h-9 rounded-lg bg-black/30 border border-white/10 flex items-center justify-center shrink-0">
-                            {item.icon}
-                          </span>
-                          <p className="text-[12px] font-semibold text-white leading-snug line-clamp-2">
-                            {item.name}
-                          </p>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 line-clamp-2 flex-1 mb-2">{item.desc}</p>
-                        <div className="flex items-center justify-between gap-1 mt-auto">
-                          <span className="text-amber-300 text-[11px] font-bold inline-flex items-center gap-0.5 tabular-nums">
-                            <Coins className="w-3 h-3 shrink-0" />
-                            {(item.cost * buyQty).toLocaleString("vi-VN")}
-                            {buyQty > 1 ? (
-                              <span className="text-zinc-500 font-normal">×{buyQty}</span>
-                            ) : null}
-                          </span>
-                          <button
-                            type="button"
-                            disabled={coins < item.cost * buyQty}
-                            onClick={() => onBuy(item.id)}
-                            className="text-[10px] px-2.5 py-1 rounded-full font-semibold disabled:opacity-35 bg-gradient-to-r from-rose-600 to-fuchsia-600 hover:from-rose-500 hover:to-fuchsia-500 text-white bounce-press shadow-md shadow-rose-900/30"
-                          >
-                            Đổi{buyQty > 1 ? ` ×${buyQty}` : ""}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-      {tab === "inventory" && (
-        <section className="space-y-3">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl p-3 text-xs text-zinc-400 space-y-2 transition-all duration-500">
-            <div className="flex flex-wrap gap-2">
-              <span>
-                Khung:{" "}
-                <strong className="text-zinc-200">{equippedFrame || "Chưa trang bị"}</strong>
-              </span>
-              <span className="text-zinc-600">·</span>
-              <span>
-                Huy hiệu:{" "}
-                <strong className="text-zinc-200">{equippedBadge || "Chưa trang bị"}</strong>
-              </span>
-            </div>
-            {(boostOn || vipOn) && (
-              <div className="flex flex-wrap gap-2 pt-1 border-t border-white/10">
-                {boostOn && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 bg-violet-500/15 border border-violet-400/30 text-violet-200 tabular-nums">
-                    <Zap className="w-3 h-3" /> x2 còn {fmtRemain((boostExpiresAt || 0) - nowTick)}
-                  </span>
-                )}
-                {vipOn && (
-                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 bg-amber-500/15 border border-amber-400/30 text-amber-200 tabular-nums">
-                    <Crown className="w-3 h-3" /> VIP còn {fmtRemain((vipExpiresAt || 0) - nowTick)}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-          {(inventory || []).length === 0 ? (
-            <div className="glass-panel p-8 text-center text-sm text-zinc-500">
-              Kho trống. Hãy đổi quà ở Cửa hàng hoặc quay Vòng quay.
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {(inventory || []).map((it) => {
-                const isEquip = it.kind === "frame" || it.kind === "badge";
-                const isAct =
-                  it.kind === "boost" || it.kind === "vip" || it.kind === "unlock";
-                return (
-                  <li
-                    key={it.id}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-3 flex items-center gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-white font-medium truncate">{it.name}</p>
-                      <p className="text-[11px] text-zinc-500">
-                        x{it.qty}
-                        {it.meta ? ` · ${it.meta}` : ""}
-                      </p>
-                    </div>
-                    {it.kind === "mystery" && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenBox(it.id)}
-                        className="text-xs px-3 py-1.5 rounded-full bg-amber-500/25 text-amber-100 border border-amber-400/40 bounce-press font-semibold"
-                      >
-                        Mở
-                      </button>
-                    )}
-                    {isEquip && (
-                      <button
-                        type="button"
-                        onClick={() => onEquip(it.id)}
-                        className="text-xs px-3 py-1.5 rounded-full bg-sky-500/20 text-sky-200 border border-sky-400/30 bounce-press"
-                      >
-                        Trang bị
-                      </button>
-                    )}
-                    {isAct && (
-                      <button
-                        type="button"
-                        onClick={() => onActivate(it.id)}
-                        className="text-xs px-3 py-1.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30 bounce-press"
-                      >
-                        Kích hoạt
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-      )}
+      ) : null}
 
       <style jsx global>{`
-        @keyframes ticker {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
+        @keyframes event-ticker {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
         }
       `}</style>
     </div>

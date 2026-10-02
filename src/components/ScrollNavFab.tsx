@@ -20,6 +20,9 @@ function getScrollHeight() {
   );
 }
 
+const BTN =
+  "flex h-11 w-11 items-center justify-center rounded-full border-2 border-border bg-surface text-foreground shadow-lg transition hover:bg-surface-elevated active:scale-95 ui-border-contrast";
+
 export default function ScrollNavFab() {
   const pathname = usePathname() || "/";
   const [show, setShow] = useState(false);
@@ -75,22 +78,22 @@ export default function ScrollNavFab() {
         <button
           type="button"
           onClick={scrollTop}
-          className="w-11 h-11 rounded-full bg-[#1a1a1a]/92 border border-white/10 shadow-lg shadow-black/40 flex items-center justify-center text-white hover:bg-[#2a2a2a] active:scale-95 transition backdrop-blur-md"
+          className={BTN}
           aria-label="Lên đầu trang"
           title="Lên trên"
         >
-          <ChevronUp className="w-5 h-5" strokeWidth={2.5} />
+          <ChevronUp className="h-5 w-5 shrink-0 text-foreground" strokeWidth={2.75} />
         </button>
       )}
       {!atBottom && (
         <button
           type="button"
           onClick={scrollBottom}
-          className="w-11 h-11 rounded-full bg-[#1a1a1a]/92 border border-white/10 shadow-lg shadow-black/40 flex items-center justify-center text-white hover:bg-[#2a2a2a] active:scale-95 transition backdrop-blur-md"
+          className={BTN}
           aria-label="Xuống cuối trang"
           title="Xuống dưới"
         >
-          <ChevronDown className="w-5 h-5" strokeWidth={2.5} />
+          <ChevronDown className="h-5 w-5 shrink-0 text-foreground" strokeWidth={2.75} />
         </button>
       )}
     </div>

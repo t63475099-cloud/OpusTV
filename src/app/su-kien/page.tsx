@@ -33,6 +33,8 @@ import RedeemCashPanel from "@/components/RedeemCashPanel";
 import OpusPassPanel from "@/components/OpusPassPanel";
 import { useOpusPassStore } from "@/lib/opusPass";
 import { useNotifStore } from "@/lib/notifications";
+import { useEventServerSync } from "@/hooks/useEventServerSync";
+import { useAccountStore } from "@/lib/account";
 
 type TabId = "missions" | "shop" | "inventory" | "pass";
 
@@ -159,6 +161,15 @@ export default function SuKienPage() {
   const activateItem = useEventStore((s) => s.activateItem);
   const luckySpin = useEventStore((s) => s.luckySpin);
   const openMysteryBox = useEventStore((s) => s.openMysteryBox);
+  const serverHydrated = useEventStore((s) => s.serverHydrated);
+  const username = useAccountStore((s) => s.username);
+  const {
+    status: syncStatus,
+    flash: syncFlash,
+    spinServer,
+    checkinServer,
+    loggedIn,
+  } = useEventServerSync();
   const addNotif = useNotifStore((s) => s.add);
 
   const [tab, setTab] = useState<TabId>("missions");
@@ -208,7 +219,26 @@ export default function SuKienPage() {
     window.setTimeout(() => setToast(""), 2800);
   };
 
-  const onCheckIn = () => {
+  const onCheckIn = async () => {
+    if (loggedIn) {
+      const r = await checkinServer();
+      flash(r.ok ? r.message || "Điểm danh OK" : r.error || "Thất bại");
+      if (r.ok) {
+        try {
+          useOpusPassStore.getState().addXp(40);
+        } catch {
+          /* */
+        }
+        addNotif({
+          kind: "mission",
+          title: "Điểm danh",
+          body: r.message || "",
+          href: "/su-kien",
+        });
+        setStatus(getStreakStatus());
+      }
+      return;
+    }
     const r = claimCheckIn();
     flash(r.message);
     if (r.ok) {
@@ -282,21 +312,33 @@ export default function SuKienPage() {
     r.label.replace("Hộp quà", "Hộp").replace("Thẻ 1 tập", "1 tập")
   );
 
-  const onSpin = () => {
+  const onSpin = async () => {
     if (spinning) return;
-    const preview = luckySpin();
-    if (!preview.ok) {
-      flash(preview.message);
-      return;
-    }
     setSpinning(true);
     setBurst(false);
     setPrizeModal(null);
-    const n = SPIN_REWARDS.length || 8;
     const extra = 360 * 5 + Math.floor(Math.random() * 360);
     setSpinDeg((d) => d + extra);
+
+    let preview: { ok: boolean; message: string; label?: string };
+
+    if (loggedIn) {
+      const r = await spinServer();
+      preview = {
+        ok: !!r.ok,
+        message: r.ok ? r.message || r.label || "OK" : r.error || "Thất bại",
+        label: r.label,
+      };
+    } else {
+      preview = luckySpin();
+    }
+
     window.setTimeout(() => {
       setSpinning(false);
+      if (!preview.ok) {
+        flash(preview.message);
+        return;
+      }
       setSpinLabel(preview.label || preview.message);
       setBurst(true);
       setPrizeModal({
@@ -304,7 +346,12 @@ export default function SuKienPage() {
         message: preview.message,
       });
       flash(preview.message);
-      addNotif({ kind: "mission", title: "Vòng quay", body: preview.message, href: "/su-kien" });
+      addNotif({
+        kind: "mission",
+        title: "Vòng quay",
+        body: preview.message,
+        href: "/su-kien",
+      });
       window.setTimeout(() => setBurst(false), 1600);
     }, 2800);
   };
@@ -340,7 +387,11 @@ export default function SuKienPage() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-semibold">Sự kiện</p>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-[#1c1c1e] px-3 py-1.5">
+          <div
+            className={`flex items-center gap-1.5 rounded-full bg-[#1c1c1e] px-3 py-1.5 transition-colors ${
+              syncFlash ? "ring-2 ring-amber-400/60" : ""
+            }`}
+          >
             <Coins className="h-3.5 w-3.5 text-amber-400" />
             <span className="text-sm font-semibold tabular-nums">
               {formatCoins(coins)}
@@ -348,8 +399,20 @@ export default function SuKienPage() {
           </div>
         </header>
 
+        {loggedIn && (
+          <p className="px-4 pt-1 text-[10px] text-zinc-600">
+            Đồng bộ: {syncStatus}
+            {serverHydrated ? " · server" : " · đang tải…"}
+            {!username ? "" : ""}
+          </p>
+        )}
+
         <section className="px-4 pb-2 pt-3">
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div
+            className={`grid grid-cols-3 gap-2 text-center transition-colors duration-300 ${
+              syncFlash ? "bg-amber-500/5 rounded-2xl" : ""
+            }`}
+          >
             <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
               <p className="text-lg font-bold tabular-nums">
                 {formatCoins(coins)}

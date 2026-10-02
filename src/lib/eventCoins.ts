@@ -498,8 +498,28 @@ export interface EventState {
   liveFeed: LiveFeedItem[];
   /** Mốc ghi nhận để đồng bộ xu đa thiết bị (LWW) */
   updatedAt: number;
+  /** Server OCC version — 0 = chưa hydrate */
+  serverVersion: number;
+  /** true sau khi đã kéo snapshot server */
+  serverHydrated: boolean;
 
   ensureMissionDay: () => void;
+  /** Áp snapshot từ server (không ghi localStorage game state) */
+  hydrateFromServer: (snap: {
+    coins: number;
+    streakDays?: number;
+    lastCheckIn?: string | null;
+    claimedCheckInDay?: string | null;
+    missionProgress?: Record<string, number>;
+    missionClaimCount?: Record<string, number>;
+    missionDay?: string | null;
+    completedTasks?: number;
+    doubleExpUntil?: string | null;
+    vipUntil?: string | null;
+    totalEarned?: number;
+    inventory?: InventoryItem[];
+    version?: number;
+  }) => void;
   getStreakStatus: () => {
     streakDay: number;
     canClaim: boolean;
@@ -560,6 +580,54 @@ export const useEventStore = create<EventState>()(
       vipExpiresAt: null,
       liveFeed: [],
       updatedAt: 0,
+      serverVersion: 0,
+      serverHydrated: false,
+
+      hydrateFromServer: (snap) => {
+        const vipUntil = snap.vipUntil
+          ? new Date(snap.vipUntil).getTime()
+          : get().vipExpiresAt;
+        const boostUntil = snap.doubleExpUntil
+          ? new Date(snap.doubleExpUntil).getTime()
+          : get().boostExpiresAt;
+        set({
+          coins: Math.trunc(Number(snap.coins) || 0),
+          streakDay: Math.max(0, Math.floor(Number(snap.streakDays) || 0)),
+          lastCheckIn: snap.lastCheckIn ?? get().lastCheckIn,
+          claimedCheckInDay: snap.claimedCheckInDay ?? get().claimedCheckInDay,
+          missionProgress: {
+            ...emptyProgress(),
+            ...(snap.missionProgress || {}),
+          } as ProgressMap,
+          missionClaimCount: {
+            ...emptyClaims(),
+            ...(snap.missionClaimCount || {}),
+          } as ClaimCountMap,
+          missionDay: snap.missionDay ?? get().missionDay,
+          totalEarned: Math.trunc(
+            Number(snap.totalEarned != null ? snap.totalEarned : get().totalEarned) || 0
+          ),
+          inventory: Array.isArray(snap.inventory)
+            ? (snap.inventory as InventoryItem[])
+            : get().inventory,
+          vipExpiresAt: Number.isFinite(vipUntil as number) ? (vipUntil as number) : null,
+          boostExpiresAt: Number.isFinite(boostUntil as number)
+            ? (boostUntil as number)
+            : null,
+          serverVersion: Number(snap.version || 0),
+          serverHydrated: true,
+          updatedAt: Date.now(),
+        });
+        // Xóa localStorage game state cũ — chống lệch đa thiết bị
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("opusfilm-event-coins-v2");
+            localStorage.removeItem("opusfilm-event-coins");
+          }
+        } catch {
+          /* */
+        }
+      },
 
       ensureMissionDay: () => {
         const today = dayKey();
@@ -1080,6 +1148,25 @@ coinMultiplier: () => {
         };
       },
     }),
-    { name: "opusfilm-event-coins-v2" }
+    {
+      name: "opusfilm-event-ui-only-v3",
+      /** Không persist coins/streak/missions/inventory — server là nguồn sự thật */
+      partialize: () => ({}),
+      storage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {
+          try {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("opusfilm-event-coins-v2");
+              localStorage.removeItem("opusfilm-event-coins");
+              localStorage.removeItem("opusfilm-event-ui-only-v3");
+            }
+          } catch {
+            /* */
+          }
+        },
+      },
+    }
   )
 );

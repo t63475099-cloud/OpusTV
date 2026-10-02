@@ -188,8 +188,30 @@ export async function getOrCreateEventState(
       ON CONFLICT (user_id) DO NOTHING
     `;
     rows = await sql`SELECT * FROM event_user_state WHERE user_id = ${userId} LIMIT 1`;
-  } else if (username && String((rows[0] as { username: string }).username) !== username) {
-    await sql`UPDATE event_user_state SET username = ${username} WHERE user_id = ${userId}`;
+  } else {
+    if (username && String((rows[0] as { username: string }).username) !== username) {
+      await sql`UPDATE event_user_state SET username = ${username} WHERE user_id = ${userId}`;
+    }
+    // Đồng bộ xu từ account_state nếu cao hơn (admin cấp / multi-device lệch)
+    try {
+      const acc = await sql`
+        SELECT coins FROM account_state WHERE user_id = ${userId} LIMIT 1
+      `;
+      if (acc.length) {
+        const accCoins = Number((acc[0] as { coins: number }).coins || 0);
+        const evCoins = Number((rows[0] as { coins: number }).coins || 0);
+        if (accCoins > evCoins) {
+          await sql`
+            UPDATE event_user_state
+            SET coins = ${accCoins}, version = version + 1, updated_at = NOW()
+            WHERE user_id = ${userId}
+          `;
+          rows = await sql`SELECT * FROM event_user_state WHERE user_id = ${userId} LIMIT 1`;
+        }
+      }
+    } catch {
+      /* */
+    }
   }
   return mapRow(rows[0] as Record<string, unknown>, userId);
 }

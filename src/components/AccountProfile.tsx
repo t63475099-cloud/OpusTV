@@ -31,8 +31,16 @@ import { useXpStore } from "@/lib/xpStore";
 import { useStreakStore } from "@/lib/streak";
 import UserAvatar, { VerifiedBadge } from "@/components/UserAvatar";
 import { useThemeLocale } from "@/components/ThemeLocaleProvider";
-import { THEME_OPTIONS, LOCALE_OPTIONS, type ThemeMode, type LocaleCode } from "@/lib/themeLocale";
+import {
+  THEME_OPTIONS,
+  LOCALE_OPTIONS,
+  resolveTheme,
+  type ThemeMode,
+  type LocaleCode,
+} from "@/lib/themeLocale";
 import { SecurityDevicesCard } from "@/components/account/SecurityDevicesCard";
+import { useEventServerSync } from "@/hooks/useEventServerSync";
+import { useAccountRealtime } from "@/hooks/useAccountRealtime";
 
 type Tab = "services" | "frames" | "security";
 
@@ -80,7 +88,7 @@ function Toast({ text, onDone }: { text: string; onDone: () => void }) {
   return (
     <div
       role="status"
-      className="fixed left-1/2 z-[200] max-w-[90vw] -translate-x-1/2 rounded-full border border-[#27272a] bg-[#1c1c1e] px-4 py-2.5 text-sm font-medium text-white shadow-2xl"
+      className="fixed left-1/2 z-[200] max-w-[90vw] -translate-x-1/2 rounded-full border border-border bg-surface-elevated px-4 py-2.5 text-sm font-medium text-foreground shadow-2xl"
       style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
     >
       {text}
@@ -108,10 +116,33 @@ export default function AccountProfile() {
   const updateProfile = useSettingsStore((s) => s.updateProfile);
   const setAvatar = useSettingsStore((s) => s.setAvatar);
 
-  const coins = useEventStore((s) => (typeof s.coins === "number" ? s.coins : 0));
+  useEventServerSync();
+  const eventCoins = useEventStore((s) => (typeof s.coins === "number" ? s.coins : 0));
   const vipPoints = useEventStore((s) =>
     typeof s.vipPoints === "number" ? s.vipPoints : 0
   );
+  const { snapshot: accountSnap } = useAccountRealtime({
+    enabled: !!username,
+  });
+  const coins = Math.max(
+    eventCoins,
+    typeof accountSnap?.coins === "number" ? accountSnap.coins : 0
+  );
+
+  // Đồng bộ event store khi account_state có số xu cao hơn (admin cấp / multi-device)
+  useEffect(() => {
+    if (!accountSnap || typeof accountSnap.coins !== "number") return;
+    if (accountSnap.coins > eventCoins) {
+      try {
+        useEventStore.getState().hydrateFromServer({
+          coins: accountSnap.coins,
+          version: accountSnap.stateVersion || 0,
+        });
+      } catch {
+        /* */
+      }
+    }
+  }, [accountSnap, eventCoins]);
 
   const xpExp = useXpStore((s) => (typeof s.exp === "number" ? s.exp : 0));
   const streak = useStreakStore((s) =>
@@ -271,7 +302,7 @@ export default function AccountProfile() {
       icon: Gift,
       title: "Sự kiện",
       desc: "Xu & nhiệm vụ",
-      badge: `${formatCoins(coins)} {t("profile.coins")}`,
+      badge: `${formatCoins(coins)} ${t("profile.coins")}`,
     },
     { href: "/tin-nhan", icon: MessageCircle, title: "Opus Chat", desc: "Tin nhắn", badge: null },
     { href: "/code", icon: Code2, title: "Opus Code", desc: "Lập trình", badge: null },
@@ -281,7 +312,7 @@ export default function AccountProfile() {
 
   if (!username) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-black text-zinc-400">
+      <div className="flex min-h-[50vh] items-center justify-center bg-background text-foreground-muted">
         Đang tải tài khoản…
       </div>
     );
@@ -290,12 +321,12 @@ export default function AccountProfile() {
   return (
     <div
       data-profile-ui="social-v3"
-      className="min-h-[100dvh] bg-black text-white"
+      className="min-h-[100dvh] bg-background text-foreground"
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
     >
       <div className="mx-auto w-full max-w-lg sm:max-w-xl lg:max-w-2xl">
         <header
-          className="sticky top-0 z-30 flex items-center gap-2 border-b border-[#1a1a1a] bg-black/95 px-3 backdrop-blur-md"
+          className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/95 px-3"
           style={{
             paddingTop: "max(0.5rem, env(safe-area-inset-top))",
             paddingBottom: "0.5rem",
@@ -304,7 +335,7 @@ export default function AccountProfile() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex h-10 w-10 items-center justify-center rounded-full active:bg-white/10"
+            className="flex h-10 w-10 items-center justify-center rounded-full active:bg-foreground/10"
             aria-label="Quay lại"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -315,7 +346,7 @@ export default function AccountProfile() {
           <button
             type="button"
             onClick={() => void doSync()}
-            className="flex h-10 w-10 items-center justify-center rounded-full active:bg-white/10"
+            className="flex h-10 w-10 items-center justify-center rounded-full active:bg-foreground/10"
             aria-label="Đồng bộ"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
@@ -323,7 +354,7 @@ export default function AccountProfile() {
           <button
             type="button"
             onClick={() => void logout?.()}
-            className="flex h-10 w-10 items-center justify-center rounded-full active:bg-white/10"
+            className="flex h-10 w-10 items-center justify-center rounded-full active:bg-foreground/10"
             aria-label="Đăng xuất"
           >
             <LogOut className="h-4 w-4" />
@@ -342,7 +373,7 @@ export default function AccountProfile() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="avatar-cam-btn absolute bottom-0 right-0 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-[#3f3f46] bg-[#18181b] text-white shadow-md opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover/avatar:opacity-100 focus-visible:opacity-100"
+                className="avatar-cam-btn absolute bottom-0 right-0 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface-elevated text-foreground shadow-md opacity-100 transition-opacity duration-200 md:opacity-0 md:group-hover/avatar:opacity-100 focus-visible:opacity-100"
                 aria-label="Đổi ảnh"
               >
                 <Camera className="h-3.5 w-3.5" />
@@ -362,7 +393,7 @@ export default function AccountProfile() {
                   <p className="text-base font-bold tabular-nums leading-tight sm:text-lg">
                     VIP {vipLevel}
                   </p>
-                  <p className="mt-0.5 text-[11px] leading-tight text-zinc-500">
+                  <p className="mt-0.5 text-[11px] leading-tight text-foreground-muted">
                     {vipLabel(vipLevel)}
                   </p>
                 </div>
@@ -370,7 +401,7 @@ export default function AccountProfile() {
                   <p className="text-base font-bold tabular-nums leading-tight sm:text-lg">
                     Lv.{xpLevel}
                   </p>
-                  <p className="mt-0.5 text-[11px] leading-tight text-zinc-500">
+                  <p className="mt-0.5 text-[11px] leading-tight text-foreground-muted">
                     {expNow}/{expNext} EXP
                   </p>
                 </div>
@@ -378,12 +409,12 @@ export default function AccountProfile() {
                   <p className="text-base font-bold tabular-nums leading-tight sm:text-lg">
                     {streak}
                   </p>
-                  <p className="mt-0.5 text-[11px] leading-tight text-zinc-500">
+                  <p className="mt-0.5 text-[11px] leading-tight text-foreground-muted">
                     Chuỗi ngày
                   </p>
                 </div>
               </div>
-              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-elevated">
                 <div
                   className="h-full rounded-full bg-[#0084ff] transition-all duration-500"
                   style={{ width: `${expPct}%` }}
@@ -400,15 +431,15 @@ export default function AccountProfile() {
               </h1>
               {profile?.verified ? <VerifiedBadge size={16} /> : null}
             </div>
-            <p className="mt-0.5 text-sm leading-snug text-zinc-500">{handle}</p>
+            <p className="mt-0.5 text-sm leading-snug text-foreground-muted">{handle}</p>
             {profile?.bio ? (
-              <p className="mt-2 text-sm leading-snug text-zinc-300">{profile.bio}</p>
+              <p className="mt-2 text-sm leading-snug text-foreground-muted">{profile.bio}</p>
             ) : (
-              <p className="mt-2 text-sm text-zinc-600">{t("profile.noBio")}</p>
+              <p className="mt-2 text-sm text-foreground-subtle">{t("profile.noBio")}</p>
             )}
-            <p className="mt-2 text-sm text-zinc-400">
+            <p className="mt-2 text-sm text-foreground-muted">
               {t("profile.balance")}{" "}
-              <span className="font-semibold tabular-nums text-zinc-100">
+              <span className="font-semibold tabular-nums text-foreground">
                 {formatCoins(coins)} {t("profile.coins")}
               </span>
             </p>
@@ -419,7 +450,7 @@ export default function AccountProfile() {
             <button
               type="button"
               onClick={() => setTab("security")}
-              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold min-w-[40%]"
+              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-surface-elevated px-3 text-sm font-semibold min-w-[40%]"
             >
               <Pencil className="h-3.5 w-3.5 shrink-0" />
               Sửa hồ sơ
@@ -427,7 +458,7 @@ export default function AccountProfile() {
             <button
               type="button"
               onClick={() => void copyUid()}
-              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold min-w-[40%]"
+              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-surface-elevated px-3 text-sm font-semibold min-w-[40%]"
             >
               <Copy className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">UID {uid || "—"}</span>
@@ -435,7 +466,7 @@ export default function AccountProfile() {
             {!profile?.verified ? (
               <Link
                 href="/cai-dat"
-                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#1c1c1e] px-3 text-sm font-semibold"
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-surface-elevated px-3 text-sm font-semibold"
               >
                 <Shield className="h-3.5 w-3.5 text-[#0084ff]" />
                 Xác minh
@@ -444,11 +475,11 @@ export default function AccountProfile() {
           </div>
 
           <div className="mt-4">
-            <div className="mb-1 flex justify-between text-[11px] text-zinc-500">
+            <div className="mb-1 flex justify-between text-[11px] text-foreground-muted">
               <span>VIP {vipLevel}</span>
               <span>{vipPct}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+            <div className="h-2 overflow-hidden rounded-full bg-surface-elevated">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-500"
                 style={{ width: `${Math.min(100, Math.max(0, vipPct))}%` }}
@@ -458,7 +489,7 @@ export default function AccountProfile() {
         </section>
 
         {/* Tabs */}
-        <div className="sticky top-12 z-20 border-b border-[#1a1a1a] bg-black/95 backdrop-blur-md">
+        <div className="sticky top-12 z-20 border-b border-border bg-background/95 backdrop-blur-md">
           <div className="flex">
             {TAB_KEYS.map((item) => (
               <button
@@ -466,12 +497,12 @@ export default function AccountProfile() {
                 type="button"
                 onClick={() => setTab(item.id)}
                 className={`relative flex-1 py-3 text-center text-sm font-semibold transition-colors ${
-                  tab === item.id ? "text-white" : "text-zinc-500"
+                  tab === item.id ? "text-foreground" : "text-foreground-muted"
                 }`}
               >
                 {t(item.key)}
                 {tab === item.id ? (
-                  <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-white" />
+                  <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-primary" />
                 ) : null}
               </button>
             ))}
@@ -480,30 +511,30 @@ export default function AccountProfile() {
 
         <div className="px-3 py-4 sm:px-4">
           {tab === "services" && (
-            <div className="overflow-hidden rounded-2xl border border-[#27272a] bg-[#121212]">
+            <div className="overflow-hidden rounded-2xl border border-border bg-surface">
               {services.map((item, i) => {
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3.5 active:bg-white/5 ${
-                      i < services.length - 1 ? "border-b border-[#1f1f1f]" : ""
+                    className={`flex items-center gap-3 px-4 py-3.5 active:bg-surface-elevated ${
+                      i < services.length - 1 ? "border-b border-border" : ""
                     }`}
                   >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1c1c1e]">
-                      <Icon className="h-5 w-5 text-zinc-200" />
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated">
+                      <Icon className="h-5 w-5 text-foreground" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[15px] font-semibold">{item.title}</span>
-                      <span className="block text-xs text-zinc-500">{item.desc}</span>
+                      <span className="block text-xs text-foreground-muted">{item.desc}</span>
                     </span>
                     {item.badge ? (
-                      <span className="mr-1 text-xs font-semibold tabular-nums text-zinc-400">
+                      <span className="mr-1 text-xs font-semibold tabular-nums text-foreground-muted">
                         {item.badge}
                       </span>
                     ) : null}
-                    <ChevronRight className="h-4 w-4 text-zinc-600" />
+                    <ChevronRight className="h-4 w-4 text-foreground-subtle" />
                   </Link>
                 );
               })}
@@ -526,7 +557,7 @@ export default function AccountProfile() {
                       className={`flex flex-col items-center gap-2 rounded-2xl border p-3 transition ${
                         active
                           ? "border-[#0084ff] bg-[#0084ff]/10"
-                          : "border-[#27272a] bg-[#121212] active:bg-[#1a1a1a]"
+                          : "border-border bg-surface active:bg-surface-elevated"
                       }`}
                     >
                       <UserAvatar
@@ -535,7 +566,7 @@ export default function AccountProfile() {
                         showBadge={false}
                         frameOverride={f.id}
                       />
-                      <span className="text-center text-[11px] font-medium text-zinc-400">
+                      <span className="text-center text-[11px] font-medium text-foreground-muted">
                         {FRAME_LABELS[f.id] || f.id.replace("frame:", "")}
                       </span>
                     </button>
@@ -543,7 +574,7 @@ export default function AccountProfile() {
                 })}
               </div>
               {frames.length === 0 ? (
-                <p className="py-8 text-center text-sm text-zinc-500">
+                <p className="py-8 text-center text-sm text-foreground-muted">
                   Chưa có khung viền
                 </p>
               ) : null}
@@ -552,14 +583,14 @@ export default function AccountProfile() {
 
           {tab === "security" && (
             <div className="space-y-3">
-              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <div className="rounded-2xl border border-border bg-surface p-4">
                 <p className="mb-3 text-sm font-semibold">Thông tin</p>
-                <label className="mb-1.5 block text-xs text-zinc-500">Tên hiển thị</label>
+                <label className="mb-1.5 block text-xs text-foreground-muted">Tên hiển thị</label>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value.slice(0, 40))}
                   maxLength={40}
-                  className="mb-2 h-11 w-full rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-sm outline-none focus:border-[#0084ff]"
+                  className="mb-2 h-11 w-full rounded-xl border border-border bg-surface-elevated px-3 text-sm text-foreground outline-none placeholder:text-foreground-muted focus:border-primary"
                 />
                 <button
                   type="button"
@@ -568,39 +599,39 @@ export default function AccountProfile() {
                 >
                   Lưu tên
                 </button>
-                <label className="mb-1.5 block text-xs text-zinc-500">Tiểu sử</label>
+                <label className="mb-1.5 block text-xs text-foreground-muted">Tiểu sử</label>
                 <input
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value.slice(0, 100))}
                   maxLength={100}
                   placeholder="Giới thiệu ngắn"
-                  className="mb-2 h-11 w-full rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-sm outline-none focus:border-[#0084ff]"
+                  className="mb-2 h-11 w-full rounded-xl border border-border bg-surface-elevated px-3 text-sm text-foreground outline-none placeholder:text-foreground-muted focus:border-primary"
                 />
                 <button
                   type="button"
                   onClick={saveBio}
-                  className="h-10 w-full rounded-xl bg-[#1c1c1e] text-sm font-semibold"
+                  className="h-10 w-full rounded-xl bg-surface-elevated text-sm font-semibold"
                 >
                   Lưu tiểu sử
                 </button>
               </div>
 
-              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <div className="rounded-2xl border border-border bg-surface p-4">
                 <p className="mb-1 text-sm font-semibold">Mã PIN khôi phục</p>
-                <p className="mb-3 text-xs text-zinc-500">6 chữ số</p>
+                <p className="mb-3 text-xs text-foreground-muted">6 chữ số</p>
                 <input
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   type={showPin ? "text" : "password"}
                   inputMode="numeric"
                   placeholder="••••••"
-                  className="mb-2 h-11 w-full rounded-xl border border-[#27272a] bg-[#0a0a0a] px-3 text-center font-mono text-lg tracking-[0.35em] outline-none focus:border-[#0084ff]"
+                  className="mb-2 h-11 w-full rounded-xl border border-border bg-surface-elevated px-3 text-center font-mono text-lg tracking-[0.35em] text-foreground outline-none placeholder:text-foreground-muted focus:border-primary"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setShowPin((v) => !v)}
-                    className="h-10 rounded-xl bg-[#1c1c1e] text-sm font-semibold text-zinc-300"
+                    className="h-10 rounded-xl bg-surface-elevated text-sm font-semibold text-foreground-muted"
                   >
                     {showPin ? "Ẩn" : "Hiện"}
                   </button>
@@ -615,41 +646,41 @@ export default function AccountProfile() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <div className="rounded-2xl border border-border bg-surface p-4">
                 <p className="mb-2 text-sm font-semibold">UID</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded-lg bg-[#0a0a0a] px-3 py-2.5 font-mono text-sm tabular-nums">
+                  <code className="flex-1 truncate rounded-lg bg-background px-3 py-2.5 font-mono text-sm tabular-nums">
                     {uid || "—"}
                   </code>
                   <button
                     type="button"
                     onClick={() => void copyUid()}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1c1c1e]"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-elevated"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
                 {lastSyncAt ? (
-                  <p className="mt-2 text-[11px] text-zinc-600">
+                  <p className="mt-2 text-[11px] text-foreground-subtle">
                     Đồng bộ: {new Date(lastSyncAt).toLocaleString("vi-VN")}
                   </p>
                 ) : null}
               </div>
 
-              <SecurityDevicesCard username={username} theme="dark" />
+              <SecurityDevicesCard theme={resolveTheme(theme)} username={username} />
 
-              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <div className="rounded-2xl border border-border bg-surface p-4">
                 <p className="mb-2 text-sm font-semibold">Hộp thư</p>
                 <Link
                   href="/hop-thu"
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1c1c1e] text-sm font-semibold"
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-surface-elevated text-sm font-semibold"
                 >
                   <Mail className="h-4 w-4" />
                   Mở hộp thư
                 </Link>
               </div>
 
-              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <div className="rounded-2xl border border-border bg-surface p-4">
                 <p className="mb-3 text-sm font-semibold">{t("profile.theme")}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {THEME_OPTIONS.map((o) => {
@@ -665,8 +696,8 @@ export default function AccountProfile() {
                         }}
                         className={`h-11 rounded-xl text-sm font-semibold transition ${
                           on
-                            ? "bg-[#0084ff] text-white"
-                            : "bg-[#1c1c1e] text-zinc-300"
+                            ? "bg-[#0084ff] text-foreground"
+                            : "bg-surface-elevated text-foreground-muted"
                         }`}
                       >
                         {label}
@@ -676,7 +707,7 @@ export default function AccountProfile() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
+              <div className="rounded-2xl border border-border bg-surface p-4">
                 <p className="mb-3 text-sm font-semibold">{t("profile.language")}</p>
                 <div className="space-y-1">
                   {LOCALE_OPTIONS.map((o) => {
@@ -690,7 +721,7 @@ export default function AccountProfile() {
                           showToast(o.native);
                         }}
                         className={`flex h-11 w-full items-center justify-between rounded-xl px-3 text-sm font-semibold transition ${
-                          on ? "bg-[#0084ff]/15 text-white" : "bg-[#0a0a0a] text-zinc-300"
+                          on ? "bg-[#0084ff]/15 text-foreground" : "bg-background text-foreground-muted"
                         }`}
                       >
                         <span>{o.native}</span>

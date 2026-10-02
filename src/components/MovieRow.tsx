@@ -9,29 +9,28 @@ interface MovieRowProps {
   href?: string;
 }
 
-/** Hàng poster cuộn ngang — không dùng CSS grid */
 export default function MovieRow({ title, movies, href }: MovieRowProps) {
   if (!movies?.length) return null;
 
   return (
-    <section data-movie-row className="relative py-3 sm:py-4">
-      <div className="mb-3 flex items-end justify-between gap-3 px-3 sm:px-4 md:px-6 lg:px-8">
-        <h2 className="row-title text-base font-bold tracking-tight text-white sm:text-lg md:text-xl">
+    <section className="space-y-3 px-3 sm:px-4 md:px-6">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
           {title}
         </h2>
         {href ? (
           <Link
             href={href}
-            className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-zinc-400 transition hover:text-rose-400 sm:text-sm"
+            className="inline-flex items-center gap-0.5 text-xs font-medium text-foreground-muted transition-colors hover:text-foreground sm:text-sm"
           >
-            Xem tất cả
-            <ChevronRight className="h-4 w-4" />
+            Xem thêm
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         ) : null}
       </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide px-3 pb-1 sm:gap-4 sm:px-4 md:px-6 lg:px-8">
+      <div className="-mx-3 flex gap-3 overflow-x-auto px-3 pb-1 scrollbar-none sm:-mx-4 sm:px-4 md:-mx-6 md:px-6">
         {movies.map((m, i) => (
-          <MovieCard key={m.slug || m._id || String(i)} movie={m} priority={i < 4} />
+          <MovieCard key={m.slug || String(i)} movie={m} priority={i < 4} />
         ))}
       </div>
     </section>

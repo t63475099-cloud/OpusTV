@@ -12,12 +12,13 @@ interface Props {
   theme: Theme;
 }
 
-const VIEWPORTS: { id: Viewport; label: string; width: number | string }[] = [
-  { id: "mobile", label: "iPhone", width: 390 },
-  { id: "tablet", label: "iPad", width: 768 },
-  { id: "desktop", label: "Desktop", width: "100%" },
+const VIEWPORTS: { id: Viewport; label: string; w: number; h: number }[] = [
+  { id: "mobile", label: "iPhone", w: 390, h: 844 },
+  { id: "tablet", label: "iPad", w: 768, h: 1024 },
+  { id: "desktop", label: "Desktop", w: 1280, h: 800 },
 ];
 
+/** Deploy control + preview tab mô phỏng (không iframe). */
 export function ProjectSandboxPreview({ secret, theme }: Props) {
   const [list, setList] = useState<DeploymentWithNotes[]>([]);
   const [active, setActive] = useState<DeploymentWithNotes | null>(null);
@@ -48,7 +49,9 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
   );
 
   const log = (m: string) =>
-    setLogs((prev) => [`[${new Date().toLocaleTimeString("vi-VN")}] ${m}`, ...prev].slice(0, 40));
+    setLogs((prev) =>
+      [`[${new Date().toLocaleTimeString("vi-VN")}] ${m}`, ...prev].slice(0, 40)
+    );
 
   const flash = (m: string) => {
     setToast(m);
@@ -98,21 +101,37 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
     [list, selectedId, staged, active]
   );
 
-  /** Chỉ iframe cùng origin — không mở tab mới; Vercel chặn embed *.vercel.app */
-  const iframeSrc = useMemo(() => {
-    if (typeof window === "undefined") return `/?preview_role=${role}`;
-    try {
-      const u = new URL("/", window.location.origin);
-      u.searchParams.set("preview_role", role);
-      u.searchParams.set("admin_sandbox", "1");
-      return u.toString();
-    } catch {
-      return "/";
-    }
+  const previewHref = useMemo(() => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const path = `/?preview_role=${role}&admin_sandbox=1`;
+    return origin ? `${origin}${path}` : path;
   }, [role]);
 
-  const frameWidth =
-    VIEWPORTS.find((v) => v.id === viewport)?.width ?? "100%";
+  const openPreviewTab = () => {
+    const vp = VIEWPORTS.find((v) => v.id === viewport) || VIEWPORTS[2];
+    const features = [
+      `width=${vp.w}`,
+      `height=${vp.h}`,
+      "menubar=no",
+      "toolbar=no",
+      "location=yes",
+      "status=no",
+      "scrollbars=yes",
+      "resizable=yes",
+    ].join(",");
+    const w = window.open(previewHref, `opus_sandbox_${viewport}`, features);
+    if (!w) {
+      flash("Trình duyệt chặn popup — cho phép cửa sổ mới");
+      log("Popup blocked");
+      return;
+    }
+    try {
+      w.focus();
+    } catch {
+      /* */
+    }
+    log(`Preview tab ${viewport} ${vp.w}x${vp.h}`);
+  };
 
   const saveMarkdown = async () => {
     if (!selectedId) return;
@@ -224,7 +243,7 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
     <div className="space-y-3">
       <div className={`rounded-xl border ${card} p-4 space-y-3`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium">Deploy & Sandbox Preview</p>
+          <p className="text-sm font-medium">Deploy & Preview</p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -276,8 +295,7 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
               {list.length === 0 && <option value="">Chưa có deploy</option>}
               {list.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.status} · {d.gitCommitSha.slice(0, 8) || d.id.slice(0, 8)} ·{" "}
-                  {d.gitBranch}
+                  {d.status} · {d.gitCommitSha.slice(0, 8) || d.id.slice(0, 8)} · {d.gitBranch}
                 </option>
               ))}
             </select>
@@ -293,7 +311,6 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
           </p>
         )}
 
-        {/* Viewport + role */}
         <div className="flex flex-wrap gap-2 items-center">
           {VIEWPORTS.map((v) => (
             <button
@@ -319,26 +336,18 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
             <option value="vip">VIP</option>
             <option value="admin">Super Admin</option>
           </select>
+          <button
+            type="button"
+            onClick={openPreviewTab}
+            className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white"
+          >
+            Mở preview (tab mô phỏng)
+          </button>
         </div>
+        <p className={`text-[11px] ${muted}`}>
+          Không iframe. Tab mới cùng site, kích thước {viewport} — nhẹ, không tải khung nhúng.
+        </p>
 
-        {/* Chỉ iframe cùng origin */}
-        <div
-          className={`mx-auto overflow-hidden rounded-xl border ${border} bg-zinc-950`}
-          style={{
-            width: typeof frameWidth === "number" ? frameWidth : "100%",
-            maxWidth: "100%",
-          }}
-        >
-          <iframe
-            title="Project sandbox preview"
-            src={iframeSrc}
-            className="w-full border-0 bg-white"
-            style={{ height: viewport === "mobile" ? 720 : 560 }}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-          />
-        </div>
-
-        {/* Changelog editor */}
         <div className="space-y-2">
           <input
             className={`w-full rounded-lg border px-3 py-2 text-sm ${input}`}
@@ -380,7 +389,6 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
           </div>
         </div>
 
-        {/* Console */}
         <div className={`rounded-lg border ${border} p-2`}>
           <p className={`text-[11px] mb-1 ${muted}`}>Console</p>
           <div className="max-h-28 overflow-y-auto font-mono text-[10px] text-zinc-400 space-y-0.5">

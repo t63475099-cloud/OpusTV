@@ -62,10 +62,8 @@ export default function Navbar() {
       data-navbar="1"
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-500",
-        "border-b border-white/[0.06]",
-        scrolled
-          ? "bg-[#0a0a0f]/90 backdrop-blur-xl shadow-lg shadow-black/20"
-          : "bg-[#0a0a0f]/70 backdrop-blur-md"
+        "border-b border-border bg-background/90 text-foreground backdrop-blur-xl ui-border-contrast",
+        scrolled ? "shadow-lg shadow-black/10" : ""
       )}
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >

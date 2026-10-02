@@ -57,16 +57,40 @@ export function resolveTheme(mode: ThemeMode): "dark" | "light" {
   return "dark";
 }
 
+export const CONTRAST_KEY = "opus_high_contrast";
+
+export function readHighContrast(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(CONTRAST_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function applyHighContrast(on: boolean) {
+  if (typeof document === "undefined") return;
+  document.documentElement.setAttribute("data-contrast", on ? "high" : "normal");
+  try {
+    localStorage.setItem(CONTRAST_KEY, on ? "1" : "0");
+  } catch {
+    /* */
+  }
+}
+
 export function applyTheme(mode: ThemeMode) {
   if (typeof document === "undefined") return;
   const resolved = resolveTheme(mode);
   document.documentElement.setAttribute("data-theme", resolved);
+  document.documentElement.classList.toggle("dark", resolved === "dark");
   document.documentElement.style.colorScheme = resolved;
   try {
     localStorage.setItem(THEME_KEY, mode);
   } catch {
     /* */
   }
+  // Keep contrast attribute in sync
+  applyHighContrast(readHighContrast());
 }
 
 export function applyLocale(locale: LocaleCode) {
@@ -81,7 +105,7 @@ export function applyLocale(locale: LocaleCode) {
 }
 
 /** Inline script for <head> — runs before paint (anti-FOUC) */
-export const THEME_LOCALE_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_KEY}')||'dark';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}else if(t!=='light'&&t!=='dark'){r='dark';}document.documentElement.setAttribute('data-theme',r);document.documentElement.style.colorScheme=r;var l=localStorage.getItem('${LOCALE_KEY}')||'vi';if(l!=='en'&&l!=='vi')l='vi';document.documentElement.lang=l;document.documentElement.setAttribute('data-locale',l);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+export const THEME_LOCALE_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_KEY}')||'dark';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}else if(t!=='light'&&t!=='dark'){r='dark';}document.documentElement.setAttribute('data-theme',r);document.documentElement.classList.toggle('dark',r==='dark');document.documentElement.style.colorScheme=r;var hc=localStorage.getItem('${CONTRAST_KEY}')==='1';document.documentElement.setAttribute('data-contrast',hc?'high':'normal');var l=localStorage.getItem('${LOCALE_KEY}')||'vi';if(l!=='en'&&l!=='vi')l='vi';document.documentElement.lang=l;document.documentElement.setAttribute('data-locale',l);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
 
 type Dict = Record<string, string>;
 

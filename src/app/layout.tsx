@@ -22,6 +22,7 @@ import AuthRedirector from "@/components/AuthRedirector";
 import { ThemeLocaleProvider } from "@/components/ThemeLocaleProvider";
 import { AccountRealtimeBridge } from "@/components/account/AccountRealtimeBridge";
 import { SystemHealthBridge } from "@/components/system/SystemHealthBridge";
+import { PatchReleaseModal } from "@/components/system/PatchReleaseModal";
 import { THEME_LOCALE_BOOT_SCRIPT } from "@/lib/themeLocale";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
@@ -89,6 +90,7 @@ export default function RootLayout({
         <AuthRedirector />
         <AccountRealtimeBridge />
         <SystemHealthBridge />
+        <PatchReleaseModal />
         <IosInstallGuide />
         <GsapScrollProvider>
           <LanguageSync />

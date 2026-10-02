@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AdminAccount, AdminRole, SystemStats, VerifyRequestItem } from "@/lib/adminEngine";
 import { SystemControlTab } from "@/components/admin/SystemControlTab";
+import { ProjectSandboxPreview } from "@/components/admin/ProjectSandboxPreview";
 import type { KeyTier, LicenseKeyRecord } from "@/lib/keyEngine";
 
 type TabId = "ACCOUNTS" | "KEY-BOARD" | "VERIFY" | "SYSTEM";
@@ -849,6 +850,7 @@ export default function BoardHomePage() {
 
         {tab === "SYSTEM" && (
           <div className="h-full overflow-y-auto max-h-[calc(100vh-160px)] space-y-3">
+            <ProjectSandboxPreview secret={secret} theme={theme} />
             <SystemControlTab secret={secret} theme={theme} />
             <div className={`rounded-xl border ${card} p-4`}>
               <p className="text-sm font-medium mb-3">Thống kê hệ thống</p>

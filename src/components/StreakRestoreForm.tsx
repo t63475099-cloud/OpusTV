@@ -59,47 +59,50 @@ export default function StreakRestoreForm() {
 
   if (!username) {
     return (
-      <p className="text-sm text-zinc-500">Đăng nhập để gửi khiếu nại mất chuỗi.</p>
+      <p className="text-sm text-foreground-muted">
+        Đăng nhập để gửi khiếu nại mất chuỗi.
+      </p>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
-      <p className="text-sm font-semibold text-orange-100 flex items-center gap-2">
-        <Flame className="w-4 h-4 text-orange-400" />
+    <div className="space-y-3 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4">
+      <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <Flame className="h-4 w-4 text-orange-500" />
         Khiếu nại mất chuỗi
       </p>
-      <p className="text-xs text-zinc-500">
-        Nếu bảo trì / tạm dừng web làm mất chuỗi, nhập số ngày đã có và gửi đơn. Admin duyệt tại trang quản trị.
+      <p className="text-xs text-foreground-muted">
+        Nếu bảo trì / tạm dừng web làm mất chuỗi, nhập số ngày đã có và gửi đơn. Admin duyệt tại
+        trang quản trị.
       </p>
-      <label className="text-xs text-zinc-400 block">Số ngày chuỗi cần cấp lại</label>
+      <label className="block text-xs text-foreground-muted">Số ngày chuỗi cần cấp lại</label>
       <input
         type="number"
         min={1}
         value={days}
         onChange={(e) => setDays(e.target.value)}
-        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm outline-none focus:border-orange-500"
+        className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground outline-none placeholder:text-foreground-muted focus:border-orange-500"
       />
-      <label className="text-xs text-zinc-400 block">Lý do</label>
+      <label className="block text-xs text-foreground-muted">Lý do</label>
       <textarea
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         rows={3}
-        className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-sm outline-none focus:border-orange-500 resize-y"
+        className="w-full resize-y rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground outline-none placeholder:text-foreground-muted focus:border-orange-500"
       />
       <button
         type="button"
         disabled={busy || Number(days) < 1}
         onClick={() => void submit()}
-        className="w-full py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-sm font-semibold text-white disabled:opacity-50 inline-flex items-center justify-center gap-2"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 py-2.5 text-sm font-semibold text-white hover:bg-orange-500 disabled:opacity-50"
       >
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         Gửi đơn
       </button>
-      {msg && <p className="text-sm text-emerald-400">{msg}</p>}
-      {err && <p className="text-sm text-amber-400">{err}</p>}
-      {mine.length > 0 && (
-        <ul className="text-xs text-zinc-500 space-y-1 pt-2 border-t border-white/5">
+      {msg ? <p className="text-sm text-emerald-600 dark:text-emerald-400">{msg}</p> : null}
+      {err ? <p className="text-sm text-amber-600 dark:text-amber-400">{err}</p> : null}
+      {mine.length > 0 ? (
+        <ul className="space-y-1 border-t border-border pt-2 text-xs text-foreground-muted">
           {mine.map((r) => (
             <li key={r.id}>
               #{r.id} · {r.days} ngày · {r.status} ·{" "}
@@ -107,7 +110,7 @@ export default function StreakRestoreForm() {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
     </div>
   );
 }

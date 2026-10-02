@@ -47,14 +47,25 @@ export const useNotifStore = create<NotifState>()(
         const dedupe = n.dedupeKey;
         if (dedupe && get().seenKeys.includes(dedupe)) return;
         const { dedupeKey: _, ...rest } = n as typeof n & { dedupeKey?: string };
+        const now = Date.now();
+        // Chặn spam: cùng title + body trong 15 giây
+        const recent = get().items[0];
+        if (
+          recent &&
+          recent.title === rest.title &&
+          recent.body === rest.body &&
+          now - recent.createdAt < 15_000
+        ) {
+          return;
+        }
         set((s) => ({
           seenKeys: dedupe ? [...s.seenKeys, dedupe].slice(-200) : s.seenKeys,
           items: [
             {
               ...rest,
-              id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
               read: false,
-              createdAt: Date.now(),
+              createdAt: now,
             },
             ...s.items,
           ].slice(0, 100),

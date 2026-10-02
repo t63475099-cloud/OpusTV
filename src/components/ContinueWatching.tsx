@@ -27,18 +27,19 @@ export default function ContinueWatching() {
 
   if (!mounted || !history.length) return null;
 
-  // Chỉ hiện mục xem dở (>5% và <95%)
-  const items = history.filter((h) => {
-    if (!h.duration || h.duration < 30) return h.currentTime > 10;
-    const p = h.currentTime / h.duration;
-    return p > 0.03 && p < 0.95;
-  }).slice(0, 16);
+  const items = history
+    .filter((h) => {
+      if (!h.duration || h.duration < 30) return h.currentTime > 10;
+      const p = h.currentTime / h.duration;
+      return p > 0.03 && p < 0.95;
+    })
+    .slice(0, 16);
 
   if (!items.length) return null;
 
   return (
     <section data-gsap-reveal data-gsap-row className="mb-8 md:mb-10 px-4 md:px-12">
-      <h2 className="text-lg md:text-xl font-bold text-white mb-3 tracking-tight">
+      <h2 className="text-lg md:text-xl font-bold text-foreground mb-3 tracking-tight">
         Tiếp tục xem
       </h2>
       <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
@@ -56,9 +57,9 @@ export default function ContinueWatching() {
             <Link
               key={`${item.slug}-${item.episodeSlug}`}
               href={href}
-              className="group relative flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] transition-transform duration-300 hover:scale-105"
+              className="group relative flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] transition-transform duration-300 hover:scale-[1.02]"
             >
-              <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-zinc-800 shadow-lg">
+              <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-border-strong bg-surface-elevated shadow-md">
                 <Image
                   src={item.poster || "/placeholder.svg"}
                   alt={item.name}
@@ -67,24 +68,25 @@ export default function ContinueWatching() {
                   unoptimized
                 />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-red-600/90 flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                  <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                    <Play className="w-6 h-6 text-primary-foreground fill-primary-foreground ml-0.5" />
                   </div>
                 </div>
                 {progress > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700">
-                    <div className="h-full bg-red-500" style={{ width: `${progress}%` }} />
+                  <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/50">
+                    <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                   </div>
                 )}
-                <span className="absolute top-2 left-2 text-[10px] font-semibold bg-black/70 text-white px-1.5 py-0.5 rounded">
+                {/* Badge rõ trên mọi poster / theme */}
+                <span className="absolute top-2 left-2 z-[1] rounded-md border-2 border-white/90 bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-md tabular-nums">
                   Xem tiếp
                 </span>
               </div>
-              <div className="mt-2">
-                <h3 className="text-sm font-medium text-zinc-100 line-clamp-1 group-hover:text-red-400">
+              <div className="mt-2 px-0.5">
+                <h3 className="text-sm font-semibold text-foreground line-clamp-1 group-hover:text-primary">
                   {item.name}
                 </h3>
-                <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">
+                <p className="text-xs text-foreground-muted mt-0.5 line-clamp-1">
                   {item.episode}
                   {formatRemain(item) ? ` · ${formatRemain(item)}` : ""}
                 </p>

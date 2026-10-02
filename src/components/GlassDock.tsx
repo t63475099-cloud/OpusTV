@@ -61,30 +61,11 @@ function isMoreActive(path: string): boolean {
   return path.startsWith("/code") || path.startsWith("/su-kien");
 }
 
-function DockIcon({
-  src,
-  className,
-  invert,
-}: {
-  src: string;
-  className?: string;
-  invert?: boolean;
-}) {
-  if (invert) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt=""
-        draggable={false}
-        className={cn("object-contain pointer-events-none select-none", className)}
-        style={{ filter: "invert(1) brightness(1.2)" }}
-      />
-    );
-  }
+/** Icon theo theme: tối trên nền sáng, sáng trên nền tối (dùng --foreground) */
+function DockIcon({ src, className }: { src: string; className?: string }) {
   return (
     <span
-      className={cn("block bg-white pointer-events-none", className)}
+      className={cn("block bg-foreground pointer-events-none", className)}
       style={{
         WebkitMaskImage: `url(${src})`,
         maskImage: `url(${src})`,
@@ -279,7 +260,7 @@ export default function GlassDock() {
                     sheetOpen ? "rotate-45" : "rotate-0"
                   )}
                 >
-                  <DockIcon src={item.icon} className="w-full h-full" invert />
+                  <DockIcon src={item.icon} className="w-full h-full" />
                 </span>
               </button>
             );
@@ -312,11 +293,7 @@ export default function GlassDock() {
                 )}
               />
               <span className="relative z-[1] flex items-center justify-center w-6 h-6 sm:w-[26px] sm:h-[26px]">
-                <DockIcon
-                  src={item.icon!}
-                  className="w-full h-full"
-                  invert={item.id === "music"}
-                />
+                <DockIcon src={item.icon!} className="w-full h-full" />
               </span>
             </button>
           );

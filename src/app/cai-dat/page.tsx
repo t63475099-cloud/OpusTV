@@ -1,6 +1,12 @@
 "use client";
 
 import OfflineDownloads from "@/components/OfflineDownloads";
+import {
+  THEME_OPTIONS,
+  applyTheme,
+  readTheme,
+  type ThemeMode,
+} from "@/lib/themeLocale";
 
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -164,6 +170,39 @@ function ChipGroup<T extends string | number>({
             }`}
           >
             {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+function ThemeModePicker() {
+  const [mode, setMode] = useState<ThemeMode>("dark");
+  useEffect(() => {
+    setMode(readTheme());
+  }, []);
+  return (
+    <div className="border-b border-border px-4 py-3 last:border-0">
+      <p className="mb-2 text-sm text-foreground-muted">Sáng / Tối</p>
+      <div className="flex flex-wrap gap-2">
+        {THEME_OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => {
+              setMode(o.value);
+              applyTheme(o.value);
+            }}
+            className={
+              "rounded-lg border px-3 py-2 text-sm font-medium ui-border-contrast " +
+              (mode === o.value
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-surface-elevated text-foreground")
+            }
+          >
+            {o.labelVi}
           </button>
         ))}
       </div>
@@ -542,6 +581,7 @@ function SettingsInner() {
 
         {section === "display" && (
           <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
+            <ThemeModePicker />
             <Toggle label="Giao diện dày (YouTube)" checked={!!settings.denseHome} onChange={(v) => set({ denseHome: v })} />
             <Toggle label="Giảm chuyển động" checked={!!settings.reducedMotion} onChange={(v) => set({ reducedMotion: v })} />
             <Toggle label="Card phim gọn" checked={!!settings.compactCards} onChange={(v) => set({ compactCards: v })} />

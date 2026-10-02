@@ -98,20 +98,32 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
     [list, selectedId, staged, active]
   );
 
-  const previewUrl = useMemo(() => {
-    if (!selected?.vercelUrl) return "/";
+  /** Vercel chặn iframe cross-origin → embed cùng origin; URL deploy mở tab mới */
+  const deployExternalUrl = useMemo(() => {
+    if (!selected?.vercelUrl) return "";
     try {
-      const u = new URL(
-        selected.vercelUrl.startsWith("http")
-          ? selected.vercelUrl
-          : `https://${selected.vercelUrl}`
-      );
+      const raw = selected.vercelUrl.startsWith("http")
+        ? selected.vercelUrl
+        : `https://${selected.vercelUrl}`;
+      const u = new URL(raw);
       u.searchParams.set("preview_role", role);
       return u.toString();
     } catch {
-      return selected.vercelUrl || "/";
+      return selected.vercelUrl;
     }
   }, [selected, role]);
+
+  const sameOriginPreview = useMemo(() => {
+    if (typeof window === "undefined") return `/?preview_role=${role}`;
+    try {
+      const u = new URL("/", window.location.origin);
+      u.searchParams.set("preview_role", role);
+      u.searchParams.set("admin_sandbox", "1");
+      return u.toString();
+    } catch {
+      return "/";
+    }
+  }, [role]);
 
   const frameWidth =
     VIEWPORTS.find((v) => v.id === viewport)?.width ?? "100%";
@@ -323,7 +335,23 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
           </select>
         </div>
 
-        {/* Iframe sandbox */}
+        {/* Sandbox: same-origin iframe (Vercel chặn embed URL *.vercel.app) */}
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className={`text-[11px] ${muted}`}>
+            Preview trong khung = site hiện tại (cùng origin). URL deploy Vercel phải mở tab mới.
+          </span>
+          {deployExternalUrl ? (
+            <a
+              href={deployExternalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg bg-violet-600 px-2.5 py-1 text-xs text-white"
+              onClick={() => log(`Open external ${deployExternalUrl}`)}
+            >
+              Mở URL deploy (tab mới)
+            </a>
+          ) : null}
+        </div>
         <div
           className={`mx-auto overflow-hidden rounded-xl border ${border} bg-zinc-950`}
           style={{
@@ -333,11 +361,10 @@ export function ProjectSandboxPreview({ secret, theme }: Props) {
         >
           <iframe
             title="Project sandbox preview"
-            src={previewUrl}
+            src={sameOriginPreview}
             className="w-full border-0 bg-white"
             style={{ height: viewport === "mobile" ? 720 : 560 }}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            onError={() => log("iframe load error")}
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           />
         </div>
 

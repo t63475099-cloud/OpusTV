@@ -178,6 +178,7 @@ function ChipGroup<T extends string | number>({
 }
 
 
+
 function ThemeModePicker() {
   const [mode, setMode] = useState<ThemeMode>("dark");
   useEffect(() => {
@@ -185,8 +186,9 @@ function ThemeModePicker() {
   }, []);
   return (
     <div className="border-b border-border px-4 py-3 last:border-0">
-      <p className="mb-2 text-sm text-foreground-muted">Sáng / Tối</p>
-      <div className="flex flex-wrap gap-2">
+      <p className="mb-2 text-sm font-medium text-foreground">Giao diện sáng / tối</p>
+      <p className="mb-2 text-xs text-foreground-muted">Áp dụng toàn bộ website</p>
+      <div className="grid grid-cols-3 gap-2">
         {THEME_OPTIONS.map((o) => (
           <button
             key={o.value}
@@ -196,7 +198,7 @@ function ThemeModePicker() {
               applyTheme(o.value);
             }}
             className={
-              "rounded-lg border px-3 py-2 text-sm font-medium ui-border-contrast " +
+              "rounded-lg border px-3 py-2.5 text-sm font-medium ui-border-contrast " +
               (mode === o.value
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-surface-elevated text-foreground")
@@ -352,7 +354,14 @@ function SettingsInner() {
       <div className="relative z-10 mx-auto w-full max-w-xl px-3 mt-3 space-y-3 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
         {section === "root" && (
           <div className="space-y-3 animate-[fadeUp_0.5s_ease]">
+            
             <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
+                Giao diện
+              </p>
+              <ThemeModePicker />
+            </div>
+<div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
               <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
                 Tài khoản
               </p>

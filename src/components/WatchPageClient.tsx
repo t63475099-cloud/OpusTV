@@ -231,8 +231,8 @@ export default function WatchPageClient({
     <div className="space-y-3">
       {episodes.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-            Server / Phiên bản
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+            Server
           </h3>
           <div className="flex flex-wrap gap-2">
             {episodes.map((s, idx) => {
@@ -243,17 +243,17 @@ export default function WatchPageClient({
                   key={s.server_name + idx}
                   type="button"
                   onClick={() => switchServer(idx)}
-                  className={`px-3.5 py-2 rounded-full text-sm font-medium transition border ${
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition ui-border-contrast ${
                     active
                       ? isDub
-                        ? "bg-amber-400 border-amber-300 text-black"
-                        : "bg-red-600 border-red-500 text-white"
+                        ? "border-amber-500 bg-amber-500 text-black"
+                        : "border-primary bg-primary text-primary-foreground"
                       : isDub
-                      ? "bg-amber-400/10 border-amber-400/40 text-amber-300 hover:bg-amber-400/20"
-                      : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
+                        ? "border-amber-500/40 bg-surface text-foreground"
+                        : "border-border bg-surface text-foreground"
                   }`}
                 >
-                  {isDub ? "🔊 " : "Server "}
+                  {isDub ? "Thuyết minh · " : ""}
                   {s.server_name}
                 </button>
               );
@@ -262,31 +262,36 @@ export default function WatchPageClient({
         </div>
       )}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground-muted">
             Tập phim ({currentEpisodes.length})
           </h3>
-          {currentEpisode && (
-            <span className="text-xs text-zinc-400">
+          {currentEpisode ? (
+            <span className="truncate text-xs text-foreground-muted">
               Đang xem: {currentEpisode.name}
             </span>
-          )}
+          ) : null}
         </div>
-        <div className="flex flex-wrap gap-1.5 max-h-52 overflow-y-auto pr-1 custom-scroll">
-          {currentEpisodes.map((ep, idx) => (
-            <button
-              key={ep.slug + idx}
-              type="button"
-              onClick={() => setEpIdx(idx)}
-              className={`min-w-[48px] px-2.5 py-1.5 rounded-lg text-sm transition ${
-                idx === epIdx
-                  ? "bg-red-600 text-white font-semibold ring-2 ring-red-400/40"
-                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-              }`}
-            >
-              {ep.name.replace(/^Tập\s*/i, "")}
-            </button>
-          ))}
+        <div className="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 custom-scroll">
+          {currentEpisodes.map((ep, idx) => {
+            const label = (ep.name || "").replace(/^Tập\s*/i, "") || String(idx + 1);
+            const active = idx === epIdx;
+            return (
+              <button
+                key={(ep.slug || ep.name || "") + idx}
+                type="button"
+                onClick={() => setEpIdx(idx)}
+                title={ep.name || `Tập ${label}`}
+                className={`rounded-lg border px-1 py-2 text-center font-mono text-xs font-medium tabular-nums ui-border-contrast ${
+                  active
+                    ? "border-primary bg-primary font-semibold text-primary-foreground"
+                    : "border-border-strong bg-surface text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -294,7 +299,7 @@ export default function WatchPageClient({
 
   return (
     <div
-      className={`min-h-screen pt-14 animate-fade-in ${
+      className={`min-h-screen bg-background pt-14 text-foreground animate-fade-in ${
         theater ? "bg-black" : ""
       }`}
     >
@@ -383,7 +388,7 @@ export default function WatchPageClient({
               </div>
 
               {!theater && (
-                <div className="rounded-2xl border border-zinc-800 bg-[#121212] p-3 sm:p-4">
+                <div className="rounded-2xl border border-border bg-surface p-3 sm:p-4 ui-border-contrast">
                   {episodePanel}
                 </div>
               )}
@@ -392,11 +397,11 @@ export default function WatchPageClient({
             {!theater && (
               <div className="px-3 md:px-0 py-4 space-y-4">
                 <div>
-                  <h1 className="text-lg md:text-2xl font-bold text-white leading-snug">
+                  <h1 className="text-lg md:text-2xl font-bold leading-snug text-foreground">
                     {movie.name}
                     {currentEpisode ? ` · ${currentEpisode.name}` : ""}
                   </h1>
-                  <p className="text-zinc-400 text-sm mt-1">
+                  <p className="mt-1 text-sm text-foreground-muted">
                     {movie.origin_name} · {movie.year} · {movie.quality} · {movie.lang}
                   </p>
                 </div>
@@ -484,14 +489,16 @@ export default function WatchPageClient({
                 <FloatingReactions />
                 <VideoSocial slug={movie.slug} title={movie.name} />
 
-                {movie.content && (
-                  <div className="bg-[#212121] rounded-xl p-4 border border-zinc-800">
-                    <h3 className="text-sm font-semibold text-white mb-2">Mô tả</h3>
+                {(movie.content && String(movie.content).replace(/<[^>]+>/g, "").trim()) ? (
+                  <div className="rounded-xl border border-border bg-surface p-4 ui-border-contrast">
+                    <h3 className="mb-2 text-sm font-semibold text-foreground">Mô tả</h3>
                     <div
-                      className="text-zinc-300 text-sm leading-relaxed line-clamp-6"
+                      className="line-clamp-6 text-sm leading-relaxed text-foreground-muted"
                       dangerouslySetInnerHTML={{ __html: sanitizeHtml(movie.content) }}
                     />
                   </div>
+                ) : (
+                  <p className="text-sm text-foreground-muted">Chưa có mô tả chính thức</p>
                 )}
               </div>
             )}
@@ -499,7 +506,7 @@ export default function WatchPageClient({
 
           {!theater && (
             <aside className="px-3 md:px-0 pb-8 xl:pt-0 pt-2">
-              <h3 className="text-sm font-semibold text-white mb-3 sticky top-14 bg-[#0f0f0f] py-2 z-10">
+              <h3 className="sticky top-14 z-10 mb-3 bg-background py-2 text-sm font-semibold text-foreground">
                 Video liên quan
               </h3>
               <RelatedInfinite

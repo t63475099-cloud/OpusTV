@@ -122,7 +122,7 @@ export default async function HomePage() {
   ).slice(0, 10);
 
   return (
-    <div className="opus-film-home min-h-screen pb-28 bg-[#0a0a0c]">
+    <div className="opus-film-home min-h-screen bg-background pb-28 text-foreground">
       <BannerSlider movies={bannerMovies} />
 
       <nav className="flex gap-2 overflow-x-auto scrollbar-hide px-3 py-3 sm:px-4 md:px-6 lg:px-8">
@@ -130,7 +130,7 @@ export default async function HomePage() {
           <Link
             key={c.href}
             href={c.href}
-            className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-zinc-300 backdrop-blur-md transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-white sm:text-sm"
+            className="shrink-0 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-medium text-foreground backdrop-blur-md transition hover:border-primary hover:text-primary sm:text-sm ui-border-contrast"
           >
             {c.label}
           </Link>

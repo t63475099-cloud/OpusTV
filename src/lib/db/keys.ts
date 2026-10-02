@@ -184,6 +184,29 @@ export async function unrevokeKey(codeRaw: string): Promise<{ ok: boolean; error
   return { ok: true };
 }
 
+export async function deleteKey(codeRaw: string): Promise<{ ok: boolean; error?: string }> {
+  await ensureKeysTable();
+  const sql = db();
+  const code = normalizeKeyCode(codeRaw);
+  const rows = await sql`
+    DELETE FROM activation_keys WHERE code = ${code} RETURNING code
+  `;
+  if (!rows.length) return { ok: false, error: "Không tìm thấy key để xóa" };
+  bumpKeysVersion();
+  return { ok: true };
+}
+
+export async function deleteKeyById(id: number): Promise<{ ok: boolean; error?: string }> {
+  await ensureKeysTable();
+  const sql = db();
+  const rows = await sql`
+    DELETE FROM activation_keys WHERE id = ${id} RETURNING code
+  `;
+  if (!rows.length) return { ok: false, error: "Không tìm thấy key để xóa" };
+  bumpKeysVersion();
+  return { ok: true };
+}
+
 export async function listKeys(opts?: {
   limit?: number;
   tier?: KeyTier | "ALL";

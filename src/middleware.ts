@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Lịch đóng/mở theo giờ Việt Nam (Asia/Ho_Chi_Minh):
- * - Bảo trì: 00:00 → 05:59
- * - Mở:      06:00 → 23:59
- *
- * Tắt lịch: env SITE_SCHEDULE=off
- * Bypass: ?bypass=SECRET (env SCHEDULE_BYPASS_SECRET, mặc định opus-open)
+ * Middleware:
+ * 1) Lịch bảo trì VN (00:00–05:59) — SITE_SCHEDULE=off để tắt
+ * 2) Zero-trust gate cho /admin/* và /api/admin/*
+ *    - Cho phép page /admin/board-home (client gate nhập secret)
+ *    - API /api/admin/* bắt buộc header x-admin-secret (hoặc cookie opus_admin_gate)
+ * 3) Redirect trang admin cũ → /admin/board-home
  */
+
 function getVietnamHour(): number {
   const fmt = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Ho_Chi_Minh",
@@ -19,10 +20,28 @@ function getVietnamHour(): number {
   return Number(parts.find((p) => p.type === "hour")?.value || "0");
 }
 
-/** true = 00:00–05:59 giờ VN */
 function isMaintenanceNow(): boolean {
   const hour = getVietnamHour();
   return hour >= 0 && hour < 6;
+}
+
+function getAdminSecrets(): string[] {
+  return [
+    process.env.ADMIN_SECRET,
+    process.env.VERIFY_ADMIN_SECRET,
+    process.env.KEY_ADMIN_SECRET,
+    process.env.MIGRATE_SECRET,
+    process.env.REDEEM_ADMIN_SECRET,
+  ].filter(Boolean) as string[];
+}
+
+function secretMatches(value: string | undefined | null): boolean {
+  if (!value) return false;
+  const list = getAdminSecrets();
+  if (list.length === 0) {
+    return value === "OpusFilm2026Secret";
+  }
+  return list.includes(value);
 }
 
 export function middleware(request: NextRequest) {
@@ -45,6 +64,46 @@ export function middleware(request: NextRequest) {
   }
 
   const pathname = request.nextUrl.pathname;
+
+  // ── Redirect old admin pages → unified board-home ──
+  if (
+    pathname === "/admin/verify" ||
+    pathname === "/admin/key-board" ||
+    pathname === "/admin/accounts" ||
+    pathname === "/admin/dashboard"
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin/board-home";
+    return NextResponse.redirect(url);
+  }
+
+  // ── Admin API zero-trust ──
+  if (pathname.startsWith("/api/admin")) {
+    const headerSecret =
+      request.headers.get("x-admin-secret") ||
+      request.headers.get("x-key-secret") ||
+      request.nextUrl.searchParams.get("secret") ||
+      "";
+    const cookieSecret = request.cookies.get("opus_admin_gate")?.value || "";
+    if (!secretMatches(headerSecret) && !secretMatches(cookieSecret)) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+  }
+
+  // Soft gate for /admin pages (except board-home login screen itself is client-gated)
+  // Cookie optional — page still asks for secret; cookie just reduces friction after unlock.
+  if (
+    pathname.startsWith("/admin") &&
+    pathname !== "/admin/board-home" &&
+    !pathname.startsWith("/admin/board-home/")
+  ) {
+    // Any other /admin/* already redirected above; remaining unknown admin paths → board-home
+    if (pathname !== "/admin" && pathname !== "/admin/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/board-home";
+      return NextResponse.redirect(url);
+    }
+  }
 
   if (
     pathname.startsWith("/bao-tri") ||
@@ -90,6 +149,7 @@ export function middleware(request: NextRequest) {
 
   const res = NextResponse.next();
   res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("X-Frame-Options", "DENY");
   return res;
 }
 

@@ -2999,3 +2999,47 @@ html[data-theme="light"] .opus-glass-dock,
 html[data-theme="light"] [data-dock] {
   color: var(--foreground);
 }
+
+
+/* ========== FLAT UI: vô hiệu hóa Liquid Glass toàn dự án ========== */
+.glass,
+.glass-strong,
+.glass-soft,
+.glass-panel,
+.glass-nav,
+.glass-dropdown,
+.glass-chip,
+.glass-overlay,
+.glass-player-bar,
+.glass-card,
+.glass-sidebar,
+.lg-card,
+.lg-border-spin,
+.zalo-glass,
+.liquid-glass {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+.lg-orbs,
+.lg-orbs span,
+.opus-ambient,
+[data-ambient] {
+  display: none !important;
+}
+.lg-page {
+  background: var(--background) !important;
+}
+.glass-nav {
+  background: var(--background) !important;
+}
+html[data-theme="light"] .glass,
+html[data-theme="light"] .glass-strong,
+html[data-theme="light"] .glass-card,
+html[data-theme="light"] .lg-card {
+  background: var(--surface) !important;
+  color: var(--foreground) !important;
+}

@@ -62,7 +62,7 @@ export default function Navbar() {
       data-navbar="1"
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-500",
-        "border-b border-border bg-background/90 text-foreground backdrop-blur-xl ui-border-contrast",
+        "border-b border-border bg-background text-foreground ui-border-contrast",
         scrolled ? "shadow-lg shadow-black/10" : ""
       )}
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
@@ -86,7 +86,7 @@ export default function Navbar() {
                 "shrink-0 flex items-center justify-center",
                 "w-9 h-9 rounded-full",
                 "border border-white/20 bg-black/50 text-white",
-                "backdrop-blur-md shadow-md",
+                "shadow-md",
                 "hover:bg-black/70 transition-colors duration-300"
               )}
             >

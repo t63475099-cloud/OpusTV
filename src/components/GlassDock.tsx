@@ -270,8 +270,8 @@ export default function GlassDock() {
                   "w-[52px] h-[52px] sm:w-14 sm:h-14 rounded-full outline-none",
                   "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                   openOrMore
-                    ? "bg-white/25 border border-white/40 scale-105 shadow-[0_0_20px_rgba(255,255,255,0.12)]"
-                    : "bg-white/12 border border-white/25 hover:bg-white/18 active:scale-95"
+                    ? "scale-105 border border-primary bg-primary/15"
+                    : "border border-border bg-surface-elevated hover:bg-surface active:scale-95"
                 )}
               >
                 <span
@@ -307,8 +307,8 @@ export default function GlassDock() {
                 aria-hidden
                 className={cn(
                   "absolute inset-0 m-auto w-11 h-11 sm:w-12 sm:h-12 rounded-full",
-                  "border border-white/40 bg-white/[0.18]",
-                  "shadow-[inset_0_0_14px_rgba(255,255,255,0.2)]",
+                  "border border-primary bg-primary/20",
+                  "",
                   "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                   active ? "opacity-100 scale-100" : "opacity-0 scale-75"
                 )}

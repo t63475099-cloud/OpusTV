@@ -3043,3 +3043,62 @@ html[data-theme="light"] .lg-card {
   background: var(--surface) !important;
   color: var(--foreground) !important;
 }
+
+
+/* ========== NUCLEAR FLAT: kill all glass (force) ========== */
+html[data-ui="flat"] .glass,
+html[data-ui="flat"] .glass-strong,
+html[data-ui="flat"] .glass-soft,
+html[data-ui="flat"] .glass-panel,
+html[data-ui="flat"] .glass-panel:hover,
+html[data-ui="flat"] .glass-nav,
+html[data-ui="flat"] .glass-dropdown,
+html[data-ui="flat"] .glass-chip,
+html[data-ui="flat"] .glass-chip:hover,
+html[data-ui="flat"] .glass-overlay,
+html[data-ui="flat"] .glass-player-bar,
+html[data-ui="flat"] .glass-card,
+html[data-ui="flat"] .glass-sidebar,
+html[data-ui="flat"] .glass-border-live,
+html[data-ui="flat"] .glass-border-live:hover,
+html[data-ui="flat"] .lg-card,
+html[data-ui="flat"] .lg-card:hover,
+html[data-ui="flat"] .lg-border-spin,
+html[data-ui="flat"] .zalo-glass,
+html[data-ui="flat"] .zalo-glass-soft,
+html[data-ui="flat"] .liquid-glass,
+html[data-ui="flat"] .movie-card-glass,
+html[data-ui="flat"] .movie-card-glass:hover {
+  background: var(--surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--border) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+  animation: none !important;
+}
+html[data-ui="flat"] .glass-border-live::before,
+html[data-ui="flat"] .lg-border-spin::before,
+html[data-ui="flat"] .lg-orbs,
+html[data-ui="flat"] .lg-orbs span {
+  display: none !important;
+  content: none !important;
+  animation: none !important;
+  opacity: 0 !important;
+}
+html[data-ui="flat"] .glass-nav,
+html[data-ui="flat"] header[data-navbar="1"] {
+  background: var(--background) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-ui="flat"] .glass-player-bar {
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent) !important;
+  backdrop-filter: none !important;
+}
+html[data-ui="flat"] [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

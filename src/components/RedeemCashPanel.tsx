@@ -92,7 +92,7 @@ export default function RedeemCashPanel() {
   };
 
   return (
-    <section className="glass-panel p-4 space-y-3" data-gsap-reveal>
+    <section className="rounded-xl border border-border bg-surface p-4 space-y-3" data-gsap-reveal>
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-white flex items-center gap-2">
           <Banknote className="w-4 h-4 text-emerald-400" />

@@ -78,7 +78,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="vi" data-ui="flat" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full min-h-[100dvh] flex flex-col bg-background text-foreground relative overflow-x-clip overflow-y-auto">
         <Script id="opus-theme-boot" strategy="beforeInteractive">
           {THEME_LOCALE_BOOT_SCRIPT}

@@ -469,7 +469,7 @@ function NhacInner() {
         </form>
 
         {openSuggest && (suggests.length > 0 || (searchInput.trim().length < 2 && history.length > 0)) && (
-          <div className="absolute left-0 right-0 mt-1 z-50 rounded-xl border border-[#303030] glass-dropdown shadow-2xl overflow-hidden">
+          <div className="absolute left-0 right-0 mt-1 z-50 rounded-xl border border-[#303030] bg-surface border-border shadow-2xl overflow-hidden">
             {searchInput.trim().length < 2 && history.length > 0 && (
               <div className="border-b border-[#303030]">
                 <div className="flex justify-between px-4 py-2">
@@ -641,7 +641,7 @@ function NhacInner() {
 
       <div className="relative min-h-[200px]">
         {(tabSwitching || (loading && !loadingMore)) && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 glass-overlay rounded-xl min-h-[180px]">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-background/90 rounded-xl min-h-[180px]">
             <div className="w-10 h-10 rounded-full border-2 border-white/20 border-t-red-500 animate-spin" />
             <p className="text-sm text-zinc-300">Đang tải...</p>
           </div>

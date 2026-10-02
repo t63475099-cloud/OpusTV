@@ -1248,7 +1248,7 @@ const showControls = useCallback(() => {
         }`}
       >
         <div
-          className={`player-controls-bar glass-player-bar bg-gradient-to-t from-black/95 via-black/55 to-transparent pt-10 px-3 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
+          className={`player-controls-bar bg-gradient-to-t from-black/95 via-black/55 to-transparent pt-10 px-3 sm:px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
             controlsVisible ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >

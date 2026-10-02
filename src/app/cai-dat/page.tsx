@@ -57,73 +57,9 @@ type Section =
   | "about" | "legal";
 
 
-/** Nền canvas gradient mờ — liquid glass ambient */
+/** Đã tắt ambient liquid glass */
 function SettingsAmbientCanvas() {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let raf = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let w = 0;
-    let h = 0;
-    const orbs = Array.from({ length: 5 }, (_, i) => ({
-      x: 0.15 + i * 0.18,
-      y: 0.2 + (i % 3) * 0.25,
-      r: 0.12 + (i % 2) * 0.06,
-      hue: 200 + i * 40,
-      sp: 0.15 + i * 0.04,
-    }));
-    const resize = () => {
-      w = canvas.clientWidth;
-      h = canvas.clientHeight;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-    const t0 = performance.now();
-    const draw = (now: number) => {
-      const t = (now - t0) / 1000;
-      ctx.clearRect(0, 0, w, h);
-      const bg = ctx.createLinearGradient(0, 0, w, h);
-      bg.addColorStop(0, `hsla(${260 + t * 3}, 35%, 7%, 1)`);
-      bg.addColorStop(0.5, `hsla(${300 + t * 2}, 30%, 6%, 1)`);
-      bg.addColorStop(1, `hsla(${220 + t * 4}, 40%, 8%, 1)`);
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, w, h);
-      for (const o of orbs) {
-        const cx = w * (o.x + 0.04 * Math.sin(t * o.sp + o.hue));
-        const cy = h * (o.y + 0.05 * Math.cos(t * o.sp * 0.8 + o.x));
-        const rr = Math.min(w, h) * o.r;
-        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
-        g.addColorStop(0, `hsla(${o.hue + t * 8}, 70%, 55%, 0.22)`);
-        g.addColorStop(0.55, `hsla(${o.hue + 30}, 60%, 40%, 0.08)`);
-        g.addColorStop(1, "transparent");
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(cx, cy, rr, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, []);
-  return (
-    <canvas
-      ref={ref}
-      className="fixed inset-0 w-full h-full pointer-events-none -z-10"
-      aria-hidden
-    />
-  );
+  return null;
 }
 
 function Toggle({
@@ -141,12 +77,12 @@ function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-white/[0.06] last:border-0 hover:bg-white/[0.07] transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.99]"
+      className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-border last:border-0 hover:bg-surface-elevated transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.99]"
     >
       <div className="flex-1 min-w-0 pr-2">
-        <p className="text-[15px] text-white leading-snug">{label}</p>
+        <p className="text-[15px] leading-snug text-foreground">{label}</p>
         {desc && (
-          <p className="text-xs text-zinc-400/90 mt-0.5 leading-snug line-clamp-2">{desc}</p>
+          <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-foreground-muted">{desc}</p>
         )}
       </div>
       <span
@@ -156,13 +92,13 @@ function Toggle({
           "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-0.5",
           "transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
           checked
-            ? "bg-gradient-to-r from-sky-500 to-violet-500 shadow-[0_0_16px_rgba(139,92,246,0.45)]"
-            : "bg-white/15",
+            ? "bg-primary"
+            : "bg-surface-elevated border border-border",
         ].join(" ")}
       >
         <span
           className={[
-            "pointer-events-none block h-6 w-6 rounded-full bg-white shadow-md",
+            "pointer-events-none block h-6 w-6 rounded-full bg-primary-foreground shadow-sm",
             "transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
             checked ? "translate-x-5" : "translate-x-0",
           ].join(" ")}
@@ -187,16 +123,16 @@ function RowLink({
     <button
       type="button"
       onClick={onClick}
-      className="group w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-white/[0.06] last:border-0 hover:bg-white/[0.08] transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] active:scale-[0.99]"
+      className="group flex w-full items-center gap-3 border-b border-border px-4 py-3.5 text-left last:border-0 hover:bg-surface-elevated"
     >
-      <span className="text-zinc-100 shrink-0 w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center backdrop-blur-md transition-all duration-500 group-hover:border-white/25 group-hover:bg-white/15">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-surface-elevated text-foreground">
         {icon}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] text-white leading-snug">{label}</p>
-        {desc && <p className="text-xs text-zinc-400/90 mt-0.5 leading-snug line-clamp-2">{desc}</p>}
+        <p className="text-[15px] leading-snug text-foreground">{label}</p>
+        {desc && <p className="text-xs text-foreground-muted/90 mt-0.5 leading-snug line-clamp-2">{desc}</p>}
       </div>
-      <ChevronRight className="w-5 h-5 text-zinc-500 shrink-0 transition-transform duration-500 group-hover:translate-x-0.5 group-hover:text-zinc-300" />
+      <ChevronRight className="w-5 h-5 text-foreground-subtle shrink-0 transition-transform duration-500 group-hover:translate-x-0.5 group-hover:text-foreground-muted" />
     </button>
   );
 }
@@ -213,8 +149,8 @@ function ChipGroup<T extends string | number>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="px-4 py-3 border-b border-white/[0.06] last:border-0">
-      <p className="text-sm text-zinc-400 mb-2">{label}</p>
+    <div className="border-b border-border px-4 py-3 last:border-0">
+      <p className="mb-2 text-sm text-foreground-muted">{label}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <button
@@ -223,8 +159,8 @@ function ChipGroup<T extends string | number>({
             onClick={() => onChange(o.value)}
             className={`px-3 py-1.5 rounded-full text-sm border transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
               value === o.value
-                ? "bg-white text-black font-medium border-white shadow-[0_0_16px_rgba(255,255,255,0.25)]"
-                : "bg-white/8 text-white border-white/10 hover:bg-white/12"
+                ? "border-primary bg-primary font-medium text-primary-foreground"
+                : "border-border bg-surface-elevated text-foreground hover:bg-surface"
             }`}
           >
             {o.label}
@@ -349,58 +285,57 @@ function SettingsInner() {
   };
 
   return (
-    <div className="relative min-h-screen w-full pt-[max(1rem,env(safe-area-inset-top,0px))] pb-28">
-      <SettingsAmbientCanvas />
+    <div className="relative min-h-screen w-full bg-background text-foreground pt-[max(1rem,env(safe-area-inset-top,0px))] pb-28">
       <style jsx global>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div className="sticky top-2 z-30 flex items-center gap-3 px-3 py-3 mx-auto mt-2 max-w-xl rounded-2xl w-[calc(100%-1.5rem)] border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)] transition-all duration-500">
+      <div className="sticky top-2 z-30 mx-auto mt-2 flex w-[calc(100%-1.5rem)] max-w-xl items-center gap-3 rounded-xl border border-border bg-surface px-3 py-3 ui-border-contrast">
         {section !== "root" ? (
           <button
             type="button"
             onClick={() => go("root")}
-            className="p-2 -ml-1 rounded-full hover:bg-white/10 text-white transition-all duration-500"
+            className="-ml-1 rounded-full p-2 text-foreground hover:bg-surface-elevated"
             aria-label="Back"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
         ) : (
-          <Link href="/" className="p-2 -ml-1 rounded-full hover:bg-white/10 text-white transition-all duration-500" aria-label="Home">
+          <Link href="/" className="-ml-1 rounded-full p-2 text-foreground hover:bg-surface-elevated" aria-label="Home">
             <ChevronLeft className="w-6 h-6" />
           </Link>
         )}
-        <h1 className="text-xl font-semibold text-white tracking-tight">{titleMap[section]}</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">{titleMap[section]}</h1>
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-xl px-3 mt-3 space-y-3 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
         {section === "root" && (
           <div className="space-y-3 animate-[fadeUp_0.5s_ease]">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
-              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
                 Tài khoản
               </p>
               <Link
                 href="/tai-khoan"
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.07] transition-all duration-500"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-elevated transition-all duration-500"
               >
-                <span className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-zinc-100">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-elevated text-foreground">
                   <User className="w-5 h-5" />
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[15px] text-white">Tài khoản</span>
-                  <span className="block text-xs text-zinc-400 truncate">
+                  <span className="block text-[15px] text-foreground">Tài khoản</span>
+                  <span className="block truncate text-xs text-foreground-muted">
                     {profile.loggedIn ? profile.name : "Đăng nhập"}
                   </span>
                 </span>
-                <ChevronRight className="w-5 h-5 text-zinc-500" />
+                <ChevronRight className="w-5 h-5 text-foreground-subtle" />
               </Link>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
-              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
                 Phát & giao diện
               </p>
               <RowLink
@@ -429,8 +364,8 @@ function SettingsInner() {
               />
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
-              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
+              <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
                 Chung
               </p>
               <RowLink
@@ -478,16 +413,16 @@ function SettingsInner() {
               />
               <Link
                 href="/ho-tro"
-                className="group w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.08] transition-all duration-500 text-left border-b border-white/[0.06]"
+                className="group w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-elevated transition-all duration-500 text-left border-b border-border"
               >
-                <span className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-zinc-100">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface-elevated text-foreground">
                   <HelpCircle className="w-5 h-5" />
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[15px] text-white">Hỗ trợ & FAQ</span>
-                  <span className="block text-xs text-zinc-400 mt-0.5">Câu hỏi thường gặp</span>
+                  <span className="block text-[15px] text-foreground">Hỗ trợ & FAQ</span>
+                  <span className="block text-xs text-foreground-muted mt-0.5">Câu hỏi thường gặp</span>
                 </span>
-                <ChevronRight className="w-5 h-5 text-zinc-500" />
+                <ChevronRight className="w-5 h-5 text-foreground-subtle" />
               </Link>
               <RowLink
                 icon={<Info className="w-5 h-5" />}
@@ -499,10 +434,10 @@ function SettingsInner() {
         )}
 
         {section === "account" && (
-          <div className="px-4 py-6 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
+          <div className="px-4 py-6 rounded-2xl border border-border bg-surface  shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
             <Link
               href="/tai-khoan"
-              className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-red-600/25 via-rose-600/15 to-transparent px-4 py-4 text-white transition hover:border-red-500/40 active:scale-[0.99]"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-gradient-to-r from-red-600/25 via-rose-600/15 to-transparent px-4 py-4 text-foreground transition hover:border-red-500/40 active:scale-[0.99]"
             >
               <span className="font-semibold">
                 {profile.loggedIn ? "Hồ sơ của bạn" : "Đăng nhập / Đăng ký"}
@@ -514,7 +449,7 @@ function SettingsInner() {
 
 
         {section === "playback" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Tự phát khi mở tập" checked={settings.autoPlayStart !== false} onChange={(v) => set({ autoPlayStart: v })} />
             <Toggle label="Tự chuyển tập tiếp theo" checked={settings.autoPlayNext !== false} onChange={(v) => set({ autoPlayNext: v })} />
             <Toggle label="Chạm đôi để tua" checked={settings.doubleTapSeek !== false} onChange={(v) => set({ doubleTapSeek: v })} />
@@ -560,7 +495,7 @@ function SettingsInner() {
         )}
 
         {section === "player" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Tự phát khi mở tập" checked={settings.autoPlayStart} onChange={(v) => set({ autoPlayStart: v })} />
             <Toggle label="Chạm đôi để tua" checked={settings.doubleTapSeek !== false} onChange={(v) => set({ doubleTapSeek: v })} />
             <ChipGroup
@@ -606,7 +541,7 @@ function SettingsInner() {
         )}
 
         {section === "display" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Giao diện dày (YouTube)" checked={!!settings.denseHome} onChange={(v) => set({ denseHome: v })} />
             <Toggle label="Giảm chuyển động" checked={!!settings.reducedMotion} onChange={(v) => set({ reducedMotion: v })} />
             <Toggle label="Card phim gọn" checked={!!settings.compactCards} onChange={(v) => set({ compactCards: v })} />
@@ -625,7 +560,7 @@ function SettingsInner() {
         )}
 
         {section === "home" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Hàng Tiếp tục xem" checked={settings.showContinueRow !== false} onChange={(v) => set({ showContinueRow: v })} />
             <Toggle label="Hàng Phim Hàn" checked={settings.showKoreanRow !== false} onChange={(v) => set({ showKoreanRow: v })} />
             <Toggle label="Hàng Kinh dị" checked={settings.showHorrorRow !== false} onChange={(v) => set({ showHorrorRow: v })} />
@@ -633,8 +568,8 @@ function SettingsInner() {
         )}
 
         {section === "language" && (
-          <div className="px-4 py-3 space-y-3 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
-            <p className="text-sm text-zinc-400">Chọn ngôn ngữ giao diện. Áp dụng ngay trên toàn site.</p>
+          <div className="px-4 py-3 space-y-3 overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
+            <p className="text-sm text-foreground-muted">Chọn ngôn ngữ giao diện. Áp dụng ngay trên toàn site.</p>
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
@@ -665,8 +600,8 @@ function SettingsInner() {
                     className={
                       "rounded-xl px-3 py-3 text-sm text-left border transition-all duration-500 " +
                       (active
-                        ? "bg-white text-black border-white font-semibold"
-                        : "bg-white/5 text-white border-white/10 hover:bg-white/10")
+                        ? "border-primary bg-primary font-semibold text-primary-foreground"
+                        : "border-border bg-surface text-foreground hover:bg-surface-elevated")
                     }
                   >
                     {o.label}
@@ -678,14 +613,14 @@ function SettingsInner() {
         )}
 
         {section === "notify" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Thông báo toast" checked={settings.toastNotifications !== false} onChange={(v) => set({ toastNotifications: v })} />
             <Toggle label="Ít thông báo hơn" checked={!!settings.quietToasts} onChange={(v) => set({ quietToasts: v })} />
           </div>
         )}
 
         {section === "ux" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Gợi ý tìm kiếm" checked={settings.searchSuggest !== false} onChange={(v) => set({ searchSuggest: v })} />
             <Toggle label="Tìm bằng giọng nói" checked={settings.voiceSearch !== false} onChange={(v) => set({ voiceSearch: v })} />
             <Toggle label="Phím tắt bàn phím (PC)" checked={settings.keyboardShortcuts !== false} onChange={(v) => set({ keyboardShortcuts: v })} />
@@ -693,7 +628,7 @@ function SettingsInner() {
         )}
 
         {section === "privacy" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Lưu lịch sử xem" checked={settings.saveHistory !== false} onChange={(v) => set({ saveHistory: v })} />
             <Toggle label="Lưu yêu thích" checked={settings.saveFavorites !== false} onChange={(v) => set({ saveFavorites: v })} />
             <Toggle label="Ẩn danh (không ghi lịch sử mới)" checked={!!settings.anonymousMode} onChange={(v) => set({ anonymousMode: v })} />
@@ -701,7 +636,7 @@ function SettingsInner() {
         )}
 
         {section === "a11y" && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 animate-[fadeUp_0.5s_ease]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast animate-[fadeUp_0.5s_ease]">
             <Toggle label="Chữ lớn hơn" checked={!!settings.largeText} onChange={(v) => set({ largeText: v })} />
             <Toggle label="Tăng tương phản" checked={!!settings.highContrast} onChange={(v) => set({ highContrast: v })} />
             <Toggle label="Giảm chuyển động" checked={!!settings.reducedMotion} onChange={(v) => set({ reducedMotion: v })} />
@@ -709,20 +644,20 @@ function SettingsInner() {
         )}
 
         {section === "data" && (
-          <div className="px-4 py-4 space-y-3 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
+          <div className="px-4 py-4 space-y-3 overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
             <OfflineDownloads />
-            <Link href="/lich-su" className="flex justify-between py-3 border-b border-white/[0.06] text-white text-sm">
-              Lịch sử xem <span className="text-zinc-400">{historyLen}</span>
+            <Link href="/lich-su" className="flex justify-between py-3 border-b border-border text-foreground text-sm">
+              Lịch sử xem <span className="text-foreground-muted">{historyLen}</span>
             </Link>
-            <Link href="/yeu-thich" className="flex justify-between py-3 border-b border-white/[0.06] text-white text-sm">
-              Yêu thích <span className="text-zinc-400">{favLen}</span>
+            <Link href="/yeu-thich" className="flex justify-between py-3 border-b border-border text-foreground text-sm">
+              Yêu thích <span className="text-foreground-muted">{favLen}</span>
             </Link>
             <button
               type="button"
               onClick={() => {
                 if (!settings.confirmClearData || confirm("Xóa lịch sử?")) clearHistory();
               }}
-              className="flex items-center gap-2 text-sm text-zinc-400"
+              className="flex items-center gap-2 text-sm text-foreground-muted"
             >
               <Trash2 className="w-4 h-4" /> Xóa lịch sử
             </button>
@@ -731,7 +666,7 @@ function SettingsInner() {
               onClick={() => {
                 if (!settings.confirmClearData || confirm("Xóa yêu thích?")) clearFav();
               }}
-              className="flex items-center gap-2 text-sm text-zinc-400"
+              className="flex items-center gap-2 text-sm text-foreground-muted"
             >
               <Trash2 className="w-4 h-4" /> Xóa yêu thích
             </button>
@@ -751,7 +686,7 @@ function SettingsInner() {
         )}
 
         {section === "more" && (
-          <div className="max-h-[70vh] overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
+          <div className="max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-surface  shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
             {MORE_KEYS.map((f) => (
               <Toggle
                 key={f.key}
@@ -764,38 +699,38 @@ function SettingsInner() {
         )}
 
         {section === "legal" && (
-          <div className="px-2 py-2 space-y-1 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
+          <div className="px-2 py-2 space-y-1 overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
             <Link
               href="/ho-tro"
-              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/[0.07] text-sm text-white"
+              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-surface-elevated text-sm text-foreground"
             >
               Hỗ trợ & FAQ
-              <span className="text-zinc-500">›</span>
+              <span className="text-foreground-subtle">›</span>
             </Link>
             <Link
               href="/dieu-khoan"
-              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/[0.07] text-sm text-white"
+              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-surface-elevated text-sm text-foreground"
             >
               Điều khoản sử dụng
-              <span className="text-zinc-500">›</span>
+              <span className="text-foreground-subtle">›</span>
             </Link>
             <Link
               href="/dieu-khoan#bao-mat"
-              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-white/[0.07] text-sm text-white"
+              className="flex justify-between items-center px-3 py-3.5 rounded-xl hover:bg-surface-elevated text-sm text-foreground"
             >
               Chính sách bảo mật
-              <span className="text-zinc-500">›</span>
+              <span className="text-foreground-subtle">›</span>
             </Link>
-            <p className="px-3 pt-2 text-xs text-zinc-500 leading-relaxed">
+            <p className="px-3 pt-2 text-xs text-foreground-subtle leading-relaxed">
               Áp dụng khi bạn tạo và dùng tài khoản trên trang này.
             </p>
           </div>
         )}
 
         {section === "about" && (
-          <div className="px-4 py-6 text-sm text-zinc-400 space-y-2 rounded-2xl border border-white/10 bg-white/[0.05] backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
-            <p className="text-white font-medium text-base">OpusFilm</p>
-            <p className="text-xs text-zinc-500">Phiên bản web</p>
+          <div className="px-4 py-6 text-sm text-foreground-muted space-y-2 overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
+            <p className="text-foreground font-medium text-base">OpusFilm</p>
+            <p className="text-xs text-foreground-subtle">Phiên bản web</p>
           </div>
         )}
       </div>

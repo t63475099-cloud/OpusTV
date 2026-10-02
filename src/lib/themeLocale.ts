@@ -78,6 +78,41 @@ export function applyHighContrast(on: boolean) {
   }
 }
 
+/** Màu thanh bar trình duyệt / status bar (Chrome, Safari, PWA) */
+export const THEME_BAR_COLOR = {
+  dark: "#0a0a0f",
+  light: "#f8fafc",
+} as const;
+
+function syncBrowserChrome(resolved: "dark" | "light") {
+  if (typeof document === "undefined") return;
+  const color = THEME_BAR_COLOR[resolved];
+
+  let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", color);
+
+  // iOS PWA status bar
+  let apple = document.querySelector(
+    'meta[name="apple-mobile-web-app-status-bar-style"]'
+  ) as HTMLMetaElement | null;
+  if (!apple) {
+    apple = document.createElement("meta");
+    apple.setAttribute("name", "apple-mobile-web-app-status-bar-style");
+    document.head.appendChild(apple);
+  }
+  apple.setAttribute("content", resolved === "light" ? "default" : "black-translucent");
+
+  document.documentElement.style.backgroundColor = color;
+  if (document.body) {
+    document.body.style.backgroundColor = "";
+  }
+}
+
 export function applyTheme(mode: ThemeMode) {
   if (typeof document === "undefined") return;
   const resolved = resolveTheme(mode);
@@ -89,7 +124,7 @@ export function applyTheme(mode: ThemeMode) {
   } catch {
     /* */
   }
-  // Keep contrast attribute in sync
+  syncBrowserChrome(resolved);
   applyHighContrast(readHighContrast());
 }
 
@@ -104,8 +139,8 @@ export function applyLocale(locale: LocaleCode) {
   }
 }
 
-/** Inline script for <head> — runs before paint (anti-FOUC) */
-export const THEME_LOCALE_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_KEY}')||'dark';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}else if(t!=='light'&&t!=='dark'){r='dark';}document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-ui','flat');document.documentElement.classList.toggle('dark',r==='dark');document.documentElement.style.colorScheme=r;var hc=localStorage.getItem('${CONTRAST_KEY}')==='1';document.documentElement.setAttribute('data-contrast',hc?'high':'normal');var l=localStorage.getItem('${LOCALE_KEY}')||'vi';if(l!=='en'&&l!=='vi')l='vi';document.documentElement.lang=l;document.documentElement.setAttribute('data-locale',l);}catch(e){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-ui','flat');}})();`;
+/** Inline script for <head> — runs before paint (anti-FOUC + theme-color bar) */
+export const THEME_LOCALE_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_KEY}')||'dark';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}else if(t!=='light'&&t!=='dark'){r='dark';}document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-ui','flat');document.documentElement.classList.toggle('dark',r==='dark');document.documentElement.style.colorScheme=r;var bar=r==='light'?'#f8fafc':'#0a0a0f';document.documentElement.style.backgroundColor=bar;var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',bar);var a=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(!a){a=document.createElement('meta');a.setAttribute('name','apple-mobile-web-app-status-bar-style');document.head.appendChild(a);}a.setAttribute('content',r==='light'?'default':'black-translucent');var hc=localStorage.getItem('${CONTRAST_KEY}')==='1';document.documentElement.setAttribute('data-contrast',hc?'high':'normal');var l=localStorage.getItem('${LOCALE_KEY}')||'vi';if(l!=='en'&&l!=='vi')l='vi';document.documentElement.lang=l;document.documentElement.setAttribute('data-locale',l);}catch(e){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-ui','flat');}})();`;
 
 type Dict = Record<string, string>;
 

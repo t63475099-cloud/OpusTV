@@ -9,7 +9,6 @@ import StreakBadge from "@/components/StreakBadge";
 import { cn } from "@/lib/utils";
 import SearchBox from "./SearchBox";
 import { markEnterSection } from "@/lib/routeManager";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -124,7 +123,6 @@ export default function Navbar() {
 
         {/* Phải: streak + bell — căn phải, bề rộng tương đương trái để search thật sự giữa */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto lg:ml-0 lg:justify-self-end">
-          <ThemeToggle />
           {!pathname.startsWith("/tin-nhan") && (
             <>
               <div className="hidden sm:block">

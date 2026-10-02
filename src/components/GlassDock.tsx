@@ -100,12 +100,10 @@ function DockIcon({
   );
 }
 
-/** Kính lỏng: nền đặc + blur + viền sáng mép */
-const GLASS = cn(
-  "bg-[#18181f]/88 backdrop-blur-2xl",
-  "border border-white/25",
-  "shadow-[0_10px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-1px_0_rgba(0,0,0,0.25)]"
-);
+/** Dock phẳng — theo theme sáng/tối */
+const GLASS =
+  "border border-border bg-surface text-foreground shadow-lg ui-border-contrast";
+
 
 export default function GlassDock() {
   const path = usePathname() || "/";
@@ -194,7 +192,7 @@ export default function GlassDock() {
             type="button"
             onClick={() => setSheetOpen(false)}
             className="mx-auto mb-2 flex h-8 w-11 items-center justify-center rounded-full
-              text-white/85 hover:text-white hover:bg-white/10 transition-colors duration-300"
+              text-foreground-muted hover:bg-surface-elevated hover:text-foreground transition-colors duration-300"
             aria-label="Đóng"
           >
             <svg
@@ -228,8 +226,8 @@ export default function GlassDock() {
                     "h-12 rounded-full px-4",
                     "border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                     active
-                      ? "bg-white/22 border-white/45 text-white shadow-[inset_0_0_16px_rgba(255,255,255,0.12)]"
-                      : "bg-white/[0.07] border-white/18 text-white/90 hover:bg-white/14 hover:border-white/30"
+                      ? "border-primary bg-primary/15 text-foreground"
+                      : "border-border bg-surface-elevated text-foreground hover:bg-surface"
                   )}
                 >
                   <span className="flex items-center justify-center w-6 h-6 shrink-0">

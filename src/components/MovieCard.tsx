@@ -19,7 +19,7 @@ export default function MovieCard({ movie, priority = false }: MovieCardProps) {
       href={`/phim/${movie.slug}`}
       className="group relative block w-[42vw] max-w-[160px] flex-shrink-0 transition-transform duration-300 ease-out hover:-translate-y-1 active:scale-[0.98] sm:w-[140px] md:w-[156px] lg:w-[172px]"
     >
-      <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-border bg-surface-elevated ui-border-contrast">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border-2 border-border-strong bg-surface-elevated ui-border-contrast">
         <Image
           src={poster}
           alt={movie.name || ""}

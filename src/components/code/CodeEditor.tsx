@@ -1,5 +1,7 @@
 "use client";
 
+import { useCodePrefsStore } from "@/lib/codePrefs";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { OnMount } from "@monaco-editor/react";
@@ -11,7 +13,7 @@ import { useCodeStore } from "@/lib/codeStore";
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center bg-[#1e1e1e] text-sm text-zinc-500">
+    <div className="flex h-full items-center justify-center bg-surface text-sm text-foreground-muted">
       Đang tải editor…
     </div>
   ),
@@ -23,6 +25,10 @@ function isTouchMobile() {
 }
 
 export default function CodeEditor() {
+  const fontSize = useCodePrefsStore((s) => s.fontSize);
+  const wordWrap = useCodePrefsStore((s) => s.wordWrap);
+  const minimap = useCodePrefsStore((s) => s.minimap);
+
   const activeId = useCodeStore((s) => s.activeId);
   const nodes = useCodeStore((s) => s.nodes);
   const updateContent = useCodeStore((s) => s.updateContent);
@@ -176,13 +182,13 @@ export default function CodeEditor() {
     if (mobile) {
       return {
         letterSpacing: 0.3,
-        fontSize: 15,
+        fontSize,
         fontFamily: "Consolas, 'Courier New', monospace",
-        minimap: { enabled: false },
+        minimap: { enabled: minimap },
         scrollBeyondLastLine: false,
         automaticLayout: true,
         tabSize: 2,
-        wordWrap: "on" as const,
+        wordWrap: (wordWrap ? "on" : "off") as "on" | "off",
         lineNumbers: "on" as const,
         renderLineHighlight: "line" as const,
         smoothScrolling: true,
@@ -222,13 +228,13 @@ export default function CodeEditor() {
     // Desktop: Monaco IntelliSense đầy đủ
     return {
       letterSpacing: 0.3,
-        fontSize: 14,
+        fontSize,
       fontFamily: "Consolas, 'Courier New', monospace",
-      minimap: { enabled: true },
+      minimap: { enabled: minimap },
       scrollBeyondLastLine: false,
       automaticLayout: true,
       tabSize: 2,
-      wordWrap: "on" as const,
+      wordWrap: (wordWrap ? "on" : "off") as "on" | "off",
       lineNumbers: "on" as const,
       renderLineHighlight: "line" as const,
       smoothScrolling: true,
@@ -256,7 +262,7 @@ export default function CodeEditor() {
 
   if (!active) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 bg-[#1e1e1e] text-zinc-500 text-sm">
+      <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface text-foreground-muted text-sm">
         <FileHint />
         <p>Chọn hoặc tạo file để bắt đầu</p>
       </div>

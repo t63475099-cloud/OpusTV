@@ -144,8 +144,8 @@ export default function ChatWindow({
         <div className="w-16 h-16 rounded-2xl bg-[#0068ff]/20 flex items-center justify-center mb-4">
           <Send className="w-7 h-7 text-[#5b9dff]" />
         </div>
-        <p className="text-white font-medium">Chọn một hội thoại</p>
-        <p className="text-sm text-zinc-500 mt-1 max-w-xs">
+        <p className="text-foreground font-medium">Chọn một hội thoại</p>
+        <p className="text-sm text-foreground-muted mt-1 max-w-xs">
           Chọn bạn bè bên trái hoặc bấm + để kết bạn bằng UID
         </p>
       </div>
@@ -164,12 +164,12 @@ export default function ChatWindow({
       {/* Header */}
       <header
         data-chat-header
-        className="shrink-0 flex items-center gap-2 px-2 sm:px-3 h-14 border-b border-[#2a2d34] bg-[#16181c]"
+        className="shrink-0 flex items-center gap-2 px-2 sm:px-3 h-14 border-b border-[#2a2d34] bg-surface"
       >
         <button
           type="button"
           onClick={onBack}
-          className="lg:hidden p-2 rounded-full hover:bg-white/10 text-zinc-300"
+          className="lg:hidden p-2 rounded-full hover:bg-white/10 text-foreground-muted"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -188,17 +188,17 @@ export default function ChatWindow({
             <ChatAvatar user={livePeer} size="sm" />
           )}
           <div className="min-w-0">
-            <p className="text-[15px] font-semibold text-white truncate flex items-center gap-1">
+            <p className="text-[15px] font-semibold text-foreground truncate flex items-center gap-1">
               {title}
               {conversation.pinned ? <Pin className="w-3 h-3 text-amber-400" /> : null}
             </p>
-            <p className="text-[12px] text-zinc-400 truncate">{subtitle}</p>
+            <p className="text-[12px] text-foreground-muted truncate">{subtitle}</p>
           </div>
         </button>
         <button
           type="button"
           onClick={() => setSearchOpen((v) => !v)}
-          className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+          className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
           title="Tìm trong chat"
         >
           <Search className="w-5 h-5" />
@@ -208,7 +208,7 @@ export default function ChatWindow({
             <button
               type="button"
               onClick={() => setCall("audio")}
-              className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+              className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
               title="Gọi thoại"
             >
               <Phone className="w-5 h-5" />
@@ -216,7 +216,7 @@ export default function ChatWindow({
             <button
               type="button"
               onClick={() => setCall("video")}
-              className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+              className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
               title="Gọi video"
             >
               <Video className="w-5 h-5" />
@@ -226,7 +226,7 @@ export default function ChatWindow({
         <button
           type="button"
           onClick={onToggleInfo}
-          className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+          className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
           title="Thông tin"
         >
           <Info className="w-5 h-5" />
@@ -234,12 +234,12 @@ export default function ChatWindow({
       </header>
 
       {searchOpen && (
-        <div className="shrink-0 px-3 py-2 border-b border-[#2a2d34] bg-[#16181c]">
+        <div className="shrink-0 px-3 py-2 border-b border-[#2a2d34] bg-surface">
           <input
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Tìm tin nhắn trong hội thoại..."
-            className="w-full rounded-xl bg-[#2a2e36] px-3 py-2 text-sm text-white outline-none"
+            className="w-full rounded-xl bg-[#2a2e36] px-3 py-2 text-sm text-foreground outline-none"
             autoFocus
           />
         </div>
@@ -268,13 +268,13 @@ export default function ChatWindow({
             <Pin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
             <div className="min-w-0 flex-1">
               <p className="font-medium text-amber-200 mb-0.5">Tin đã ghim</p>
-              <p className="text-zinc-300 line-clamp-2">
+              <p className="text-foreground-muted line-clamp-2">
                 {messages.find((x) => x.id === conversation.pinnedMessageId)?.text || "Tin nhắn media / đính kèm"}
               </p>
             </div>
             <button
               type="button"
-              className="text-[10px] text-zinc-400 hover:text-white shrink-0"
+              className="text-[10px] text-foreground-muted hover:text-foreground shrink-0"
               onClick={() => pinMessage(conversation.id, null)}
             >
               Bỏ ghim
@@ -282,7 +282,7 @@ export default function ChatWindow({
           </div>
         ) : null}
         {searchQ.trim() && (
-          <p className="text-[11px] text-zinc-500 mb-2 px-1">
+          <p className="text-[11px] text-foreground-muted mb-2 px-1">
             {filtered.length} kết quả cho &ldquo;{searchQ.trim()}&rdquo;
           </p>
         )}
@@ -296,7 +296,7 @@ export default function ChatWindow({
             <div key={m.id}>
               {showDay && (
                 <div className="flex justify-center my-3">
-                  <span className="text-[11px] px-3 py-1 rounded-full bg-[#2a2e36] text-zinc-400">
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-[#2a2e36] text-foreground-muted">
                     {formatChatDayLabel(m.timestamp)}
                   </span>
                 </div>
@@ -317,25 +317,25 @@ export default function ChatWindow({
           );
         })}
         {peerTyping && (
-          <p className="text-[12px] text-zinc-500 px-2 py-1 animate-pulse">Đang soạn tin...</p>
+          <p className="text-[12px] text-foreground-muted px-2 py-1 animate-pulse">Đang soạn tin...</p>
         )}
         <div ref={bottomRef} />
       </div>
 
       {replyTo && (
-        <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-[#16181c] border-t border-[#2a2d34]">
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-surface border-t border-[#2a2d34]">
           <div className="flex-1 min-w-0 border-l-2 border-[#0068ff] pl-2">
             <p className="text-[11px] text-[#5b9dff]">Trả lời</p>
-            <p className="text-xs text-zinc-400 truncate">{replyTo.text || "Đính kèm"}</p>
+            <p className="text-xs text-foreground-muted truncate">{replyTo.text || "Đính kèm"}</p>
           </div>
-          <button type="button" onClick={() => setReplyTo(null)} className="p-1 text-zinc-500">
+          <button type="button" onClick={() => setReplyTo(null)} className="p-1 text-foreground-muted">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Input */}
-      <div className="shrink-0 border-t border-[#2a2d34] bg-[#16181c] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-[#2a2d34] bg-surface px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {pickerOpen && (
           <div className="mb-2">
             <StickerEmojiPicker
@@ -354,7 +354,7 @@ export default function ChatWindow({
           <button
             type="button"
             onClick={() => setPickerOpen((v) => !v)}
-            className="p-2 text-zinc-400 hover:text-white"
+            className="p-2 text-foreground-muted hover:text-foreground"
           >
             <Smile className="w-5 h-5" />
           </button>
@@ -380,13 +380,13 @@ export default function ChatWindow({
                 : `Nhập tin nhắn với ${title}`
             }
             disabled={!!conversation.blocked}
-            className="flex-1 min-w-0 max-h-28 resize-none rounded-lg bg-[#2a2e36] px-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-[#0068ff]/40 disabled:opacity-50"
+            className="flex-1 min-w-0 max-h-28 resize-none rounded-lg bg-[#2a2e36] px-3 py-2.5 text-sm text-foreground placeholder:text-foreground-muted outline-none focus:ring-1 focus:ring-[#0068ff]/40 disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => void onSend()}
             disabled={!!conversation.blocked || (!text.trim() && !pending.length)}
-            className="p-2.5 rounded-full bg-[#0068ff] text-white disabled:opacity-40 disabled:bg-[#2a2e36]"
+            className="p-2.5 rounded-full bg-[#0068ff] text-foreground disabled:opacity-40 disabled:bg-[#2a2e36]"
           >
             <Send className="w-5 h-5" />
           </button>
@@ -401,7 +401,7 @@ export default function ChatWindow({
             onClick={() => setForwardId(null)}
           />
           <div className="relative w-full sm:max-w-sm max-h-[70vh] rounded-t-2xl sm:rounded-2xl bg-neutral-900 border border-neutral-800 overflow-hidden">
-            <div className="px-4 py-3 border-b border-neutral-800 font-semibold text-white">
+            <div className="px-4 py-3 border-b border-neutral-800 font-semibold text-foreground">
               Chuyển tiếp tới
             </div>
             <div className="overflow-y-auto opus-chat-scroll custom-scroll max-h-[50vh]">
@@ -411,7 +411,7 @@ export default function ChatWindow({
                   <button
                     key={c.id}
                     type="button"
-                    className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-white border-b border-neutral-800/60"
+                    className="w-full text-left px-4 py-3 hover:bg-white/5 text-sm text-foreground border-b border-neutral-800/60"
                     onClick={() => {
                       void forwardMessage(forwardId, c.id);
                       setForwardId(null);

@@ -18,7 +18,7 @@ export default function EditorTabs() {
     .filter(Boolean);
 
   return (
-    <div className="flex h-9 shrink-0 items-stretch overflow-x-auto border-b border-[#2b2b2b] bg-[#252526] scrollbar-hide">
+    <div className="flex h-9 shrink-0 items-stretch overflow-x-auto border-b border-[#2b2b2b] bg-surface-elevated scrollbar-hide">
       {openFiles.map((f) => {
         if (!f) return null;
         const active = f.id === activeId;
@@ -33,8 +33,8 @@ export default function EditorTabs() {
               "group relative flex max-w-[180px] items-center gap-1.5 border-r border-[#2b2b2b] px-3 text-xs",
               "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
               active
-                ? "bg-[#1e1e1e] text-white"
-                : "bg-[#2d2d2d] text-zinc-400 hover:text-zinc-200"
+                ? "bg-surface text-foreground"
+                : "bg-[#2d2d2d] text-foreground-muted hover:text-foreground"
             )}
           >
             {active && (
@@ -71,7 +71,7 @@ export default function EditorTabs() {
         );
       })}
       {!openFiles.length && (
-        <div className="flex items-center px-3 text-xs text-zinc-500">Không có tab</div>
+        <div className="flex items-center px-3 text-xs text-foreground-muted">Không có tab</div>
       )}
     </div>
   );

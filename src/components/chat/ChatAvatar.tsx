@@ -135,7 +135,7 @@ export default function ChatAvatar({
         ) : emoji ? (
           <span className="leading-none text-[1.1em]">{av}</span>
         ) : (
-          <span className="font-semibold text-white/95">{letter}</span>
+          <span className="font-semibold text-foreground/95">{letter}</span>
         )}
       </div>
       {showStatus && user && (
@@ -164,7 +164,7 @@ export function GroupAvatar({
   if (list.length === 0) {
     return (
       <div
-        className={`${dim} rounded-full bg-[#0068ff] flex items-center justify-center text-white font-semibold shrink-0`}
+        className={`${dim} rounded-full bg-[#0068ff] flex items-center justify-center text-foreground font-semibold shrink-0`}
       >
         {(title || "N").slice(0, 1).toUpperCase()}
       </div>
@@ -180,7 +180,7 @@ export function GroupAvatar({
         ? "grid-cols-2"
         : "grid-cols-2";
   return (
-    <div className={`${dim} rounded-full overflow-hidden grid ${grid} gap-px bg-[#16181c] shrink-0 ring-1 ring-white/10`}>
+    <div className={`${dim} rounded-full overflow-hidden grid ${grid} gap-px bg-surface shrink-0 ring-1 ring-white/10`}>
       {list.map((u) => {
         const src = resolveAvatarSrc(u.avatar);
         const letter = (u.name || u.id || "?").slice(0, 1).toUpperCase();
@@ -193,7 +193,7 @@ export function GroupAvatar({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={src} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[8px] text-white font-bold">{letter}</span>
+              <span className="text-[8px] text-foreground font-bold">{letter}</span>
             )}
           </div>
         );

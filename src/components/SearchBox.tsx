@@ -382,7 +382,7 @@ export default function SearchBox({
             setFocused(true);
             inputRef.current?.focus();
           }}
-          className="shrink-0 flex h-11 w-11 items-center justify-center text-zinc-300 hover:text-white transition-colors duration-300"
+          className="shrink-0 flex h-11 w-11 items-center justify-center text-foreground-muted hover:text-foreground transition-colors duration-300"
           aria-label="Tìm kiếm"
         >
           {loading ? (
@@ -429,7 +429,7 @@ export default function SearchBox({
             placeholder={listening ? "Đang nghe..." : "Tìm phim, diễn viên..."}
             maxLength={120}
             autoComplete="off"
-            className="flex-1 min-w-0 h-full bg-transparent text-white text-sm leading-none outline-none placeholder:text-zinc-500 placeholder:leading-none"
+            className="flex-1 min-w-0 h-full bg-transparent text-foreground text-sm leading-none outline-none placeholder:text-foreground-muted placeholder:leading-none"
             aria-autocomplete="list"
             aria-expanded={open}
           />
@@ -442,7 +442,7 @@ export default function SearchBox({
                 setOpen(false);
                 inputRef.current?.focus();
               }}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground-muted hover:text-foreground hover:bg-white/10 transition"
               aria-label="Xóa"
             >
               <X className="w-3.5 h-3.5" />
@@ -456,7 +456,7 @@ export default function SearchBox({
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition",
                 listening
                   ? "text-rose-400 bg-rose-500/15 animate-pulse"
-                  : "text-zinc-400 hover:text-white hover:bg-white/10"
+                  : "text-foreground-muted hover:text-foreground hover:bg-white/10"
               )}
               title={listening ? "Dừng" : "Tìm bằng giọng nói"}
               aria-label={listening ? "Dừng nghe" : "Tìm bằng giọng nói"}
@@ -466,7 +466,7 @@ export default function SearchBox({
           )}
           <button
             type="submit"
-            className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition mr-0.5"
+            className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-foreground transition mr-0.5"
             aria-label="Tìm kiếm"
           >
             <Search className="w-3.5 h-3.5" />
@@ -503,7 +503,7 @@ export default function SearchBox({
           {query.trim().length < 2 && history.length > 0 && (
             <div className="border-b border-white/5">
               <div className="flex items-center justify-between px-4 py-2">
-                <span className="text-xs font-medium leading-none text-zinc-400">Lịch sử tìm kiếm</span>
+                <span className="text-xs font-medium leading-none text-foreground-muted">Lịch sử tìm kiếm</span>
                 <button
                   type="button"
                   className="text-xs text-sky-400 hover:underline"
@@ -529,12 +529,12 @@ export default function SearchBox({
                           goSearch(h);
                         }}
                       >
-                        <Clock className="w-4 h-4 text-zinc-500 shrink-0" />
-                        <span className="text-sm text-white line-clamp-1">{h}</span>
+                        <Clock className="w-4 h-4 text-foreground-muted shrink-0" />
+                        <span className="text-sm text-foreground line-clamp-1">{h}</span>
                       </button>
                       <button
                         type="button"
-                        className="p-2 text-zinc-500 hover:text-white"
+                        className="p-2 text-foreground-muted hover:text-foreground"
                         aria-label="Xóa"
                         onClick={() => {
                           removeFilmSearchHistory(h);
@@ -550,12 +550,12 @@ export default function SearchBox({
             </div>
           )}
           {loading && items.length === 0 && query.trim().length >= 2 && (
-            <div className="px-4 py-3 text-sm text-zinc-500 flex items-center gap-2">
+            <div className="px-4 py-3 text-sm text-foreground-muted flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" /> Đang tìm...
             </div>
           )}
           {!loading && query.trim().length >= 2 && items.length === 0 && (
-            <div className="px-4 py-3 text-sm text-zinc-500">Không có gợi ý cho “{query.trim()}”</div>
+            <div className="px-4 py-3 text-sm text-foreground-muted">Không có gợi ý cho “{query.trim()}”</div>
           )}
           <ul role="listbox" className="overflow-y-auto max-h-[50vh] custom-scroll">
             {items.map((item, idx) => (
@@ -571,16 +571,16 @@ export default function SearchBox({
                     idx === activeIdx ? "bg-white/10" : "hover:bg-white/5"
                   )}
                 >
-                  <div className="relative w-11 h-16 rounded-lg overflow-hidden bg-zinc-800 shrink-0 ring-1 ring-white/5">
+                  <div className="relative w-11 h-16 rounded-lg overflow-hidden bg-surface-elevated shrink-0 ring-1 ring-white/5">
                     <Image src={item.poster} alt="" fill className="object-cover" unoptimized />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white line-clamp-1">{item.name}</p>
-                    <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">
+                    <p className="text-sm font-medium text-foreground line-clamp-1">{item.name}</p>
+                    <p className="text-xs text-foreground-muted line-clamp-1 mt-0.5">
                       {item.origin_name}
                       {item.year ? ` · ${item.year}` : ""}
                     </p>
-                    <p className="text-[11px] text-zinc-600 mt-0.5">
+                    <p className="text-[11px] text-foreground-subtle mt-0.5">
                       {[item.quality, item.episode_current].filter(Boolean).join(" · ")}
                     </p>
                   </div>

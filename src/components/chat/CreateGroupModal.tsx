@@ -113,10 +113,10 @@ export default function CreateGroupModal({
       <button type="button" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full sm:max-w-md max-h-[90dvh] rounded-t-2xl sm:rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
-          <h2 className="text-white font-semibold">
+          <h2 className="text-foreground font-semibold">
             {tab === "group" ? "Tạo nhóm" : "Kết bạn bằng UID"}
           </h2>
-          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-zinc-400">
+          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-foreground-muted">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -126,7 +126,7 @@ export default function CreateGroupModal({
             type="button"
             onClick={() => setTab("group")}
             className={`flex-1 py-2.5 text-sm font-medium ${
-              tab === "group" ? "text-white border-b-2 border-rose-500" : "text-zinc-500"
+              tab === "group" ? "text-foreground border-b-2 border-rose-500" : "text-foreground-muted"
             }`}
           >
             <span className="inline-flex items-center gap-1.5 justify-center">
@@ -137,7 +137,7 @@ export default function CreateGroupModal({
             type="button"
             onClick={() => setTab("friend")}
             className={`flex-1 py-2.5 text-sm font-medium ${
-              tab === "friend" ? "text-white border-b-2 border-rose-500" : "text-zinc-500"
+              tab === "friend" ? "text-foreground border-b-2 border-rose-500" : "text-foreground-muted"
             }`}
           >
             <span className="inline-flex items-center gap-1.5 justify-center">
@@ -153,21 +153,21 @@ export default function CreateGroupModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Tên nhóm (tuỳ chọn)"
-                className="w-full rounded-xl bg-neutral-950 border border-neutral-800 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-rose-500/50"
+                className="w-full rounded-xl bg-neutral-950 border border-neutral-800 px-3 py-2.5 text-sm text-foreground placeholder:text-foreground-subtle outline-none focus:border-rose-500/50"
               />
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Tìm bạn bè..."
-                className="w-full rounded-xl bg-neutral-950 border border-neutral-800 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-rose-500/50"
+                className="w-full rounded-xl bg-neutral-950 border border-neutral-800 px-3 py-2.5 text-sm text-foreground placeholder:text-foreground-subtle outline-none focus:border-rose-500/50"
               />
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-foreground-muted">
                 Đã chọn {selected.length} thành viên
               </p>
             </div>
             <div className="flex-1 overflow-y-auto opus-chat-scroll custom-scroll px-2 py-2 max-h-[45vh]">
               {filtered.length === 0 ? (
-                <p className="text-sm text-zinc-500 text-center py-8 px-4">
+                <p className="text-sm text-foreground-muted text-center py-8 px-4">
                   Chưa có bạn bè. Sang tab Kết bạn để thêm bằng UID.
                 </p>
               ) : (
@@ -184,15 +184,15 @@ export default function CreateGroupModal({
                     >
                       <ChatAvatar user={u} size="sm" showStatus={false} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">{u.name || u.id}</p>
-                        <p className="text-[11px] text-zinc-500 truncate">@{u.id}</p>
+                        <p className="text-sm text-foreground truncate">{u.name || u.id}</p>
+                        <p className="text-[11px] text-foreground-muted truncate">@{u.id}</p>
                       </div>
                       <span
                         className={`w-5 h-5 rounded-full border flex items-center justify-center ${
                           on ? "bg-rose-500 border-rose-500" : "border-zinc-600"
                         }`}
                       >
-                        {on ? <Check className="w-3 h-3 text-white" /> : null}
+                        {on ? <Check className="w-3 h-3 text-foreground" /> : null}
                       </span>
                     </button>
                   );
@@ -205,7 +205,7 @@ export default function CreateGroupModal({
                 type="button"
                 disabled={busy || selected.length < 1}
                 onClick={() => void onCreateGroup()}
-                className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white text-sm font-semibold"
+                className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-foreground text-sm font-semibold"
               >
                 {busy ? "Đang tạo..." : "Tạo nhóm"}
               </button>
@@ -215,13 +215,13 @@ export default function CreateGroupModal({
           <div className="px-4 py-4 space-y-3">
             {myUid && (
               <div className="rounded-xl bg-neutral-950 border border-neutral-800 px-3 py-2.5">
-                <p className="text-[11px] text-zinc-500 mb-1">UID của bạn</p>
+                <p className="text-[11px] text-foreground-muted mb-1">UID của bạn</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-sm text-rose-300 font-mono tracking-wider">{myUid}</code>
                   <button
                     type="button"
                     onClick={() => void copyUid()}
-                    className="p-2 rounded-lg hover:bg-white/10 text-zinc-400"
+                    className="p-2 rounded-lg hover:bg-white/10 text-foreground-muted"
                   >
                     {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   </button>
@@ -232,13 +232,13 @@ export default function CreateGroupModal({
               value={uid}
               onChange={(e) => setUid(e.target.value)}
               placeholder="Nhập UID bạn bè (10 số)"
-              className="w-full rounded-xl bg-neutral-950 border border-neutral-800 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-rose-500/50"
+              className="w-full rounded-xl bg-neutral-950 border border-neutral-800 px-3 py-2.5 text-sm text-foreground placeholder:text-foreground-subtle outline-none focus:border-rose-500/50"
             />
-            {msg ? <p className="text-xs text-zinc-400">{msg}</p> : null}
+            {msg ? <p className="text-xs text-foreground-muted">{msg}</p> : null}
             <button
               type="button"
               onClick={() => void onAddFriend()}
-              className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold"
+              className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-foreground text-sm font-semibold"
             >
               Kết bạn
             </button>

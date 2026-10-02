@@ -57,7 +57,7 @@ export default function TerminalPanel() {
       style={{ height }}
     >
       <div
-        className="h-1.5 cursor-row-resize bg-[#1e1e1e] hover:bg-[#007acc]/60"
+        className="h-1.5 cursor-row-resize bg-surface hover:bg-[#007acc]/60"
         onMouseDown={(e) => {
           dragRef.current = { y: e.clientY, h: height };
           const onMove = (ev: MouseEvent) => {
@@ -83,9 +83,9 @@ export default function TerminalPanel() {
           setTerminalHeight(dragRef.current.h + dy);
         }}
       />
-      <div className="flex items-center gap-2 border-b border-[#2b2b2b] bg-[#1e1e1e] px-2 py-1">
-        <span className="text-xs font-medium text-zinc-300">Terminal</span>
-        <span className="text-[10px] text-zinc-500">opus@code:~$</span>
+      <div className="flex items-center gap-2 border-b border-[#2b2b2b] bg-surface px-2 py-1">
+        <span className="text-xs font-medium text-foreground-muted">Terminal</span>
+        <span className="text-[10px] text-foreground-muted">opus@code:~$</span>
         {awaitingInput && (
           <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200">
             Đang chờ nhập
@@ -99,7 +99,7 @@ export default function TerminalPanel() {
         <div className="ml-auto flex items-center gap-0.5">
           <button
             type="button"
-            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-foreground-muted hover:bg-white/10 hover:text-foreground"
             title="Xóa log"
             onClick={() => {
               if (awaitingInput) cancelTerminalInput();
@@ -113,7 +113,7 @@ export default function TerminalPanel() {
           </button>
           <button
             type="button"
-            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-foreground-muted hover:bg-white/10 hover:text-foreground"
             title={height > 320 ? "Thu nhỏ" : "Mở rộng"}
             onClick={() => setTerminalHeight(height > 320 ? 180 : 480)}
           >
@@ -125,7 +125,7 @@ export default function TerminalPanel() {
           </button>
           <button
             type="button"
-            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            className="rounded p-1 text-foreground-muted hover:bg-white/10 hover:text-foreground"
             title="Đóng"
             onClick={() => {
               if (awaitingInput) cancelTerminalInput();
@@ -150,13 +150,13 @@ export default function TerminalPanel() {
                 l.kind === "err" && "text-red-400",
                 l.kind === "info" && "text-emerald-400/90",
                 l.kind === "cmd" && "text-sky-300",
-                l.kind === "out" && "text-zinc-100"
+                l.kind === "out" && "text-foreground"
               )}
             >
               {l.kind === "cmd" ? (
                 <>
                   <span className="text-emerald-400">opus@code</span>
-                  <span className="text-zinc-500">:</span>
+                  <span className="text-foreground-muted">:</span>
                   <span className="text-sky-400">~$</span> {l.text}
                 </>
               ) : (
@@ -166,7 +166,7 @@ export default function TerminalPanel() {
           ))}
           {!awaitingInput && (
             <div className="text-emerald-400/80">
-              opus@code<span className="text-zinc-500">:</span>
+              opus@code<span className="text-foreground-muted">:</span>
               <span className="text-sky-400">~$</span>
               <span className="ml-1 animate-pulse">▌</span>
             </div>
@@ -177,9 +177,9 @@ export default function TerminalPanel() {
         {awaitingInput && (
           <form
             onSubmit={onSubmit}
-            className="flex shrink-0 items-center gap-2 border-t border-[#2b2b2b] bg-[#121212] px-2 py-2"
+            className="flex shrink-0 items-center gap-2 border-t border-[#2b2b2b] bg-surface px-2 py-2"
           >
-            <span className="hidden text-[11px] text-zinc-500 sm:inline max-w-[40%] truncate">
+            <span className="hidden text-[11px] text-foreground-muted sm:inline max-w-[40%] truncate">
               {inputPrompt || "Nhập:"}
             </span>
             <input
@@ -187,14 +187,14 @@ export default function TerminalPanel() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Nhập giá trị rồi Enter…"
-              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0c0c0c] px-3 py-2 font-mono text-xs text-white outline-none focus:border-sky-500/50"
+              className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0c0c0c] px-3 py-2 font-mono text-xs text-foreground outline-none focus:border-sky-500/50"
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
             />
             <button
               type="submit"
-              className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-500"
+              className="flex h-9 items-center gap-1 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-foreground hover:bg-emerald-500"
             >
               <Send className="h-3.5 w-3.5" />
               Gửi

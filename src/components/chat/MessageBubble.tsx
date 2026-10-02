@@ -52,7 +52,7 @@ export default function MessageBubble({
   if (m.system || m.senderId === "system") {
     return (
       <div className="flex justify-center my-2 px-4">
-        <span className="text-[11px] sm:text-[12px] text-zinc-500 text-center leading-relaxed max-w-[90%]">
+        <span className="text-[11px] sm:text-[12px] text-foreground-muted text-center leading-relaxed max-w-[90%]">
           {m.text}
         </span>
       </div>
@@ -74,18 +74,18 @@ export default function MessageBubble({
     const iconColor =
       call.kind === "missed" || call.kind === "rejected" || call.kind === "cancelled"
         ? "text-rose-400"
-        : "text-zinc-300";
+        : "text-foreground-muted";
 
     return (
       <div className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
         <div
           className={`max-w-[80%] rounded-2xl px-3 py-2.5 ${
-            mine ? "bg-[#0068ff] text-white rounded-br-md" : "bg-[#2a2e36] text-zinc-100 rounded-bl-md"
+            mine ? "bg-[#0068ff] text-foreground rounded-br-md" : "bg-[#2a2e36] text-foreground rounded-bl-md"
           }`}
         >
-          <p className={`text-[13px] mb-1 ${mine ? "text-white/90" : "text-zinc-300"}`}>{title}</p>
+          <p className={`text-[13px] mb-1 ${mine ? "text-foreground/90" : "text-foreground-muted"}`}>{title}</p>
           <div className="flex items-center gap-2">
-            <Icon className={`w-4 h-4 shrink-0 ${mine ? "text-white/80" : iconColor}`} />
+            <Icon className={`w-4 h-4 shrink-0 ${mine ? "text-foreground/80" : iconColor}`} />
             <span className="text-[14px] font-medium">{sub}</span>
           </div>
           {onCallBack && (
@@ -99,7 +99,7 @@ export default function MessageBubble({
               Gọi lại
             </button>
           )}
-          <p className={`text-[10px] mt-1 ${mine ? "text-white/60" : "text-zinc-500"}`}>
+          <p className={`text-[10px] mt-1 ${mine ? "text-foreground/60" : "text-foreground-muted"}`}>
             {formatChatTime(m.timestamp)}
           </p>
         </div>
@@ -110,7 +110,7 @@ export default function MessageBubble({
   if (m.deleted) {
     return (
       <div className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
-        <div className="max-w-[80%] rounded-2xl px-3 py-2 bg-transparent border border-dashed border-zinc-700 text-zinc-500 text-[13px] italic">
+        <div className="max-w-[80%] rounded-2xl px-3 py-2 bg-transparent border border-dashed border-border text-foreground-muted text-[13px] italic">
           Tin nhắn đã được xóa
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function MessageBubble({
   const StatusIcon =
     m.status === "read" ? CheckCheck : m.status === "delivered" ? CheckCheck : Check;
   const statusColor =
-    m.status === "read" ? "text-sky-300" : mine ? "text-white/50" : "text-zinc-500";
+    m.status === "read" ? "text-sky-300" : mine ? "text-foreground/50" : "text-foreground-muted";
 
   return (
     <div
@@ -131,25 +131,25 @@ export default function MessageBubble({
     >
       <div className={`max-w-[80%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
         {!mine && name ? (
-          <span className="text-[11px] text-zinc-500 mb-0.5 ml-1">{name}</span>
+          <span className="text-[11px] text-foreground-muted mb-0.5 ml-1">{name}</span>
         ) : null}
 
         <div
           className={`relative rounded-2xl px-3 py-2 ${
             mine
-              ? "bg-[#0068ff] text-white rounded-br-md"
-              : "bg-[#2a2e36] text-zinc-100 rounded-bl-md"
+              ? "bg-[#0068ff] text-foreground rounded-br-md"
+              : "bg-[#2a2e36] text-foreground rounded-bl-md"
           }`}
         >
           {m.forwardedFrom && (
-            <p className={`text-[11px] mb-1 ${mine ? "text-white/70" : "text-zinc-400"}`}>
+            <p className={`text-[11px] mb-1 ${mine ? "text-foreground/70" : "text-foreground-muted"}`}>
               Đã chuyển tiếp
             </p>
           )}
           {replyPreview && !replyPreview.deleted && (
             <div
               className={`mb-1.5 pl-2 border-l-2 text-[12px] line-clamp-2 ${
-                mine ? "border-white/40 text-white/80" : "border-[#5b9dff] text-zinc-400"
+                mine ? "border-white/40 text-foreground/80" : "border-[#5b9dff] text-foreground-muted"
               }`}
             >
               {replyPreview.text || "Đính kèm"}
@@ -216,7 +216,7 @@ export default function MessageBubble({
                     href={a.url}
                     download={a.name}
                     className={`block text-[13px] underline mb-1 ${
-                      mine ? "text-white/90" : "text-sky-300"
+                      mine ? "text-foreground/90" : "text-sky-300"
                     }`}
                   >
                     📎 {a.name || "Tệp đính kèm"}
@@ -266,7 +266,7 @@ export default function MessageBubble({
           ))}
           <button
             type="button"
-            className="p-1 text-zinc-400 hover:text-white"
+            className="p-1 text-foreground-muted hover:text-foreground"
             title="Trả lời"
             onClick={() => setReplyTo(m)}
           >
@@ -274,7 +274,7 @@ export default function MessageBubble({
           </button>
           <button
             type="button"
-            className="p-1 text-zinc-400 hover:text-amber-300"
+            className="p-1 text-foreground-muted hover:text-amber-300"
             title="Ghim tin"
             onClick={() => {
               pinMessage(m.conversationId, m.id);
@@ -285,7 +285,7 @@ export default function MessageBubble({
           </button>
           <button
             type="button"
-            className="p-1 text-zinc-400 hover:text-white"
+            className="p-1 text-foreground-muted hover:text-foreground"
             title="Sao chép"
             onClick={() => void navigator.clipboard.writeText(m.text || "")}
           >
@@ -294,7 +294,7 @@ export default function MessageBubble({
           {onForward && (
             <button
               type="button"
-              className="p-1 text-zinc-400 hover:text-white"
+              className="p-1 text-foreground-muted hover:text-foreground"
               title="Chuyển tiếp"
               onClick={() => onForward(m.id)}
             >
@@ -305,7 +305,7 @@ export default function MessageBubble({
             <>
               <button
                 type="button"
-                className="p-1 text-zinc-400 hover:text-white"
+                className="p-1 text-foreground-muted hover:text-foreground"
                 title="Sửa"
                 onClick={() => {
                   setEditText(m.text || "");
@@ -316,7 +316,7 @@ export default function MessageBubble({
               </button>
               <button
                 type="button"
-                className="p-1 text-zinc-400 hover:text-rose-300"
+                className="p-1 text-foreground-muted hover:text-rose-300"
                 title="Xóa chỉ mình tôi"
                 onClick={() => deleteMessage(m.id, "me")}
               >
@@ -324,7 +324,7 @@ export default function MessageBubble({
               </button>
               <button
                 type="button"
-                className="p-1 text-zinc-400 hover:text-rose-400"
+                className="p-1 text-foreground-muted hover:text-rose-400"
                 title="Thu hồi với mọi người"
                 onClick={() => {
                   if (window.confirm("Thu hồi tin nhắn với mọi người?")) {
@@ -339,7 +339,7 @@ export default function MessageBubble({
           {!mine && (
             <button
               type="button"
-              className="p-1 text-zinc-400 hover:text-rose-300"
+              className="p-1 text-foreground-muted hover:text-rose-300"
               title="Ẩn tin này"
               onClick={() => deleteMessage(m.id, "me")}
             >

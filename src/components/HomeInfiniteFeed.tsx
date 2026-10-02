@@ -66,7 +66,7 @@ export default function HomeInfiniteFeed() {
   return (
     <section className="relative py-4 sm:py-5">
       <div className="mb-3 flex items-end justify-between gap-3 px-3 sm:px-4 md:px-6 lg:px-8">
-        <h2 className="text-base font-bold tracking-tight text-white sm:text-lg md:text-xl">
+        <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg md:text-xl">
           Khám phá thêm
         </h2>
       </div>
@@ -80,10 +80,10 @@ export default function HomeInfiniteFeed() {
       <div ref={sentinel} className="h-10 w-full" aria-hidden />
 
       {loading ? (
-        <p className="py-3 text-center text-xs text-zinc-500">Đang tải thêm phim…</p>
+        <p className="py-3 text-center text-xs text-foreground-muted">Đang tải thêm phim…</p>
       ) : null}
       {!hasMore && items.length > 0 ? (
-        <p className="py-3 text-center text-[11px] text-zinc-600">Đã hết nội dung gợi ý</p>
+        <p className="py-3 text-center text-[11px] text-foreground-subtle">Đã hết nội dung gợi ý</p>
       ) : null}
     </section>
   );

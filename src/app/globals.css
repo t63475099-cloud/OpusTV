@@ -3144,3 +3144,220 @@ html[data-theme="dark"] [data-opus-dock="1"] [class*="bg-surface"] {
   border-color: #3f3f46 !important;
   color: #f4f4f5 !important;
 }
+
+/* ========== LIGHT MODE GLOBAL REMAP (all modules) ========== */
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Page shells */
+html[data-theme="light"] body,
+html[data-theme="light"] #__next,
+html[data-theme="light"] main {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Text: zinc scale → semantic */
+html[data-theme="light"] .text-white { color: var(--foreground) !important; }
+html[data-theme="light"] .text-zinc-50,
+html[data-theme="light"] .text-zinc-100,
+html[data-theme="light"] .text-zinc-200 { color: var(--foreground) !important; }
+html[data-theme="light"] .text-zinc-300,
+html[data-theme="light"] .text-zinc-400 { color: var(--foreground-muted) !important; }
+html[data-theme="light"] .text-zinc-500,
+html[data-theme="light"] .text-zinc-600 { color: var(--foreground-subtle) !important; }
+html[data-theme="light"] .text-zinc-700 { color: #334155 !important; }
+
+/* Backgrounds: pure dark → light surfaces */
+html[data-theme="light"] .bg-black,
+html[data-theme="light"] .bg-zinc-950,
+html[data-theme="light"] .bg-zinc-900,
+html[data-theme="light"] .bg-\[\#0a0a0a\],
+html[data-theme="light"] .bg-\[\#0a0a0c\],
+html[data-theme="light"] .bg-\[\#0a0a0f\],
+html[data-theme="light"] .bg-\[\#07070c\],
+html[data-theme="light"] .bg-\[\#050508\],
+html[data-theme="light"] .bg-\[\#12121a\],
+html[data-theme="light"] .bg-\[\#0f0f12\] {
+  background-color: var(--background) !important;
+}
+
+html[data-theme="light"] .bg-zinc-800,
+html[data-theme="light"] .bg-zinc-900\/50,
+html[data-theme="light"] .bg-zinc-900\/80,
+html[data-theme="light"] .bg-zinc-900\/90,
+html[data-theme="light"] .bg-\[\#121212\],
+html[data-theme="light"] .bg-\[\#16181c\],
+html[data-theme="light"] .bg-\[\#1c1c1e\],
+html[data-theme="light"] .bg-\[\#1e1e1e\],
+html[data-theme="light"] .bg-\[\#18181b\],
+html[data-theme="light"] .bg-\[\#1a1a1a\],
+html[data-theme="light"] .bg-\[\#252526\],
+html[data-theme="light"] .bg-\[\#272727\],
+html[data-theme="light"] .bg-\[\#2a2e36\],
+html[data-theme="light"] .bg-\[\#2d2d2d\] {
+  background-color: var(--surface) !important;
+}
+
+/* Soft white overlays on dark → light surface chips */
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-white\/\[0\.02\],
+html[data-theme="light"] .bg-white\/\[0\.03\],
+html[data-theme="light"] .bg-white\/\[0\.04\],
+html[data-theme="light"] .bg-white\/\[0\.05\],
+html[data-theme="light"] .bg-white\/\[0\.06\] {
+  background-color: var(--surface-elevated) !important;
+}
+html[data-theme="light"] .bg-white\/10,
+html[data-theme="light"] .bg-white\/15 {
+  background-color: color-mix(in srgb, var(--foreground) 8%, var(--surface)) !important;
+}
+
+/* Borders */
+html[data-theme="light"] .border-white\/5,
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/15,
+html[data-theme="light"] .border-white\/20,
+html[data-theme="light"] .border-zinc-800,
+html[data-theme="light"] .border-zinc-700,
+html[data-theme="light"] .border-zinc-600,
+html[data-theme="light"] .border-\[\#27272a\],
+html[data-theme="light"] .border-\[\#1a1a1a\],
+html[data-theme="light"] .border-\[\#1f1f1f\],
+html[data-theme="light"] .border-\[\#2a2d34\],
+html[data-theme="light"] .border-\[\#2b2b2b\],
+html[data-theme="light"] .border-\[\#303030\],
+html[data-theme="light"] .border-\[\#121216\] {
+  border-color: var(--border) !important;
+}
+
+/* Inputs / fields */
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-theme="light"] textarea,
+html[data-theme="light"] select {
+  background-color: var(--surface-elevated) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: var(--foreground-muted) !important;
+}
+
+/* Cards / panels common patterns */
+html[data-theme="light"] [class*="rounded-2xl"],
+html[data-theme="light"] [class*="rounded-xl"] {
+  /* don't force bg — only when dark bg classes present above */
+}
+
+/* Hover states that used white/10 */
+html[data-theme="light"] .hover\:bg-white\/5:hover,
+html[data-theme="light"] .hover\:bg-white\/10:hover {
+  background-color: var(--surface-elevated) !important;
+}
+html[data-theme="light"] .active\:bg-white\/5:active,
+html[data-theme="light"] .active\:bg-white\/10:active {
+  background-color: var(--surface-elevated) !important;
+}
+
+/* Navbar / sticky headers */
+html[data-theme="light"] header,
+html[data-theme="light"] [class*="sticky"][class*="top-0"] {
+  color: var(--foreground);
+}
+
+/* Scrollbars */
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+}
+html[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+}
+
+/* Keep video/player overlays DARK (intentional) */
+html[data-theme="light"] [data-player] .bg-black,
+html[data-theme="light"] [data-player] .bg-black\/20,
+html[data-theme="light"] [data-player] .bg-black\/30,
+html[data-theme="light"] [data-player] .bg-black\/40,
+html[data-theme="light"] [data-player] .bg-black\/50,
+html[data-theme="light"] [data-player] .bg-black\/60,
+html[data-theme="light"] [data-player] .bg-black\/70,
+html[data-theme="light"] [data-player] .bg-black\/80,
+html[data-theme="light"] [data-player] .bg-zinc-900,
+html[data-theme="light"] [data-player] .bg-zinc-950,
+html[data-theme="light"] [data-player] .text-white,
+html[data-theme="light"] video ~ * .text-white,
+html[data-theme="light"] .glass-player-bar {
+  /* restore intentional dark chrome on player */
+}
+html[data-theme="light"] [data-player] .bg-black,
+html[data-theme="light"] [data-player] .bg-zinc-900,
+html[data-theme="light"] [data-player] .bg-zinc-950 {
+  background-color: #0a0a0f !important;
+}
+html[data-theme="light"] [data-player] .text-white {
+  color: #fff !important;
+}
+html[data-theme="light"] [data-player] .text-zinc-100,
+html[data-theme="light"] [data-player] .text-zinc-200,
+html[data-theme="light"] [data-player] .text-zinc-300 {
+  color: #e4e4e7 !important;
+}
+html[data-theme="light"] .glass-player-bar {
+  background: linear-gradient(to top, rgba(0,0,0,0.92), transparent) !important;
+}
+
+/* Semi-transparent black scrims on media stay dark */
+html[data-theme="light"] .bg-black\/40,
+html[data-theme="light"] .bg-black\/50,
+html[data-theme="light"] .bg-black\/60,
+html[data-theme="light"] .bg-black\/70 {
+  /* only outside player — keep as dark overlay for poster hover */
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+html[data-theme="light"] [data-player] .bg-black\/40,
+html[data-theme="light"] [data-player] .bg-black\/50,
+html[data-theme="light"] [data-player] .bg-black\/60,
+html[data-theme="light"] [data-player] .bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Chat bubbles / code editor: soft light panels */
+html[data-theme="light"] [data-chat] .bg-zinc-900,
+html[data-theme="light"] [data-chat] .bg-zinc-950,
+html[data-theme="light"] [data-code] .bg-zinc-900,
+html[data-theme="light"] [data-code] .bg-\[\#1e1e1e\] {
+  background-color: var(--surface) !important;
+  color: var(--foreground) !important;
+}
+
+/* Event / music / list pages title contrast */
+html[data-theme="light"] h1, 
+html[data-theme="light"] h2, 
+html[data-theme="light"] h3 {
+  color: inherit;
+}
+
+/* Dividers */
+html[data-theme="light"] .divide-white\/5 > :not([hidden]) ~ :not([hidden]),
+html[data-theme="light"] .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+/* Modal / fixed overlays that used near-black */
+html[data-theme="light"] .fixed.inset-0.bg-black\/60,
+html[data-theme="light"] .fixed.inset-0.bg-black\/50,
+html[data-theme="light"] .fixed.inset-0.bg-black\/70 {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+}
+
+/* Notification / toast pills */
+html[data-theme="light"] [role="status"] {
+  color: var(--foreground);
+}
+
+/* Ensure lucide icons inherit */
+html[data-theme="light"] svg.lucide {
+  color: inherit;
+}

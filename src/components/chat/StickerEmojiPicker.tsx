@@ -31,7 +31,7 @@ export default function StickerEmojiPicker({
             type="button"
             onClick={() => setTab(k)}
             className={`flex-1 py-2 text-xs font-medium ${
-              tab === k ? "text-white border-b-2 border-rose-500" : "text-zinc-500"
+              tab === k ? "text-foreground border-b-2 border-rose-500" : "text-foreground-muted"
             }`}
           >
             {k === "emoji" ? "Emoji" : "Sticker"}

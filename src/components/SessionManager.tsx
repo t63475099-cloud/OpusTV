@@ -161,7 +161,7 @@ export default function SessionManager() {
 
   if (!username) {
     return (
-      <p className="text-sm text-zinc-500">Đăng nhập để xem và quản lý phiên làm việc.</p>
+      <p className="text-sm text-foreground-muted">Đăng nhập để xem và quản lý phiên làm việc.</p>
     );
   }
 
@@ -169,8 +169,8 @@ export default function SessionManager() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-white">Phiên đăng nhập</h3>
-          <p className="text-[11px] text-zinc-500 mt-0.5">
+          <h3 className="text-sm font-semibold text-foreground">Phiên đăng nhập</h3>
+          <p className="text-[11px] text-foreground-muted mt-0.5">
             Tên thiết bị lấy từ hệ thống · đăng xuất từ xa được
           </p>
         </div>
@@ -178,7 +178,7 @@ export default function SessionManager() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition"
+          className="p-2 rounded-xl text-foreground-muted hover:text-foreground hover:bg-white/10 transition"
           title="Làm mới"
         >
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
@@ -189,11 +189,11 @@ export default function SessionManager() {
       {msg && <p className="text-xs text-emerald-400">{msg}</p>}
 
       {loading && !list.length ? (
-        <div className="flex items-center gap-2 text-zinc-500 text-sm py-4">
+        <div className="flex items-center gap-2 text-foreground-muted text-sm py-4">
           <Loader2 className="h-4 w-4 animate-spin" /> Đang tải…
         </div>
       ) : list.length === 0 ? (
-        <p className="text-sm text-zinc-500 py-2">Không có phiên nào.</p>
+        <p className="text-sm text-foreground-muted py-2">Không có phiên nào.</p>
       ) : (
         <ul className="space-y-2">
           {list.map((s) => {
@@ -211,11 +211,11 @@ export default function SessionManager() {
                     : "border-white/10 bg-white/[0.04]"
                 )}
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-zinc-200 mt-0.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-foreground mt-0.5">
                   <DeviceIcon name={s.deviceName} platform={s.platform} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-white font-medium leading-snug break-words">
+                  <p className="text-sm text-foreground font-medium leading-snug break-words">
                     {title}
                     {s.isCurrent && (
                       <span className="ml-2 text-[10px] font-normal text-sky-300 whitespace-nowrap">
@@ -224,12 +224,12 @@ export default function SessionManager() {
                     )}
                   </p>
                   {s.platform && s.deviceName && !String(s.deviceName).includes(s.platform) && (
-                    <p className="text-[11px] text-zinc-400 mt-0.5">{s.platform}</p>
+                    <p className="text-[11px] text-foreground-muted mt-0.5">{s.platform}</p>
                   )}
-                  <p className="text-[11px] text-zinc-500 tabular-nums mt-0.5">
+                  <p className="text-[11px] text-foreground-muted tabular-nums mt-0.5">
                     Đăng nhập: {formatVi(s.createdAt)}
                   </p>
-                  <p className="text-[10px] text-zinc-600 tabular-nums">
+                  <p className="text-[10px] text-foreground-subtle tabular-nums">
                     Hết hạn: {formatVi(s.expiresAt)}
                   </p>
                 </div>
@@ -237,7 +237,7 @@ export default function SessionManager() {
                   type="button"
                   disabled={busyId === s.id}
                   onClick={() => void onRevoke(s.id, s.isCurrent)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-rose-300 hover:bg-rose-500/15 transition disabled:opacity-50 shrink-0"
+                  className="p-2 rounded-xl text-foreground-muted hover:text-rose-300 hover:bg-rose-500/15 transition disabled:opacity-50 shrink-0"
                   title="Đăng xuất phiên này"
                 >
                   {busyId === s.id ? (
@@ -257,7 +257,7 @@ export default function SessionManager() {
           type="button"
           disabled={busyId !== null || list.filter((s) => !s.isCurrent).length === 0}
           onClick={() => void onRevokeOthers()}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-white/10 bg-white/[0.06] text-zinc-200 hover:bg-white/10 transition disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-white/10 bg-white/[0.06] text-foreground hover:bg-white/10 transition disabled:opacity-40"
         >
           {busyId === "others" ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

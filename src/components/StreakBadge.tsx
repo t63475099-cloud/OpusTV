@@ -57,7 +57,7 @@ export default function StreakBadge() {
           setOpen((v) => !v);
         }}
         className={`relative p-2 rounded-full transition ${
-          lit ? "text-orange-300 hover:bg-orange-500/15" : "text-zinc-400 hover:bg-white/10"
+          lit ? "text-orange-300 hover:bg-orange-500/15" : "text-foreground-muted hover:bg-white/10"
         }`}
         aria-label="Chuỗi xem phim"
         title="Chuỗi xem phim"
@@ -66,28 +66,28 @@ export default function StreakBadge() {
           className={`w-5 h-5 ${lit ? "fill-orange-500/50 text-orange-300" : ""}`}
         />
         {days > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-orange-500 text-[10px] font-bold text-white flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-orange-500 text-[10px] font-bold text-foreground flex items-center justify-center">
             {days > 99 ? "99+" : days}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-white/10 bg-[#12121a]/95 backdrop-blur-xl shadow-2xl z-[130] overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-white/10 bg-background/95 backdrop-blur-xl shadow-2xl z-[130] overflow-hidden">
           <div className="px-3.5 py-3 border-b border-white/10">
-            <p className="text-sm font-semibold text-white flex items-center gap-2">
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Flame className="w-4 h-4 text-orange-300" />
               Chuỗi xem phim
             </p>
-            <p className="text-xs text-zinc-500 mt-0.5">Xem mỗi ngày để giữ lửa</p>
+            <p className="text-xs text-foreground-muted mt-0.5">Xem mỗi ngày để giữ lửa</p>
           </div>
           <div className="px-3.5 py-3 flex gap-3">
             <div className="flex-1 rounded-xl bg-white/5 border border-white/10 p-2.5 text-center">
-              <p className="text-[10px] text-zinc-500">Hiện tại</p>
+              <p className="text-[10px] text-foreground-muted">Hiện tại</p>
               <p className="text-lg font-bold text-orange-300">{info.current}</p>
             </div>
             <div className="flex-1 rounded-xl bg-white/5 border border-white/10 p-2.5 text-center">
-              <p className="text-[10px] text-zinc-500 flex items-center justify-center gap-1">
+              <p className="text-[10px] text-foreground-muted flex items-center justify-center gap-1">
                 <Trophy className="w-3 h-3" /> Kỷ lục
               </p>
               <p className="text-lg font-bold text-amber-300">{info.best}</p>

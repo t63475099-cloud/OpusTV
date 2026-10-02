@@ -61,7 +61,7 @@ function TreeNode({
         className={cn(
           "group flex items-center gap-1 rounded pr-1 text-[13px] cursor-pointer select-none",
           "transition-colors duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          activeId === node.id ? "bg-[#37373d] text-white" : "text-zinc-300 hover:bg-white/5"
+          activeId === node.id ? "bg-[#37373d] text-foreground" : "text-foreground-muted hover:bg-white/5"
         )}
         style={{ paddingLeft: 8 + depth * 12 }}
         onClick={() => {
@@ -87,7 +87,7 @@ function TreeNode({
         {renaming ? (
           <input
             autoFocus
-            className="min-w-0 flex-1 bg-[#3c3c3c] text-white text-xs px-1 py-0.5 rounded outline-none border border-[#007acc]"
+            className="min-w-0 flex-1 bg-[#3c3c3c] text-foreground text-xs px-1 py-0.5 rounded outline-none border border-[#007acc]"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onClick={(e) => e.stopPropagation()}
@@ -166,9 +166,9 @@ export default function FileExplorer() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#252526] text-[#cccccc]">
+    <div className="flex h-full flex-col bg-surface-elevated text-[#cccccc]">
       <div className="flex items-center gap-0.5 border-b border-[#2b2b2b] px-2 py-1.5">
-        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 px-1">
+        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wide text-foreground-muted px-1">
           Explorer
         </span>
         <button
@@ -225,8 +225,8 @@ export default function FileExplorer() {
       </div>
 
       {langMenu && (
-        <div className="mx-2 mt-2 max-h-52 overflow-y-auto rounded border border-white/10 bg-[#1e1e1e] p-1 shadow-xl z-20">
-          <p className="px-2 py-1 text-[10px] uppercase text-zinc-500">Ngôn ngữ</p>
+        <div className="mx-2 mt-2 max-h-52 overflow-y-auto rounded border border-white/10 bg-surface p-1 shadow-xl z-20">
+          <p className="px-2 py-1 text-[10px] uppercase text-foreground-muted">Ngôn ngữ</p>
           {CODE_LANGUAGES.map((lang) => (
             <button
               key={lang.id}
@@ -242,7 +242,7 @@ export default function FileExplorer() {
                 style={{ background: lang.color }}
               />
               {lang.label}
-              <span className="ml-auto text-[10px] text-zinc-500">.{lang.ext}</span>
+              <span className="ml-auto text-[10px] text-foreground-muted">.{lang.ext}</span>
             </button>
           ))}
         </div>
@@ -253,7 +253,7 @@ export default function FileExplorer() {
           <TreeNode key={n.id} node={n} depth={0} />
         ))}
         {!roots.length && (
-          <p className="px-3 py-4 text-xs text-zinc-500">Workspace trống — tạo file mới.</p>
+          <p className="px-3 py-4 text-xs text-foreground-muted">Workspace trống — tạo file mới.</p>
         )}
       </div>
     </div>

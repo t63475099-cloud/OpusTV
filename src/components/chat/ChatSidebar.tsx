@@ -63,20 +63,20 @@ function Row({
       )}
       <div className="flex-1 min-w-0 border-b border-[#2a2d34]/60 pb-2.5">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[15px] font-medium text-white truncate flex items-center gap-1">
+          <p className="text-[15px] font-medium text-foreground truncate flex items-center gap-1">
             {c.pinned ? <Pin className="w-3 h-3 text-amber-400 shrink-0" /> : null}
             {title}
           </p>
           {last && (
-            <span className="text-[11px] text-zinc-500 shrink-0">
+            <span className="text-[11px] text-foreground-muted shrink-0">
               {formatChatTime(last.timestamp)}
             </span>
           )}
         </div>
         <div className="flex items-center justify-between gap-2 mt-0.5">
-          <p className="text-[13px] text-zinc-400 truncate">{preview}</p>
+          <p className="text-[13px] text-foreground-muted truncate">{preview}</p>
           {c.unreadCount > 0 && (
-            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#c11e33] text-[10px] font-bold text-white flex items-center justify-center">
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#c11e33] text-[10px] font-bold text-foreground flex items-center justify-center">
               {c.unreadCount > 99 ? "99+" : c.unreadCount}
             </span>
           )}
@@ -123,29 +123,29 @@ export default function ChatSidebar({
   }, [conversations, search, tab]);
 
   return (
-    <aside className="flex flex-col h-full min-h-0 w-full bg-[#16181c] border-r border-[#2a2d34]">
+    <aside className="flex flex-col h-full min-h-0 w-full bg-surface border-r border-[#2a2d34]">
       {/* Top bar */}
       <div className="shrink-0 px-3 pt-3 pb-2 flex items-center gap-2">
         <Link
           href="/"
-          className="p-2 rounded-full hover:bg-[#2a2e36] text-zinc-300"
+          className="p-2 rounded-full hover:bg-[#2a2e36] text-foreground-muted"
           title="Trang chủ"
         >
           <Home className="w-5 h-5" />
         </Link>
         <div className="flex-1 flex items-center gap-2 rounded-full bg-[#2a2e36] px-3 h-9">
-          <Search className="w-4 h-4 text-zinc-500 shrink-0" />
+          <Search className="w-4 h-4 text-foreground-muted shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm kiếm"
-            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-500 min-w-0"
+            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted min-w-0"
           />
         </div>
         <button
           type="button"
           onClick={onOpenCreate}
-          className="p-2 rounded-full bg-[#0068ff] text-white"
+          className="p-2 rounded-full bg-[#0068ff] text-foreground"
           title="Kết bạn / Nhóm"
         >
           <Plus className="w-5 h-5" />
@@ -162,10 +162,10 @@ export default function ChatSidebar({
         >
           <ChatAvatar user={me ? getUser(me) : null} size="sm" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-white truncate">
+            <p className="text-xs font-medium text-foreground truncate">
               {me ? getUser(me)?.name || me : "Chưa đăng nhập"}
             </p>
-            <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+            <p className="text-[11px] text-foreground-muted flex items-center gap-1">
               <UserCircle className="w-3 h-3" />
               Đổi ảnh đại diện
             </p>
@@ -189,12 +189,22 @@ export default function ChatSidebar({
             className={`pb-2 border-b-2 transition ${
               tab === k
                 ? "border-[#0068ff] text-[#5b9dff] font-semibold"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+                : "border-transparent text-foreground-muted hover:text-foreground-muted"
             }`}
           >
             {label}
           </button>
         ))}
+      </div>
+
+      <div className="px-3 pb-2">
+        <button
+          type="button"
+          onClick={() => useChatStore.getState().markAllRead()}
+          className="w-full text-[11px] py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-foreground-muted transition"
+        >
+          Đánh dấu tất cả đã đọc
+        </button>
       </div>
 
       {/* List */}
@@ -205,8 +215,8 @@ export default function ChatSidebar({
       >
         {items.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-sm text-zinc-500">Chưa có hội thoại</p>
-            <p className="text-xs text-zinc-600 mt-1">Bấm + để kết bạn bằng UID</p>
+            <p className="text-sm text-foreground-muted">Chưa có hội thoại</p>
+            <p className="text-xs text-foreground-subtle mt-1">Bấm + để kết bạn bằng UID</p>
           </div>
         ) : (
           items.map((c) => (

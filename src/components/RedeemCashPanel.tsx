@@ -94,7 +94,7 @@ export default function RedeemCashPanel() {
   return (
     <section className="rounded-xl border border-border bg-surface p-4 space-y-3" data-gsap-reveal>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Banknote className="w-4 h-4 text-emerald-400" />
           Đổi xu thành tiền
         </h2>
@@ -106,15 +106,15 @@ export default function RedeemCashPanel() {
           {open ? "Đóng" : "Đổi ngay"}
         </button>
       </div>
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-foreground-muted">
         10 xu = 1.000₫ (1 xu = {COIN_TO_VND}₫) · Tối thiểu{" "}
         {MIN_REDEEM_COINS.toLocaleString("vi-VN")} xu · Phí{" "}
         {Math.round(REDEEM_FEE_RATE * 100)}%
       </p>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-foreground-muted">
         Yêu cầu được ghi nhận và chuyển tiền thật sau khi hệ thống/admin xử lý (ngân hàng hoặc ví).
       </p>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-foreground-muted">
         Số dư: <strong className="text-amber-300">{coins.toLocaleString("vi-VN")} xu</strong>
         {" ≈ "}
         <strong className="text-emerald-300">{fmtVnd(coins * COIN_TO_VND)}</strong>
@@ -122,7 +122,7 @@ export default function RedeemCashPanel() {
 
       {open && (
         <div className="space-y-3 pt-1 border-t border-white/10">
-          <label className="block text-xs text-zinc-400">
+          <label className="block text-xs text-foreground-muted">
             Số xu muốn đổi
             <input
               type="number"
@@ -130,15 +130,15 @@ export default function RedeemCashPanel() {
               step={100}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-foreground outline-none focus:border-emerald-500/50"
             />
           </label>
-          <div className="rounded-xl bg-black/30 border border-white/10 p-3 text-xs text-zinc-300 space-y-1">
+          <div className="rounded-xl bg-black/30 border border-white/10 p-3 text-xs text-foreground-muted space-y-1">
             <div className="flex justify-between">
               <span>Tạm tính</span>
               <span>{fmtVnd(calc.gross)}</span>
             </div>
-            <div className="flex justify-between text-zinc-500">
+            <div className="flex justify-between text-foreground-muted">
               <span>Phí</span>
               <span>-{fmtVnd(calc.fee)}</span>
             </div>
@@ -148,7 +148,7 @@ export default function RedeemCashPanel() {
             </div>
           </div>
 
-          <p className="text-xs font-medium text-zinc-300">Phương thức nhận tiền</p>
+          <p className="text-xs font-medium text-foreground-muted">Phương thức nhận tiền</p>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {PAYMENT_METHODS.map((m) => (
               <li key={m.id}>
@@ -162,27 +162,27 @@ export default function RedeemCashPanel() {
                       : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
                   )}
                 >
-                  <span className="text-sm text-white font-medium flex items-center gap-1">
+                  <span className="text-sm text-foreground font-medium flex items-center gap-1">
                     <Wallet className="w-3.5 h-3.5 opacity-70" />
                     {m.name}
                   </span>
-                  <span className="text-[11px] text-zinc-500 block mt-0.5">{m.desc}</span>
+                  <span className="text-[11px] text-foreground-muted block mt-0.5">{m.desc}</span>
                 </button>
               </li>
             ))}
           </ul>
 
-          <label className="block text-xs text-zinc-400">
+          <label className="block text-xs text-foreground-muted">
             Tên chủ tài khoản / ví
             <input
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
-              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-foreground outline-none focus:border-emerald-500/50"
               placeholder="Nguyễn Văn A"
               autoComplete="name"
             />
           </label>
-          <label className="block text-xs text-zinc-400">
+          <label className="block text-xs text-foreground-muted">
             {method === "bank"
               ? "Số tài khoản + ngân hàng"
               : method === "card"
@@ -191,7 +191,7 @@ export default function RedeemCashPanel() {
             <input
               value={accountInfo}
               onChange={(e) => setAccountInfo(e.target.value)}
-              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"
+              className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-foreground outline-none focus:border-emerald-500/50"
               placeholder={
                 method === "bank" ? "0123456789 · MB Bank" : "09xx xxx xxx"
               }
@@ -208,7 +208,7 @@ export default function RedeemCashPanel() {
           <button
             type="button"
             onClick={submit}
-            className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2.5 transition-all duration-300 active:scale-[0.98]"
+            className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-foreground text-sm font-semibold py-2.5 transition-all duration-300 active:scale-[0.98]"
           >
             Gửi yêu cầu nhận tiền
           </button>
@@ -217,7 +217,7 @@ export default function RedeemCashPanel() {
 
       {history.length > 0 && (
         <div className="pt-2 border-t border-white/10 space-y-2">
-          <p className="text-xs font-medium text-zinc-400">Lịch sử đổi</p>
+          <p className="text-xs font-medium text-foreground-muted">Lịch sử đổi</p>
           <ul className="space-y-1.5 max-h-40 overflow-y-auto">
             {history.slice(0, 10).map((h) => (
               <li
@@ -225,10 +225,10 @@ export default function RedeemCashPanel() {
                 className="flex items-center justify-between gap-2 text-[11px] rounded-lg bg-black/25 px-2.5 py-2 border border-white/5"
               >
                 <div className="min-w-0">
-                  <p className="text-zinc-200 truncate">
+                  <p className="text-foreground truncate">
                     {h.coins.toLocaleString("vi-VN")} xu → {fmtVnd(h.vndNet)}
                   </p>
-                  <p className="text-zinc-500 truncate">
+                  <p className="text-foreground-muted truncate">
                     {PAYMENT_METHODS.find((m) => m.id === h.method)?.name} ·{" "}
                     {h.status === "pending"
                       ? "Chờ xử lý"
@@ -249,7 +249,7 @@ export default function RedeemCashPanel() {
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
-                <ChevronRight className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-foreground-subtle shrink-0" />
               </li>
             ))}
           </ul>

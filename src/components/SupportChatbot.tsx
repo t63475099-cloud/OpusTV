@@ -125,7 +125,7 @@ export default function SupportChatbot() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className={`fixed z-[70] ${btnPos} flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-xl text-white shadow-lg px-3.5 py-2.5 text-sm font-medium transition active:scale-95`}
+          className={`fixed z-[70] ${btnPos} flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 backdrop-blur-xl text-foreground shadow-lg px-3.5 py-2.5 text-sm font-medium transition active:scale-95`}
           aria-label="Hỗ trợ"
         >
           <MessageCircle className="w-4 h-4 text-sky-400" />
@@ -135,17 +135,17 @@ export default function SupportChatbot() {
 
       {open && (
         <div
-          className={`fixed z-[70] ${panelPos} w-[min(100vw-1.5rem,360px)] h-[min(62vh,480px)] flex flex-col rounded-2xl border border-white/15 bg-[#12121a]/92 backdrop-blur-xl shadow-2xl overflow-hidden`}
+          className={`fixed z-[70] ${panelPos} w-[min(100vw-1.5rem,360px)] h-[min(62vh,480px)] flex flex-col rounded-2xl border border-white/15 bg-background/92 backdrop-blur-xl shadow-2xl overflow-hidden`}
           role="dialog"
           aria-label="Hỗ trợ"
         >
           <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/10 bg-white/5">
             <HelpCircle className="w-4 h-4 text-sky-400" />
-            <p className="flex-1 text-sm font-semibold text-white">Hỗ trợ OpusFilm</p>
+            <p className="flex-1 text-sm font-semibold text-foreground">Hỗ trợ OpusFilm</p>
             <Link href="/ho-tro" className="text-[11px] text-sky-400" onClick={() => setOpen(false)}>
               FAQ
             </Link>
-            <button type="button" onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400" aria-label="Đóng">
+            <button type="button" onClick={() => setOpen(false)} className="p-1.5 rounded-full hover:bg-white/10 text-foreground-muted" aria-label="Đóng">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -155,8 +155,8 @@ export default function SupportChatbot() {
                 <div
                   className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                     m.role === "user"
-                      ? "bg-sky-600/90 text-white rounded-br-md"
-                      : "bg-white/8 text-zinc-200 border border-white/10 rounded-bl-md"
+                      ? "bg-sky-600/90 text-foreground rounded-br-md"
+                      : "bg-white/8 text-foreground border border-white/10 rounded-bl-md"
                   }`}
                 >
                   {m.text}
@@ -171,7 +171,7 @@ export default function SupportChatbot() {
                 key={q}
                 type="button"
                 onClick={() => send(q)}
-                className="shrink-0 text-[11px] px-2.5 py-1 rounded-full border border-white/15 text-zinc-300 hover:bg-white/10"
+                className="shrink-0 text-[11px] px-2.5 py-1 rounded-full border border-white/15 text-foreground-muted hover:bg-white/10"
               >
                 {q}
               </button>
@@ -188,9 +188,9 @@ export default function SupportChatbot() {
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, 300))}
               placeholder="Nhập câu hỏi..."
-              className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-sky-500/40"
+              className="flex-1 min-w-0 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-foreground outline-none focus:border-sky-500/40"
             />
-            <button type="submit" className="p-2.5 rounded-xl bg-sky-600 text-white" aria-label="Gửi">
+            <button type="submit" className="p-2.5 rounded-xl bg-sky-600 text-foreground" aria-label="Gửi">
               <Send className="w-4 h-4" />
             </button>
           </form>

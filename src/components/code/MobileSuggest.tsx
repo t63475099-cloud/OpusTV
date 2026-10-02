@@ -23,10 +23,10 @@ const KIND_ICON: Record<SuggestItem["kind"], string> = {
 };
 
 const KIND_COLOR: Record<SuggestItem["kind"], string> = {
-  keyword: "bg-purple-600 text-white",
-  tag: "bg-sky-600 text-white",
-  snippet: "bg-rose-600 text-white",
-  property: "bg-emerald-600 text-white",
+  keyword: "bg-purple-600 text-foreground",
+  tag: "bg-sky-600 text-foreground",
+  snippet: "bg-rose-600 text-foreground",
+  property: "bg-emerald-600 text-foreground",
   function: "bg-amber-500 text-black",
 };
 
@@ -188,7 +188,7 @@ export default function MobileSuggest() {
   return (
     <div
       ref={listRef}
-      className="fixed z-[200] overflow-hidden rounded-md border border-[#454545] bg-[#252526] shadow-2xl md:hidden animate-[opus-fade-rise_0.5s_cubic-bezier(0.22,1,0.36,1)_both]"
+      className="fixed z-[200] overflow-hidden rounded-md border border-[#454545] bg-surface-elevated shadow-2xl md:hidden animate-[opus-fade-rise_0.5s_cubic-bezier(0.22,1,0.36,1)_both]"
       style={{
         top: pos.top,
         left: pos.left,
@@ -200,10 +200,10 @@ export default function MobileSuggest() {
     >
       {/* Header giống Monaco */}
       <div className="flex items-center justify-between border-b border-[#3c3c3c] bg-[#2d2d2d] px-2 py-1">
-        <span className="text-[10px] text-zinc-400 tracking-wide">Suggestions</span>
+        <span className="text-[10px] text-foreground-muted tracking-wide">Suggestions</span>
         <button
           type="button"
-          className="rounded px-1.5 py-0.5 text-[10px] text-zinc-500 hover:bg-white/10 hover:text-white"
+          className="rounded px-1.5 py-0.5 text-[10px] text-foreground-muted hover:bg-white/10 hover:text-foreground"
           onPointerDown={(e) => {
             e.preventDefault();
             setOpen(false);
@@ -247,12 +247,12 @@ export default function MobileSuggest() {
                   <span className="block truncate text-[10px] text-[#6a9955]">{it.detail}</span>
                 )}
               </span>
-              <span className="shrink-0 text-[10px] text-zinc-600 uppercase">{it.kind}</span>
+              <span className="shrink-0 text-[10px] text-foreground-subtle uppercase">{it.kind}</span>
             </button>
           </li>
         ))}
       </ul>
-      <div className="border-t border-[#3c3c3c] bg-[#2d2d2d] px-2 py-1 text-[10px] text-zinc-500">
+      <div className="border-t border-[#3c3c3c] bg-[#2d2d2d] px-2 py-1 text-[10px] text-foreground-muted">
         Chạm để chèn · {items.length} gợi ý
       </div>
     </div>

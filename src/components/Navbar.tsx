@@ -85,7 +85,7 @@ export default function Navbar() {
               className={cn(
                 "shrink-0 flex items-center justify-center",
                 "w-9 h-9 rounded-full",
-                "border border-white/20 bg-black/50 text-white",
+                "border border-white/20 bg-black/50 text-foreground",
                 "shadow-md",
                 "hover:bg-black/70 transition-colors duration-300"
               )}
@@ -99,11 +99,11 @@ export default function Navbar() {
             className="flex items-center gap-2 shrink-0 group min-w-0"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-orange-500 shadow-lg shadow-rose-500/20 shrink-0">
-              <PlayCircle className="h-4 w-4 text-white" />
+              <PlayCircle className="h-4 w-4 text-foreground" />
             </span>
             <span
               className={cn(
-                "font-semibold text-white tracking-tight transition-all duration-500 overflow-hidden whitespace-nowrap",
+                "font-semibold text-foreground tracking-tight transition-all duration-500 overflow-hidden whitespace-nowrap",
                 hideLogoText ? "max-w-0 opacity-0" : "max-w-[120px] opacity-100"
               )}
             >

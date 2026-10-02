@@ -211,14 +211,14 @@ export default function FloatingLivePreview() {
             <span className="h-2.5 w-2.5 rounded-full bg-amber-400/90" />
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/90" />
           </div>
-          <span className="ml-2 truncate text-xs font-semibold text-zinc-200">
+          <span className="ml-2 truncate text-xs font-semibold text-foreground">
             {title}
           </span>
           <div className="ml-auto flex items-center gap-0.5">
             {kind === "html" && (
               <button
                 type="button"
-                className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"
+                className="rounded-lg p-2 text-foreground-muted hover:bg-white/10 hover:text-foreground"
                 title="Tải lại"
                 onClick={() => setIframeKey((k) => k + 1)}
               >
@@ -227,7 +227,7 @@ export default function FloatingLivePreview() {
             )}
             <button
               type="button"
-              className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"
+              className="rounded-lg p-2 text-foreground-muted hover:bg-white/10 hover:text-foreground"
               title={expanded ? "Thu nhỏ" : "Phóng to"}
               onClick={() => setExpanded((v) => !v)}
             >
@@ -239,7 +239,7 @@ export default function FloatingLivePreview() {
             </button>
             <button
               type="button"
-              className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"
+              className="rounded-lg p-2 text-foreground-muted hover:bg-white/10 hover:text-foreground"
               title="Đóng (Terminal vẫn chạy)"
               onClick={closeUi}
             >
@@ -248,7 +248,7 @@ export default function FloatingLivePreview() {
           </div>
         </div>
 
-        <div className="relative flex min-h-0 flex-1 flex-col bg-[#0a0a0a]">
+        <div className="relative flex min-h-0 flex-1 flex-col bg-background">
           {kind === "html" && previewHtml && (
             <iframe
               key={iframeKey}
@@ -267,7 +267,7 @@ export default function FloatingLivePreview() {
               />
               {showDpad && (
                 <div className="shrink-0 border-t border-white/10 bg-[#12151a] px-3 py-3">
-                  <div className="mb-2 flex items-center gap-1.5 text-[10px] text-zinc-500">
+                  <div className="mb-2 flex items-center gap-1.5 text-[10px] text-foreground-muted">
                     <Gamepad2 className="h-3.5 w-3.5" />
                     Điều khiển
                   </div>
@@ -311,7 +311,7 @@ export default function FloatingLivePreview() {
                 </div>
               )}
               {recentOut.length > 0 && (
-                <div className="max-h-20 shrink-0 overflow-auto border-t border-white/5 bg-black/40 px-2 py-1 font-mono text-[10px] text-zinc-400">
+                <div className="max-h-20 shrink-0 overflow-auto border-t border-white/5 bg-black/40 px-2 py-1 font-mono text-[10px] text-foreground-muted">
                   {recentOut.map((l) => (
                     <div
                       key={l.id}
@@ -329,7 +329,7 @@ export default function FloatingLivePreview() {
           )}
         </div>
 
-        <div className="flex h-8 shrink-0 items-center justify-between border-t border-white/10 bg-[#161b22]/80 px-3 text-[10px] text-zinc-500">
+        <div className="flex h-8 shrink-0 items-center justify-between border-t border-white/10 bg-[#161b22]/80 px-3 text-[10px] text-foreground-muted">
           <span>Opus Code</span>
           <span className="flex items-center gap-1">
             <ExternalLink className="h-3 w-3" />
@@ -358,7 +358,7 @@ function PadBtn({
       aria-label={label}
       className={cn(
         "flex h-11 items-center justify-center rounded-xl",
-        "border border-white/10 bg-[#1c2128] text-zinc-200",
+        "border border-white/10 bg-[#1c2128] text-foreground",
         "transition-all duration-500 active:scale-95 active:bg-[#2a313c]",
         "select-none touch-manipulation"
       )}

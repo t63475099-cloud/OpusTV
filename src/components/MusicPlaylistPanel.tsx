@@ -19,7 +19,7 @@ export default function MusicPlaylistPanel({
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 space-y-3">
-      <div className="flex items-center gap-2 text-sm font-semibold text-white">
+      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
         <ListMusic className="w-4 h-4 text-rose-400" />
         Playlist của bạn
       </div>
@@ -28,7 +28,7 @@ export default function MusicPlaylistPanel({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Tên playlist"
-          className="flex-1 rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-rose-500/50"
+          className="flex-1 rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-foreground outline-none focus:border-rose-500/50"
         />
         <button
           type="button"
@@ -37,7 +37,7 @@ export default function MusicPlaylistPanel({
             create(name.trim());
             setName("");
           }}
-          className="px-3 py-2 rounded-xl bg-rose-600 text-white text-sm inline-flex items-center gap-1"
+          className="px-3 py-2 rounded-xl bg-rose-600 text-foreground text-sm inline-flex items-center gap-1"
         >
           <Plus className="w-4 h-4" /> Tạo
         </button>
@@ -46,7 +46,7 @@ export default function MusicPlaylistPanel({
         <button
           type="button"
           onClick={() => addTrack(activeId, current)}
-          className="w-full text-xs py-2 rounded-xl border border-white/10 text-zinc-300 hover:bg-white/5 transition"
+          className="w-full text-xs py-2 rounded-xl border border-white/10 text-foreground-muted hover:bg-white/5 transition"
         >
           + Thêm bài đang phát vào playlist đang chọn
         </button>
@@ -63,8 +63,8 @@ export default function MusicPlaylistPanel({
             onClick={() => setActive(pl.id)}
           >
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-white truncate">{pl.name}</p>
-              <p className="text-[10px] text-zinc-500">{pl.tracks.length} bài</p>
+              <p className="text-sm text-foreground truncate">{pl.name}</p>
+              <p className="text-[10px] text-foreground-muted">{pl.tracks.length} bài</p>
             </div>
             <button
               type="button"
@@ -72,14 +72,14 @@ export default function MusicPlaylistPanel({
                 e.stopPropagation();
                 remove(pl.id);
               }}
-              className="p-1.5 text-zinc-500 hover:text-red-400"
+              className="p-1.5 text-foreground-muted hover:text-red-400"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </li>
         ))}
         {!playlists.length && (
-          <li className="text-xs text-zinc-500 py-2">Chưa có playlist</li>
+          <li className="text-xs text-foreground-muted py-2">Chưa có playlist</li>
         )}
       </ul>
     </div>

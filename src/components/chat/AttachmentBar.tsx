@@ -63,13 +63,13 @@ export default function AttachmentBar({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={a.url} alt="" className="w-14 h-14 rounded-lg object-cover" />
               ) : (
-                <div className="w-14 h-14 rounded-lg bg-neutral-800 flex items-center justify-center text-[10px] text-zinc-400 px-1 text-center">
+                <div className="w-14 h-14 rounded-lg bg-neutral-800 flex items-center justify-center text-[10px] text-foreground-muted px-1 text-center">
                   {(a.name || "file").slice(0, 12)}
                 </div>
               )}
               <button
                 type="button"
-                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-black/80 text-white flex items-center justify-center"
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-black/80 text-foreground flex items-center justify-center"
                 onClick={() => setPending(pending.filter((x) => x.id !== a.id))}
               >
                 <X className="w-3 h-3" />
@@ -103,7 +103,7 @@ export default function AttachmentBar({
         <button
           type="button"
           onClick={() => imgRef.current?.click()}
-          className="p-2 rounded-full hover:bg-white/10 text-zinc-400"
+          className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
           title="Ảnh"
         >
           <ImagePlus className="w-5 h-5" />
@@ -111,7 +111,7 @@ export default function AttachmentBar({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="p-2 rounded-full hover:bg-white/10 text-zinc-400"
+          className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
           title="Tệp"
         >
           <Paperclip className="w-5 h-5" />

@@ -51,7 +51,7 @@ export default function PairStatusBar({
     <div
       className={cn(
         "flex flex-wrap items-center gap-2 px-2 py-1.5 rounded-xl border border-white/10",
-        "bg-white/[0.04] backdrop-blur-xl text-[11px] text-zinc-300",
+        "bg-white/[0.04] backdrop-blur-xl text-[11px] text-foreground-muted",
         "transition-all duration-500",
         className
       )}
@@ -61,7 +61,7 @@ export default function PairStatusBar({
           <button
             type="button"
             onClick={() => void pair.createRoom(displayName)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white font-medium transition-all duration-500"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-foreground font-medium transition-all duration-500"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Tạo phòng cộng tác
@@ -93,7 +93,7 @@ export default function PairStatusBar({
               />
               <button
                 type="submit"
-                className="px-2 py-1 rounded-lg bg-sky-600/90 text-white"
+                className="px-2 py-1 rounded-lg bg-sky-600/90 text-foreground"
               >
                 Vào
               </button>
@@ -123,14 +123,14 @@ export default function PairStatusBar({
           </span>
 
           {pair.roomId && (
-            <span className="font-mono text-zinc-400 truncate max-w-[9rem]">
+            <span className="font-mono text-foreground-muted truncate max-w-[9rem]">
               {pair.roomId}
             </span>
           )}
 
           <div className="flex items-center -space-x-1.5">
             <span
-              className="w-6 h-6 rounded-full border-2 border-[#121216] flex items-center justify-center text-[9px] font-bold text-white"
+              className="w-6 h-6 rounded-full border-2 border-[#121216] flex items-center justify-center text-[9px] font-bold text-foreground"
               style={{ background: "#f43f5e" }}
               title={displayName}
             >
@@ -139,21 +139,21 @@ export default function PairStatusBar({
             {pair.peers.slice(0, 3).map((p) => (
               <span
                 key={p.peerId}
-                className="w-6 h-6 rounded-full border-2 border-[#121216] flex items-center justify-center text-[9px] font-bold text-white"
+                className="w-6 h-6 rounded-full border-2 border-[#121216] flex items-center justify-center text-[9px] font-bold text-foreground"
                 style={{ background: p.color }}
                 title={p.name}
               >
                 {p.name.slice(0, 1).toUpperCase()}
               </span>
             ))}
-            <span className="ml-2 text-zinc-500 inline-flex items-center gap-0.5">
+            <span className="ml-2 text-foreground-muted inline-flex items-center gap-0.5">
               <Users className="w-3 h-3" />
               {1 + pair.peers.length}
             </span>
           </div>
 
           {pair.pingMs != null && (
-            <span className="text-zinc-500 tabular-nums">{pair.pingMs} ms</span>
+            <span className="text-foreground-muted tabular-nums">{pair.pingMs} ms</span>
           )}
 
           <button

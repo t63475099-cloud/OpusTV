@@ -408,11 +408,11 @@ function NhacInner() {
     <div className="min-h-screen pb-28 px-3 sm:px-4 md:px-6 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-9 h-9 rounded-full bg-[#ff0000] flex items-center justify-center shrink-0">
-          <Music2 className="w-5 h-5 text-white" />
+          <Music2 className="w-5 h-5 text-foreground" />
         </div>
         <div>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">Opus Music</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">Opus Music</h1>
             <div className="mt-2 mb-1"><MusicSleepTimer /></div>
           </div>
           
@@ -427,7 +427,7 @@ function NhacInner() {
           }}
           className="flex"
         >
-          <div className="relative flex-1 flex items-center bg-[#121212] border border-[#303030] rounded-l-full overflow-hidden focus-within:border-[#3ea6ff]">
+          <div className="relative flex-1 flex items-center bg-surface border border-[#303030] rounded-l-full overflow-hidden focus-within:border-[#3ea6ff]">
             <Search className="w-4 h-4 ml-4 text-[#717171] shrink-0" />
             <input
               value={searchInput}
@@ -437,13 +437,13 @@ function NhacInner() {
               }}
               onFocus={() => { setHistory(getMusicSearchHistory()); setOpenSuggest(true); }}
               placeholder="Tìm kiếm"
-              className="flex-1 bg-transparent text-white text-sm px-3 py-2.5 outline-none min-w-0"
+              className="flex-1 bg-transparent text-foreground text-sm px-3 py-2.5 outline-none min-w-0"
               autoComplete="off"
             />
             {searchInput && (
               <button
                 type="button"
-                className="p-2 text-[#717171] hover:text-white"
+                className="p-2 text-[#717171] hover:text-foreground"
                 onClick={() => {
                   setSearchInput("");
                   setSuggests([]);
@@ -457,7 +457,7 @@ function NhacInner() {
           </div>
           <button
             type="submit"
-            className="px-5 bg-[#222] border border-l-0 border-[#303030] rounded-r-full text-white hover:bg-[#303030]"
+            className="px-5 bg-[#222] border border-l-0 border-[#303030] rounded-r-full text-foreground hover:bg-[#303030]"
             aria-label="Tìm"
           >
             {loading && !loadingMore ? (
@@ -481,7 +481,7 @@ function NhacInner() {
                 <ul>
                   {history.map((h) => (
                     <li key={h} className="flex items-center hover:bg-white/5">
-                      <button type="button" className="flex-1 text-left px-4 py-2.5 text-sm text-white" onClick={() => { setSearchInput(h); runSearch(h); }}>
+                      <button type="button" className="flex-1 text-left px-4 py-2.5 text-sm text-foreground" onClick={() => { setSearchInput(h); runSearch(h); }}>
                         {h}
                       </button>
                       <button type="button" className="px-3 text-[#717171]" onClick={() => { removeMusicSearchHistory(h); setHistory(getMusicSearchHistory()); }}>
@@ -505,7 +505,7 @@ function NhacInner() {
                     }}
                   >
                     <Search className="w-4 h-4 text-[#aaa] shrink-0" />
-                    <span className="text-sm text-white line-clamp-1">{item.title}</span>
+                    <span className="text-sm text-foreground line-clamp-1">{item.title}</span>
                   </button>
                 </li>
               ))}
@@ -528,7 +528,7 @@ function NhacInner() {
               type="button"
               onClick={() => switchTab(t.id)}
               className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ${
-                tab === t.id ? "bg-white text-black font-medium" : "bg-[#272727] text-white"
+                tab === t.id ? "bg-white text-black font-medium" : "bg-[#272727] text-foreground"
               }`}
             >
               <t.icon className="w-4 h-4" />
@@ -541,7 +541,7 @@ function NhacInner() {
       {searchMode && (
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm text-[#aaa]">
-            Kết quả cho <span className="text-white font-medium">&quot;{searchInput}&quot;</span>
+            Kết quả cho <span className="text-foreground font-medium">&quot;{searchInput}&quot;</span>
           </p>
           <button type="button" className="text-sm text-red-400" onClick={() => switchTab("home")}>
             Về đề xuất
@@ -561,7 +561,7 @@ function NhacInner() {
                 fetchPage(tq, null, false, { hideWatched: true });
               }}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-xs transition ${
-                trendQ === tq ? "bg-white text-black" : "bg-[#272727] text-white"
+                trendQ === tq ? "bg-white text-black" : "bg-[#272727] text-foreground"
               }`}
             >
               {tq}
@@ -578,7 +578,7 @@ function NhacInner() {
               type="button"
               onClick={() => setCat(c)}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-sm transition ${
-                cat === c ? "bg-white text-black font-medium" : "bg-[#272727] text-white"
+                cat === c ? "bg-white text-black font-medium" : "bg-[#272727] text-foreground"
               }`}
             >
               {c}
@@ -601,7 +601,7 @@ function NhacInner() {
           }
           className="mb-5"
         >
-        <div className="rounded-2xl overflow-hidden bg-black border border-[#272727]">
+        <div className="rounded-2xl overflow-hidden bg-background border border-[#272727]">
           <div id="opus-music-player" className="relative w-full aspect-video">
             <iframe
               key={currentId}
@@ -614,13 +614,13 @@ function NhacInner() {
             />
           </div>
           <div className="px-3 py-2.5">
-            <h2 className="text-base font-semibold text-white line-clamp-2">
+            <h2 className="text-base font-semibold text-foreground line-clamp-2">
               {current?.title || "Đang phát"}
             </h2>
             <p className="text-sm text-[#aaa] flex flex-wrap items-center gap-2">
               <span>{current?.artist || ""}</span>
               {startSec > 5 ? (
-                <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-zinc-300 tabular-nums">
+                <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/10 text-foreground-muted tabular-nums">
                   Tiếp tục từ {Math.floor(startSec / 60)}:{String(Math.floor(startSec % 60)).padStart(2, "0")}
                 </span>
               ) : null}
@@ -643,14 +643,14 @@ function NhacInner() {
         {(tabSwitching || (loading && !loadingMore)) && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-background/90 rounded-xl min-h-[180px]">
             <div className="w-10 h-10 rounded-full border-2 border-white/20 border-t-red-500 animate-spin" />
-            <p className="text-sm text-zinc-300">Đang tải...</p>
+            <p className="text-sm text-foreground-muted">Đang tải...</p>
           </div>
         )}
 
         
           {watchedList.length > 0 && tab === "home" && !searchMode && (
             <section className="mb-6">
-              <h2 className="text-sm font-semibold text-zinc-300 mb-2 flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-foreground-muted mb-2 flex items-center gap-2">
                 <History className="w-4 h-4" /> Đã xem
               </h2>
               <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
@@ -669,7 +669,7 @@ function NhacInner() {
                     }
                     className="flex-shrink-0 w-28 text-left group"
                   >
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-800 mb-1">
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-surface-elevated mb-1">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={w.thumb || `https://i.ytimg.com/vi/${w.id}/hqdefault.jpg`}
@@ -677,7 +677,7 @@ function NhacInner() {
                         className="w-full h-full object-cover opacity-90 group-hover:opacity-100"
                       />
                     </div>
-                    <p className="text-[11px] text-white line-clamp-2 leading-snug">{w.title}</p>
+                    <p className="text-[11px] text-foreground line-clamp-2 leading-snug">{w.title}</p>
                   </button>
                 ))}
               </div>
@@ -685,13 +685,13 @@ function NhacInner() {
           )}
 
           {tab === "home" && !searchMode && (
-            <h2 className="text-sm font-semibold text-zinc-300 mb-2 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground-muted mb-2 flex items-center gap-2">
               <Flame className="w-4 h-4 text-red-500" /> Đề xuất mới cho bạn
             </h2>
           )}
 
         {!loading && !tabSwitching && searchMode && gridItems.length === 0 && (
-          <p className="text-sm text-zinc-400 py-8 text-center">Không tìm thấy video. Thử từ khóa khác.</p>
+          <p className="text-sm text-foreground-muted py-8 text-center">Không tìm thấy video. Thử từ khóa khác.</p>
         )}
 
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6">
@@ -714,7 +714,7 @@ function NhacInner() {
                 />
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/35 transition">
                   <div className="w-11 h-11 rounded-full bg-black/60 flex items-center justify-center">
-                    <Play className="w-5 h-5 text-white fill-white ml-0.5" />
+                    <Play className="w-5 h-5 text-foreground fill-white ml-0.5" />
                   </div>
                 </div>
               </div>
@@ -723,7 +723,7 @@ function NhacInner() {
                   <Music2 className="w-4 h-4 text-[#aaa]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white line-clamp-2 leading-snug">
+                  <p className="text-sm font-semibold text-foreground line-clamp-2 leading-snug">
                     {t.title}
                   </p>
                   <p className="text-xs text-[#aaa] mt-0.5 line-clamp-1">{t.artist}</p>
@@ -750,7 +750,7 @@ function NhacInner() {
 
 export default function NhacPage() {
   return (
-    <Suspense fallback={<div className="min-h-[50vh] pt-20 text-center text-zinc-500 text-sm">Đang tải nhạc…</div>}>
+    <Suspense fallback={<div className="min-h-[50vh] pt-20 text-center text-foreground-muted text-sm">Đang tải nhạc…</div>}>
       <NhacInner />
       <div className="px-4 pb-8 max-w-3xl mx-auto"><MusicPlaylistPanel /></div>
     </Suspense>

@@ -18,7 +18,7 @@ const LANG_MAP: Record<string, CodeLangId> = {
 export default function CodeTemplatesSelect() {
   return (
     <select
-      className="text-xs rounded-lg bg-black/40 border border-white/10 text-zinc-300 px-2 py-1.5 max-w-[160px] transition duration-500"
+      className="text-xs rounded-lg bg-black/40 border border-white/10 text-foreground-muted px-2 py-1.5 max-w-[160px] transition duration-500"
       defaultValue=""
       title="Chèn mẫu code"
       onChange={(e) => {

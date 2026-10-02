@@ -100,15 +100,15 @@ function Item({ q, a }: FaqItem) {
         className="w-full flex items-start gap-3 px-1 py-3.5 text-left"
         aria-expanded={open}
       >
-        <span className="flex-1 text-sm font-medium text-white leading-snug">{q}</span>
+        <span className="flex-1 text-sm font-medium text-foreground leading-snug">{q}</span>
         <ChevronDown
-          className={`w-4 h-4 text-zinc-500 shrink-0 mt-0.5 transition-transform duration-200 ${
+          className={`w-4 h-4 text-foreground-muted shrink-0 mt-0.5 transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
         />
       </button>
       {open && (
-        <p className="pb-3.5 pr-6 text-sm text-zinc-400 leading-relaxed">{a}</p>
+        <p className="pb-3.5 pr-6 text-sm text-foreground-muted leading-relaxed">{a}</p>
       )}
     </div>
   );
@@ -116,26 +116,26 @@ function Item({ q, a }: FaqItem) {
 
 export default function HoTroPage() {
   return (
-    <div className="min-h-[100dvh] pt-14 pb-24 bg-[#07070c]">
+    <div className="min-h-[100dvh] pt-14 pb-24 bg-background">
       <div className="mx-auto max-w-lg px-3 sm:px-4">
         <div className="flex items-center gap-3 py-4">
           <Link
             href="/cai-dat"
-            className="p-2 rounded-full hover:bg-white/10 text-zinc-300"
+            className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
             aria-label="Quay lại"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-white flex items-center gap-2">
+            <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
               <HelpCircle className="w-5 h-5 text-sky-400" />
               Hỗ trợ & FAQ
             </h1>
-            <p className="text-xs text-zinc-500">Câu hỏi thường gặp khi dùng OpusFilm</p>
+            <p className="text-xs text-foreground-muted">Câu hỏi thường gặp khi dùng OpusFilm</p>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 mb-4 text-sm text-zinc-400 leading-relaxed">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 mb-4 text-sm text-foreground-muted leading-relaxed">
           Chọn câu hỏi để xem trả lời. Nếu vẫn kẹt, mở{" "}
           <Link href="/hop-thu" className="text-sky-400 hover:underline">
             Hòm thư
@@ -153,7 +153,7 @@ export default function HoTroPage() {
               key={g.title}
               className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2"
             >
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 pt-2 pb-1">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground-muted pt-2 pb-1">
                 {g.title}
               </h2>
               {g.items.map((item) => (
@@ -164,8 +164,8 @@ export default function HoTroPage() {
         </div>
 
         <div className="mt-6 rounded-2xl border border-dashed border-white/15 px-4 py-5 text-center">
-          <Mail className="w-6 h-6 text-zinc-500 mx-auto mb-2" />
-          <p className="text-sm text-zinc-400">
+          <Mail className="w-6 h-6 text-foreground-muted mx-auto mb-2" />
+          <p className="text-sm text-foreground-muted">
             Chưa hết thắc mắc? Gửi phản hồi cho quản trị qua kênh đã công bố trên trang.
           </p>
         </div>

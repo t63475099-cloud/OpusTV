@@ -100,17 +100,17 @@ export default function TinNhanPage() {
 
   if (!username) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#16181c] px-4 text-center">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-surface px-4 text-center">
         <div className="w-14 h-14 rounded-2xl bg-[#0068ff] flex items-center justify-center mb-4">
-          <MessageCircle className="w-7 h-7 text-white" />
+          <MessageCircle className="w-7 h-7 text-foreground" />
         </div>
-        <p className="text-white font-semibold text-lg mb-1">Opus Chat</p>
-        <p className="text-sm text-zinc-400 mb-6 max-w-xs">
+        <p className="text-foreground font-semibold text-lg mb-1">Opus Chat</p>
+        <p className="text-sm text-foreground-muted mb-6 max-w-xs">
           Đăng nhập để nhắn tin và kết bạn bằng UID.
         </p>
         <Link
           href="/tai-khoan"
-          className="px-6 py-2.5 rounded-lg bg-[#0068ff] text-white text-sm font-semibold"
+          className="px-6 py-2.5 rounded-lg bg-[#0068ff] text-foreground text-sm font-semibold"
         >
           Đăng nhập
         </Link>
@@ -120,7 +120,7 @@ export default function TinNhanPage() {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex bg-[#0e1012] text-zinc-100"
+      className="fixed inset-0 z-40 flex bg-[#0e1012] text-foreground"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -136,7 +136,7 @@ export default function TinNhanPage() {
 
       {/* Trái: danh sách */}
       <div
-        className={`h-full w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-[#2a2d34] flex-col bg-[#16181c] ${
+        className={`h-full w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-[#2a2d34] flex-col bg-surface ${
           showThread ? "hidden md:flex" : "flex"
         }`}
       >
@@ -161,7 +161,7 @@ export default function TinNhanPage() {
 
       {/* Phải: thông tin hội thoại */}
       {active && showInfo && (
-        <div className="hidden xl:flex h-full w-[300px] shrink-0 border-l border-[#2a2d34] bg-[#16181c]">
+        <div className="hidden xl:flex h-full w-[300px] shrink-0 border-l border-[#2a2d34] bg-surface">
           <ChatInfoPanel conversation={active} onClose={() => setShowInfo(false)} />
         </div>
       )}

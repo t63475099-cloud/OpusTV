@@ -86,7 +86,7 @@ export default function CanvasPreview() {
   if (!canvasVisible) return null;
 
   const padBtn =
-    "flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white active:scale-95 active:bg-rose-500/40 touch-manipulation select-none transition-transform duration-150";
+    "flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-foreground active:scale-95 active:bg-rose-500/40 touch-manipulation select-none transition-transform duration-150";
 
   const hold = (dir: "up" | "down" | "left" | "right") => {
     dispatchArrowKey(dir, "down");
@@ -96,15 +96,15 @@ export default function CanvasPreview() {
   };
 
   return (
-    <div className="flex min-h-[160px] flex-1 flex-col border-t border-[#2b2b2b] md:border-l md:border-t-0 bg-[#0a0a0a] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
-      <div className="flex items-center gap-2 bg-[#1e1e1e] px-2 py-1">
+    <div className="flex min-h-[160px] flex-1 flex-col border-t border-[#2b2b2b] md:border-l md:border-t-0 bg-background transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]">
+      <div className="flex items-center gap-2 bg-surface px-2 py-1">
         <Gamepad2 className="h-3.5 w-3.5 text-rose-400" />
-        <span className="text-[10px] uppercase tracking-wide text-zinc-400">
+        <span className="text-[10px] uppercase tracking-wide text-foreground-muted">
           Canvas / Game Preview
         </span>
         <button
           type="button"
-          className="ml-auto rounded px-1.5 py-0.5 text-[10px] text-zinc-500 hover:bg-white/10 hover:text-white"
+          className="ml-auto rounded px-1.5 py-0.5 text-[10px] text-foreground-muted hover:bg-white/10 hover:text-foreground"
           onClick={() => {
             setCanvasVisible(false);
             setTurtleCode(null);
@@ -118,13 +118,13 @@ export default function CanvasPreview() {
 
       <div
         id={TURTLE_TARGET_ID}
-        className="relative mx-auto min-h-[180px] w-full flex-1 overflow-hidden bg-[#0a0a0a]"
+        className="relative mx-auto min-h-[180px] w-full flex-1 overflow-hidden bg-background"
         style={{ maxHeight: "min(42vh, 360px)" }}
       />
 
       {/* D-pad ảo — mobile / cảm ứng */}
-      <div className="flex flex-col items-center gap-1 border-t border-[#2b2b2b] bg-[#121212] px-3 py-2">
-        <p className="text-[10px] text-zinc-500 mb-0.5">
+      <div className="flex flex-col items-center gap-1 border-t border-[#2b2b2b] bg-surface px-3 py-2">
+        <p className="text-[10px] text-foreground-muted mb-0.5">
           Điều khiển · phím mũi tên / D-pad
         </p>
         <button

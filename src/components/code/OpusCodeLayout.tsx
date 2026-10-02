@@ -45,10 +45,10 @@ function CodePrefBar() {
   const wordWrap = useCodePrefsStore((s) => s.wordWrap);
   const setWordWrap = useCodePrefsStore((s) => s.setWordWrap);
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+    <div className="flex items-center gap-1.5 text-[11px] text-foreground-muted">
       <span>Cỡ chữ</span>
       <button type="button" className="px-1.5 py-0.5 rounded bg-white/10" onClick={() => setFontSize(fontSize - 1)}>−</button>
-      <span className="tabular-nums w-5 text-center text-zinc-300">{fontSize}</span>
+      <span className="tabular-nums w-5 text-center text-foreground-muted">{fontSize}</span>
       <button type="button" className="px-1.5 py-0.5 rounded bg-white/10" onClick={() => setFontSize(fontSize + 1)}>+</button>
       <button
         type="button"
@@ -342,7 +342,7 @@ export default function OpusCodeLayout() {
 
   if (!mounted) {
     return (
-      <div className="flex h-[100dvh] items-center justify-center bg-[#0d0d14]/95 backdrop-blur-xl text-zinc-500 text-sm">
+      <div className="flex h-[100dvh] items-center justify-center bg-[#0d0d14]/95 backdrop-blur-xl text-foreground-muted text-sm">
         Đang mở Opus Code…
       </div>
     );
@@ -363,7 +363,7 @@ export default function OpusCodeLayout() {
       <header className="relative z-[90] flex h-11 shrink-0 items-center gap-2 border-b border-[#2b2b2b] bg-[#3c3c3c] px-2 sm:px-3">
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded text-zinc-200 hover:bg-white/10 md:hidden"
+          className="flex h-8 w-8 items-center justify-center rounded text-foreground hover:bg-white/10 md:hidden"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           aria-label="Explorer"
         >
@@ -375,23 +375,23 @@ export default function OpusCodeLayout() {
         </button>
         <Link
           href="/"
-          className="flex h-8 items-center gap-1 rounded-md px-1.5 text-zinc-300 hover:bg-white/10 hover:text-white"
+          className="flex h-8 items-center gap-1 rounded-md px-1.5 text-foreground-muted hover:bg-white/10 hover:text-foreground"
           title="Về OpusFilm"
         >
           <ArrowLeft className="h-4 w-4" />
           <span className="hidden text-xs sm:inline">Film</span>
         </Link>
         <Code2 className="hidden h-5 w-5 text-sky-400 sm:block" />
-        <span className="text-sm font-semibold text-white tracking-tight">Opus Code</span>
+        <span className="text-sm font-semibold text-foreground tracking-tight">Opus Code</span>
         <div className="hidden sm:block ml-2"><CodePrefBar /></div>
-        <span className="hidden text-xs text-zinc-400 sm:inline truncate max-w-[40vw]">
+        <span className="hidden text-xs text-foreground-muted sm:inline truncate max-w-[40vw]">
           {active ? getPath(active.id) : "workspace"}
         </span>
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
             onClick={() => setSnippetOpen(true)}
-            className="hidden sm:flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 border border-white/10"
+            className="hidden sm:flex h-8 items-center gap-1 rounded-md px-2 text-xs text-foreground hover:bg-white/10 border border-white/10"
             title="Snippet Hub"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-300" />
@@ -399,7 +399,7 @@ export default function OpusCodeLayout() {
           </button>
           <button
             type="button"
-            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"
+            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-foreground hover:bg-white/10 md:hidden"
             onClick={onSuggestMobile}
             title="Gợi ý code"
             aria-label="Gợi ý"
@@ -409,7 +409,7 @@ export default function OpusCodeLayout() {
           </button>
           <button
             type="button"
-            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"
+            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-foreground hover:bg-white/10 md:hidden"
             onClick={() => void onPasteMobile()}
             title="Dán"
             aria-label="Dán"
@@ -419,7 +419,7 @@ export default function OpusCodeLayout() {
           </button>
           <button
             type="button"
-            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-zinc-200 hover:bg-white/10 md:hidden"
+            className="flex h-8 items-center gap-1 rounded-md px-2 text-xs text-foreground hover:bg-white/10 md:hidden"
             onClick={onClearMobile}
             title="Xóa nội dung"
             aria-label="Xóa"
@@ -432,7 +432,7 @@ export default function OpusCodeLayout() {
               type="button"
               onClick={onStop}
               className={cn(
-                "flex h-8 items-center gap-1.5 rounded-md px-2.5 sm:px-3 text-xs font-semibold text-white shadow",
+                "flex h-8 items-center gap-1.5 rounded-md px-2.5 sm:px-3 text-xs font-semibold text-foreground shadow",
                 "bg-rose-600 hover:bg-rose-500 active:scale-[0.98] transition-all duration-300"
               )}
             >
@@ -447,7 +447,7 @@ export default function OpusCodeLayout() {
                 onClick={() => void onRunMode("terminal")}
                 title="Chạy trong Terminal (có thể nhập liệu)"
                 className={cn(
-                  "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-white shadow",
+                  "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-foreground shadow",
                   "bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] transition-all duration-300"
                 )}
               >
@@ -459,7 +459,7 @@ export default function OpusCodeLayout() {
                 onClick={() => void onRunMode("preview")}
                 title="Live Preview"
                 className={cn(
-                  "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-white shadow",
+                  "flex h-8 items-center gap-1 rounded-md px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold text-foreground shadow",
                   "bg-sky-600 hover:bg-sky-500 active:scale-[0.98] transition-all duration-300"
                 )}
               >
@@ -476,7 +476,7 @@ export default function OpusCodeLayout() {
         <button
           type="button"
           onClick={() => setSnippetOpen(true)}
-          className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border border-white/10 text-zinc-300"
+          className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border border-white/10 text-foreground-muted"
         >
           <Sparkles className="w-3 h-3 text-amber-300" />
           Snippet
@@ -492,7 +492,7 @@ export default function OpusCodeLayout() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={cn(
               "flex h-10 w-10 items-center justify-center rounded",
-              sidebarOpen ? "text-white border-l-2 border-white" : "text-zinc-400 hover:text-white"
+              sidebarOpen ? "text-foreground border-l-2 border-white" : "text-foreground-muted hover:text-foreground"
             )}
           >
             <Files className="h-5 w-5" />
@@ -503,7 +503,7 @@ export default function OpusCodeLayout() {
             onClick={() => setTerminalOpen(!terminalOpen)}
             className={cn(
               "mt-1 flex h-10 w-10 items-center justify-center rounded",
-              terminalOpen ? "text-white" : "text-zinc-400 hover:text-white"
+              terminalOpen ? "text-foreground" : "text-foreground-muted hover:text-foreground"
             )}
           >
             <SquareTerminal className="h-5 w-5" />
@@ -522,7 +522,7 @@ export default function OpusCodeLayout() {
         <aside
           data-opus-panel
           className={cn(
-            "z-[86] flex shrink-0 flex-col border-r border-[#2b2b2b] bg-[#252526] overflow-hidden",
+            "z-[86] flex shrink-0 flex-col border-r border-[#2b2b2b] bg-surface-elevated overflow-hidden",
             "transition-[transform,width,opacity] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]",
             isMobile
               ? cn(
@@ -572,7 +572,7 @@ export default function OpusCodeLayout() {
       </div>
 
       {/* Status bar */}
-      <footer className="relative z-[90] flex h-6 shrink-0 items-center justify-between border-t border-[#007acc] bg-[#007acc] px-3 text-[11px] text-white">
+      <footer className="relative z-[90] flex h-6 shrink-0 items-center justify-between border-t border-[#007acc] bg-[#007acc] px-3 text-[11px] text-foreground">
         <span className="flex items-center gap-3 truncate">
           <span className="font-medium">Opus Code</span>
           {meta && <span className="opacity-90">{meta.label}</span>}

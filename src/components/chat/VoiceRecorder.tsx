@@ -91,13 +91,13 @@ export default function VoiceRecorder({
     return (
       <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800">
         <audio src={blobUrl} controls className="h-8 max-w-[140px]" />
-        <span className="text-[11px] text-zinc-400 tabular-nums">
+        <span className="text-[11px] text-foreground-muted tabular-nums">
           {mm}:{ss}
         </span>
-        <button type="button" onClick={discard} className="p-1.5 rounded-full hover:bg-white/10 text-zinc-400">
+        <button type="button" onClick={discard} className="p-1.5 rounded-full hover:bg-white/10 text-foreground-muted">
           <Trash2 className="w-4 h-4" />
         </button>
-        <button type="button" onClick={send} className="p-1.5 rounded-full bg-rose-600 text-white">
+        <button type="button" onClick={send} className="p-1.5 rounded-full bg-rose-600 text-foreground">
           <Send className="w-4 h-4" />
         </button>
       </div>
@@ -111,7 +111,7 @@ export default function VoiceRecorder({
         <span className="text-xs text-rose-300 tabular-nums">
           {mm}:{ss}
         </span>
-        <button type="button" onClick={stop} className="p-1.5 rounded-full bg-rose-600 text-white">
+        <button type="button" onClick={stop} className="p-1.5 rounded-full bg-rose-600 text-foreground">
           <Square className="w-3.5 h-3.5 fill-white" />
         </button>
       </div>
@@ -122,7 +122,7 @@ export default function VoiceRecorder({
     <button
       type="button"
       onClick={() => void start()}
-      className="p-2 rounded-full hover:bg-white/10 text-zinc-400"
+      className="p-2 rounded-full hover:bg-white/10 text-foreground-muted"
       title="Ghi âm"
     >
       <Mic className="w-5 h-5" />

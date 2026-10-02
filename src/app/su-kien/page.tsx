@@ -122,7 +122,7 @@ function WheelFace({ labels }: { labels: string[] }) {
         return (
           <span
             key={`l-${i}`}
-            className="pointer-events-none absolute max-w-[28%] truncate text-center text-[10px] font-extrabold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:text-[11px]"
+            className="pointer-events-none absolute max-w-[28%] truncate text-center text-[10px] font-extrabold leading-tight text-foreground drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:text-[11px]"
             style={{
               left: `${x}%`,
               top: `${y}%`,
@@ -133,7 +133,7 @@ function WheelFace({ labels }: { labels: string[] }) {
           </span>
         );
       })}
-      <div className="absolute inset-[30%] rounded-full border-2 border-white/30 bg-[#0a0a0a] shadow-inner" />
+      <div className="absolute inset-[30%] rounded-full border-2 border-white/30 bg-background shadow-inner" />
       <div className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow" />
     </div>
   );
@@ -366,12 +366,12 @@ export default function SuKienPage() {
   return (
     <div
       data-event-ui="social-v3"
-      className="min-h-[100dvh] bg-black text-white"
+      className="min-h-[100dvh] bg-background text-foreground"
       style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}
     >
       <div className="mx-auto w-full max-w-lg sm:max-w-xl lg:max-w-2xl">
         <header
-          className="sticky top-0 z-30 flex items-center gap-2 border-b border-[#1a1a1a] bg-black/95 px-3 backdrop-blur-md"
+          className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-black/95 px-3 backdrop-blur-md"
           style={{
             paddingTop: "max(0.5rem, env(safe-area-inset-top))",
             paddingBottom: "0.5rem",
@@ -388,7 +388,7 @@ export default function SuKienPage() {
             <p className="truncate text-[15px] font-semibold">Sự kiện</p>
           </div>
           <div
-            className={`flex items-center gap-1.5 rounded-full bg-[#1c1c1e] px-3 py-1.5 transition-colors ${
+            className={`flex items-center gap-1.5 rounded-full bg-surface-elevated px-3 py-1.5 transition-colors ${
               syncFlash ? "ring-2 ring-amber-400/60" : ""
             }`}
           >
@@ -400,7 +400,7 @@ export default function SuKienPage() {
         </header>
 
         {loggedIn && (
-          <p className="px-4 pt-1 text-[10px] text-zinc-600">
+          <p className="px-4 pt-1 text-[10px] text-foreground-subtle">
             Đồng bộ: {syncStatus}
             {serverHydrated ? " · server" : " · đang tải…"}
             {!username ? "" : ""}
@@ -413,42 +413,42 @@ export default function SuKienPage() {
               syncFlash ? "bg-amber-500/5 rounded-2xl" : ""
             }`}
           >
-            <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
+            <div className="rounded-2xl border border-border bg-surface px-2 py-3">
               <p className="text-lg font-bold tabular-nums">
                 {formatCoins(coins)}
               </p>
-              <p className="mt-0.5 text-[11px] text-zinc-500">Xu hiện có</p>
+              <p className="mt-0.5 text-[11px] text-foreground-muted">Xu hiện có</p>
             </div>
-            <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
+            <div className="rounded-2xl border border-border bg-surface px-2 py-3">
               <p className="text-lg font-bold tabular-nums">{status.streakDay}</p>
-              <p className="mt-0.5 text-[11px] text-zinc-500">Chuỗi ngày</p>
+              <p className="mt-0.5 text-[11px] text-foreground-muted">Chuỗi ngày</p>
             </div>
-            <div className="rounded-2xl border border-[#27272a] bg-[#121212] px-2 py-3">
+            <div className="rounded-2xl border border-border bg-surface px-2 py-3">
               <p className="text-lg font-bold tabular-nums">
                 {summary.done}/{summary.total}
               </p>
-              <p className="mt-0.5 text-[11px] text-zinc-500">Nhiệm vụ</p>
+              <p className="mt-0.5 text-[11px] text-foreground-muted">Nhiệm vụ</p>
             </div>
           </div>
 
           {(boostExpiresAt > nowTick || vipExpiresAt > nowTick) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {boostExpiresAt > nowTick && (
-                <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                <span className="rounded-full bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground-muted">
                   x2 xu · còn {fmtRemain(boostExpiresAt - nowTick)}
                 </span>
               )}
               {vipExpiresAt > nowTick && (
-                <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                <span className="rounded-full bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground-muted">
                   VIP · còn {fmtRemain(vipExpiresAt - nowTick)}
                 </span>
               )}
             </div>
           )}
 
-          <div className="mt-3 overflow-hidden rounded-xl border border-[#27272a] bg-[#121212]">
+          <div className="mt-3 overflow-hidden rounded-xl border border-border bg-surface">
             <div
-              className="flex whitespace-nowrap py-2 text-[11px] text-zinc-400"
+              className="flex whitespace-nowrap py-2 text-[11px] text-foreground-muted"
               style={{ animation: "event-ticker 28s linear infinite" }}
             >
               {[...tickerItems, ...tickerItems].map((tx, i) => (
@@ -460,7 +460,7 @@ export default function SuKienPage() {
           </div>
         </section>
 
-        <div className="sticky top-12 z-20 border-b border-[#1a1a1a] bg-black/95 backdrop-blur-md">
+        <div className="sticky top-12 z-20 border-b border-border bg-black/95 backdrop-blur-md">
           <div className="flex">
             {tabs.map((item) => {
               const on = tab === item.id;
@@ -470,7 +470,7 @@ export default function SuKienPage() {
                   type="button"
                   onClick={() => setTab(item.id)}
                   className={`relative flex-1 py-3 text-center text-sm font-semibold transition-colors ${
-                    on ? "text-white" : "text-zinc-500"
+                    on ? "text-foreground" : "text-foreground-muted"
                   }`}
                 >
                   {item.label}
@@ -484,13 +484,13 @@ export default function SuKienPage() {
         </div>
 
         <div className="space-y-3 px-3 py-3 sm:px-4">
-          <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
+          <section className="rounded-2xl border border-border bg-surface p-3.5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <Disc3 className="h-4 w-4 text-amber-400" />
                 Vòng quay
               </h2>
-              <span className="text-xs text-zinc-500">{SPIN_COST} xu / lượt</span>
+              <span className="text-xs text-foreground-muted">{SPIN_COST} xu / lượt</span>
             </div>
             <div className="relative mx-auto mb-3 h-52 w-52">
               <div
@@ -518,14 +518,14 @@ export default function SuKienPage() {
 
           {tab === "missions" && (
             <>
-              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
+              <section className="rounded-2xl border border-border bg-surface p-3.5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="flex items-center gap-2 text-sm font-semibold">
                     <Flame className="h-4 w-4 text-orange-400" />
                     Điểm danh {status.cycleDay}/7
                   </h2>
-                  <span className="text-xs text-zinc-500">
-                    Chuỗi <strong className="text-white">{status.streakDay}</strong>
+                  <span className="text-xs text-foreground-muted">
+                    Chuỗi <strong className="text-foreground">{status.streakDay}</strong>
                   </span>
                 </div>
                 {status.missed ? (
@@ -545,8 +545,8 @@ export default function SuKienPage() {
                           done
                             ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
                             : today
-                              ? "border-[#0084ff]/50 bg-[#0084ff]/15 text-white"
-                              : "border-[#27272a] bg-[#0a0a0a] text-zinc-500"
+                              ? "border-[#0084ff]/50 bg-[#0084ff]/15 text-foreground"
+                              : "border-border bg-background text-foreground-muted"
                         }`}
                       >
                         <div className="font-medium">D{day}</div>
@@ -567,12 +567,12 @@ export default function SuKienPage() {
                 </button>
               </section>
 
-              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
+              <section className="rounded-2xl border border-border bg-surface p-3.5">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-sm font-semibold">Nhiệm vụ ngày</h2>
-                  <span className="text-xs text-zinc-500">{summary.pct}%</span>
+                  <span className="text-xs text-foreground-muted">{summary.pct}%</span>
                 </div>
-                <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-surface-elevated">
                   <div
                     className="h-full rounded-full bg-[#0084ff] transition-all duration-500"
                     style={{ width: `${summary.pct}%` }}
@@ -588,11 +588,11 @@ export default function SuKienPage() {
                     return (
                       <li
                         key={m.id}
-                        className="flex items-center gap-3 rounded-xl border border-[#1f1f1f] bg-[#0a0a0a] p-3"
+                        className="flex items-center gap-3 rounded-xl border border-border bg-background p-3"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium">{m.title}</p>
-                          <p className="text-[11px] text-zinc-500">
+                          <p className="text-[11px] text-foreground-muted">
                             {fmtProgress(prog, m.target, m.unit)} · {MISSION_REWARD} xu
                             {claimed > 0 ? ` · đã nhận ${claimed}/${max}` : ""}
                           </p>
@@ -601,7 +601,7 @@ export default function SuKienPage() {
                           type="button"
                           disabled={!canClaim}
                           onClick={() => onClaimMission(m.id, m.title)}
-                          className="h-9 shrink-0 rounded-lg bg-[#0084ff] px-3 text-xs font-semibold disabled:bg-[#1c1c1e] disabled:text-zinc-500"
+                          className="h-9 shrink-0 rounded-lg bg-[#0084ff] px-3 text-xs font-semibold disabled:bg-surface-elevated disabled:text-foreground-muted"
                         >
                           {claimed >= max ? "Xong" : canClaim ? "Nhận" : "Chưa đủ"}
                         </button>
@@ -611,7 +611,7 @@ export default function SuKienPage() {
                 </ul>
               </section>
 
-              <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3.5">
+              <section className="rounded-2xl border border-border bg-surface p-3.5">
                 <h2 className="mb-2 text-sm font-semibold">Đổi xu lấy tiền</h2>
                 <RedeemCashPanel />
               </section>
@@ -619,14 +619,14 @@ export default function SuKienPage() {
           )}
 
           {tab === "pass" && (
-            <section className="rounded-2xl border border-[#27272a] bg-[#121212] p-3 sm:p-4">
+            <section className="rounded-2xl border border-border bg-surface p-3 sm:p-4">
               <OpusPassPanel />
             </section>
           )}
 
           {tab === "shop" && (
             <section className="space-y-2">
-              <p className="px-1 text-xs text-zinc-500">
+              <p className="px-1 text-xs text-foreground-muted">
                 Mở khóa khoảng {formatCoins(UNLOCK_COST)} xu / lần
               </p>
               {SHOP_ITEMS.map((item) => {
@@ -634,14 +634,14 @@ export default function SuKienPage() {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 rounded-2xl border border-[#27272a] bg-[#121212] p-3"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1c1c1e]">
-                      <Gift className="h-5 w-5 text-zinc-300" />
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-elevated">
+                      <Gift className="h-5 w-5 text-foreground-muted" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">{item.name}</p>
-                      <p className="line-clamp-2 text-[11px] text-zinc-500">{item.desc}</p>
+                      <p className="line-clamp-2 text-[11px] text-foreground-muted">{item.desc}</p>
                       <p className="mt-0.5 text-xs font-semibold tabular-nums text-amber-400">
                         {item.cost.toLocaleString("vi-VN")} xu
                       </p>
@@ -665,19 +665,19 @@ export default function SuKienPage() {
               {(equippedFrame || equippedBadge) && (
                 <div className="mb-1 flex flex-wrap gap-2">
                   {equippedFrame ? (
-                    <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                    <span className="rounded-full bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground-muted">
                       Khung đang dùng
                     </span>
                   ) : null}
                   {equippedBadge ? (
-                    <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] text-zinc-300">
+                    <span className="rounded-full bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground-muted">
                       Huy hiệu đang dùng
                     </span>
                   ) : null}
                 </div>
               )}
               {!(inventory || []).length ? (
-                <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-8 text-center text-sm text-zinc-500">
+                <div className="rounded-2xl border border-border bg-surface p-8 text-center text-sm text-foreground-muted">
                   Kho đồ trống. Đổi quà ở Cửa hàng hoặc quay Vòng quay.
                 </div>
               ) : (
@@ -688,11 +688,11 @@ export default function SuKienPage() {
                   return (
                     <div
                       key={it.id}
-                      className="flex items-center gap-3 rounded-2xl border border-[#27272a] bg-[#121212] p-3"
+                      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{it.name}</p>
-                        <p className="text-[11px] text-zinc-500">
+                        <p className="text-[11px] text-foreground-muted">
                           x{it.qty}
                           {it.meta ? ` · ${it.meta}` : ""}
                         </p>
@@ -710,7 +710,7 @@ export default function SuKienPage() {
                         <button
                           type="button"
                           onClick={() => onEquip(it.id)}
-                          className="h-9 rounded-lg bg-[#1c1c1e] px-3 text-xs font-semibold"
+                          className="h-9 rounded-lg bg-surface-elevated px-3 text-xs font-semibold"
                         >
                           Trang bị
                         </button>
@@ -736,7 +736,7 @@ export default function SuKienPage() {
       {toast ? (
         <div
           role="status"
-          className="fixed left-1/2 z-[200] max-w-[90vw] -translate-x-1/2 rounded-full border border-[#27272a] bg-[#1c1c1e] px-4 py-2.5 text-sm font-medium shadow-2xl"
+          className="fixed left-1/2 z-[200] max-w-[90vw] -translate-x-1/2 rounded-full border border-border bg-surface-elevated px-4 py-2.5 text-sm font-medium shadow-2xl"
           style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
         >
           {toast}
@@ -745,10 +745,10 @@ export default function SuKienPage() {
 
       {prizeModal ? (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-sm rounded-2xl border border-[#27272a] bg-[#121212] p-5 text-center">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 text-center">
             <Sparkles className="mx-auto mb-2 h-8 w-8 text-amber-400" />
             <h3 className="mb-2 text-lg font-bold">{prizeModal.label}</h3>
-            <p className="mb-5 text-sm text-zinc-400">{prizeModal.message}</p>
+            <p className="mb-5 text-sm text-foreground-muted">{prizeModal.message}</p>
             <button
               type="button"
               onClick={() => setPrizeModal(null)}

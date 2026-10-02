@@ -58,17 +58,17 @@ export default function BaoTriPage() {
   }, []);
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-zinc-100 px-6">
-      <div className="max-w-md w-full rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 text-center shadow-xl">
+    <main className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-6">
+      <div className="max-w-md w-full rounded-2xl border border-border bg-surface/80 p-8 text-center shadow-xl">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/15 text-2xl">
           🔧
         </div>
         <h1 className="text-xl font-semibold tracking-tight">Đang bảo trì</h1>
-        <p className="mt-3 text-sm text-zinc-400 leading-relaxed">{message}</p>
+        <p className="mt-3 text-sm text-foreground-muted leading-relaxed">{message}</p>
         {until && (
           <p className="mt-2 text-xs text-amber-400/90">Dự kiến mở lại: {until}</p>
         )}
-        <p className="mt-6 text-[11px] text-zinc-600">
+        <p className="mt-6 text-[11px] text-foreground-subtle">
           Trang sẽ tự mở lại khi bảo trì kết thúc.
         </p>
       </div>

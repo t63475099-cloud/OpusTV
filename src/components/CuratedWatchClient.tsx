@@ -11,15 +11,15 @@ export default function CuratedWatchClient({ movie }: { movie: CuratedMovie }) {
 
   return (
     <div className="mx-auto max-w-6xl px-3 sm:px-4 pb-24 pt-4">
-      <div className="mb-3 text-sm text-zinc-400">
-        <Link href="/" className="hover:text-white">
+      <div className="mb-3 text-sm text-foreground-muted">
+        <Link href="/" className="hover:text-foreground">
           Trang chủ
         </Link>
         <span className="mx-1.5">/</span>
-        <span className="text-white">{movie.name}</span>
+        <span className="text-foreground">{movie.name}</span>
       </div>
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-background ring-1 ring-white/10">
         <iframe
           key={current.youtubeId}
           src={`https://www.youtube.com/embed/${current.youtubeId}?rel=0&modestbranding=1`}
@@ -31,17 +31,17 @@ export default function CuratedWatchClient({ movie }: { movie: CuratedMovie }) {
       </div>
 
       <div className="mt-4">
-        <h1 className="text-xl font-bold text-white sm:text-2xl">
+        <h1 className="text-xl font-bold text-foreground sm:text-2xl">
           {movie.name} · {current.name}
         </h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <p className="mt-1 text-sm text-foreground-muted">
           {movie.origin_name} · {movie.year} · {movie.quality} · {movie.lang} · FAPTV
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-300">{movie.content}</p>
+        <p className="mt-3 text-sm leading-relaxed text-foreground-muted">{movie.content}</p>
       </div>
 
       <div className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-300">
+        <h2 className="mb-3 text-sm font-semibold text-foreground-muted">
           Danh sách tập ({movie.episodes.length})
         </h2>
         <div className="flex flex-wrap gap-2">
@@ -53,8 +53,8 @@ export default function CuratedWatchClient({ movie }: { movie: CuratedMovie }) {
               className={cn(
                 "rounded-lg border px-3 py-2 text-sm transition",
                 i === ep
-                  ? "border-red-500 bg-red-600 text-white"
-                  : "border-white/15 bg-white/5 text-zinc-200 hover:bg-white/10"
+                  ? "border-red-500 bg-red-600 text-foreground"
+                  : "border-white/15 bg-white/5 text-foreground hover:bg-white/10"
               )}
             >
               {e.name}
@@ -63,7 +63,7 @@ export default function CuratedWatchClient({ movie }: { movie: CuratedMovie }) {
         </div>
       </div>
 
-      <p className="mt-6 text-xs text-zinc-500">
+      <p className="mt-6 text-xs text-foreground-muted">
         Nguồn: FAPTV (YouTube).{" "}
         <a
           href={`https://www.youtube.com/watch?v=${current.youtubeId}`}

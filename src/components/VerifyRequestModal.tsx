@@ -130,14 +130,14 @@ export default function VerifyRequestModal({
         style={{ maxHeight: "min(90dvh, 640px)" }}
       >
         <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-white/10">
-          <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2 min-w-0">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground flex items-center gap-2 min-w-0">
             <BadgeCheck className="w-5 h-5 text-sky-400 shrink-0" />
             <span className="truncate">Yêu cầu xác minh</span>
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 p-2 rounded-full hover:bg-white/10 text-zinc-400"
+            className="shrink-0 p-2 rounded-full hover:bg-white/10 text-foreground-muted"
             aria-label="Đóng"
           >
             <X className="w-4 h-4" />
@@ -161,29 +161,29 @@ export default function VerifyRequestModal({
                 <Clock className="w-5 h-5 text-sky-400 shrink-0 mt-0.5" />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-sky-200">Đang chờ duyệt</p>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                    Tích xanh sẽ được cấp trong vòng <strong className="text-white">24 – 48 giờ</strong> nếu đạt yêu cầu.
+                  <p className="text-xs text-foreground-muted mt-1 leading-relaxed">
+                    Tích xanh sẽ được cấp trong vòng <strong className="text-foreground">24 – 48 giờ</strong> nếu đạt yêu cầu.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-sm text-white transition"
+                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-sm text-foreground transition"
               >
                 Đã hiểu
               </button>
             </div>
           ) : (
             <form onSubmit={submit} className="space-y-3">
-              <p className="text-xs text-zinc-400 leading-relaxed flex items-start gap-2">
+              <p className="text-xs text-foreground-muted leading-relaxed flex items-start gap-2">
                 <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                 Xác minh để nhận tích xanh trên avatar hồ sơ và bình luận.
               </p>
               <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Họ và tên</label>
+                <label className="text-xs text-foreground-muted mb-1 block">Họ và tên</label>
                 <input
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-sky-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-foreground outline-none focus:border-sky-500"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value.slice(0, 120))}
                   required
@@ -191,37 +191,37 @@ export default function VerifyRequestModal({
                 />
               </div>
               <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Lĩnh vực</label>
+                <label className="text-xs text-foreground-muted mb-1 block">Lĩnh vực</label>
                 <select
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-sky-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-foreground outline-none focus:border-sky-500"
                   value={field}
                   onChange={(e) => setField(e.target.value)}
                 >
                   {FIELDS.map((f) => (
-                    <option key={f} value={f} className="bg-zinc-900">
+                    <option key={f} value={f} className="bg-surface">
                       {f}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Mục đích xác minh</label>
+                <label className="text-xs text-foreground-muted mb-1 block">Mục đích xác minh</label>
                 <select
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-sky-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-foreground outline-none focus:border-sky-500"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                 >
                   {REASONS.map((r) => (
-                    <option key={r} value={r} className="bg-zinc-900">
+                    <option key={r} value={r} className="bg-surface">
                       {r}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Ghi chú thêm (tuỳ chọn)</label>
+                <label className="text-xs text-foreground-muted mb-1 block">Ghi chú thêm (tuỳ chọn)</label>
                 <textarea
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-white outline-none focus:border-sky-500 resize-y min-h-[72px]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm text-foreground outline-none focus:border-sky-500 resize-y min-h-[72px]"
                   value={note}
                   onChange={(e) => setNote(e.target.value.slice(0, 300))}
                   placeholder="Mô tả ngắn về tài khoản..."
@@ -232,7 +232,7 @@ export default function VerifyRequestModal({
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-sm font-semibold text-foreground disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {busy && <Loader2 className="w-4 h-4 animate-spin" />}
                 Gửi yêu cầu xác minh

@@ -75,7 +75,7 @@ export default function IosInstallGuide() {
           onClick={() => setOpen(true)}
           className={cn(
             "fixed z-[65] left-1/2 -translate-x-1/2",
-            "px-4 py-2 rounded-full text-xs font-medium text-white",
+            "px-4 py-2 rounded-full text-xs font-medium text-foreground",
             "bg-[#e11d48] border border-white/20 shadow-lg",
             "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
           )}
@@ -109,7 +109,7 @@ export default function IosInstallGuide() {
             <button
               type="button"
               onClick={dismiss}
-              className="absolute top-3 right-3 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/10"
+              className="absolute top-3 right-3 p-2 rounded-full text-foreground-muted hover:text-foreground hover:bg-white/10"
               aria-label="Đóng"
             >
               <X className="w-4 h-4" />
@@ -123,8 +123,8 @@ export default function IosInstallGuide() {
                 className="w-14 h-14 rounded-2xl shadow-md"
               />
               <div>
-                <p className="text-white font-semibold text-base">OpusFilm</p>
-                <p className="text-zinc-400 text-xs">Cài lên màn hình iPhone / iPad</p>
+                <p className="text-foreground font-semibold text-base">OpusFilm</p>
+                <p className="text-foreground-muted text-xs">Cài lên màn hình iPhone / iPad</p>
               </div>
             </div>
 
@@ -134,7 +134,7 @@ export default function IosInstallGuide() {
               </p>
             )}
 
-            <ol className="space-y-3 text-sm text-zinc-200">
+            <ol className="space-y-3 text-sm text-foreground">
               <li className="flex gap-3 items-start">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold">
                   1
@@ -164,7 +164,7 @@ export default function IosInstallGuide() {
             <button
               type="button"
               onClick={dismiss}
-              className="mt-5 w-full py-2.5 rounded-full bg-white/10 border border-white/15 text-sm text-white hover:bg-white/15 transition-colors duration-300"
+              className="mt-5 w-full py-2.5 rounded-full bg-white/10 border border-white/15 text-sm text-foreground hover:bg-white/15 transition-colors duration-300"
             >
               Đã hiểu
             </button>

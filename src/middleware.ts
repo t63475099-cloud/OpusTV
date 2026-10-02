@@ -4,9 +4,9 @@ import type { NextRequest } from "next/server";
 /**
  * Middleware:
  * 1) Lịch bảo trì VN (00:00–05:59) — SITE_SCHEDULE=off để tắt
- * 2) Zero-trust gate cho /admin/* và /api/admin/*
- * 3) Redirect trang admin cũ → /admin/board-home
- * 4) Session cookie presence for /api/auth/* (full revoke check in validateSession + SSE)
+ * 2) Dynamic maintenance cookie opus_maint_mode=1 (set khi admin bật)
+ * 3) Zero-trust /api/admin + redirect admin cũ → board-home
+ * 4) Whitelist: opus_admin_gate / x-admin-bypass / schedule bypass
  */
 
 function getVietnamHour(): number {
@@ -19,7 +19,7 @@ function getVietnamHour(): number {
   return Number(parts.find((p) => p.type === "hour")?.value || "0");
 }
 
-function isMaintenanceNow(): boolean {
+function isScheduleMaintenanceNow(): boolean {
   const hour = getVietnamHour();
   return hour >= 0 && hour < 6;
 }
@@ -37,9 +37,7 @@ function getAdminSecrets(): string[] {
 function secretMatches(value: string | undefined | null): boolean {
   if (!value) return false;
   const list = getAdminSecrets();
-  if (list.length === 0) {
-    return value === "OpusFilm2026Secret";
-  }
+  if (list.length === 0) return value === "OpusFilm2026Secret";
   return list.includes(value);
 }
 
@@ -64,7 +62,6 @@ export function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // ── Redirect old admin pages → unified board-home ──
   if (
     pathname === "/admin/verify" ||
     pathname === "/admin/key-board" ||
@@ -76,7 +73,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ── Admin API zero-trust ──
   if (pathname.startsWith("/api/admin")) {
     const headerSecret =
       request.headers.get("x-admin-secret") ||
@@ -89,14 +85,11 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Soft gate for /admin pages (except board-home login screen itself is client-gated)
-  // Cookie optional — page still asks for secret; cookie just reduces friction after unlock.
   if (
     pathname.startsWith("/admin") &&
     pathname !== "/admin/board-home" &&
     !pathname.startsWith("/admin/board-home/")
   ) {
-    // Any other /admin/* already redirected above; remaining unknown admin paths → board-home
     if (pathname !== "/admin" && pathname !== "/admin/") {
       const url = request.nextUrl.clone();
       url.pathname = "/admin/board-home";
@@ -113,14 +106,19 @@ export function middleware(request: NextRequest) {
   }
 
   const scheduleOff = process.env.SITE_SCHEDULE === "off";
-  const secret = process.env.SCHEDULE_BYPASS_SECRET || "opus-open";
+  const scheduleSecret = process.env.SCHEDULE_BYPASS_SECRET || "opus-open";
   const bypassQuery = request.nextUrl.searchParams.get("bypass");
   const bypassCookie = request.cookies.get("site_bypass")?.value;
-  const hasBypass = bypassQuery === secret || bypassCookie === secret;
+  const hasScheduleBypass =
+    bypassQuery === scheduleSecret || bypassCookie === scheduleSecret;
 
-  if (bypassQuery === secret) {
+  const adminBypass =
+    secretMatches(request.cookies.get("opus_admin_gate")?.value) ||
+    request.cookies.get("x-admin-bypass")?.value === "1";
+
+  if (bypassQuery === scheduleSecret) {
     const res = NextResponse.next();
-    res.cookies.set("site_bypass", secret, {
+    res.cookies.set("site_bypass", scheduleSecret, {
       path: "/",
       maxAge: 60 * 60 * 12,
       httpOnly: true,
@@ -129,7 +127,36 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  if (!scheduleOff && isMaintenanceNow() && !hasBypass) {
+  // Dynamic maintenance (admin-toggled) via cookie — client/SSE also redirects
+  const dynMaint = request.cookies.get("opus_maint_mode")?.value === "1";
+  const allowDuringMaint =
+    adminBypass ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/system") ||
+    pathname.startsWith("/api/cron");
+
+  if (dynMaint && !allowDuringMaint) {
+    // Video API / stream paths stay open for free playback isolation
+    const isStream =
+      pathname.includes(".m3u8") ||
+      pathname.startsWith("/api/stream") ||
+      pathname.startsWith("/api/phim");
+    if (!isStream) {
+      if (pathname.startsWith("/api")) {
+        return NextResponse.json(
+          { error: "maintenance", message: "Hệ thống đang bảo trì" },
+          { status: 503 }
+        );
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/bao-tri";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (!scheduleOff && isScheduleMaintenanceNow() && !hasScheduleBypass && !adminBypass) {
     if (pathname.startsWith("/api")) {
       return NextResponse.json(
         {

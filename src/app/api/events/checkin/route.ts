@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { serverCheckIn } from "@/lib/eventServerState";
+import { isPanicOrFeatureBlocked } from "@/lib/system/store";
 
 export const dynamic = "force-dynamic";
 
-/**
- * POST /api/events/checkin
- * Body: { expectedVersion?: number }
- * Server clock (Asia/Ho_Chi_Minh) — not client local day
- */
 export async function POST(req: NextRequest) {
   try {
+    const gate = await isPanicOrFeatureBlocked("FEATURE_CHECKIN");
+    if (gate.blocked) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            gate.reason === "EMERGENCY_LOCKDOWN"
+              ? "Hệ thống tạm khóa giao dịch"
+              : "Tính năng đang bảo trì nâng cấp",
+        },
+        { status: 503 }
+      );
+    }
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ ok: false, error: "Chưa đăng nhập" }, { status: 401 });

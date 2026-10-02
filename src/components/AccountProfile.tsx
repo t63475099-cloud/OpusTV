@@ -32,6 +32,7 @@ import { useStreakStore } from "@/lib/streak";
 import UserAvatar, { VerifiedBadge } from "@/components/UserAvatar";
 import { useThemeLocale } from "@/components/ThemeLocaleProvider";
 import { THEME_OPTIONS, LOCALE_OPTIONS, type ThemeMode, type LocaleCode } from "@/lib/themeLocale";
+import { SecurityDevicesCard } from "@/components/account/SecurityDevicesCard";
 
 type Tab = "services" | "frames" | "security";
 
@@ -634,6 +635,8 @@ export default function AccountProfile() {
                   </p>
                 ) : null}
               </div>
+
+              <SecurityDevicesCard username={username} theme="dark" />
 
               <div className="rounded-2xl border border-[#27272a] bg-[#121212] p-4">
                 <p className="mb-2 text-sm font-semibold">Hộp thư</p>

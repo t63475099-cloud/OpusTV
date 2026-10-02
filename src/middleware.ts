@@ -5,9 +5,8 @@ import type { NextRequest } from "next/server";
  * Middleware:
  * 1) Lịch bảo trì VN (00:00–05:59) — SITE_SCHEDULE=off để tắt
  * 2) Zero-trust gate cho /admin/* và /api/admin/*
- *    - Cho phép page /admin/board-home (client gate nhập secret)
- *    - API /api/admin/* bắt buộc header x-admin-secret (hoặc cookie opus_admin_gate)
  * 3) Redirect trang admin cũ → /admin/board-home
+ * 4) Session cookie presence for /api/auth/* (full revoke check in validateSession + SSE)
  */
 
 function getVietnamHour(): number {

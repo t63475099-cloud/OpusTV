@@ -102,7 +102,7 @@ export default function AccountPage() {
       const k = sp.get("key");
       const m = sp.get("mode");
       if (m === "register" || m === "login" || m === "recover") setMode(m);
-      if (k) setInviteKey(k.toUpperCase().slice(0, 24));
+      if (k) setInviteKey(k.toUpperCase().replace(/\s+/g, "").slice(0, 32));
       if (username && sp.get("next")) {
         window.location.replace(resolvePostAuthPath());
       }
@@ -360,7 +360,9 @@ export default function AccountPage() {
                 </div>
                 <input
                   value={inviteKey}
-                  onChange={(e) => setInviteKey(e.target.value.toUpperCase().slice(0, 24))}
+                  onChange={(e) =>
+                    setInviteKey(e.target.value.toUpperCase().replace(/\s+/g, "").slice(0, 32))
+                  }
                   placeholder="OF-XXXX-XXXX-XXXX"
                   className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 font-mono text-[15px] tracking-wider text-slate-900 outline-none focus:border-emerald-500"
                 />

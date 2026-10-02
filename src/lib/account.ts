@@ -79,7 +79,7 @@ export const useAccountStore = create<AccountState>()(
             vipExpiresAt: ev.vipExpiresAt,
             redeemHistory: [...(ev.redeemHistory || [])],
             liveFeed: [...(ev.liveFeed || [])].slice(0, 20),
-            updatedAt: Date.now(),
+            updatedAt: Number(ev.updatedAt) || Date.now(),
           },
           opusPass: {
             season: pass.season || 1,
@@ -179,6 +179,7 @@ export const useAccountStore = create<AccountState>()(
             vipExpiresAt: e.vipExpiresAt ? Number(e.vipExpiresAt) : null,
             redeemHistory: Array.isArray(e.redeemHistory) ? (e.redeemHistory as never[]) : [],
             liveFeed: Array.isArray(e.liveFeed) ? (e.liveFeed as never[]) : [],
+            updatedAt: Number(e.updatedAt) || Date.now(),
           });
         }
         // Opus Pass
@@ -203,18 +204,24 @@ export const useAccountStore = create<AccountState>()(
           const device = await collectDeviceInfoAsync();
           const res = await fetch("/api/auth/register", {
             method: "POST",
+            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               username,
               password,
               recoveryPin,
-              activationKey,
+              activationKey: String(activationKey || "").trim(),
               ...device,
               device,
             }),
           });
-          const data = await res.json();
-          if (!data.ok) return { ok: false, error: data.error || "Đăng ký thất bại" };
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.ok) {
+            return {
+              ok: false,
+              error: data.error || `Đăng ký thất bại (${res.status})`,
+            };
+          }
           get().setSession(data.username);
           // Hồ sơ mới sạch — đúng username lúc tạo, không avatar guest
           useSettingsStore.setState({

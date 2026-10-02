@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createKeys, listRecentKeys } from "@/lib/db/keys";
+import { createKeys, ensureKeysTable, listRecentKeys } from "@/lib/db/keys";
 import type { KeyTier } from "@/lib/keyEngine";
 
 function checkSecret(req: NextRequest) {
-  const secret = process.env.KEY_ADMIN_SECRET || process.env.MIGRATE_SECRET || "";
+  const secret =
+    process.env.KEY_ADMIN_SECRET ||
+    process.env.MIGRATE_SECRET ||
+    process.env.ADMIN_SECRET ||
+    "";
   if (!secret) return false;
   const h =
     req.headers.get("x-key-secret") ||
@@ -19,8 +23,12 @@ function checkSecret(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     if (!process.env.DATABASE_URL) {
-      return NextResponse.json({ ok: false, error: "DATABASE_URL chưa cấu hình" }, { status: 503 });
+      return NextResponse.json(
+        { ok: false, error: "DATABASE_URL chưa cấu hình" },
+        { status: 503 }
+      );
     }
+    await ensureKeysTable();
     const body = await req.json().catch(() => ({}));
     const isAdmin = checkSecret(req);
 
@@ -62,6 +70,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Lỗi";
+    console.error("keys/generate", e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }

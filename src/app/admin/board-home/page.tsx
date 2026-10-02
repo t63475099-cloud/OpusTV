@@ -98,11 +98,20 @@ export default function BoardHomePage() {
   });
   const [confirmText, setConfirmText] = useState("");
   const [modal, setModal] = useState<{
-    type: "delete_account" | "delete_key" | "delete_verify" | "reset_pw" | "ban" | null;
+    type:
+      | "delete_account"
+      | "delete_key"
+      | "delete_verify"
+      | "reset_pw"
+      | "ban"
+      | "grant_coins"
+      | null;
     payload?: Record<string, unknown>;
   }>({ type: null });
   const [resetPw, setResetPw] = useState("");
   const [banReason, setBanReason] = useState("Vi phạm nội quy");
+  const [grantAmount, setGrantAmount] = useState("1000");
+  const [grantNote, setGrantNote] = useState("");
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -497,9 +506,44 @@ export default function BoardHomePage() {
                           <div className="flex flex-wrap justify-end gap-1">
                             <button
                               type="button"
+                              className="rounded-md bg-amber-500/90 px-2 py-1 text-[11px] text-zinc-950 font-medium"
+                              onClick={() =>
+                                setModal({
+                                  type: "grant_coins",
+                                  payload: {
+                                    id: a.id,
+                                    username: a.username,
+                                    uid: a.uid,
+                                  },
+                                })
+                              }
+                            >
+                              Cấp xu
+                            </button>
+                            <button
+                              type="button"
+                              className={`rounded-md px-2 py-1 text-[11px] text-white ${
+                                a.verified ? "bg-sky-700/90" : "bg-sky-500/90"
+                              }`}
+                              onClick={() =>
+                                void mutate({
+                                  action: "set_verified",
+                                  id: a.id,
+                                  username: a.username,
+                                  verified: !a.verified,
+                                })
+                              }
+                            >
+                              {a.verified ? "Gỡ tick" : "Tick xanh"}
+                            </button>
+                            <button
+                              type="button"
                               className={`rounded-md border px-2 py-1 text-[11px] ${border}`}
                               onClick={() =>
-                                setModal({ type: "reset_pw", payload: { id: a.id, username: a.username } })
+                                setModal({
+                                  type: "reset_pw",
+                                  payload: { id: a.id, username: a.username },
+                                })
                               }
                             >
                               Đổi MK
@@ -508,7 +552,9 @@ export default function BoardHomePage() {
                               <button
                                 type="button"
                                 className="rounded-md bg-emerald-600/90 px-2 py-1 text-[11px] text-white"
-                                onClick={() => void mutate({ action: "unban", username: a.username })}
+                                onClick={() =>
+                                  void mutate({ action: "unban", username: a.username })
+                                }
                               >
                                 Mở khóa
                               </button>
@@ -517,7 +563,10 @@ export default function BoardHomePage() {
                                 type="button"
                                 className="rounded-md bg-amber-600/90 px-2 py-1 text-[11px] text-white"
                                 onClick={() =>
-                                  setModal({ type: "ban", payload: { username: a.username } })
+                                  setModal({
+                                    type: "ban",
+                                    payload: { username: a.username },
+                                  })
                                 }
                               >
                                 Khóa
@@ -1011,13 +1060,29 @@ export default function BoardHomePage() {
                   value={banReason}
                   onChange={(e) => setBanReason(e.target.value)}
                 />
-                <div className="mt-4 flex gap-2 justify-end">
+                <div className="mt-4 flex flex-wrap gap-2 justify-end">
                   <button
                     type="button"
                     className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
                     onClick={() => setModal({ type: null })}
                   >
                     Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-amber-700 px-3 py-1.5 text-sm text-white"
+                    onClick={async () => {
+                      await mutate({
+                        action: "ban",
+                        username: modal.payload?.username,
+                        reason: banReason,
+                        permanent: false,
+                        hours: 24,
+                      });
+                      setModal({ type: null });
+                    }}
+                  >
+                    Khóa 24h
                   </button>
                   <button
                     type="button"
@@ -1033,6 +1098,58 @@ export default function BoardHomePage() {
                     }}
                   >
                     Khóa vĩnh viễn
+                  </button>
+                </div>
+              </>
+            )}
+            {modal.type === "grant_coins" && (
+              <>
+                <h3 className="font-semibold">Cấp xu</h3>
+                <p className={`mt-1 text-sm ${muted}`}>
+                  {String(modal.payload?.username)}
+                  {modal.payload?.uid ? ` · UID ${String(modal.payload.uid)}` : ""}
+                </p>
+                <input
+                  type="number"
+                  min={1}
+                  className={`mt-3 w-full rounded-lg border px-3 py-2 text-sm ${input}`}
+                  placeholder="Số xu"
+                  value={grantAmount}
+                  onChange={(e) => setGrantAmount(e.target.value)}
+                />
+                <input
+                  className={`mt-2 w-full rounded-lg border px-3 py-2 text-sm ${input}`}
+                  placeholder="Ghi chú (tuỳ chọn)"
+                  value={grantNote}
+                  onChange={(e) => setGrantNote(e.target.value)}
+                />
+                <div className="mt-4 flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
+                    onClick={() => {
+                      setModal({ type: null });
+                      setGrantNote("");
+                    }}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-zinc-950"
+                    onClick={async () => {
+                      await mutate({
+                        action: "grant_coins",
+                        username: modal.payload?.username,
+                        uid: modal.payload?.uid,
+                        amount: Number(grantAmount),
+                        note: grantNote || "Admin cấp xu",
+                      });
+                      setModal({ type: null });
+                      setGrantNote("");
+                    }}
+                  >
+                    Cấp xu
                   </button>
                 </div>
               </>

@@ -376,6 +376,12 @@ export async function POST(req: NextRequest) {
         INSERT INTO user_bans (user_id, username, level, reason, kind, ban_until, permanent, ip_block)
         VALUES (${u.id}, ${u.username}, ${Number(body.level) || 1}, ${reason}, ${String(body.kind || "other")}, ${banUntil}, ${permanent}, ${""})
       `;
+      try {
+        const { forceLogoutUser } = await import("@/lib/session/store");
+        await forceLogoutUser(u.id, reason || "Tài khoản bị khóa");
+      } catch {
+        /* */
+      }
       return NextResponse.json({ ok: true, username: u.username, banUntil, permanent });
     }
 
@@ -609,6 +615,132 @@ export async function POST(req: NextRequest) {
         VALUES ('clean_orphans', ${`deleted=${deleted}`})
       `;
       return NextResponse.json({ ok: true, deleted, message: "Đã dọn mục rác / bản ghi cô lập" });
+    }
+
+    if (action === "grant_coins") {
+      const username = String(body.username || "").trim();
+      const uid = String(body.uid || "").trim();
+      const amount = Math.floor(Number(body.amount) || 0);
+      const note = String(body.note || "Admin cấp xu").slice(0, 200);
+      if ((!username && !uid) || amount < 1 || amount > 2_000_000_000) {
+        return NextResponse.json(
+          { ok: false, error: "Cần username/UID và số xu 1–2.000.000.000" },
+          { status: 400 }
+        );
+      }
+      let userRows;
+      if (uid) {
+        userRows = await sql`SELECT id, username FROM users WHERE uid = ${uid} LIMIT 1`;
+      } else {
+        userRows = await sql`
+          SELECT id, username FROM users WHERE lower(username) = ${username.toLowerCase()} LIMIT 1
+        `;
+      }
+      if (!userRows.length) {
+        return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản" }, { status: 404 });
+      }
+      const u = userRows[0] as { id: number; username: string };
+      await sql`
+        CREATE TABLE IF NOT EXISTS coin_grants (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          username TEXT NOT NULL,
+          amount INTEGER NOT NULL,
+          note TEXT DEFAULT '',
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      await sql`
+        INSERT INTO coin_grants (user_id, username, amount, note)
+        VALUES (${u.id}, ${u.username}, ${amount}, ${note})
+      `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS event_user_state (
+          user_id INTEGER PRIMARY KEY,
+          username TEXT NOT NULL DEFAULT '',
+          coins BIGINT NOT NULL DEFAULT 0,
+          streak_days INTEGER NOT NULL DEFAULT 0,
+          last_check_in TEXT,
+          claimed_check_in_day TEXT,
+          mission_day TEXT,
+          mission_progress JSONB NOT NULL DEFAULT '{}'::jsonb,
+          mission_claim_count JSONB NOT NULL DEFAULT '{}'::jsonb,
+          completed_tasks INTEGER NOT NULL DEFAULT 0,
+          double_exp_until TIMESTAMPTZ,
+          vip_until TIMESTAMPTZ,
+          last_spin JSONB,
+          total_earned BIGINT NOT NULL DEFAULT 0,
+          inventory JSONB NOT NULL DEFAULT '[]'::jsonb,
+          version BIGINT NOT NULL DEFAULT 1,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+      await sql`
+        INSERT INTO event_user_state (user_id, username, coins, total_earned, version)
+        VALUES (${u.id}, ${u.username}, ${amount}, ${amount}, 1)
+        ON CONFLICT (user_id) DO UPDATE SET
+          coins = event_user_state.coins + ${amount},
+          total_earned = event_user_state.total_earned + ${amount},
+          version = event_user_state.version + 1,
+          updated_at = NOW()
+      `;
+      try {
+        await sql`
+          INSERT INTO account_state (user_id, state_version, coins, updated_at)
+          VALUES (${u.id}, 1, ${amount}, NOW())
+          ON CONFLICT (user_id) DO UPDATE SET
+            coins = account_state.coins + ${amount},
+            state_version = account_state.state_version + 1,
+            updated_at = NOW()
+        `;
+      } catch {
+        /* */
+      }
+      try {
+        const { broadcastAccountUpdate } = await import("@/lib/session/store");
+        await broadcastAccountUpdate(u.id, "STATE_MUTATED", {
+          message: `grant_coins:${amount}`,
+          bumpVersion: true,
+        });
+      } catch {
+        /* */
+      }
+      return NextResponse.json({
+        ok: true,
+        username: u.username,
+        amount,
+        message: `Đã cấp ${amount.toLocaleString("vi-VN")} xu cho ${u.username}`,
+      });
+    }
+
+    if (action === "set_verified") {
+      const id = Number(body.id || 0);
+      const username = String(body.username || "").trim().toLowerCase();
+      const verified =
+        body.verified === true || body.verified === 1 || body.verified === "1";
+      const flag = verified ? 1 : 0;
+      let rows;
+      if (id > 0) {
+        rows = await sql`
+          UPDATE users SET verified = ${flag}, updated_at = NOW()
+          WHERE id = ${id} RETURNING id, username, verified
+        `;
+      } else if (username) {
+        rows = await sql`
+          UPDATE users SET verified = ${flag}, updated_at = NOW()
+          WHERE lower(username) = ${username} RETURNING id, username, verified
+        `;
+      } else {
+        return NextResponse.json({ ok: false, error: "Thiếu id hoặc username" }, { status: 400 });
+      }
+      if (!rows.length) {
+        return NextResponse.json({ ok: false, error: "Không tìm thấy tài khoản" }, { status: 404 });
+      }
+      return NextResponse.json({
+        ok: true,
+        user: rows[0],
+        message: flag ? "Đã gắn tick xanh" : "Đã gỡ tick xanh",
+      });
     }
 
     if (action === "stats") {

@@ -2,7 +2,10 @@
 
 import { useSystemHealth } from "@/hooks/useSystemHealth";
 
-/** Mount in root layout — version poll + maintenance redirect + update toast */
+/**
+ * Toast cập nhật bản build — 1 nút rõ, tương phản cao cả Light/Dark.
+ * Không chồng chữ, không pill đen + chữ tím khó đọc.
+ */
 export function SystemHealthBridge() {
   const { updateAvailable, softReload } = useSystemHealth();
 
@@ -10,15 +13,17 @@ export function SystemHealthBridge() {
 
   return (
     <div
-      className="fixed bottom-20 left-1/2 z-[80] -translate-x-1/2 rounded-full border border-border bg-surface-elevated px-4 py-2.5 text-sm text-foreground shadow-xl"
-      style={{ maxWidth: "calc(100vw - 2rem)" }}
+      className="pointer-events-none fixed inset-x-0 z-[90] flex justify-center px-4"
+      style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
+      role="status"
+      aria-live="polite"
     >
-      Đã có bản cập nhật mới.{" "}
       <button
         type="button"
         onClick={() => void softReload()}
-        className="font-semibold text-primary underline underline-offset-2"
+        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border-2 border-primary bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition active:scale-[0.98]"
       >
+        <span className="h-2 w-2 shrink-0 rounded-full bg-primary-foreground/90" aria-hidden />
         Làm mới ngay
       </button>
     </div>

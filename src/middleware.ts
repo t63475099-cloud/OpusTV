@@ -3,26 +3,12 @@ import type { NextRequest } from "next/server";
 
 /**
  * Middleware:
- * 1) Lịch bảo trì VN (00:00–05:59) — SITE_SCHEDULE=off để tắt
- * 2) Dynamic maintenance cookie opus_maint_mode=1 (set khi admin bật)
- * 3) Zero-trust /api/admin + redirect admin cũ → board-home
- * 4) Whitelist: opus_admin_gate / x-admin-bypass / schedule bypass
+ * - Bảo trì động (cookie opus_maint_mode=1 do /api/system/version đồng bộ từ DB)
+ *   Admin (opus_admin_gate / x-admin-bypass / /admin*) KHÔNG bị ép /bao-tri
+ *   User còn lại → /bao-tri
+ * - Zero-trust /api/admin + redirect admin cũ → board-home
+ * - ĐÃ XÓA lịch bảo trì tự động 00:00–06:00
  */
-
-function getVietnamHour(): number {
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    hour: "2-digit",
-    hour12: false,
-  });
-  const parts = fmt.formatToParts(new Date());
-  return Number(parts.find((p) => p.type === "hour")?.value || "0");
-}
-
-function isScheduleMaintenanceNow(): boolean {
-  const hour = getVietnamHour();
-  return hour >= 0 && hour < 6;
-}
 
 function getAdminSecrets(): string[] {
   return [
@@ -39,6 +25,14 @@ function secretMatches(value: string | undefined | null): boolean {
   const list = getAdminSecrets();
   if (list.length === 0) return value === "OpusFilm2026Secret";
   return list.includes(value);
+}
+
+function isAdminBypass(request: NextRequest): boolean {
+  if (secretMatches(request.cookies.get("opus_admin_gate")?.value)) return true;
+  if (request.cookies.get("x-admin-bypass")?.value === "1") return true;
+  const path = request.nextUrl.pathname;
+  if (path.startsWith("/admin") || path.startsWith("/api/admin")) return true;
+  return false;
 }
 
 export function middleware(request: NextRequest) {
@@ -97,47 +91,20 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Luôn cho qua: trang bảo trì, static, system API, cron
   if (
     pathname.startsWith("/bao-tri") ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/api/system") ||
+    pathname.startsWith("/api/cron")
   ) {
     return NextResponse.next();
   }
 
-  const scheduleOff = process.env.SITE_SCHEDULE === "off";
-  const scheduleSecret = process.env.SCHEDULE_BYPASS_SECRET || "opus-open";
-  const bypassQuery = request.nextUrl.searchParams.get("bypass");
-  const bypassCookie = request.cookies.get("site_bypass")?.value;
-  const hasScheduleBypass =
-    bypassQuery === scheduleSecret || bypassCookie === scheduleSecret;
-
-  const adminBypass =
-    secretMatches(request.cookies.get("opus_admin_gate")?.value) ||
-    request.cookies.get("x-admin-bypass")?.value === "1";
-
-  if (bypassQuery === scheduleSecret) {
-    const res = NextResponse.next();
-    res.cookies.set("site_bypass", scheduleSecret, {
-      path: "/",
-      maxAge: 60 * 60 * 12,
-      httpOnly: true,
-      sameSite: "lax",
-    });
-    return res;
-  }
-
-  // Dynamic maintenance (admin-toggled) via cookie — client/SSE also redirects
+  // Bảo trì động — cookie được /api/system/version set từ DB cho mọi client
   const dynMaint = request.cookies.get("opus_maint_mode")?.value === "1";
-  const allowDuringMaint =
-    adminBypass ||
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/api/admin") ||
-    pathname.startsWith("/api/system") ||
-    pathname.startsWith("/api/cron");
-
-  if (dynMaint && !allowDuringMaint) {
-    // Video API / stream paths stay open for free playback isolation
+  if (dynMaint && !isAdminBypass(request)) {
     const isStream =
       pathname.includes(".m3u8") ||
       pathname.startsWith("/api/stream") ||
@@ -154,23 +121,6 @@ export function middleware(request: NextRequest) {
       url.search = "";
       return NextResponse.redirect(url);
     }
-  }
-
-  if (!scheduleOff && isScheduleMaintenanceNow() && !hasScheduleBypass && !adminBypass) {
-    if (pathname.startsWith("/api")) {
-      return NextResponse.json(
-        {
-          error: "closed",
-          message: "Website bảo trì 00:00–06:00 (giờ VN). Mở lại lúc 06:00.",
-          timezone: "Asia/Ho_Chi_Minh",
-        },
-        { status: 503 }
-      );
-    }
-    const url = request.nextUrl.clone();
-    url.pathname = "/bao-tri";
-    url.search = "";
-    return NextResponse.redirect(url);
   }
 
   const res = NextResponse.next();

@@ -6,6 +6,16 @@ import { SYSTEM_BC } from "@/lib/system/types";
 
 const BUILD_KEY = "opus_client_build_id";
 
+function hasAdminBypass(): boolean {
+  if (typeof document === "undefined") return false;
+  const c = document.cookie || "";
+  return (
+    c.includes("opus_admin_gate=") ||
+    c.includes("x-admin-bypass=1") ||
+    window.location.pathname.startsWith("/admin")
+  );
+}
+
 export function useSystemHealth() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [panicLockdown, setPanicLockdown] = useState(false);
@@ -16,33 +26,56 @@ export function useSystemHealth() {
 
   const check = useCallback(async () => {
     try {
-      const res = await fetch("/api/system/version", { cache: "no-store" });
+      const res = await fetch("/api/system/version", {
+        cache: "no-store",
+        credentials: "include",
+      });
       const data = await res.json();
       if (!data.ok) return;
-      setMaintenanceMode(!!data.maintenanceMode);
+
+      const on = !!data.maintenanceMode;
+      setMaintenanceMode(on);
       setPanicLockdown(!!data.panicLockdown);
       if (data.featureFlags) setFeatureFlags(data.featureFlags);
+
       const bid = String(data.buildId || "");
       setServerBuildId(bid);
+
       if (!initialBuild.current) {
-        initialBuild.current = bid;
+        let stored: string | null = null;
+        try {
+          stored = localStorage.getItem(BUILD_KEY);
+        } catch {
+          /* */
+        }
+        initialBuild.current = stored || bid;
         try {
           localStorage.setItem(BUILD_KEY, bid);
         } catch {
           /* */
         }
+        if (stored && bid && stored !== bid) {
+          setUpdateAvailable(true);
+        }
       } else if (bid && bid !== initialBuild.current) {
         setUpdateAvailable(true);
       }
-      if (data.maintenanceMode && typeof window !== "undefined") {
-        const path = window.location.pathname;
-        if (
-          !path.startsWith("/bao-tri") &&
-          !path.startsWith("/admin") &&
-          !path.startsWith("/api")
-        ) {
+
+      if (typeof window === "undefined") return;
+      const path = window.location.pathname;
+      const admin = hasAdminBypass();
+
+      if (on) {
+        if (!admin && !path.startsWith("/bao-tri") && !path.startsWith("/api")) {
           window.location.href = "/bao-tri";
         }
+      } else if (path.startsWith("/bao-tri")) {
+        try {
+          localStorage.setItem(BUILD_KEY, bid);
+        } catch {
+          /* */
+        }
+        window.location.href = "/";
       }
     } catch {
       /* */
@@ -59,21 +92,32 @@ export function useSystemHealth() {
         const keys = await caches.keys();
         await Promise.all(keys.map((k) => caches.delete(k)));
       }
+      try {
+        if (serverBuildId) localStorage.setItem(BUILD_KEY, serverBuildId);
+      } catch {
+        /* */
+      }
     } catch {
       /* */
     }
     window.location.reload();
-  }, []);
+  }, [serverBuildId]);
 
   useEffect(() => {
     void check();
-    const id = setInterval(() => void check(), 60_000);
+    const id = setInterval(() => void check(), 30_000);
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel(SYSTEM_BC);
       bc.onmessage = (msg) => {
-        if (msg.data?.kind === "maintenance" && msg.data.on) {
-          window.location.href = "/bao-tri";
+        if (msg.data?.kind === "maintenance") {
+          if (msg.data.on && !hasAdminBypass()) {
+            window.location.href = "/bao-tri";
+          } else if (!msg.data.on && window.location.pathname.startsWith("/bao-tri")) {
+            window.location.href = "/";
+          } else {
+            void check();
+          }
         }
       };
     } catch {

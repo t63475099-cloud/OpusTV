@@ -1,21 +1,77 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+/**
+ * Trang bảo trì — chỉ khi Admin bật (DB).
+ * Tự về / khi Admin tắt.
+ */
 export default function BaoTriPage() {
+  const [message, setMessage] = useState(
+    "Hệ thống đang bảo trì. Vui lòng quay lại sau."
+  );
+  const [until, setUntil] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/system/version", {
+          cache: "no-store",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (cancelled || !data?.ok) return;
+
+        if (!data.maintenanceMode) {
+          window.location.href = "/";
+          return;
+        }
+        if (data.maintenanceMessage) {
+          setMessage(String(data.maintenanceMessage));
+        }
+        if (data.maintenanceUntil) {
+          try {
+            setUntil(
+              new Date(data.maintenanceUntil).toLocaleString("vi-VN", {
+                timeZone: "Asia/Ho_Chi_Minh",
+              })
+            );
+          } catch {
+            setUntil(String(data.maintenanceUntil));
+          }
+        } else {
+          setUntil(null);
+        }
+      } catch {
+        /* */
+      }
+    };
+
+    void poll();
+    const id = setInterval(() => void poll(), 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center px-4 text-center bg-[#0a0a0a]">
-      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 to-rose-500 flex items-center justify-center text-white text-xl font-bold mb-6 shadow-lg shadow-red-900/40">
-        OF
+    <main className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-zinc-100 px-6">
+      <div className="max-w-md w-full rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 text-center shadow-xl">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/15 text-2xl">
+          🔧
+        </div>
+        <h1 className="text-xl font-semibold tracking-tight">Đang bảo trì</h1>
+        <p className="mt-3 text-sm text-zinc-400 leading-relaxed">{message}</p>
+        {until && (
+          <p className="mt-2 text-xs text-amber-400/90">Dự kiến mở lại: {until}</p>
+        )}
+        <p className="mt-6 text-[11px] text-zinc-600">
+          Trang sẽ tự mở lại khi bảo trì kết thúc.
+        </p>
       </div>
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-        Đang bảo trì
-      </h1>
-      <p className="text-zinc-400 text-sm sm:text-base max-w-md leading-relaxed mb-2">
-        Website tạm dừng từ{" "}
-        <strong className="text-white">00:00</strong> đến{" "}
-        <strong className="text-white">06:00</strong> (giờ Việt Nam).
-      </p>
-      <p className="text-zinc-500 text-sm max-w-md mb-8">
-        Vui lòng quay lại sau 6:00 sáng.
-      </p>
-      <p className="text-xs text-zinc-600">Lịch tự động · Giờ Asia/Ho_Chi_Minh</p>
-    </div>
+    </main>
   );
 }

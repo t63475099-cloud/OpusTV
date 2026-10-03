@@ -140,8 +140,8 @@ export default function ChatWindow({
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-[#1a1d21]">
-        <div className="w-16 h-16 rounded-2xl bg-[#0068ff]/20 flex items-center justify-center mb-4">
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-background">
+        <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mb-4">
           <Send className="w-7 h-7 text-[#5b9dff]" />
         </div>
         <p className="text-foreground font-medium">Chọn một hội thoại</p>
@@ -160,11 +160,11 @@ export default function ChatWindow({
       : formatLastSeen(livePeer);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#1a1d21]">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background">
       {/* Header */}
       <header
         data-chat-header
-        className="shrink-0 flex items-center gap-2 px-2 sm:px-3 h-14 border-b border-[#2a2d34] bg-surface"
+        className="shrink-0 flex items-center gap-2 px-2 sm:px-3 h-14 border-b border-border bg-surface"
       >
         <button
           type="button"
@@ -234,12 +234,12 @@ export default function ChatWindow({
       </header>
 
       {searchOpen && (
-        <div className="shrink-0 px-3 py-2 border-b border-[#2a2d34] bg-surface">
+        <div className="shrink-0 px-3 py-2 border-b border-border bg-surface">
           <input
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Tìm tin nhắn trong hội thoại..."
-            className="w-full rounded-xl bg-[#2a2e36] px-3 py-2 text-sm text-foreground outline-none"
+            className="w-full rounded-xl bg-surface-elevated px-3 py-2 text-sm text-foreground outline-none"
             autoFocus
           />
         </div>
@@ -296,7 +296,7 @@ export default function ChatWindow({
             <div key={m.id}>
               {showDay && (
                 <div className="flex justify-center my-3">
-                  <span className="text-[11px] px-3 py-1 rounded-full bg-[#2a2e36] text-foreground-muted">
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-surface-elevated text-foreground-muted">
                     {formatChatDayLabel(m.timestamp)}
                   </span>
                 </div>
@@ -323,7 +323,7 @@ export default function ChatWindow({
       </div>
 
       {replyTo && (
-        <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-surface border-t border-[#2a2d34]">
+        <div className="shrink-0 flex items-center gap-2 px-3 py-2 bg-surface border-t border-border">
           <div className="flex-1 min-w-0 border-l-2 border-[#0068ff] pl-2">
             <p className="text-[11px] text-[#5b9dff]">Trả lời</p>
             <p className="text-xs text-foreground-muted truncate">{replyTo.text || "Đính kèm"}</p>
@@ -335,7 +335,7 @@ export default function ChatWindow({
       )}
 
       {/* Input */}
-      <div className="shrink-0 border-t border-[#2a2d34] bg-surface px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-border bg-surface px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {pickerOpen && (
           <div className="mb-2">
             <StickerEmojiPicker
@@ -380,13 +380,13 @@ export default function ChatWindow({
                 : `Nhập tin nhắn với ${title}`
             }
             disabled={!!conversation.blocked}
-            className="flex-1 min-w-0 max-h-28 resize-none rounded-lg bg-[#2a2e36] px-3 py-2.5 text-sm text-foreground placeholder:text-foreground-muted outline-none focus:ring-1 focus:ring-[#0068ff]/40 disabled:opacity-50"
+            className="flex-1 min-w-0 max-h-28 resize-none rounded-lg bg-surface-elevated px-3 py-2.5 text-sm text-foreground placeholder:text-foreground-muted outline-none focus:ring-1 focus:ring-[#0068ff]/40 disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => void onSend()}
             disabled={!!conversation.blocked || (!text.trim() && !pending.length)}
-            className="p-2.5 rounded-full bg-[#0068ff] text-foreground disabled:opacity-40 disabled:bg-[#2a2e36]"
+            className="p-2.5 rounded-full bg-primary text-primary-foreground disabled:opacity-40 disabled:bg-surface-elevated"
           >
             <Send className="w-5 h-5" />
           </button>

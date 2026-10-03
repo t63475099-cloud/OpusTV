@@ -80,12 +80,12 @@ export default function MessageBubble({
       <div className={`flex ${mine ? "justify-end" : "justify-start"} mb-2`}>
         <div
           className={`max-w-[80%] rounded-2xl px-3 py-2.5 ${
-            mine ? "bg-[#0068ff] text-foreground rounded-br-md" : "bg-[#2a2e36] text-foreground rounded-bl-md"
+            mine ? "bg-primary text-white rounded-br-md" : "bg-surface-elevated text-foreground rounded-bl-md"
           }`}
         >
-          <p className={`text-[13px] mb-1 ${mine ? "text-foreground/90" : "text-foreground-muted"}`}>{title}</p>
+          <p className={`text-[13px] mb-1 ${mine ? "text-white/90" : "text-foreground-muted"}`}>{title}</p>
           <div className="flex items-center gap-2">
-            <Icon className={`w-4 h-4 shrink-0 ${mine ? "text-foreground/80" : iconColor}`} />
+            <Icon className={`w-4 h-4 shrink-0 ${mine ? "text-white/80" : iconColor}`} />
             <span className="text-[14px] font-medium">{sub}</span>
           </div>
           {onCallBack && (
@@ -99,7 +99,7 @@ export default function MessageBubble({
               Gọi lại
             </button>
           )}
-          <p className={`text-[10px] mt-1 ${mine ? "text-foreground/60" : "text-foreground-muted"}`}>
+          <p className={`text-[10px] mt-1 ${mine ? "text-white/60" : "text-foreground-muted"}`}>
             {formatChatTime(m.timestamp)}
           </p>
         </div>
@@ -120,7 +120,7 @@ export default function MessageBubble({
   const StatusIcon =
     m.status === "read" ? CheckCheck : m.status === "delivered" ? CheckCheck : Check;
   const statusColor =
-    m.status === "read" ? "text-sky-300" : mine ? "text-foreground/50" : "text-foreground-muted";
+    m.status === "read" ? "text-sky-300" : mine ? "text-white/50" : "text-foreground-muted";
 
   return (
     <div
@@ -137,19 +137,19 @@ export default function MessageBubble({
         <div
           className={`relative rounded-2xl px-3 py-2 ${
             mine
-              ? "bg-[#0068ff] text-foreground rounded-br-md"
-              : "bg-[#2a2e36] text-foreground rounded-bl-md"
+              ? "bg-primary text-white rounded-br-md"
+              : "bg-surface-elevated text-foreground rounded-bl-md"
           }`}
         >
           {m.forwardedFrom && (
-            <p className={`text-[11px] mb-1 ${mine ? "text-foreground/70" : "text-foreground-muted"}`}>
+            <p className={`text-[11px] mb-1 ${mine ? "text-white/70" : "text-foreground-muted"}`}>
               Đã chuyển tiếp
             </p>
           )}
           {replyPreview && !replyPreview.deleted && (
             <div
               className={`mb-1.5 pl-2 border-l-2 text-[12px] line-clamp-2 ${
-                mine ? "border-white/40 text-foreground/80" : "border-[#5b9dff] text-foreground-muted"
+                mine ? "border-white/40 text-white/80" : "border-[#5b9dff] text-foreground-muted"
               }`}
             >
               {replyPreview.text || "Đính kèm"}
@@ -216,7 +216,7 @@ export default function MessageBubble({
                     href={a.url}
                     download={a.name}
                     className={`block text-[13px] underline mb-1 ${
-                      mine ? "text-foreground/90" : "text-sky-300"
+                      mine ? "text-white/90" : "text-sky-300"
                     }`}
                   >
                     📎 {a.name || "Tệp đính kèm"}
@@ -241,7 +241,7 @@ export default function MessageBubble({
                 key={r.emoji}
                 type="button"
                 onClick={() => toggleReaction(m.id, r.emoji)}
-                className="text-[11px] px-1.5 py-0.5 rounded-full bg-[#2a2e36] border border-white/10"
+                className="text-[11px] px-1.5 py-0.5 rounded-full bg-surface-elevated border border-white/10"
               >
                 {r.emoji} {r.userIds.length}
               </button>

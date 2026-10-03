@@ -10,9 +10,10 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInfoPanel from "@/components/chat/ChatInfoPanel";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
 import IncomingCallBanner from "@/components/chat/IncomingCallBanner";
+import ChatErrorBoundary from "@/components/chat/ChatErrorBoundary";
 import { startSmartPoll } from "@/lib/smartPoll";
 
-export default function TinNhanPage() {
+function TinNhanPageInner() {
   const username = useAccountStore((s) => s.username);
   const setMe = useChatStore((s) => s.setMe);
   const syncFromServer = useChatStore((s) => s.syncFromServer);
@@ -101,8 +102,8 @@ export default function TinNhanPage() {
   if (!username) {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-surface px-4 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-[#0068ff] flex items-center justify-center mb-4">
-          <MessageCircle className="w-7 h-7 text-foreground" />
+        <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-4">
+          <MessageCircle className="w-7 h-7 text-primary-foreground" />
         </div>
         <p className="text-foreground font-semibold text-lg mb-1">Opus Chat</p>
         <p className="text-sm text-foreground-muted mb-6 max-w-xs">
@@ -110,7 +111,7 @@ export default function TinNhanPage() {
         </p>
         <Link
           href="/tai-khoan"
-          className="px-6 py-2.5 rounded-lg bg-[#0068ff] text-foreground text-sm font-semibold"
+          className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold"
         >
           Đăng nhập
         </Link>
@@ -120,7 +121,7 @@ export default function TinNhanPage() {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex bg-[#0e1012] text-foreground"
+      className="fixed inset-0 z-40 flex bg-background text-foreground"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -136,7 +137,7 @@ export default function TinNhanPage() {
 
       {/* Trái: danh sách */}
       <div
-        className={`h-full w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-[#2a2d34] flex-col bg-surface ${
+        className={`h-full w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-border flex-col bg-surface ${
           showThread ? "hidden md:flex" : "flex"
         }`}
       >
@@ -148,7 +149,7 @@ export default function TinNhanPage() {
 
       {/* Giữa: cửa sổ chat */}
       <div
-        className={`h-full flex-1 min-w-0 flex-col bg-[#1a1d21] ${
+        className={`h-full flex-1 min-w-0 flex-col bg-background ${
           showThread ? "flex" : "hidden md:flex"
         }`}
       >
@@ -161,7 +162,7 @@ export default function TinNhanPage() {
 
       {/* Phải: thông tin hội thoại */}
       {active && showInfo && (
-        <div className="hidden xl:flex h-full w-[300px] shrink-0 border-l border-[#2a2d34] bg-surface">
+        <div className="hidden xl:flex h-full w-[300px] shrink-0 border-l border-border bg-surface">
           <ChatInfoPanel conversation={active} onClose={() => setShowInfo(false)} />
         </div>
       )}
@@ -169,5 +170,14 @@ export default function TinNhanPage() {
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <IncomingCallBanner />
     </div>
+  );
+}
+
+
+export default function TinNhanPage() {
+  return (
+    <ChatErrorBoundary>
+      <TinNhanPageInner />
+    </ChatErrorBoundary>
   );
 }

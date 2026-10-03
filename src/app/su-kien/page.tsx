@@ -371,7 +371,7 @@ export default function SuKienPage() {
     >
       <div className="mx-auto w-full max-w-lg sm:max-w-xl lg:max-w-2xl">
         <header
-          className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-black/95 px-3 backdrop-blur-md"
+          className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/95 px-3"
           style={{
             paddingTop: "max(0.5rem, env(safe-area-inset-top))",
             paddingBottom: "0.5rem",
@@ -460,7 +460,7 @@ export default function SuKienPage() {
           </div>
         </section>
 
-        <div className="sticky top-12 z-20 border-b border-border bg-black/95 backdrop-blur-md">
+        <div className="sticky top-12 z-20 border-b border-border bg-surface">
           <div className="flex">
             {tabs.map((item) => {
               const on = tab === item.id;
@@ -475,7 +475,7 @@ export default function SuKienPage() {
                 >
                   {item.label}
                   {on ? (
-                    <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-white" />
+                    <span className="absolute bottom-0 left-1/2 h-0.5 w-12 -translate-x-1/2 rounded-full bg-primary" />
                   ) : null}
                 </button>
               );
@@ -744,7 +744,7 @@ export default function SuKienPage() {
       ) : null}
 
       {prizeModal ? (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/70 px-4">
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 text-center">
             <Sparkles className="mx-auto mb-2 h-8 w-8 text-amber-400" />
             <h3 className="mb-2 text-lg font-bold">{prizeModal.label}</h3>

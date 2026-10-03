@@ -64,8 +64,8 @@ export default function ChatInfoPanel({
   }
 
   return (
-    <aside className="w-full sm:w-[320px] shrink-0 h-full border-l border-[#2a2d34] bg-surface flex flex-col min-h-0">
-      <div className="flex items-center justify-between px-4 h-14 border-b border-[#2a2d34]">
+    <aside className="w-full sm:w-[320px] shrink-0 h-full border-l border-border bg-surface flex flex-col min-h-0">
+      <div className="flex items-center justify-between px-4 h-14 border-b border-border">
         <p className="text-sm font-semibold text-foreground">Thông tin hội thoại</p>
         <button
           type="button"
@@ -79,7 +79,7 @@ export default function ChatInfoPanel({
       <div className="flex-1 overflow-y-auto opus-chat-scroll custom-scroll p-4 space-y-5">
         <div className="flex flex-col items-center text-center">
           {conversation.isGroup ? (
-            <div className="w-16 h-16 rounded-full bg-[#0068ff] flex items-center justify-center text-foreground text-xl font-bold mb-2">
+            <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-foreground text-xl font-bold mb-2">
               <Users className="w-7 h-7" />
             </div>
           ) : (
@@ -105,7 +105,7 @@ export default function ChatInfoPanel({
           <button
             type="button"
             onClick={() => togglePin(conversation.id)}
-            className="rounded-xl bg-[#2a2e36] hover:bg-[#32363f] py-3 flex flex-col items-center gap-1 text-foreground"
+            className="rounded-xl bg-surface-elevated hover:bg-surface-elevated py-3 flex flex-col items-center gap-1 text-foreground"
           >
             <Pin className="w-5 h-5" />
             <span className="text-[11px]">
@@ -115,7 +115,7 @@ export default function ChatInfoPanel({
           <button
             type="button"
             onClick={() => muteFor(conversation.id, conversation.muted ? null : 8)}
-            className="rounded-xl bg-[#2a2e36] hover:bg-[#32363f] py-3 flex flex-col items-center gap-1 text-foreground"
+            className="rounded-xl bg-surface-elevated hover:bg-surface-elevated py-3 flex flex-col items-center gap-1 text-foreground"
           >
             {conversation.muted ? (
               <Bell className="w-5 h-5" />
@@ -143,7 +143,7 @@ export default function ChatInfoPanel({
                 key={String(o.label)}
                 type="button"
                 onClick={() => muteFor(conversation.id, o.h)}
-                className="px-2.5 py-1.5 rounded-lg text-[11px] bg-[#2a2e36] text-foreground-muted hover:bg-[#32363f]"
+                className="px-2.5 py-1.5 rounded-lg text-[11px] bg-surface-elevated text-foreground-muted hover:bg-surface-elevated"
               >
                 {o.label}
               </button>
@@ -161,7 +161,7 @@ export default function ChatInfoPanel({
                     <input
                       value={gTitle}
                       onChange={(e) => setGTitle(e.target.value)}
-                      className="flex-1 rounded-lg bg-[#2a2e36] px-2 py-1.5 text-sm text-foreground outline-none"
+                      className="flex-1 rounded-lg bg-surface-elevated px-2 py-1.5 text-sm text-foreground outline-none"
                     />
                     <button
                       type="button"
@@ -180,7 +180,7 @@ export default function ChatInfoPanel({
                     value={ann}
                     onChange={(e) => setAnn(e.target.value)}
                     rows={2}
-                    className="w-full rounded-lg bg-[#2a2e36] px-2 py-1.5 text-sm text-foreground outline-none resize-none"
+                    className="w-full rounded-lg bg-surface-elevated px-2 py-1.5 text-sm text-foreground outline-none resize-none"
                     placeholder="Nội dung ghim..."
                   />
                   <button
@@ -196,7 +196,7 @@ export default function ChatInfoPanel({
                   <select
                     value={addId}
                     onChange={(e) => setAddId(e.target.value)}
-                    className="w-full rounded-lg bg-[#2a2e36] px-2 py-1.5 text-sm text-foreground outline-none mb-1"
+                    className="w-full rounded-lg bg-surface-elevated px-2 py-1.5 text-sm text-foreground outline-none mb-1"
                   >
                     <option value="">Chọn bạn bè...</option>
                     {friends
@@ -210,7 +210,7 @@ export default function ChatInfoPanel({
                   <button
                     type="button"
                     disabled={!addId}
-                    className="px-3 py-1.5 rounded-lg bg-[#0068ff] text-foreground text-xs font-medium disabled:opacity-40"
+                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-40"
                     onClick={() => {
                       if (!addId) return;
                       addGroupMembers(conversation.id, [addId]);

@@ -49,7 +49,7 @@ function Row({
         onClick();
       }}
       className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-        active ? "bg-[#2a2e36]" : "hover:bg-[#1f2228]"
+        active ? "bg-surface-elevated" : "hover:bg-[#1f2228]"
       }`}
     >
       {c.isGroup ? (
@@ -61,7 +61,7 @@ function Row({
       ) : (
         <ChatAvatar user={peer || undefined} size="md" showStatus />
       )}
-      <div className="flex-1 min-w-0 border-b border-[#2a2d34]/60 pb-2.5">
+      <div className="flex-1 min-w-0 border-b border-border/60 pb-2.5">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[15px] font-medium text-foreground truncate flex items-center gap-1">
             {c.pinned ? <Pin className="w-3 h-3 text-amber-400 shrink-0" /> : null}
@@ -123,17 +123,17 @@ export default function ChatSidebar({
   }, [conversations, search, tab]);
 
   return (
-    <aside className="flex flex-col h-full min-h-0 w-full bg-surface border-r border-[#2a2d34]">
+    <aside className="flex flex-col h-full min-h-0 w-full bg-surface border-r border-border">
       {/* Top bar */}
       <div className="shrink-0 px-3 pt-3 pb-2 flex items-center gap-2">
         <Link
           href="/"
-          className="p-2 rounded-full hover:bg-[#2a2e36] text-foreground-muted"
+          className="p-2 rounded-full hover:bg-surface-elevated text-foreground-muted"
           title="Trang chủ"
         >
           <Home className="w-5 h-5" />
         </Link>
-        <div className="flex-1 flex items-center gap-2 rounded-full bg-[#2a2e36] px-3 h-9">
+        <div className="flex-1 flex items-center gap-2 rounded-full bg-surface-elevated px-3 h-9">
           <Search className="w-4 h-4 text-foreground-muted shrink-0" />
           <input
             value={search}
@@ -145,7 +145,7 @@ export default function ChatSidebar({
         <button
           type="button"
           onClick={onOpenCreate}
-          className="p-2 rounded-full bg-[#0068ff] text-foreground"
+          className="p-2 rounded-full bg-primary text-primary-foreground"
           title="Kết bạn / Nhóm"
         >
           <Plus className="w-5 h-5" />
@@ -157,7 +157,7 @@ export default function ChatSidebar({
         <button
           type="button"
           onClick={() => setProfileOpen(true)}
-          className="w-full flex items-center gap-2 rounded-xl hover:bg-[#2a2e36] p-2 text-left"
+          className="w-full flex items-center gap-2 rounded-xl hover:bg-surface-elevated p-2 text-left"
           title="Đổi avatar Opus Chat"
         >
           <ChatAvatar user={me ? getUser(me) : null} size="sm" />

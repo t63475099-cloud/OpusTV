@@ -459,7 +459,7 @@ export default function CallModal({
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
         {!(mode === "video" && phase === "connected") && (
           <>
-            <div className="w-28 h-28 rounded-full overflow-hidden ring-2 ring-white/30 shadow-2xl bg-[#2a2e36] flex items-center justify-center">
+            <div className="w-28 h-28 rounded-full overflow-hidden ring-2 ring-white/30 shadow-2xl bg-surface-elevated flex items-center justify-center">
               {bg ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={bg} alt="" className="w-full h-full object-cover" />

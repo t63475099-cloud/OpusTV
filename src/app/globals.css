@@ -3361,3 +3361,21 @@ html[data-theme="light"] [role="status"] {
 html[data-theme="light"] svg.lucide {
   color: inherit;
 }
+
+/* Chat + Code: keep intentional panels readable */
+html[data-theme="light"] .opus-chat-page,
+html[data-theme="light"] .opus-chat-lock {
+  color: var(--foreground);
+}
+html[data-theme="light"] [data-chat-header] {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+/* Code editor canvas stays dark for readability */
+html[data-theme="light"] [data-code-editor],
+html[data-theme="light"] .cm-editor,
+html[data-theme="light"] .monaco-editor {
+  background-color: #1e1e1e !important;
+  color: #d4d4d4 !important;
+}

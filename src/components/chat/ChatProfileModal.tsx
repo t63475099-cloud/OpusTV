@@ -49,10 +49,10 @@ export default function ChatProfileModal({
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-surface border border-[#2a2d34] shadow-2xl overflow-hidden">
-        <div className="h-12 px-4 flex items-center justify-between border-b border-[#2a2d34]">
+      <div className="w-full max-w-sm rounded-2xl bg-surface border border-border shadow-2xl overflow-hidden">
+        <div className="h-12 px-4 flex items-center justify-between border-b border-border">
           <span className="text-sm font-semibold text-foreground">Ảnh đại diện Opus Chat</span>
-          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-[#2a2e36] text-foreground-muted">
+          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-surface-elevated text-foreground-muted">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -74,7 +74,7 @@ export default function ChatProfileModal({
               type="button"
               disabled={busy}
               onClick={() => fileRef.current?.click()}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#0068ff] text-foreground text-sm font-medium"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium"
             >
               <Camera className="w-4 h-4" />
               {busy ? "Đang tải…" : "Chọn ảnh"}
@@ -82,7 +82,7 @@ export default function ChatProfileModal({
             <button
               type="button"
               onClick={() => setChatAvatar("")}
-              className="px-3 rounded-xl bg-[#2a2e36] text-foreground-muted"
+              className="px-3 rounded-xl bg-surface-elevated text-foreground-muted"
               title="Xóa avatar chat"
             >
               <Trash2 className="w-4 h-4" />

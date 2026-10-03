@@ -63,7 +63,7 @@ export default function AttachmentBar({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={a.url} alt="" className="w-14 h-14 rounded-lg object-cover" />
               ) : (
-                <div className="w-14 h-14 rounded-lg bg-neutral-800 flex items-center justify-center text-[10px] text-foreground-muted px-1 text-center">
+                <div className="w-14 h-14 rounded-lg bg-surface-elevated flex items-center justify-center text-[10px] text-foreground-muted px-1 text-center">
                   {(a.name || "file").slice(0, 12)}
                 </div>
               )}
@@ -79,7 +79,7 @@ export default function AttachmentBar({
         </div>
       )}
       {progress > 0 && progress < 100 && (
-        <div className="h-1 rounded-full bg-neutral-800 overflow-hidden mx-1">
+        <div className="h-1 rounded-full bg-surface-elevated overflow-hidden mx-1">
           <div className="h-full bg-rose-500 transition-all" style={{ width: `${progress}%` }} />
         </div>
       )}

@@ -442,7 +442,7 @@ export default function SearchBox({
                 setOpen(false);
                 inputRef.current?.focus();
               }}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground-muted hover:text-foreground hover:bg-white/10 transition"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-foreground-muted hover:text-foreground hover:bg-surface transition"
               aria-label="Xóa"
             >
               <X className="w-3.5 h-3.5" />
@@ -456,7 +456,7 @@ export default function SearchBox({
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition",
                 listening
                   ? "text-rose-400 bg-rose-500/15 animate-pulse"
-                  : "text-foreground-muted hover:text-foreground hover:bg-white/10"
+                  : "text-foreground-muted hover:text-foreground hover:bg-surface"
               )}
               title={listening ? "Dừng" : "Tìm bằng giọng nói"}
               aria-label={listening ? "Dừng nghe" : "Tìm bằng giọng nói"}
@@ -466,7 +466,7 @@ export default function SearchBox({
           )}
           <button
             type="submit"
-            className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-foreground transition mr-0.5"
+            className="hidden sm:flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface hover:bg-white/20 text-foreground transition mr-0.5"
             aria-label="Tìm kiếm"
           >
             <Search className="w-3.5 h-3.5" />
@@ -494,19 +494,18 @@ export default function SearchBox({
         <div
           className={cn(
             "absolute left-0 right-0 top-full mt-2 z-[100]",
-            "rounded-2xl border border-white/12 overflow-hidden",
-            "bg-neutral-950/90 backdrop-blur-2xl",
-            "shadow-[0_16px_48px_rgba(0,0,0,0.55)]",
+            "rounded-2xl border border-border overflow-hidden",
+            "bg-surface-elevated shadow-xl",
             "max-h-[min(70vh,420px)] overflow-y-auto animate-scale-in"
           )}
         >
           {query.trim().length < 2 && history.length > 0 && (
-            <div className="border-b border-white/5">
+            <div className="border-b border-border">
               <div className="flex items-center justify-between px-4 py-2">
                 <span className="text-xs font-medium leading-none text-foreground-muted">Lịch sử tìm kiếm</span>
                 <button
                   type="button"
-                  className="text-xs text-sky-400 hover:underline"
+                  className="text-xs text-sky-600 hover:underline dark:text-sky-400"
                   onClick={() => {
                     clearFilmSearchHistory();
                     setHistory([]);
@@ -518,7 +517,7 @@ export default function SearchBox({
               <ul>
                 {history.map((h) => (
                   <li key={h}>
-                    <div className="flex items-center gap-1 px-2 hover:bg-white/5">
+                    <div className="flex items-center gap-1 px-2 hover:bg-surface">
                       <button
                         type="button"
                         className="flex-1 flex items-center gap-3 px-2 py-2.5 text-left min-w-0"
@@ -568,10 +567,10 @@ export default function SearchBox({
                   }}
                   className={cn(
                     "flex gap-3 px-3 py-2.5 transition",
-                    idx === activeIdx ? "bg-white/10" : "hover:bg-white/5"
+                    idx === activeIdx ? "bg-surface" : "hover:bg-surface"
                   )}
                 >
-                  <div className="relative w-11 h-16 rounded-lg overflow-hidden bg-surface-elevated shrink-0 ring-1 ring-white/5">
+                  <div className="relative w-11 h-16 rounded-lg overflow-hidden bg-surface shrink-0 ring-1 ring-border">
                     <Image src={item.poster} alt="" fill className="object-cover" unoptimized />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -592,7 +591,7 @@ export default function SearchBox({
             <button
               type="button"
               onClick={() => goSearch()}
-              className="w-full text-left px-4 py-2.5 text-sm text-rose-400 hover:bg-white/5 border-t border-white/5"
+              className="w-full text-left px-4 py-2.5 text-sm text-rose-400 hover:bg-surface border-t border-border"
             >
               Xem tất cả kết quả cho “{query.trim()}”
             </button>

@@ -26,6 +26,7 @@ import CallModal from "./CallModal";
 import VoiceRecorder from "./VoiceRecorder";
 import StickerEmojiPicker from "./StickerEmojiPicker";
 import AttachmentBar from "./AttachmentBar";
+import { startSmartPoll } from "@/lib/smartPoll";
 
 const EMPTY_MSGS: ChatMessage[] = [];
 

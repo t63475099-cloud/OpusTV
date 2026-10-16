@@ -1,128 +1,84 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AdminAccount, AdminRole, SystemStats, VerifyRequestItem } from "@/lib/adminEngine";
-import { SystemControlTab } from "@/components/admin/SystemControlTab";
-import { ProjectSandboxPreview } from "@/components/admin/ProjectSandboxPreview";
-import type { KeyTier, LicenseKeyRecord } from "@/lib/keyEngine";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Lock, Moon, RefreshCw, Sun } from "lucide-react";
+import type { AdminAccount, SystemStats, VerifyRequestItem } from "@/lib/adminEngine";
+import type { LicenseKeyRecord, KeyTier } from "@/lib/keyEngine";
+import { AccountTab } from "@/components/admin/board/AccountTab";
+import { MovieCmsTab } from "@/components/admin/board/MovieCmsTab";
+import { KeyBoardTab } from "@/components/admin/board/KeyBoardTab";
+import { VerifyTab } from "@/components/admin/board/VerifyTab";
+import { GiftcodeTab } from "@/components/admin/board/GiftcodeTab";
+import { ModerationTab } from "@/components/admin/board/ModerationTab";
+import { SystemAiTab } from "@/components/admin/board/SystemAiTab";
+import type { BoardTheme } from "@/components/admin/board/adminUi";
+import { boardTokens, btn } from "@/components/admin/board/adminUi";
 
-type TabId = "ACCOUNTS" | "KEY-BOARD" | "VERIFY" | "SYSTEM";
-type ThemeMode = "dark" | "light";
+type TabId =
+  | "ACCOUNTS"
+  | "MOVIES"
+  | "KEY-BOARD"
+  | "VERIFY"
+  | "GIFTCODE"
+  | "MODERATION"
+  | "SYSTEM";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "ACCOUNTS", label: "Tài khoản" },
+  { id: "MOVIES", label: "Phim & Tập" },
   { id: "KEY-BOARD", label: "Key-board" },
   { id: "VERIFY", label: "Xác minh" },
+  { id: "GIFTCODE", label: "Giftcode & Sự kiện" },
+  { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt" },
   { id: "SYSTEM", label: "Hệ thống & AI" },
 ];
 
 const SECRET_STORAGE = "opus_admin_secret";
 const THEME_STORAGE = "opus_admin_theme";
 
-function useTheme(): [ThemeMode, (t: ThemeMode) => void] {
-  const [theme, setThemeState] = useState<ThemeMode>("dark");
-  useEffect(() => {
-    try {
-      const t = localStorage.getItem(THEME_STORAGE) as ThemeMode | null;
-      if (t === "light" || t === "dark") setThemeState(t);
-    } catch {
-      /* */
-    }
-  }, []);
-  const setTheme = (t: ThemeMode) => {
-    setThemeState(t);
-    try {
-      localStorage.setItem(THEME_STORAGE, t);
-    } catch {
-      /* */
-    }
-  };
-  return [theme, setTheme];
-}
-
-function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function statusBadge(status: string, theme: ThemeMode) {
-  const map: Record<string, string> = {
-    active: theme === "dark" ? "bg-emerald-500/20 text-emerald-300" : "bg-emerald-100 text-emerald-700",
-    banned: theme === "dark" ? "bg-rose-500/20 text-rose-300" : "bg-rose-100 text-rose-700",
-    used: theme === "dark" ? "bg-zinc-500/20 text-zinc-300" : "bg-zinc-200 text-zinc-700",
-    revoked: theme === "dark" ? "bg-amber-500/20 text-amber-300" : "bg-amber-100 text-amber-800",
-    expired: theme === "dark" ? "bg-zinc-600/30 text-zinc-400" : "bg-zinc-100 text-zinc-500",
-    pending: theme === "dark" ? "bg-sky-500/20 text-sky-300" : "bg-sky-100 text-sky-700",
-  };
-  return map[status] || (theme === "dark" ? "bg-zinc-700 text-zinc-300" : "bg-zinc-100 text-zinc-600");
-}
-
 export default function BoardHomePage() {
-  const [theme, setTheme] = useTheme();
+  const [theme, setTheme] = useState<BoardTheme>("dark");
   const [secret, setSecret] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [gateError, setGateError] = useState("");
   const [tab, setTab] = useState<TabId>("ACCOUNTS");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" | "info" } | null>(null);
+  const [refreshSpin, setRefreshSpin] = useState(false);
 
-  // Data
   const [accounts, setAccounts] = useState<AdminAccount[]>([]);
   const [keys, setKeys] = useState<LicenseKeyRecord[]>([]);
   const [verifyItems, setVerifyItems] = useState<VerifyRequestItem[]>([]);
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [accountQ, setAccountQ] = useState("");
-  const [keyTier, setKeyTier] = useState<"ALL" | KeyTier>("ALL");
-
-  // Forms
-  const [newUser, setNewUser] = useState({
-    username: "",
-    email: "",
-    password: "",
-    role: "User" as AdminRole,
-    expiresDays: "",
-  });
-  const [keyForm, setKeyForm] = useState({
-    tier: "24H" as KeyTier,
-    count: 5,
-    customPrefix: "VP",
-    note: "",
-  });
-  const [confirmText, setConfirmText] = useState("");
-  const [modal, setModal] = useState<{
-    type:
-      | "delete_account"
-      | "delete_key"
-      | "delete_verify"
-      | "reset_pw"
-      | "ban"
-      | "grant_coins"
-      | null;
-    payload?: Record<string, unknown>;
-  }>({ type: null });
-  const [resetPw, setResetPw] = useState("");
-  const [banReason, setBanReason] = useState("Vi phạm nội quy");
-  const [grantAmount, setGrantAmount] = useState("1000");
-  const [grantNote, setGrantNote] = useState("");
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const t = boardTokens(theme);
 
-  const showToast = useCallback((msg: string, type: "ok" | "err" | "info" = "ok") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 2800);
+  useEffect(() => {
+    try {
+      const th = localStorage.getItem(THEME_STORAGE) as BoardTheme | null;
+      if (th === "light" || th === "dark") setTheme(th);
+    } catch {
+      /* */
+    }
   }, []);
 
-  const headers = useMemo(
+  const setThemePersist = (th: BoardTheme) => {
+    setTheme(th);
+    try {
+      localStorage.setItem(THEME_STORAGE, th);
+    } catch {
+      /* */
+    }
+  };
+
+  const showToast = (msg: string, type: "ok" | "err" | "info" = "info") => {
+    setToast({ msg, type });
+    window.setTimeout(() => setToast(null), 3200);
+  };
+
+  const headers = useCallback(
     () => ({
       "Content-Type": "application/json",
       "x-admin-secret": secret,
@@ -130,24 +86,57 @@ export default function BoardHomePage() {
     [secret]
   );
 
-  // Restore secret
+  const unlock = async () => {
+    setGateError("");
+    const s = secret.trim();
+    if (!s) {
+      setGateError("Nhập mã quản trị");
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/board-home?section=stats", {
+        headers: { "x-admin-secret": s },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        setGateError(data.error || "Mã không hợp lệ");
+        return;
+      }
+      setSecret(s);
+      setUnlocked(true);
+      try {
+        sessionStorage.setItem(SECRET_STORAGE, s);
+      } catch {
+        /* */
+      }
+      if (data.stats) setStats(data.stats);
+    } catch {
+      setGateError("Không kết nối được máy chủ");
+    }
+  };
+
+  const lockScreen = () => {
+    setUnlocked(false);
+    try {
+      sessionStorage.removeItem(SECRET_STORAGE);
+    } catch {
+      /* */
+    }
+  };
+
   useEffect(() => {
     try {
       const s = sessionStorage.getItem(SECRET_STORAGE) || "";
       if (s) {
         setSecret(s);
-        // try unlock silently
         void (async () => {
-          try {
-            const res = await fetch("/api/admin/board-home?section=stats", {
-              headers: { "x-admin-secret": s },
-            });
-            if (res.ok) {
-              setUnlocked(true);
-              document.cookie = `opus_admin_gate=${encodeURIComponent(s)}; path=/; max-age=28800; SameSite=Lax`;
-            }
-          } catch {
-            /* */
+          const res = await fetch("/api/admin/board-home?section=stats", {
+            headers: { "x-admin-secret": s },
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.ok !== false) {
+            setUnlocked(true);
+            if (data.stats) setStats(data.stats);
           }
         })();
       }
@@ -156,84 +145,45 @@ export default function BoardHomePage() {
     }
   }, []);
 
-  const unlock = async () => {
-    setGateError("");
-    if (!secret.trim()) {
-      setGateError("Nhập mã quản trị");
-      return;
-    }
-    try {
-      const res = await fetch("/api/admin/board-home?section=stats", {
-        headers: { "x-admin-secret": secret.trim() },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.ok === false) {
-        setGateError(data.error || "Sai mã quản trị");
-        return;
-      }
-      setUnlocked(true);
-      try {
-        sessionStorage.setItem(SECRET_STORAGE, secret.trim());
-      } catch {
-        /* */
-      }
-      document.cookie = `opus_admin_gate=${encodeURIComponent(secret.trim())}; path=/; max-age=28800; SameSite=Lax`;
-      setStats(data.stats || null);
-    } catch {
-      setGateError("Không kết nối được server");
-    }
-  };
-
-  const lock = () => {
-    setUnlocked(false);
-    setSecret("");
-    try {
-      sessionStorage.removeItem(SECRET_STORAGE);
-    } catch {
-      /* */
-    }
-    document.cookie = "opus_admin_gate=; path=/; max-age=0";
-  };
-
   const loadSection = useCallback(
     async (section: TabId) => {
-      if (!unlocked || !secret) return;
+      if (!secret) return;
       setLoading(true);
       try {
-        if (section === "ACCOUNTS") {
+        if (section === "ACCOUNTS" || section === "SYSTEM") {
           const res = await fetch(
             `/api/admin/board-home?section=accounts&q=${encodeURIComponent(accountQ)}`,
-            { headers }
+            { headers: headers() }
           );
-          const data = await res.json();
+          const data = await res.json().catch(() => ({}));
           if (data.ok) setAccounts(data.accounts || []);
-          else showToast(data.error || "Lỗi tải tài khoản", "err");
-        } else if (section === "KEY-BOARD") {
-          const res = await fetch(
-            `/api/admin/board-home?section=keys&tier=${keyTier}&limit=120`,
-            { headers }
-          );
-          const data = await res.json();
-          if (data.ok) setKeys(data.keys || []);
-          else showToast(data.error || "Lỗi tải keys", "err");
-        } else if (section === "VERIFY") {
-          const res = await fetch(`/api/admin/board-home?section=verify`, { headers });
-          const data = await res.json();
-          if (data.ok) setVerifyItems(data.items || []);
-          else showToast(data.error || "Lỗi tải verify", "err");
-        } else {
-          const res = await fetch(`/api/admin/board-home?section=stats`, { headers });
-          const data = await res.json();
-          if (data.ok) setStats(data.stats || null);
-          else showToast(data.error || "Lỗi stats", "err");
         }
+        if (section === "KEY-BOARD") {
+          const res = await fetch(`/api/admin/board-home?section=keys&tier=ALL&limit=120`, {
+            headers: headers(),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.ok) setKeys(data.keys || []);
+        }
+        if (section === "VERIFY") {
+          const res = await fetch(`/api/admin/board-home?section=verify`, {
+            headers: headers(),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.ok) setVerifyItems(data.items || data.requests || []);
+        }
+        const st = await fetch(`/api/admin/board-home?section=stats`, {
+          headers: headers(),
+        });
+        const stData = await st.json().catch(() => ({}));
+        if (stData.ok && stData.stats) setStats(stData.stats);
       } catch {
-        showToast("Lỗi mạng", "err");
+        showToast("Lỗi tải dữ liệu", "err");
       } finally {
         setLoading(false);
       }
     },
-    [unlocked, secret, headers, accountQ, keyTier, showToast]
+    [secret, headers, accountQ]
   );
 
   useEffect(() => {
@@ -246,12 +196,12 @@ export default function BoardHomePage() {
     };
   }, [unlocked, tab, loadSection]);
 
-  const mutate = async (body: Record<string, unknown>) => {
+  const runAction = async (body: Record<string, unknown>) => {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/board-home", {
         method: "POST",
-        headers,
+        headers: headers(),
         body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
@@ -270,33 +220,12 @@ export default function BoardHomePage() {
     }
   };
 
-  const copyText = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast("Đã copy", "info");
-    } catch {
-      showToast("Copy thất bại", "err");
-    }
-  };
-
-  // ── Theme classes ──
-  const isDark = theme === "dark";
-  const bg = isDark ? "bg-zinc-950 text-zinc-100" : "bg-zinc-50 text-zinc-900";
-  const card = isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200";
-  const input = isDark
-    ? "bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
-    : "bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400";
-  const muted = isDark ? "text-zinc-400" : "text-zinc-500";
-  const border = isDark ? "border-zinc-800" : "border-zinc-200";
-  const hoverRow = isDark ? "hover:bg-zinc-800/60" : "hover:bg-zinc-100";
-
-  // ── Gate ──
   if (!unlocked) {
     return (
-      <div className={`h-screen flex items-center justify-center ${bg} p-4`}>
-        <div className={`w-full max-w-sm rounded-2xl border ${card} p-6 shadow-xl`}>
-          <h1 className="text-lg font-semibold tracking-tight">Master Admin Console</h1>
-          <p className={`mt-1 text-sm ${muted}`}>Nhập mã quản trị để mở bảng điều khiển</p>
+      <div className={`flex h-screen items-center justify-center p-4 ${t.page}`}>
+        <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-xl ${t.surface}`}>
+          <h1 className="text-lg font-semibold tracking-tight">OpusFilm · Master Board</h1>
+          <p className={`mt-1 text-sm ${t.muted}`}>Nhập mã quản trị để mở bảng điều khiển</p>
           <input
             type="password"
             autoFocus
@@ -304,9 +233,9 @@ export default function BoardHomePage() {
             onChange={(e) => setSecret(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void unlock()}
             placeholder="x-admin-secret"
-            className={`mt-4 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500/40 ${input}`}
+            className={`mt-4 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500/40 ${t.input}`}
           />
-          {gateError && <p className="mt-2 text-sm text-rose-500">{gateError}</p>}
+          {gateError ? <p className="mt-2 text-sm text-rose-500">{gateError}</p> : null}
           <button
             type="button"
             onClick={() => void unlock()}
@@ -320,862 +249,135 @@ export default function BoardHomePage() {
   }
 
   return (
-    <div className={`h-screen flex flex-col overflow-hidden ${bg}`}>
-      {/* Header */}
-      <header className={`shrink-0 border-b ${border} px-4 py-3 flex items-center gap-3`}>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold tracking-tight truncate">Board Home · Master Admin</h1>
-          <p className={`text-xs ${muted}`}>
-            {stats
-              ? `${stats.users} user · ${stats.keysActive}/${stats.keysTotal} key · ${stats.pendingVerify} verify`
-              : "Đang đồng bộ…"}
-          </p>
+    <div className={`min-h-screen ${t.page}`}>
+      {/* Executive topbar */}
+      <header className={`sticky top-0 z-40 border-b ${t.border} ${t.surface}`}>
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-semibold tracking-tight sm:text-lg">
+                OpusFilm · Master Board
+              </h1>
+              <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${t.border} ${t.muted}`}>
+                v1.17
+              </span>
+            </div>
+            <p className={`mt-0.5 text-xs ${t.muted}`}>
+              {stats?.users ?? "—"} tài khoản
+              {" · "}
+              <span className="text-emerald-600 dark:text-emerald-400">
+                🟢 {stats?.sessions ?? "—"} online
+              </span>
+              {" · "}
+              <span className="text-amber-600 dark:text-amber-400">🟡 — treo máy</span>
+              {" · "}
+              {stats?.keysActive ?? 0}/{stats?.keysTotal ?? 0} API key
+              {" · "}
+              {stats?.pendingVerify ?? 0} chờ duyệt
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost}`}
+              onClick={() => setThemePersist(theme === "dark" ? "light" : "dark")}
+              aria-label="Đổi theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost}`}
+              onClick={() => {
+                setRefreshSpin(true);
+                void loadSection(tab).finally(() => {
+                  window.setTimeout(() => setRefreshSpin(false), 400);
+                });
+              }}
+              aria-label="Làm mới"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshSpin ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost}`}
+              onClick={lockScreen}
+              aria-label="Khóa màn hình"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setTheme(isDark ? "light" : "dark")}
-          className={`rounded-lg border px-2.5 py-1.5 text-xs ${border} ${muted}`}
-        >
-          {isDark ? "Light" : "Dark"}
-        </button>
-        <button
-          type="button"
-          onClick={() => void loadSection(tab)}
-          className={`rounded-lg border px-2.5 py-1.5 text-xs ${border} ${muted}`}
-        >
-          {loading ? "…" : "Refresh"}
-        </button>
-        <button
-          type="button"
-          onClick={lock}
-          className="rounded-lg bg-rose-600/90 px-2.5 py-1.5 text-xs text-white"
-        >
-          Lock
-        </button>
+
+        {/* Segmented tabs */}
+        <div className="mx-auto max-w-[1600px] overflow-x-auto px-4 pb-3">
+          <div className={`inline-flex min-w-min gap-1 rounded-lg border p-1 ${t.border}`}>
+            {TABS.map((x) => (
+              <button
+                key={x.id}
+                type="button"
+                onClick={() => setTab(x.id)}
+                className={`${btn.compact} whitespace-nowrap ${
+                  tab === x.id ? btn.primary : t.tabIdle
+                }`}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </header>
 
-      {/* Tabs */}
-      <nav className={`shrink-0 flex gap-1 px-3 pt-2 border-b ${border}`}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.id
-                ? "border-violet-500 text-violet-400"
-                : `border-transparent ${muted} hover:text-inherit`
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Body — only active tab */}
-      <main className="flex-1 min-h-0 overflow-hidden px-3 py-3">
+      <main className="mx-auto max-w-[1600px] px-4 py-4 pb-16">
         {tab === "ACCOUNTS" && (
-          <div className="h-full flex flex-col gap-3 min-h-0">
-            {/* Create form */}
-            <div className={`shrink-0 rounded-xl border ${card} p-3`}>
-              <p className="text-xs font-medium mb-2">Tạo tài khoản</p>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-                <input
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  placeholder="Username"
-                  value={newUser.username}
-                  onChange={(e) => setNewUser((s) => ({ ...s, username: e.target.value }))}
-                />
-                <input
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  placeholder="Email"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser((s) => ({ ...s, email: e.target.value }))}
-                />
-                <input
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  placeholder="Mật khẩu"
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser((s) => ({ ...s, password: e.target.value }))}
-                />
-                <select
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser((s) => ({ ...s, role: e.target.value as AdminRole }))
-                  }
-                >
-                  <option value="User">User</option>
-                  <option value="VIP">VIP</option>
-                  <option value="Admin">Admin</option>
-                </select>
-                <input
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  placeholder="Hạn (ngày)"
-                  value={newUser.expiresDays}
-                  onChange={(e) => setNewUser((s) => ({ ...s, expiresDays: e.target.value }))}
-                />
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={async () => {
-                    const data = await mutate({
-                      action: "create_account",
-                      username: newUser.username,
-                      email: newUser.email,
-                      password: newUser.password,
-                      role: newUser.role,
-                      expiresDays: newUser.expiresDays ? Number(newUser.expiresDays) : undefined,
-                    });
-                    if (data?.ok) {
-                      setNewUser({
-                        username: "",
-                        email: "",
-                        password: "",
-                        role: "User",
-                        expiresDays: "",
-                      });
-                      if (data.recoveryPin) {
-                        showToast(`PIN khôi phục: ${data.recoveryPin}`, "info");
-                      }
-                    }
-                  }}
-                  className="rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 disabled:opacity-50"
-                >
-                  Tạo
-                </button>
-              </div>
-            </div>
-
-            {/* Search */}
-            <div className="shrink-0 flex gap-2">
-              <input
-                className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${input}`}
-                placeholder="Tìm username / UID / email…"
-                value={accountQ}
-                onChange={(e) => setAccountQ(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void loadSection("ACCOUNTS")}
-              />
-              <button
-                type="button"
-                onClick={() => void loadSection("ACCOUNTS")}
-                className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
-              >
-                Lọc
-              </button>
-            </div>
-
-            {/* Table */}
-            <div className={`flex-1 min-h-0 rounded-xl border ${card} overflow-hidden`}>
-              <div className="overflow-y-auto max-h-[calc(100vh-230px)]">
-                <table className="w-full text-sm">
-                  <thead className={`sticky top-0 z-10 ${isDark ? "bg-zinc-900" : "bg-zinc-100"}`}>
-                    <tr className={`text-left text-xs ${muted}`}>
-                      <th className="px-3 py-2 font-medium">Username</th>
-                      <th className="px-3 py-2 font-medium">Role</th>
-                      <th className="px-3 py-2 font-medium">Trạng thái</th>
-                      <th className="px-3 py-2 font-medium">Ngày tạo</th>
-                      <th className="px-3 py-2 font-medium text-right">Hành động</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {accounts.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className={`px-3 py-8 text-center ${muted}`}>
-                          {loading ? "Đang tải…" : "Không có tài khoản"}
-                        </td>
-                      </tr>
-                    )}
-                    {accounts.map((a) => (
-                      <tr key={a.id} className={`border-t ${border} ${hoverRow}`}>
-                        <td className="px-3 py-2">
-                          <div className="font-medium">{a.username}</div>
-                          <div className={`text-[11px] ${muted}`}>
-                            UID {a.uid || "—"} {a.verified ? "· ✓" : ""}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2">{a.role}</td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] ${statusBadge(a.status, theme)}`}
-                          >
-                            {a.status}
-                          </span>
-                        </td>
-                        <td className={`px-3 py-2 text-xs ${muted}`}>{fmtDate(a.createdAt)}</td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-wrap justify-end gap-1">
-                            <button
-                              type="button"
-                              className="rounded-md bg-amber-500/90 px-2 py-1 text-[11px] text-zinc-950 font-medium"
-                              onClick={() =>
-                                setModal({
-                                  type: "grant_coins",
-                                  payload: {
-                                    id: a.id,
-                                    username: a.username,
-                                    uid: a.uid,
-                                  },
-                                })
-                              }
-                            >
-                              Cấp xu
-                            </button>
-                            <button
-                              type="button"
-                              className={`rounded-md px-2 py-1 text-[11px] text-white ${
-                                a.verified ? "bg-sky-700/90" : "bg-sky-500/90"
-                              }`}
-                              onClick={() =>
-                                void mutate({
-                                  action: "set_verified",
-                                  id: a.id,
-                                  username: a.username,
-                                  verified: !a.verified,
-                                })
-                              }
-                            >
-                              {a.verified ? "Gỡ tick" : "Tick xanh"}
-                            </button>
-                            <button
-                              type="button"
-                              className={`rounded-md border px-2 py-1 text-[11px] ${border}`}
-                              onClick={() =>
-                                setModal({
-                                  type: "reset_pw",
-                                  payload: { id: a.id, username: a.username },
-                                })
-                              }
-                            >
-                              Đổi MK
-                            </button>
-                            {a.status === "banned" ? (
-                              <button
-                                type="button"
-                                className="rounded-md bg-emerald-600/90 px-2 py-1 text-[11px] text-white"
-                                onClick={() =>
-                                  void mutate({ action: "unban", username: a.username })
-                                }
-                              >
-                                Mở khóa
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="rounded-md bg-amber-600/90 px-2 py-1 text-[11px] text-white"
-                                onClick={() =>
-                                  setModal({
-                                    type: "ban",
-                                    payload: { username: a.username },
-                                  })
-                                }
-                              >
-                                Khóa
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="rounded-md bg-rose-600/90 px-2 py-1 text-[11px] text-white"
-                              onClick={() =>
-                                setModal({
-                                  type: "delete_account",
-                                  payload: { id: a.id, username: a.username },
-                                })
-                              }
-                            >
-                              Xóa
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <AccountTab
+            theme={theme}
+            accounts={accounts}
+            loading={loading}
+            onRefresh={() => void loadSection("ACCOUNTS")}
+            onAction={runAction}
+          />
         )}
-
+        {tab === "MOVIES" && <MovieCmsTab theme={theme} />}
         {tab === "KEY-BOARD" && (
-          <div className="h-full flex flex-col gap-3 min-h-0">
-            <div className={`shrink-0 rounded-xl border ${card} p-3`}>
-              <p className="text-xs font-medium mb-2">Cấp phát key</p>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-                <select
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  value={keyForm.tier}
-                  onChange={(e) =>
-                    setKeyForm((s) => ({ ...s, tier: e.target.value as KeyTier }))
-                  }
-                >
-                  <option value="24H">24H-XXX-XXXXXXX</option>
-                  <option value="12H">12H-XXX-XXXXXXX</option>
-                  <option value="CUSTOM">XX-XXX-XXXXXXX</option>
-                </select>
-                {keyForm.tier === "CUSTOM" && (
-                  <input
-                    className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                    placeholder="Prefix (VP)"
-                    maxLength={2}
-                    value={keyForm.customPrefix}
-                    onChange={(e) =>
-                      setKeyForm((s) => ({ ...s, customPrefix: e.target.value.toUpperCase() }))
-                    }
-                  />
-                )}
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  value={keyForm.count}
-                  onChange={(e) =>
-                    setKeyForm((s) => ({ ...s, count: Math.min(50, Math.max(1, Number(e.target.value) || 1)) }))
-                  }
-                />
-                <input
-                  className={`rounded-lg border px-2 py-1.5 text-sm ${input}`}
-                  placeholder="Ghi chú"
-                  value={keyForm.note}
-                  onChange={(e) => setKeyForm((s) => ({ ...s, note: e.target.value }))}
-                />
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={async () => {
-                    const data = await mutate({
-                      action: "generate_keys",
-                      tier: keyForm.tier,
-                      count: keyForm.count,
-                      customPrefix: keyForm.customPrefix,
-                      note: keyForm.note,
-                    });
-                    if (data?.codes?.length) {
-                      showToast(`Đã tạo ${data.codes.length} key`, "ok");
-                    }
-                  }}
-                  className="rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 disabled:opacity-50"
-                >
-                  Sinh key
-                </button>
-              </div>
-            </div>
-
-            <div className="shrink-0 flex gap-1 flex-wrap">
-              {(["ALL", "24H", "12H", "CUSTOM"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    setKeyTier(t);
-                  }}
-                  className={`rounded-lg px-2.5 py-1 text-xs border ${
-                    keyTier === t
-                      ? "border-violet-500 text-violet-400"
-                      : `${border} ${muted}`
-                  }`}
-                >
-                  {t === "ALL" ? "Tất cả" : t}
-                </button>
-              ))}
-            </div>
-
-            <div className={`flex-1 min-h-0 rounded-xl border ${card} overflow-hidden`}>
-              <div className="overflow-y-auto max-h-[calc(100vh-230px)]">
-                <table className="w-full text-sm">
-                  <thead className={`sticky top-0 z-10 ${isDark ? "bg-zinc-900" : "bg-zinc-100"}`}>
-                    <tr className={`text-left text-xs ${muted}`}>
-                      <th className="px-3 py-2 font-medium">Key</th>
-                      <th className="px-3 py-2 font-medium">Tier</th>
-                      <th className="px-3 py-2 font-medium">Status</th>
-                      <th className="px-3 py-2 font-medium">Used by</th>
-                      <th className="px-3 py-2 font-medium text-right">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {keys.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className={`px-3 py-8 text-center ${muted}`}>
-                          {loading ? "Đang tải…" : "Chưa có key"}
-                        </td>
-                      </tr>
-                    )}
-                    {keys.map((k) => (
-                      <tr key={k.id} className={`border-t ${border} ${hoverRow}`}>
-                        <td className="px-3 py-2 font-mono text-xs">
-                          <button
-                            type="button"
-                            title="Copy"
-                            onClick={() => void copyText(k.keyCode)}
-                            className="hover:text-violet-400"
-                          >
-                            {k.keyCode}
-                          </button>
-                        </td>
-                        <td className="px-3 py-2 text-xs">{k.tier}</td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-block rounded-md px-1.5 py-0.5 text-[11px] ${statusBadge(k.status, theme)}`}
-                          >
-                            {k.status}
-                          </span>
-                        </td>
-                        <td className={`px-3 py-2 text-xs ${muted}`}>{k.usedBy || "—"}</td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-wrap justify-end gap-1">
-                            <button
-                              type="button"
-                              className={`rounded-md border px-2 py-1 text-[11px] ${border}`}
-                              onClick={() => void copyText(k.keyCode)}
-                            >
-                              Copy
-                            </button>
-                            {k.status === "revoked" ? (
-                              <button
-                                type="button"
-                                className="rounded-md bg-emerald-600/90 px-2 py-1 text-[11px] text-white"
-                                onClick={() =>
-                                  void mutate({ action: "unrevoke_key", code: k.keyCode })
-                                }
-                              >
-                                Mở lại
-                              </button>
-                            ) : k.status === "active" ? (
-                              <button
-                                type="button"
-                                className="rounded-md bg-amber-600/90 px-2 py-1 text-[11px] text-white"
-                                onClick={() =>
-                                  void mutate({ action: "revoke_key", code: k.keyCode })
-                                }
-                              >
-                                Thu hồi
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="rounded-md bg-rose-600/90 px-2 py-1 text-[11px] text-white"
-                              onClick={() =>
-                                setModal({
-                                  type: "delete_key",
-                                  payload: { id: k.id, code: k.keyCode },
-                                })
-                              }
-                            >
-                              Xóa
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <KeyBoardTab
+            theme={theme}
+            keys={keys}
+            loading={loading}
+            onAction={runAction}
+            onRefresh={() => void loadSection("KEY-BOARD")}
+          />
         )}
-
         {tab === "VERIFY" && (
-          <div className="h-full flex flex-col gap-3 min-h-0">
-            <div className={`flex-1 min-h-0 rounded-xl border ${card} overflow-hidden`}>
-              <div className="overflow-y-auto max-h-[calc(100vh-230px)]">
-                <table className="w-full text-sm">
-                  <thead className={`sticky top-0 z-10 ${isDark ? "bg-zinc-900" : "bg-zinc-100"}`}>
-                    <tr className={`text-left text-xs ${muted}`}>
-                      <th className="px-3 py-2 font-medium">User</th>
-                      <th className="px-3 py-2 font-medium">Họ tên</th>
-                      <th className="px-3 py-2 font-medium">Lĩnh vực</th>
-                      <th className="px-3 py-2 font-medium">Link</th>
-                      <th className="px-3 py-2 font-medium text-right">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {verifyItems.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className={`px-3 py-8 text-center ${muted}`}>
-                          {loading ? "Đang tải…" : "Không có yêu cầu pending"}
-                        </td>
-                      </tr>
-                    )}
-                    {verifyItems.map((v) => (
-                      <tr key={v.id} className={`border-t ${border} ${hoverRow}`}>
-                        <td className="px-3 py-2">
-                          <div className="font-medium">{v.username}</div>
-                          <div className={`text-[11px] ${muted}`}>{fmtDate(v.createdAt)}</div>
-                        </td>
-                        <td className="px-3 py-2">{v.fullName}</td>
-                        <td className="px-3 py-2 text-xs">{v.field}</td>
-                        <td className={`px-3 py-2 text-xs max-w-[140px] truncate ${muted}`}>
-                          {v.socialLink || "—"}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-wrap justify-end gap-1">
-                            <button
-                              type="button"
-                              className="rounded-md bg-emerald-600/90 px-2 py-1 text-[11px] text-white"
-                              onClick={() =>
-                                void mutate({ action: "approve_verify", id: v.id })
-                              }
-                            >
-                              Duyệt
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-md bg-amber-600/90 px-2 py-1 text-[11px] text-white"
-                              onClick={() =>
-                                void mutate({ action: "reject_verify", id: v.id })
-                              }
-                            >
-                              Từ chối
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-md bg-rose-600/90 px-2 py-1 text-[11px] text-white"
-                              onClick={() =>
-                                setModal({ type: "delete_verify", payload: { id: v.id } })
-                              }
-                            >
-                              Xóa
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <VerifyTab
+            theme={theme}
+            items={verifyItems}
+            loading={loading}
+            onAction={runAction}
+          />
         )}
-
+        {tab === "GIFTCODE" && <GiftcodeTab theme={theme} onAction={runAction} />}
+        {tab === "MODERATION" && (
+          <ModerationTab theme={theme} adminSecret={secret} />
+        )}
         {tab === "SYSTEM" && (
-          <div className="h-full overflow-y-auto max-h-[calc(100vh-160px)] space-y-3">
-            <ProjectSandboxPreview secret={secret} theme={theme} />
-            <SystemControlTab secret={secret} theme={theme} />
-            <div className={`rounded-xl border ${card} p-4`}>
-              <p className="text-sm font-medium mb-3">Thống kê hệ thống</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                {[
-                  ["Users", stats?.users],
-                  ["Keys active", stats?.keysActive],
-                  ["Keys total", stats?.keysTotal],
-                  ["Verify pending", stats?.pendingVerify],
-                  ["Bans active", stats?.bansActive],
-                  ["Sessions", stats?.sessions],
-                ].map(([label, val]) => (
-                  <div key={String(label)} className={`rounded-lg border ${border} p-3`}>
-                    <div className={`text-xs ${muted}`}>{label}</div>
-                    <div className="text-lg font-semibold tabular-nums">{val ?? "—"}</div>
-                  </div>
-                ))}
-              </div>
-              <p className={`mt-2 text-[11px] ${muted}`}>
-                Server: {stats?.serverTime ? fmtDate(stats.serverTime) : "—"}
-              </p>
-            </div>
-
-            <div className={`rounded-xl border ${card} p-4 space-y-3`}>
-              <p className="text-sm font-medium">Dọn dẹp nội dung AI</p>
-              <p className={`text-xs ${muted}`}>
-                Mỗi thao tác yêu cầu gõ <code className="font-mono">CONFIRM</code> trước khi xóa vĩnh viễn.
-              </p>
-              <input
-                className={`w-full max-w-xs rounded-lg border px-3 py-1.5 text-sm font-mono ${input}`}
-                placeholder="Gõ CONFIRM"
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value)}
-              />
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="button"
-                  disabled={loading || confirmText !== "CONFIRM"}
-                  onClick={async () => {
-                    await mutate({ action: "purge_ai_metadata", confirm: confirmText });
-                    setConfirmText("");
-                  }}
-                  className="rounded-lg bg-rose-700/90 px-3 py-2 text-sm text-white disabled:opacity-40"
-                >
-                  Quét & Xóa Tóm Tắt / Metadata AI
-                </button>
-                <button
-                  type="button"
-                  disabled={loading || confirmText !== "CONFIRM"}
-                  onClick={async () => {
-                    await mutate({ action: "purge_ai_cache", confirm: confirmText });
-                    setConfirmText("");
-                  }}
-                  className="rounded-lg bg-amber-700/90 px-3 py-2 text-sm text-white disabled:opacity-40"
-                >
-                  Xóa Cache / Lịch sử AI
-                </button>
-                <button
-                  type="button"
-                  disabled={loading || confirmText !== "CONFIRM"}
-                  onClick={async () => {
-                    await mutate({ action: "clean_orphans", confirm: confirmText });
-                    setConfirmText("");
-                  }}
-                  className="rounded-lg bg-zinc-700 px-3 py-2 text-sm text-white disabled:opacity-40"
-                >
-                  Dọn mục rác / bản ghi cô lập
-                </button>
-              </div>
-            </div>
-          </div>
+          <SystemAiTab theme={theme} adminSecret={secret} onAction={runAction} />
         )}
       </main>
 
-      {/* Modal */}
-      {modal.type && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className={`w-full max-w-sm rounded-2xl border ${card} p-5 shadow-2xl`}>
-            {modal.type === "delete_account" && (
-              <>
-                <h3 className="font-semibold">Xóa tài khoản vĩnh viễn?</h3>
-                <p className={`mt-1 text-sm ${muted}`}>
-                  {String(modal.payload?.username)} — không thể hoàn tác.
-                </p>
-                <div className="mt-4 flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
-                    onClick={() => setModal({ type: null })}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm text-white"
-                    onClick={async () => {
-                      await mutate({
-                        action: "delete_account",
-                        id: modal.payload?.id,
-                        username: modal.payload?.username,
-                      });
-                      setModal({ type: null });
-                    }}
-                  >
-                    Xóa
-                  </button>
-                </div>
-              </>
-            )}
-            {modal.type === "delete_key" && (
-              <>
-                <h3 className="font-semibold">Xóa key?</h3>
-                <p className={`mt-1 text-sm font-mono ${muted}`}>{String(modal.payload?.code)}</p>
-                <div className="mt-4 flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
-                    onClick={() => setModal({ type: null })}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm text-white"
-                    onClick={async () => {
-                      await mutate({
-                        action: "delete_key",
-                        id: modal.payload?.id,
-                        code: modal.payload?.code,
-                      });
-                      setModal({ type: null });
-                    }}
-                  >
-                    Xóa
-                  </button>
-                </div>
-              </>
-            )}
-            {modal.type === "delete_verify" && (
-              <>
-                <h3 className="font-semibold">Xóa yêu cầu xác minh?</h3>
-                <div className="mt-4 flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
-                    onClick={() => setModal({ type: null })}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm text-white"
-                    onClick={async () => {
-                      await mutate({ action: "delete_verify", id: modal.payload?.id });
-                      setModal({ type: null });
-                    }}
-                  >
-                    Xóa
-                  </button>
-                </div>
-              </>
-            )}
-            {modal.type === "reset_pw" && (
-              <>
-                <h3 className="font-semibold">Đổi mật khẩu</h3>
-                <p className={`mt-1 text-sm ${muted}`}>{String(modal.payload?.username)}</p>
-                <input
-                  type="password"
-                  className={`mt-3 w-full rounded-lg border px-3 py-2 text-sm ${input}`}
-                  placeholder="Mật khẩu mới (≥8)"
-                  value={resetPw}
-                  onChange={(e) => setResetPw(e.target.value)}
-                />
-                <div className="mt-4 flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
-                    onClick={() => {
-                      setModal({ type: null });
-                      setResetPw("");
-                    }}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm text-white"
-                    onClick={async () => {
-                      await mutate({
-                        action: "reset_password",
-                        id: modal.payload?.id,
-                        username: modal.payload?.username,
-                        password: resetPw,
-                      });
-                      setModal({ type: null });
-                      setResetPw("");
-                    }}
-                  >
-                    Lưu
-                  </button>
-                </div>
-              </>
-            )}
-            {modal.type === "ban" && (
-              <>
-                <h3 className="font-semibold">Khóa tài khoản</h3>
-                <p className={`mt-1 text-sm ${muted}`}>{String(modal.payload?.username)}</p>
-                <input
-                  className={`mt-3 w-full rounded-lg border px-3 py-2 text-sm ${input}`}
-                  placeholder="Lý do"
-                  value={banReason}
-                  onChange={(e) => setBanReason(e.target.value)}
-                />
-                <div className="mt-4 flex flex-wrap gap-2 justify-end">
-                  <button
-                    type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
-                    onClick={() => setModal({ type: null })}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-amber-700 px-3 py-1.5 text-sm text-white"
-                    onClick={async () => {
-                      await mutate({
-                        action: "ban",
-                        username: modal.payload?.username,
-                        reason: banReason,
-                        permanent: false,
-                        hours: 24,
-                      });
-                      setModal({ type: null });
-                    }}
-                  >
-                    Khóa 24h
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm text-white"
-                    onClick={async () => {
-                      await mutate({
-                        action: "ban",
-                        username: modal.payload?.username,
-                        reason: banReason,
-                        permanent: true,
-                      });
-                      setModal({ type: null });
-                    }}
-                  >
-                    Khóa vĩnh viễn
-                  </button>
-                </div>
-              </>
-            )}
-            {modal.type === "grant_coins" && (
-              <>
-                <h3 className="font-semibold">Cấp xu</h3>
-                <p className={`mt-1 text-sm ${muted}`}>
-                  {String(modal.payload?.username)}
-                  {modal.payload?.uid ? ` · UID ${String(modal.payload.uid)}` : ""}
-                </p>
-                <input
-                  type="number"
-                  min={1}
-                  className={`mt-3 w-full rounded-lg border px-3 py-2 text-sm ${input}`}
-                  placeholder="Số xu"
-                  value={grantAmount}
-                  onChange={(e) => setGrantAmount(e.target.value)}
-                />
-                <input
-                  className={`mt-2 w-full rounded-lg border px-3 py-2 text-sm ${input}`}
-                  placeholder="Ghi chú (tuỳ chọn)"
-                  value={grantNote}
-                  onChange={(e) => setGrantNote(e.target.value)}
-                />
-                <div className="mt-4 flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${border}`}
-                    onClick={() => {
-                      setModal({ type: null });
-                      setGrantNote("");
-                    }}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-zinc-950"
-                    onClick={async () => {
-                      await mutate({
-                        action: "grant_coins",
-                        username: modal.payload?.username,
-                        uid: modal.payload?.uid,
-                        amount: Number(grantAmount),
-                        note: grantNote || "Admin cấp xu",
-                      });
-                      setModal({ type: null });
-                      setGrantNote("");
-                    }}
-                  >
-                    Cấp xu
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
+      {toast ? (
         <div
-          className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-xl px-4 py-2 text-sm shadow-lg ${
-            toast.type === "ok"
-              ? "bg-emerald-600 text-white"
-              : toast.type === "err"
-                ? "bg-rose-600 text-white"
-                : "bg-zinc-800 text-zinc-100"
+          className={`fixed bottom-4 right-4 z-[90] rounded-lg border px-3 py-2 text-sm shadow-lg ${t.surface} ${
+            toast.type === "err"
+              ? "border-rose-500/50 text-rose-600 dark:text-rose-300"
+              : toast.type === "ok"
+                ? "border-emerald-500/50 text-emerald-700 dark:text-emerald-300"
+                : ""
           }`}
         >
           {toast.msg}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

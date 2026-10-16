@@ -101,7 +101,13 @@ export const useAccountStore = create<AccountState>()(
 
       applyRemote: (data) => {
         if (Array.isArray(data.history)) {
-          useHistoryStore.setState({ history: data.history as never[] });
+          const u = (get().username || "").trim().toLowerCase();
+          if (u) {
+            useHistoryStore.getState().bindAccount(u);
+            useHistoryStore.getState().replaceHistory(data.history as never[]);
+          } else {
+            useHistoryStore.getState().bindAccount(null);
+          }
         }
         if (Array.isArray(data.favorites)) {
           useFavoritesStore.setState({ favorites: data.favorites as never[] });

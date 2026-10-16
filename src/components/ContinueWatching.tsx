@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useHistoryStore } from "@/lib/history";
-import type { WatchHistory } from "@/lib/types";
 import { Play } from "lucide-react";
+import { useHistoryStore } from "@/lib/history";
+import { useAccountStore } from "@/lib/account";
+import type { WatchHistory } from "@/lib/types";
 
 function formatRemain(item: WatchHistory) {
   if (!item.duration || item.duration <= 0) return "";
@@ -20,12 +21,18 @@ function formatRemain(item: WatchHistory) {
 }
 
 export default function ContinueWatching() {
+  const username = useAccountStore((s) => s.username);
+  const owner = useHistoryStore((s) => s.owner);
   const history = useHistoryStore((s) => s.history);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  if (!mounted || !history.length) return null;
+  // Chỉ hiện khi đã đăng nhập và bucket đúng tài khoản
+  const account = (username || "").trim().toLowerCase();
+  const bound = (owner || "").trim().toLowerCase();
+  if (!mounted || !account || !bound || account !== bound) return null;
+  if (!history.length) return null;
 
   const items = history
     .filter((h) => {
@@ -39,10 +46,10 @@ export default function ContinueWatching() {
 
   return (
     <section data-gsap-reveal data-gsap-row className="mb-8 md:mb-10 px-4 md:px-12">
-      <h2 className="text-lg md:text-xl font-bold text-foreground mb-3 tracking-tight">
+      <h2 className="mb-3 text-lg font-bold tracking-tight text-foreground md:text-xl">
         Tiếp tục xem
       </h2>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+      <div className="scrollbar-hide flex gap-3 overflow-x-auto pb-2">
         {items.map((item: WatchHistory) => {
           const progress =
             item.duration > 0
@@ -57,9 +64,9 @@ export default function ContinueWatching() {
             <Link
               key={`${item.slug}-${item.episodeSlug}`}
               href={href}
-              className="group relative flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px] transition-transform duration-300 hover:scale-[1.02]"
+              className="group relative w-[140px] flex-shrink-0 transition-transform duration-300 hover:scale-105 sm:w-[160px] md:w-[180px]"
             >
-              <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-border-strong bg-surface-elevated shadow-md">
+              <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-lg ui-border-contrast">
                 <Image
                   src={item.poster || "/placeholder.svg"}
                   alt={item.name}
@@ -67,26 +74,25 @@ export default function ContinueWatching() {
                   className="object-cover"
                   unoptimized
                 />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg">
-                    <Play className="w-6 h-6 text-primary-foreground fill-primary-foreground ml-0.5" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/90">
+                    <Play className="ml-0.5 h-6 w-6 fill-primary-foreground text-primary-foreground" />
                   </div>
                 </div>
-                {progress > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/50">
+                {progress > 0 ? (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
                     <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                   </div>
-                )}
-                {/* Badge rõ trên mọi poster / theme */}
-                <span className="absolute top-2 left-2 z-[1] rounded-md border-2 border-white/90 bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-md tabular-nums">
+                ) : null}
+                <span className="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                   Xem tiếp
                 </span>
               </div>
-              <div className="mt-2 px-0.5">
-                <h3 className="text-sm font-semibold text-foreground line-clamp-1 group-hover:text-primary">
+              <div className="mt-2">
+                <h3 className="line-clamp-1 text-sm font-medium text-foreground group-hover:text-primary">
                   {item.name}
                 </h3>
-                <p className="text-xs text-foreground-muted mt-0.5 line-clamp-1">
+                <p className="mt-0.5 line-clamp-1 text-xs text-foreground-muted">
                   {item.episode}
                   {formatRemain(item) ? ` · ${formatRemain(item)}` : ""}
                 </p>

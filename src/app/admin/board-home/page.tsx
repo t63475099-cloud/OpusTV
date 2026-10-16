@@ -81,7 +81,7 @@ export default function BoardHomePage() {
   const headers = useCallback(
     () => ({
       "Content-Type": "application/json",
-      "Nhập mật khẩu...": secret,
+      "x-admin-secret": secret,
     }),
     [secret]
   );
@@ -95,7 +95,7 @@ export default function BoardHomePage() {
     }
     try {
       const res = await fetch("/api/admin/board-home?section=stats", {
-        headers: { "Nhập mật khẩu...": s },
+        headers: { "x-admin-secret": s },
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) {
@@ -131,7 +131,7 @@ export default function BoardHomePage() {
         setSecret(s);
         void (async () => {
           const res = await fetch("/api/admin/board-home?section=stats", {
-            headers: { "Nhập mật khẩu...": s },
+            headers: { "x-admin-secret": s },
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok && data.ok !== false) {

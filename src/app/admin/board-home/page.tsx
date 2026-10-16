@@ -374,12 +374,12 @@ export default function BoardHomePage() {
 
       {toast ? (
         <div
-          className={`fixed bottom-4 right-4 z-[90] rounded-lg border px-3 py-2 text-sm shadow-lg ${t.surface} ${
+          className={`fixed bottom-4 right-4 z-[90] max-w-sm rounded-lg border px-3 py-2 text-sm shadow-xl ${
             toast.type === "err"
-              ? "border-rose-500/50 text-rose-600 dark:text-rose-300"
+              ? "border-rose-600 bg-rose-600 text-white"
               : toast.type === "ok"
-                ? "border-emerald-500/50 text-emerald-700 dark:text-emerald-300"
-                : ""
+                ? "border-emerald-600 bg-emerald-600 text-white"
+                : "border-slate-700 bg-slate-900 text-white dark:bg-slate-800 dark:text-slate-100"
           }`}
         >
           {toast.msg}

@@ -15,94 +15,137 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Thiếu username/code" }, { status: 400 });
     }
     await ensureVipTables();
+
     const rows = (await sql`
-      SELECT id::text, coins, vip_tier, max_uses, used_count, is_active,
-             starts_at::text, ends_at::text
-      FROM giftcodes WHERE upper(code) = ${code} LIMIT 1
+      SELECT id::text, code, coins_reward, vip_hours, vip_tier_key, max_claims, current_claims,
+             is_active, starts_at::text, expires_at::text
+      FROM system_giftcodes
+      WHERE upper(trim(code)) = ${code}
+      LIMIT 1
     `) as Array<Record<string, unknown>>;
-    if (!rows[0] || !rows[0].is_active) {
-      return NextResponse.json({ ok: false, error: "Giftcode không tồn tại hoặc đã khóa" }, { status: 404 });
+
+    if (!rows[0]) {
+      return NextResponse.json({ ok: false, error: "Giftcode không tồn tại" }, { status: 404 });
     }
     const g = rows[0];
+    if (!g.is_active) {
+      return NextResponse.json({ ok: false, error: "Giftcode đã bị khóa" }, { status: 400 });
+    }
     const now = Date.now();
     if (g.starts_at && Date.parse(String(g.starts_at)) > now) {
       return NextResponse.json({ ok: false, error: "Giftcode chưa tới hạn dùng" }, { status: 400 });
     }
-    if (g.ends_at && Date.parse(String(g.ends_at)) < now) {
+    if (g.expires_at && Date.parse(String(g.expires_at)) < now) {
       return NextResponse.json({ ok: false, error: "Giftcode đã hết hạn" }, { status: 400 });
     }
-    const maxUses = g.max_uses != null ? Number(g.max_uses) : null;
-    const used = Number(g.used_count || 0);
-    if (maxUses != null && used >= maxUses) {
+    const maxClaims = Number(g.max_claims ?? 1);
+    const current = Number(g.current_claims || 0);
+    if (current >= maxClaims) {
       return NextResponse.json({ ok: false, error: "Giftcode đã hết lượt" }, { status: 400 });
     }
 
     try {
       await sql`
-        INSERT INTO giftcode_redemptions (giftcode_id, user_id)
-        VALUES (${String(g.id)}::uuid, ${username})
+        INSERT INTO giftcode_redemptions (giftcode_id, code, user_id)
+        VALUES (${String(g.id)}::uuid, ${code}, ${username})
       `;
-    } catch {
-      return NextResponse.json({ ok: false, error: "Bạn đã nhập giftcode này" }, { status: 409 });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/unique|duplicate/i.test(msg)) {
+        return NextResponse.json(
+          { ok: false, error: "Bạn đã nhập giftcode này" },
+          { status: 409 }
+        );
+      }
+      return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
 
     await sql`
-      UPDATE giftcodes SET used_count = used_count + 1 WHERE id = ${String(g.id)}::uuid
+      UPDATE system_giftcodes
+      SET current_claims = COALESCE(current_claims, 0) + 1
+      WHERE id = ${String(g.id)}::uuid
     `;
 
-    const addCoins = Number(g.coins || 0);
+    const coinsReward = Number(g.coins_reward || 0);
+    const vipHours = Number(g.vip_hours || 0);
+    const vipTierKey = g.vip_tier_key ? String(g.vip_tier_key) : null;
+
     let coinsOut: number | null = null;
     let isLifetime: boolean | undefined;
     let vipExpiresAt: string | null | undefined;
+    const granted: string[] = [];
 
-    if (addCoins > 0) {
+    if (coinsReward > 0) {
       const u = (await sql`
-        UPDATE users SET coins = COALESCE(coins, 0) + ${addCoins}
+        UPDATE users SET coins = COALESCE(coins, 0) + ${coinsReward}
         WHERE lower(username) = ${username}
         RETURNING coins
       `) as Array<{ coins: number }>;
       coinsOut = u[0]?.coins ?? null;
+      granted.push(`+${coinsReward} Xu`);
       await sql`
         INSERT INTO coin_transactions (user_id, amount, reason, meta)
-        VALUES (${username}, ${addCoins}, 'giftcode', ${JSON.stringify({ code })}::jsonb)
+        VALUES (${username}, ${coinsReward}, 'giftcode', ${JSON.stringify({ code })}::jsonb)
       `;
     }
 
-    const vipTier = g.vip_tier ? String(g.vip_tier) : null;
-    if (vipTier) {
-      const tier = getVipTier(vipTier);
+    const cur = (await sql`
+      SELECT vip_expires_at::text, is_lifetime_vip FROM users WHERE lower(username) = ${username} LIMIT 1
+    `) as Array<Record<string, unknown>>;
+    let curExpMs =
+      cur[0]?.vip_expires_at && Number.isFinite(Date.parse(String(cur[0].vip_expires_at)))
+        ? Date.parse(String(cur[0].vip_expires_at))
+        : null;
+    let lifetime = Boolean(cur[0]?.is_lifetime_vip);
+
+    if (vipHours > 0 && !lifetime) {
+      const base = Math.max(Date.now(), curExpMs || 0);
+      curExpMs = base + vipHours * 3600 * 1000;
+      granted.push(`+${vipHours} giờ VIP`);
+    }
+
+    if (vipTierKey) {
+      const tier = getVipTier(vipTierKey);
       if (tier) {
-        const cur = (await sql`
-          SELECT vip_expires_at::text, is_lifetime_vip FROM users WHERE lower(username) = ${username} LIMIT 1
-        `) as Array<Record<string, unknown>>;
-        const curExp = cur[0]?.vip_expires_at ? Date.parse(String(cur[0].vip_expires_at)) : null;
-        const stacked = stackVipExpiry(
-          Number.isFinite(curExp as number) ? (curExp as number) : null,
-          tier
-        );
-        isLifetime = stacked.isLifetime;
-        if (stacked.isLifetime) {
-          await sql`UPDATE users SET is_lifetime_vip = TRUE, vip_expires_at = NULL WHERE lower(username) = ${username}`;
-          vipExpiresAt = null;
-        } else {
-          vipExpiresAt = new Date(stacked.expiresAtMs!).toISOString();
-          await sql`
-            UPDATE users SET is_lifetime_vip = FALSE, vip_expires_at = ${vipExpiresAt}::timestamptz
-            WHERE lower(username) = ${username}
-          `;
+        if (tier.isLifetime) {
+          lifetime = true;
+          curExpMs = null;
+          granted.push(tier.label);
+        } else if (!lifetime) {
+          const stacked = stackVipExpiry(curExpMs, tier);
+          curExpMs = stacked.expiresAtMs;
+          granted.push(tier.label);
         }
       }
     }
 
+    if (lifetime) {
+      await sql`
+        UPDATE users SET is_lifetime_vip = TRUE, vip_expires_at = NULL
+        WHERE lower(username) = ${username}
+      `;
+      isLifetime = true;
+      vipExpiresAt = null;
+    } else if (curExpMs != null) {
+      vipExpiresAt = new Date(curExpMs).toISOString();
+      await sql`
+        UPDATE users SET is_lifetime_vip = FALSE, vip_expires_at = ${vipExpiresAt}::timestamptz
+        WHERE lower(username) = ${username}
+      `;
+      isLifetime = false;
+    }
+
     return NextResponse.json({
       ok: true,
-      message: "Giftcode đã được áp dụng",
+      message: granted.length
+        ? `Đã nhận: ${granted.join(", ")}`
+        : "Giftcode đã được áp dụng",
       coins: coinsOut,
       isLifetime,
       vipExpiresAt,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Lỗi giftcode";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
   }
 }

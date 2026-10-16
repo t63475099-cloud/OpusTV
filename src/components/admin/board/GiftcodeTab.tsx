@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Gift, Shuffle } from "lucide-react";
 import type { BoardTheme } from "./adminUi";
-import { boardTokens, btn } from "./adminUi";
 import { VIP_TIERS } from "@/lib/vipCatalog";
 
 type RewardTab = "coins" | "hours" | "tier" | "combo";
@@ -21,6 +20,13 @@ const HOUR_PRESETS = [
   { h: 8760, label: "8760h (1 năm)" },
 ];
 
+const chipIdle =
+  "bg-slate-100 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium text-xs py-1 px-2.5 rounded-md transition";
+const chipActive =
+  "bg-violet-600 text-white border border-violet-600 shadow-sm font-medium text-xs py-1 px-2.5 rounded-md";
+const inputCls =
+  "w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 px-2.5 py-1.5 text-sm";
+
 function randomGiftCode() {
   const a = Math.random().toString(36).slice(2, 6).toUpperCase();
   const b = Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -34,7 +40,6 @@ export function GiftcodeTab({
   theme: BoardTheme;
   onAction: (body: Record<string, unknown>) => Promise<unknown>;
 }) {
-  const t = boardTokens(theme);
   const [rewardTab, setRewardTab] = useState<RewardTab>("coins");
   const [code, setCode] = useState("");
   const [maxClaims, setMaxClaims] = useState("");
@@ -45,15 +50,19 @@ export function GiftcodeTab({
   const [expiresAt, setExpiresAt] = useState("");
   const [list, setList] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(false);
+  const [localErr, setLocalErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLocalErr(null);
     try {
       const data = (await onAction({ action: "list_giftcodes" })) as {
         ok?: boolean;
         giftcodes?: Array<Record<string, unknown>>;
+        error?: string;
       } | null;
-      if (data && data.giftcodes) setList(data.giftcodes);
+      if (data && Array.isArray(data.giftcodes)) setList(data.giftcodes);
+      else if (data && data.error) setLocalErr(data.error);
     } finally {
       setLoading(false);
     }
@@ -64,19 +73,36 @@ export function GiftcodeTab({
   }, [load]);
 
   const create = async () => {
-    await onAction({
+    setLocalErr(null);
+    const coinsN = Number(coins) || 0;
+    const hoursN = Number(vipHours) || 0;
+    const tier =
+      rewardTab === "tier" || rewardTab === "combo" ? vipTierKey : "";
+    if (
+      (rewardTab === "coins" && coinsN <= 0) ||
+      (rewardTab === "hours" && hoursN <= 0) ||
+      (rewardTab === "tier" && !tier) ||
+      (rewardTab === "combo" && coinsN <= 0 && hoursN <= 0 && !tier)
+    ) {
+      setLocalErr(
+        "Vui lòng nhập hoặc chọn ít nhất 1 phần thưởng (Xu, Giờ VIP hoặc Gói VIP)"
+      );
+      return;
+    }
+    const data = (await onAction({
       action: "create_giftcode",
       code: code.trim() || null,
-      coins_reward:
-        rewardTab === "coins" || rewardTab === "combo" ? Number(coins) || 0 : 0,
-      vip_hours:
-        rewardTab === "hours" || rewardTab === "combo" ? Number(vipHours) || 0 : 0,
-      vip_tier_key:
-        rewardTab === "tier" || rewardTab === "combo" ? vipTierKey || null : null,
-      max_claims: maxClaims ? Number(maxClaims) : null,
+      coins_reward: rewardTab === "coins" || rewardTab === "combo" ? coinsN : 0,
+      vip_hours: rewardTab === "hours" || rewardTab === "combo" ? hoursN : 0,
+      vip_tier_key: tier || null,
+      max_claims: maxClaims ? Number(maxClaims) : 1,
       starts_at: startsAt || null,
       expires_at: expiresAt || null,
-    });
+    })) as { ok?: boolean; error?: string } | null;
+    if (data && data.ok === false) {
+      setLocalErr(data.error || "Tạo thất bại");
+      return;
+    }
     setCode("");
     setCoins("");
     setVipHours("");
@@ -87,9 +113,14 @@ export function GiftcodeTab({
     void load();
   };
 
+  const surface =
+    theme === "dark"
+      ? "bg-[#111827] border-slate-800 text-slate-100"
+      : "bg-white border-slate-200 text-slate-900";
+
   return (
     <div className="space-y-4">
-      <section className={`rounded-xl border p-4 ${t.surface}`}>
+      <section className={`rounded-xl border p-4 ${surface}`}>
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Gift className="h-4 w-4" strokeWidth={1.75} />
           Tạo mã thưởng
@@ -108,7 +139,7 @@ export function GiftcodeTab({
               key={id}
               type="button"
               onClick={() => setRewardTab(id)}
-              className={`${btn.compact} ${rewardTab === id ? btn.primary : btn.ghost}`}
+              className={rewardTab === id ? chipActive : chipIdle}
             >
               {label}
             </button>
@@ -118,14 +149,14 @@ export function GiftcodeTab({
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <div className="flex gap-2 sm:col-span-2">
             <input
-              className={`flex-1 rounded-md border px-2.5 py-1.5 font-mono text-sm uppercase ${t.input}`}
+              className={`${inputCls} font-mono uppercase`}
               placeholder="Mã (để trống = tự sinh)"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
             />
             <button
               type="button"
-              className={`${btn.compact} ${btn.ghost}`}
+              className={chipIdle}
               onClick={() => setCode(randomGiftCode())}
             >
               <Shuffle className="mr-1 inline h-3.5 w-3.5" strokeWidth={1.75} />
@@ -134,9 +165,9 @@ export function GiftcodeTab({
           </div>
 
           <div className="sm:col-span-2">
-            <p className={`mb-1 text-xs ${t.muted}`}>Số người tối đa</p>
+            <p className="mb-1 text-xs text-slate-600 dark:text-slate-400">Số người tối đa</p>
             <input
-              className={`mb-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+              className={`${inputCls} mb-1`}
               placeholder="Số nguyên dương"
               value={maxClaims}
               onChange={(e) => setMaxClaims(e.target.value)}
@@ -146,7 +177,7 @@ export function GiftcodeTab({
                 <button
                   key={n}
                   type="button"
-                  className={`${btn.compact} ${btn.ghost}`}
+                  className={chipIdle}
                   onClick={() => setMaxClaims(String(n))}
                 >
                   {n} người
@@ -157,9 +188,9 @@ export function GiftcodeTab({
 
           {(rewardTab === "coins" || rewardTab === "combo") && (
             <div className="sm:col-span-2">
-              <p className={`mb-1 text-xs ${t.muted}`}>Xu thưởng</p>
+              <p className="mb-1 text-xs text-slate-600 dark:text-slate-400">Xu thưởng</p>
               <input
-                className={`mb-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+                className={`${inputCls} mb-1`}
                 placeholder="Số xu"
                 value={coins}
                 onChange={(e) => setCoins(e.target.value)}
@@ -169,7 +200,7 @@ export function GiftcodeTab({
                   <button
                     key={n}
                     type="button"
-                    className={`${btn.compact} ${btn.ghost}`}
+                    className={chipIdle}
                     onClick={() => setCoins(String(n))}
                   >
                     {n.toLocaleString("vi-VN")} Xu
@@ -181,9 +212,9 @@ export function GiftcodeTab({
 
           {(rewardTab === "hours" || rewardTab === "combo") && (
             <div className="sm:col-span-2">
-              <p className={`mb-1 text-xs ${t.muted}`}>Giờ VIP</p>
+              <p className="mb-1 text-xs text-slate-600 dark:text-slate-400">Giờ VIP</p>
               <input
-                className={`mb-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+                className={`${inputCls} mb-1`}
                 placeholder="Số giờ"
                 value={vipHours}
                 onChange={(e) => setVipHours(e.target.value)}
@@ -193,7 +224,7 @@ export function GiftcodeTab({
                   <button
                     key={x.h}
                     type="button"
-                    className={`${btn.compact} ${btn.ghost}`}
+                    className={chipIdle}
                     onClick={() => setVipHours(String(x.h))}
                   >
                     {x.label}
@@ -205,9 +236,9 @@ export function GiftcodeTab({
 
           {(rewardTab === "tier" || rewardTab === "combo") && (
             <div className="sm:col-span-2">
-              <p className={`mb-1 text-xs ${t.muted}`}>Gói VIP</p>
+              <p className="mb-1 text-xs text-slate-600 dark:text-slate-400">Gói VIP</p>
               <select
-                className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+                className={inputCls}
                 value={vipTierKey}
                 onChange={(e) => setVipTierKey(e.target.value)}
               >
@@ -217,47 +248,52 @@ export function GiftcodeTab({
                     {x.label}
                   </option>
                 ))}
+                <option value="LIFETIME">Vĩnh viễn</option>
               </select>
             </div>
           )}
 
-          <label className={`text-xs ${t.muted}`}>
+          <label className="text-xs text-slate-600 dark:text-slate-400">
             Từ ngày
             <input
               type="datetime-local"
-              className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+              className={`${inputCls} mt-1`}
               value={startsAt}
               onChange={(e) => setStartsAt(e.target.value)}
             />
           </label>
-          <label className={`text-xs ${t.muted}`}>
+          <label className="text-xs text-slate-600 dark:text-slate-400">
             Đến ngày
             <input
               type="datetime-local"
-              className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+              className={`${inputCls} mt-1`}
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
             />
           </label>
         </div>
 
+        {localErr ? (
+          <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">{localErr}</p>
+        ) : null}
+
         <button
           type="button"
-          className={`mt-3 ${btn.compact} ${btn.primary}`}
+          className="mt-3 rounded-md bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500"
           onClick={() => void create()}
         >
           Tạo giftcode
         </button>
       </section>
 
-      <section className={`overflow-hidden rounded-xl border ${t.surface}`}>
-        <div className={`border-b px-4 py-2 text-xs font-semibold uppercase ${t.border} ${t.muted}`}>
-          Danh sách giftcode {loading ? "…" : ""}
+      <section className={`overflow-hidden rounded-xl border ${surface}`}>
+        <div className="border-b border-slate-200 px-4 py-2 text-xs font-semibold uppercase text-slate-600 dark:border-slate-800 dark:text-slate-400">
+          Danh sách giftcode {loading ? "…" : `(${list.length})`}
         </div>
         <div className="max-h-72 overflow-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
-              <tr className={`text-xs uppercase ${t.muted}`}>
+              <tr className="text-xs uppercase text-slate-600 dark:text-slate-400">
                 <th className="px-3 py-2">Mã</th>
                 <th className="px-3 py-2">Thưởng</th>
                 <th className="px-3 py-2">Lượt</th>
@@ -269,23 +305,29 @@ export function GiftcodeTab({
             <tbody>
               {list.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className={`px-3 py-8 text-center ${t.muted}`}>
+                  <td
+                    colSpan={6}
+                    className="px-3 py-8 text-center text-slate-600 dark:text-slate-400"
+                  >
                     Chưa có giftcode
                   </td>
                 </tr>
               ) : (
                 list.map((g) => (
-                  <tr key={String(g.id || g.code)} className={`border-t ${t.border}`}>
+                  <tr
+                    key={String(g.id || g.code)}
+                    className="border-t border-slate-200 dark:border-slate-800"
+                  >
                     <td className="px-3 py-2 font-mono text-xs">{String(g.code)}</td>
-                    <td className={`px-3 py-2 text-xs ${t.muted}`}>
+                    <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">
                       {Number(g.coins_reward || 0) > 0 ? `${g.coins_reward} xu ` : ""}
                       {Number(g.vip_hours || 0) > 0 ? `${g.vip_hours}h VIP ` : ""}
                       {g.vip_tier_key ? String(g.vip_tier_key) : ""}
                     </td>
-                    <td className="px-3 py-2 tabular-nums text-xs">
+                    <td className="px-3 py-2 text-xs tabular-nums">
                       {String(g.current_claims ?? 0)}/{g.max_claims ?? "∞"}
                     </td>
-                    <td className={`px-3 py-2 text-[11px] ${t.muted}`}>
+                    <td className="px-3 py-2 text-[11px] text-slate-600 dark:text-slate-400">
                       {(g.starts_at ? String(g.starts_at).slice(0, 16) : "—") +
                         " → " +
                         (g.expires_at ? String(g.expires_at).slice(0, 16) : "—")}
@@ -297,22 +339,24 @@ export function GiftcodeTab({
                       <div className="flex gap-1">
                         <button
                           type="button"
-                          className={`${btn.compact} ${btn.ghost}`}
+                          className={chipIdle}
                           onClick={() =>
-                            void onAction({ action: "toggle_giftcode", code: g.code }).then(
-                              () => load()
-                            )
+                            void onAction({
+                              action: "toggle_giftcode",
+                              code: g.code,
+                            }).then(() => load())
                           }
                         >
                           Khóa/Mở
                         </button>
                         <button
                           type="button"
-                          className={`${btn.compact} ${btn.ban}`}
+                          className="rounded-md border border-rose-400/50 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-700 dark:text-rose-300"
                           onClick={() =>
-                            void onAction({ action: "delete_giftcode", code: g.code }).then(
-                              () => load()
-                            )
+                            void onAction({
+                              action: "delete_giftcode",
+                              code: g.code,
+                            }).then(() => load())
                           }
                         >
                           Xóa

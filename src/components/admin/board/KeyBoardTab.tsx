@@ -64,7 +64,7 @@ export function KeyBoardTab({
               })
             }
           >
-            Sinh key
+            Sinh Key
           </button>
           <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={onRefresh}>
             Làm mới

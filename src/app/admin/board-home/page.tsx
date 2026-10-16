@@ -270,7 +270,7 @@ export default function BoardHomePage() {
     return (
       <div className={`flex h-screen items-center justify-center p-4 ${t.page}`}>
         <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-xl ${t.surface}`}>
-          <h1 className="text-lg font-semibold tracking-tight">OpusFilm · Master Board</h1>
+          <h1 className="text-lg font-semibold tracking-tight">OpusFilm · Bảng điều khiển</h1>
           <p className={`mt-1 text-sm ${t.muted}`}>Nhập mã quản trị để mở bảng điều khiển</p>
           <input
             type="password"
@@ -302,7 +302,7 @@ export default function BoardHomePage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-base font-semibold tracking-tight sm:text-lg">
-                OpusFilm · Master Board
+                OpusFilm · Bảng điều khiển
               </h1>
               <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${t.border} ${t.muted}`}>
                 v1.17

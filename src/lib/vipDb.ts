@@ -46,7 +46,7 @@ export async function ensureVipTables() {
   await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS max_claims INT`;
   await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS current_claims INT NOT NULL DEFAULT 0`;
 
-  # legacy giftcodes table still ok for user redeem path
+  // legacy giftcodes table still ok for user redeem path
   await sql`
     CREATE TABLE IF NOT EXISTS giftcodes (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

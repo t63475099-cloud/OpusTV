@@ -4,6 +4,7 @@ import { getMovieDetail, getMoviesByCategory, getNewestMovies } from "@/lib/api"
 import WatchPageClient from "@/components/WatchPageClient";
 import { getCuratedMovie } from "@/lib/curatedMovies";
 import CuratedWatchClient from "@/components/CuratedWatchClient";
+import { PhimVipGate } from "@/components/vip/PhimVipGate";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -36,7 +37,11 @@ export default async function PhimPage({ params }: Props) {
 
   const curated = getCuratedMovie(slug);
   if (curated) {
-    return <CuratedWatchClient movie={curated} />;
+    return (
+      <PhimVipGate>
+        <CuratedWatchClient movie={curated} />
+      </PhimVipGate>
+    );
   }
 
   let data;
@@ -62,11 +67,13 @@ export default async function PhimPage({ params }: Props) {
     .slice(0, 24);
 
   return (
-    <WatchPageClient
-      movie={data.movie}
-      episodes={data.episodes || []}
-      related={related}
-      categorySlug={catSlug}
-    />
+    <PhimVipGate>
+      <WatchPageClient
+        movie={data.movie}
+        episodes={data.episodes || []}
+        related={related}
+        categorySlug={catSlug}
+      />
+    </PhimVipGate>
   );
 }

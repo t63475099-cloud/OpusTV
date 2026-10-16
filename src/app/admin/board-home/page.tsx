@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Lock, Moon, RefreshCw, Sun } from "lucide-react";
+import { Activity, BadgeCheck, Clapperboard, Cpu, Gift, KeyRound, Lock, Moon, Radio, RefreshCw, ShieldAlert, Sun, Users } from "lucide-react";
 import type { AdminAccount, SystemStats, VerifyRequestItem } from "@/lib/adminEngine";
 import type { LicenseKeyRecord, KeyTier } from "@/lib/keyEngine";
 import { AccountTab } from "@/components/admin/board/AccountTab";
@@ -23,14 +23,14 @@ type TabId =
   | "MODERATION"
   | "SYSTEM";
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "ACCOUNTS", label: "Tài khoản" },
-  { id: "MOVIES", label: "Phim & Tập" },
-  { id: "KEY-BOARD", label: "Key-board" },
-  { id: "VERIFY", label: "Xác minh" },
-  { id: "GIFTCODE", label: "Giftcode & Sự kiện" },
-  { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt" },
-  { id: "SYSTEM", label: "Hệ thống & AI" },
+const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
+  { id: "ACCOUNTS", label: "Tài khoản", icon: Users },
+  { id: "MOVIES", label: "Phim & Tập", icon: Clapperboard },
+  { id: "KEY-BOARD", label: "Key-board", icon: KeyRound },
+  { id: "VERIFY", label: "Xác minh", icon: BadgeCheck },
+  { id: "GIFTCODE", label: "Giftcode & Sự kiện", icon: Gift },
+  { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt", icon: ShieldAlert },
+  { id: "SYSTEM", label: "Hệ thống & AI", icon: Cpu },
 ];
 
 const SECRET_STORAGE = "opus_admin_secret";
@@ -265,11 +265,15 @@ export default function BoardHomePage() {
             <p className={`mt-0.5 text-xs ${t.muted}`}>
               {stats?.users ?? "—"} tài khoản
               {" · "}
-              <span className="text-emerald-600 dark:text-emerald-400">
-                🟢 {stats?.sessions ?? "—"} online
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <Radio className="h-3.5 w-3.5" strokeWidth={1.75} />
+                {stats?.sessions ?? "—"} online
               </span>
               {" · "}
-              <span className="text-amber-600 dark:text-amber-400">🟡 — treo máy</span>
+              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                <Activity className="h-3.5 w-3.5" strokeWidth={1.75} />
+                treo máy
+              </span>
               {" · "}
               {stats?.keysActive ?? 0}/{stats?.keysTotal ?? 0} API key
               {" · "}
@@ -312,18 +316,21 @@ export default function BoardHomePage() {
         {/* Segmented tabs */}
         <div className="mx-auto max-w-[1600px] overflow-x-auto px-4 pb-3">
           <div className={`inline-flex min-w-min gap-1 rounded-lg border p-1 ${t.border}`}>
-            {TABS.map((x) => (
+            {TABS.map((x) => {
+              const Icon = x.icon;
+              return (
               <button
                 key={x.id}
                 type="button"
                 onClick={() => setTab(x.id)}
-                className={`${btn.compact} whitespace-nowrap ${
+                className={`${btn.compact} inline-flex items-center gap-1.5 whitespace-nowrap ${
                   tab === x.id ? btn.primary : t.tabIdle
                 }`}
               >
+                <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
                 {x.label}
               </button>
-            ))}
+            );})}
           </div>
         </div>
       </header>

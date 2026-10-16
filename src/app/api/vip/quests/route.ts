@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/neonSql";
 import { ensureVipTables } from "@/lib/vipDb";
-import { QUESTS, dayKey } from "@/lib/quests";
+import { QUESTS } from "@/lib/quests";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** YYYY-MM-DD in Asia/Ho_Chi_Minh */
+function vnDayKey(d = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const username = String(body?.username || "").trim().toLowerCase();
     const questId = String(body?.questId || "").trim();
-    const action = String(body?.action || "claim");
     if (!username || !questId) {
       return NextResponse.json({ ok: false, error: "Thiếu username/questId" }, { status: 400 });
     }
@@ -20,47 +29,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Nhiệm vụ không tồn tại" }, { status: 404 });
     }
     await ensureVipTables();
-    const dk = def.daily ? dayKey() : def.once ? "once" : "global";
+    const today = vnDayKey();
 
-    if (action === "progress") {
-      const add = Math.max(1, Number(body?.add) || 1);
-      await sql`
-        INSERT INTO user_quests (user_id, quest_id, progress, claimed, day_key)
-        VALUES (${username}, ${questId}, ${add}, FALSE, ${dk})
-        ON CONFLICT (user_id, quest_id, day_key) DO UPDATE SET
-          progress = LEAST(user_quests.progress + ${add}, ${def.target * 2}),
-          updated_at = NOW()
-      `;
-      return NextResponse.json({ ok: true });
-    }
-
-    // claim
     const rows = (await sql`
-      SELECT progress, claimed FROM user_quests
-      WHERE user_id = ${username} AND quest_id = ${questId} AND day_key = ${dk}
+      SELECT claim_count, last_claimed_date, last_cycle_key
+      FROM user_quest_claims
+      WHERE user_id = ${username} AND quest_id = ${questId}
       LIMIT 1
-    `) as Array<{ progress: number; claimed: boolean }>;
+    `) as Array<{
+      claim_count: number;
+      last_claimed_date: string | null;
+      last_cycle_key: string | null;
+    }>;
 
-    // daily checkin: allow claim without prior progress row
-    let progress = rows[0]?.progress ?? 0;
-    if (questId === "daily_checkin") progress = Math.max(progress, 1);
+    const claimCount = Number(rows[0]?.claim_count || 0);
+    const lastDate = rows[0]?.last_claimed_date || null;
 
-    if (rows[0]?.claimed) {
-      return NextResponse.json({ ok: false, error: "Đã nhận thưởng nhiệm vụ này" }, { status: 400 });
-    }
-    if (progress < def.target && questId !== "daily_checkin") {
-      return NextResponse.json({
-        ok: false,
-        error: `Chưa đủ tiến độ (${progress}/${def.target})`,
-      }, { status: 400 });
+    if (questId === "daily_checkin") {
+      if (lastDate === today) {
+        return NextResponse.json({
+          ok: false,
+          error: "Đã nhận điểm danh hôm nay",
+          claimedToday: true,
+        }, { status: 400 });
+      }
+    } else {
+      if (claimCount >= 10) {
+        return NextResponse.json({
+          ok: false,
+          error: "Đã hoàn thành tối đa (10/10)",
+          claimCount: 10,
+        }, { status: 400 });
+      }
+      // prevent double-claim same cycle (same day for daily-ish)
+      if (def.daily && lastDate === today) {
+        return NextResponse.json({
+          ok: false,
+          error: "Đã nhận trong chu kỳ hôm nay",
+        }, { status: 400 });
+      }
     }
 
     await sql`
-      INSERT INTO user_quests (user_id, quest_id, progress, claimed, day_key)
-      VALUES (${username}, ${questId}, ${Math.max(progress, def.target)}, TRUE, ${dk})
-      ON CONFLICT (user_id, quest_id, day_key) DO UPDATE SET
-        claimed = TRUE,
-        progress = GREATEST(user_quests.progress, ${def.target}),
+      INSERT INTO user_quest_claims (user_id, quest_id, claim_count, last_claimed_date, last_cycle_key)
+      VALUES (${username}, ${questId}, 1, ${today}, ${today})
+      ON CONFLICT (user_id, quest_id) DO UPDATE SET
+        claim_count = user_quest_claims.claim_count + 1,
+        last_claimed_date = ${today},
+        last_cycle_key = ${today},
         updated_at = NOW()
     `;
 
@@ -75,10 +91,13 @@ export async function POST(req: NextRequest) {
       VALUES (${username}, ${def.reward}, 'quest', ${JSON.stringify({ questId })}::jsonb)
     `;
 
+    const newCount = questId === "daily_checkin" ? claimCount + 1 : claimCount + 1;
+
     return NextResponse.json({
       ok: true,
       reward: def.reward,
       coins: updated[0]?.coins ?? null,
+      claimCount: newCount,
       message: `+${def.reward} Xu`,
     });
   } catch (e) {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAccountStore } from "@/lib/account";
 import { useVipAccess } from "@/lib/vipAccess";
+import { isVipActive } from "@/lib/vipCatalog";
 import { UnactivatedAccessModal, type VipGateAction } from "./UnactivatedAccessModal";
 import { VipShopModal } from "./VipShopModal";
 import { RedeemKeyModal } from "./RedeemKeyModal";
@@ -13,14 +14,16 @@ export function VipGateProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const router = useRouter();
   const username = useAccountStore((s) => s.username);
-  const hasVip = useVipAccess((s) => s.hasVip);
+  const isLifetime = useVipAccess((s) => s.isLifetime);
+  const vipExpiresAt = useVipAccess((s) => s.vipExpiresAt);
   const setFromServer = useVipAccess((s) => s.setFromServer);
+  const hasVipAccess = isVipActive({ isLifetime, expiresAtMs: vipExpiresAt });
   const [gateOpen, setGateOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [questOpen, setQuestOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshVip = useCallback(() => {
     if (!username) return;
     void fetch(`/api/vip/status?username=${encodeURIComponent(username)}`)
       .then((r) => r.json())
@@ -36,14 +39,23 @@ export function VipGateProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, [username, setFromServer]);
 
-  // Hard-lock music/chat routes
   useEffect(() => {
-    if (hasVip()) return;
-    if (pathname.startsWith("/nhac") || pathname.startsWith("/tin-nhan")) {
+    refreshVip();
+  }, [refreshVip]);
+
+  useEffect(() => {
+    const onUp = () => refreshVip();
+    window.addEventListener("vip-status-updated", onUp);
+    return () => window.removeEventListener("vip-status-updated", onUp);
+  }, [refreshVip]);
+
+  useEffect(() => {
+    if (hasVipAccess) return;
+    if (pathname.startsWith("/nhac") || pathname.startsWith("/tin-nhan") || pathname.startsWith("/phim/")) {
       setGateOpen(true);
-      router.replace("/home");
+      if (!pathname.startsWith("/phim/")) router.replace("/home");
     }
-  }, [pathname, hasVip, router]);
+  }, [pathname, hasVipAccess, router]);
 
   useEffect(() => {
     const onNeed = () => setGateOpen(true);

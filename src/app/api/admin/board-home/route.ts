@@ -785,6 +785,93 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, message: "Đã xóa key" });
     }
 
+    
+    if (action === "create_giftcode") {
+      await ensureVipTables();
+      const rawCode = String(body.code || "").trim().toUpperCase();
+      const code =
+        rawCode ||
+        `GIFT-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random()
+          .toString(36)
+          .slice(2, 6)
+          .toUpperCase()}`;
+      const coinsReward = Math.max(0, Number(body.coins) || Number(body.coins_reward) || 0);
+      const vipHours = Math.max(0, Number(body.vipHours) || Number(body.vip_hours) || 0);
+      const vipTierKey = body.vipTierKey || body.vip_tier_key || null;
+      const maxClaims =
+        body.maxUses != null || body.max_claims != null
+          ? Number(body.maxUses ?? body.max_claims)
+          : null;
+      const startsAt = body.startsAt || body.starts_at || null;
+      const expiresAt = body.endsAt || body.expires_at || body.expiresAt || null;
+      await sql`
+        INSERT INTO system_giftcodes (
+          code, coins_reward, vip_hours, vip_tier_key, max_claims, current_claims,
+          starts_at, expires_at, is_active
+        ) VALUES (
+          ${code},
+          ${coinsReward},
+          ${vipHours},
+          ${vipTierKey ? String(vipTierKey) : null},
+          ${maxClaims},
+          0,
+          ${startsAt ? String(startsAt) : null}::timestamptz,
+          ${expiresAt ? String(expiresAt) : null}::timestamptz,
+          TRUE
+        )
+        ON CONFLICT (code) DO NOTHING
+      `;
+      // mirror into legacy giftcodes for user redeem path
+      await sql`
+        INSERT INTO giftcodes (code, coins, vip_tier, max_uses, used_count, starts_at, ends_at, is_active)
+        VALUES (
+          ${code},
+          ${coinsReward},
+          ${vipTierKey ? String(vipTierKey) : null},
+          ${maxClaims},
+          0,
+          ${startsAt ? String(startsAt) : null}::timestamptz,
+          ${expiresAt ? String(expiresAt) : null}::timestamptz,
+          TRUE
+        )
+        ON CONFLICT (code) DO NOTHING
+      `;
+      return NextResponse.json({ ok: true, message: `Đã tạo giftcode ${code}`, code });
+    }
+
+    if (action === "list_giftcodes") {
+      await ensureVipTables();
+      const rows = await sql`
+        SELECT id::text, code, coins_reward, vip_hours, vip_tier_key, max_claims, current_claims,
+               starts_at::text, expires_at::text, is_active, created_at::text
+        FROM system_giftcodes
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
+      return NextResponse.json({ ok: true, giftcodes: rows });
+    }
+
+    if (action === "toggle_giftcode") {
+      await ensureVipTables();
+      const code = String(body.code || "").toUpperCase();
+      await sql`
+        UPDATE system_giftcodes SET is_active = NOT is_active WHERE code = ${code}
+      `;
+      await sql`
+        UPDATE giftcodes SET is_active = NOT is_active WHERE upper(code) = ${code}
+      `;
+      return NextResponse.json({ ok: true, message: "Đã đổi trạng thái giftcode" });
+    }
+
+    if (action === "delete_giftcode") {
+      await ensureVipTables();
+      const code = String(body.code || "").toUpperCase();
+      await sql`DELETE FROM system_giftcodes WHERE code = ${code}`;
+      await sql`DELETE FROM giftcodes WHERE upper(code) = ${code}`;
+      return NextResponse.json({ ok: true, message: "Đã xóa giftcode" });
+    }
+
+
     return NextResponse.json({ ok: false, error: `Action không hỗ trợ: ${action}` }, { status: 400 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Lỗi";

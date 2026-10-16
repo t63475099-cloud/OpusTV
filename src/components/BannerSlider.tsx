@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, LockKeyhole } from "lucide-react";
+import { useVipAccess } from "@/lib/vipAccess";
+import { isVipActive } from "@/lib/vipCatalog";
+import { requestVipAccess } from "@/components/vip/VipGateProvider";
 import { getImageUrl } from "@/lib/api";
 import type { MovieListItem } from "@/lib/types";
 
@@ -15,6 +18,9 @@ interface Props {
 export default function BannerSlider({ movies }: Props) {
   const list = (movies || []).filter((m) => m?.slug).slice(0, 10);
   const [idx, setIdx] = useState(0);
+  const isLifetime = useVipAccess((s) => s.isLifetime);
+  const vipExpiresAt = useVipAccess((s) => s.vipExpiresAt);
+  const locked = !isVipActive({ isLifetime, expiresAtMs: vipExpiresAt });
 
   const go = useCallback(
     (dir: number) => {
@@ -51,6 +57,14 @@ export default function BannerSlider({ movies }: Props) {
           className="object-cover object-center transition-opacity duration-700"
         />
         <div className="banner-scrim absolute inset-0" aria-hidden />
+        {locked ? (
+          <div className="absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/65 backdrop-blur-[3px]">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-slate-900/90 px-3 py-1.5 text-xs font-semibold text-white shadow-lg">
+              <LockKeyhole className="h-4 w-4 text-amber-400" strokeWidth={1.75} />
+              LOCKED · YÊU CẦU VIP
+            </span>
+          </div>
+        ) : null}
         <div
           className="absolute inset-0 opacity-80"
           style={{
@@ -84,14 +98,28 @@ export default function BannerSlider({ movies }: Props) {
             ) : null}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <Link
-                href={`/phim/${m.slug}`}
+                href={locked ? "#" : `/phim/${m.slug}`}
+              onClick={(e) => {
+                if (locked) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  requestVipAccess();
+                }
+              }}
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-lg"
               >
                 <Play className="h-4 w-4 fill-current" />
                 Xem ngay
               </Link>
               <Link
-                href={`/phim/${m.slug}`}
+                href={locked ? "#" : `/phim/${m.slug}`}
+              onClick={(e) => {
+                if (locked) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  requestVipAccess();
+                }
+              }}
                 className="inline-flex h-11 items-center rounded-full border border-border-strong bg-surface/80 px-5 text-sm font-semibold text-foreground backdrop-blur-md ui-border-contrast"
               >
                 Chi tiết

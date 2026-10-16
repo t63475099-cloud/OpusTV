@@ -55,6 +55,10 @@ export function RedeemKeyModal({
           });
         }
         setMsg(data.message || "OK");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("vip-status-updated"));
+          window.setTimeout(() => window.location.reload(), 600);
+        }
         setCode("");
       }
     } catch {

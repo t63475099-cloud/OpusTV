@@ -24,6 +24,30 @@ export async function ensureVipTables() {
   await sql`CREATE INDEX IF NOT EXISTS idx_license_keys_v2_status ON license_keys_v2 (status)`;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS system_giftcodes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      code TEXT NOT NULL UNIQUE,
+      coins_reward INT NOT NULL DEFAULT 0,
+      vip_hours INT NOT NULL DEFAULT 0,
+      vip_tier_key VARCHAR(16),
+      max_claims INT,
+      current_claims INT NOT NULL DEFAULT 0,
+      starts_at TIMESTAMPTZ,
+      expires_at TIMESTAMPTZ,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS vip_hours INT NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS vip_tier_key VARCHAR(16)`;
+  await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS starts_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS coins_reward INT NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS max_claims INT`;
+  await sql`ALTER TABLE system_giftcodes ADD COLUMN IF NOT EXISTS current_claims INT NOT NULL DEFAULT 0`;
+
+  # legacy giftcodes table still ok for user redeem path
+  await sql`
     CREATE TABLE IF NOT EXISTS giftcodes (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       code TEXT NOT NULL UNIQUE,
@@ -45,6 +69,18 @@ export async function ensureVipTables() {
       user_id VARCHAR(64) NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (giftcode_id, user_id)
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_quest_claims (
+      user_id VARCHAR(64) NOT NULL,
+      quest_id VARCHAR(64) NOT NULL,
+      claim_count INT NOT NULL DEFAULT 0,
+      last_claimed_date VARCHAR(16),
+      last_cycle_key VARCHAR(32),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, quest_id)
     )
   `;
 

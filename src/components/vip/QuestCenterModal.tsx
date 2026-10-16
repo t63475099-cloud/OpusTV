@@ -86,7 +86,12 @@ export function QuestCenterModal({
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-foreground">{q.title}</p>
-                      <p className="text-xs tabular-nums text-foreground-muted">+{q.reward} Xu</p>
+                      <p className="text-xs tabular-nums text-foreground-muted">
+                        +{q.reward} Xu ·{" "}
+                        {q.id === "daily_checkin"
+                          ? "Hàng ngày (1 lần/ngày)"
+                          : "Tối đa 10 lần"}
+                      </p>
                     </div>
                     <button
                       type="button"

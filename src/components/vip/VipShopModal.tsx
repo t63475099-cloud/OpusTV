@@ -44,6 +44,10 @@ export function VipShopModal({
           vipExpiresAt: data.vipExpiresAt,
         });
         setMsg(data.message || "OK");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("vip-status-updated"));
+          window.setTimeout(() => window.location.reload(), 600);
+        }
       }
     } catch {
       setMsg("Lỗi mạng");

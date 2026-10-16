@@ -197,18 +197,22 @@ export default async function HomePage() {
 
         {coTrang.length > 0 ? (
           <MovieRow title="Cổ trang" movies={coTrang} href="/the-loai/co-trang" />
+        ) : null}
+
         {vienTuong.length > 0 ? (
           <MovieRow title="Viễn tưởng" movies={vienTuong} href="/the-loai/vien-tuong" />
         ) : null}
+
         {phieuLuu.length > 0 ? (
           <MovieRow title="Phiêu lưu" movies={phieuLuu} href="/the-loai/phieu-luu" />
         ) : null}
+
         {haiHuoc.length > 0 ? (
           <MovieRow title="Hài hước" movies={haiHuoc} href="/the-loai/hai-huoc" />
         ) : null}
+
         {tamLy.length > 0 ? (
           <MovieRow title="Tâm lý" movies={tamLy} href="/the-loai/tam-ly" />
-        ) : null}
         ) : null}
 
         <MovieRow title="Phim bộ" movies={phimBo} href="/danh-sach/phim-bo" />

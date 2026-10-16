@@ -62,9 +62,7 @@ export function VipCountdownCard({
         setMsg(data.message || "Kích hoạt thành công");
         setKeyInput("");
         setPanel("none");
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("vip-status-updated"));
-        }
+        window.dispatchEvent(new Event("vip-status-updated"));
       }
     } catch {
       setMsg("Lỗi mạng");
@@ -94,9 +92,7 @@ export function VipCountdownCard({
         setMsg(data.message || "Đã xóa gói");
         setClearConfirm("");
         setPanel("none");
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("vip-status-updated"));
-        }
+        window.dispatchEvent(new Event("vip-status-updated"));
       }
     } catch {
       setMsg("Lỗi mạng");
@@ -105,8 +101,13 @@ export function VipCountdownCard({
     }
   };
 
+  const btnSecondary =
+    "inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-foreground ui-border-contrast";
+  const btnDanger =
+    "inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-300";
+
   return (
-    <div className="rounded-xl border-2 border-slate-300 bg-slate-100 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+    <div data-vip-card className="rounded-xl border-2 border-border bg-surface p-4 ui-border-contrast">
       <div className="flex items-center gap-2">
         <ShieldCheck className="h-5 w-5 text-primary" strokeWidth={1.75} />
         <span className="text-sm font-semibold text-foreground">
@@ -135,7 +136,7 @@ export function VipCountdownCard({
           ).map(([v, label]) => (
             <div
               key={label}
-              className="rounded-lg border border-slate-300 bg-white px-1 py-2 text-center dark:border-slate-600 dark:bg-slate-950"
+              className="rounded-lg border border-border bg-background px-1 py-2 text-center ui-border-contrast"
             >
               <div className="font-mono text-lg font-semibold tabular-nums text-foreground">
                 {pad(v)}
@@ -146,7 +147,6 @@ export function VipCountdownCard({
         </div>
       )}
 
-      {/* Actions under countdown */}
       <div className="mt-3 flex flex-wrap gap-2">
         {!active && !isLifetime ? (
           <button
@@ -164,7 +164,7 @@ export function VipCountdownCard({
             setPanel(panel === "key" ? "none" : "key");
             setMsg(null);
           }}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+          className={btnSecondary}
         >
           <KeyRound className="h-4 w-4" strokeWidth={1.75} />
           Nhập Key mới
@@ -176,7 +176,7 @@ export function VipCountdownCard({
               setPanel(panel === "clear" ? "none" : "clear");
               setMsg(null);
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-300"
+            className={btnDanger}
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.75} />
             Xóa gói
@@ -185,7 +185,7 @@ export function VipCountdownCard({
       </div>
 
       {panel === "key" ? (
-        <div className="mt-3 rounded-lg border border-slate-300 bg-white p-3 dark:border-slate-600 dark:bg-slate-950">
+        <div className="mt-3 rounded-lg border border-border bg-background p-3 ui-border-contrast">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-medium text-foreground">Nhập License Key hoặc Giftcode</p>
             <button type="button" onClick={() => setPanel("none")} aria-label="Đóng">
@@ -193,7 +193,7 @@ export function VipCountdownCard({
             </button>
           </div>
           <input
-            className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-sm uppercase text-slate-900 placeholder:text-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-sm uppercase text-foreground placeholder:text-foreground-subtle"
             placeholder="OPUS-24H-XXXXXXXX hoặc GIFT-XXXX-YYYY"
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
@@ -211,7 +211,7 @@ export function VipCountdownCard({
       ) : null}
 
       {panel === "clear" ? (
-        <div className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/5 p-3">
+        <div className="mt-3 rounded-lg border border-rose-500/40 bg-rose-500/5 p-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-medium text-foreground">Xóa gói VIP hiện tại?</p>
             <button type="button" onClick={() => setPanel("none")} aria-label="Đóng">
@@ -219,11 +219,12 @@ export function VipCountdownCard({
             </button>
           </div>
           <p className="text-xs text-foreground-muted">
-            Gói sẽ hết hiệu lực ngay. Gõ <span className="font-mono font-semibold text-rose-600">XOA</span> để
+            Gói sẽ hết hiệu lực ngay. Gõ{" "}
+            <span className="font-mono font-semibold text-rose-600 dark:text-rose-300">XOA</span> để
             xác nhận.
           </p>
           <input
-            className="mt-2 w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="mt-2 w-full rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-sm text-foreground"
             placeholder="XOA"
             value={clearConfirm}
             onChange={(e) => setClearConfirm(e.target.value)}

@@ -3330,3 +3330,24 @@ html[data-theme="light"] .text-primary-foreground {
 html[data-theme="light"] .font-mono.tabular-nums {
   color: #0f172a !important;
 }
+
+
+/* VIP CARD THEME SAFE — never invert countdown digits */
+html[data-theme="dark"] [data-vip-card],
+html.dark [data-vip-card] {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+html[data-theme="light"] [data-vip-card] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+html[data-theme="dark"] [data-vip-card] .text-foreground,
+html.dark [data-vip-card] .text-foreground {
+  color: #f8fafc !important;
+}
+html[data-theme="light"] [data-vip-card] .text-foreground {
+  color: #0f172a !important;
+}

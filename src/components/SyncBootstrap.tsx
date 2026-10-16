@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useAccountStore } from "@/lib/account";
 import { useEventStore } from "@/lib/eventCoins";
 import { useOpusPassStore } from "@/lib/opusPass";
-import { useHistoryStore } from "@/lib/history";
+import { useHistoryStore, migrateLegacyWatchHistory } from "@/lib/history";
 import { useFavoritesStore } from "@/lib/favorites";
 import { useSettingsStore } from "@/lib/settings";
 import { useStreakStore } from "@/lib/streak";
@@ -112,6 +112,15 @@ function IncomingCallLazy() {
  */
 export default function SyncBootstrap() {
   const username = useAccountStore((s) => s.username);
+  useEffect(() => {
+    try {
+      migrateLegacyWatchHistory();
+      useHistoryStore.getState().bindAccount(username);
+    } catch {
+      /* */
+    }
+  }, [username]);
+
   const syncNow = useAccountStore((s) => s.syncNow);
   const refreshMe = useAccountStore((s) => s.refreshMe);
   const pathname = usePathname();

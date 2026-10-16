@@ -20,12 +20,8 @@ const HOUR_PRESETS = [
   { h: 8760, label: "8760h (1 năm)" },
 ];
 
-const chipIdle =
-  "bg-slate-100 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium text-xs py-1 px-2.5 rounded-md transition";
 const chipActive =
   "bg-violet-600 text-white border border-violet-600 shadow-sm font-medium text-xs py-1 px-2.5 rounded-md";
-const inputCls =
-  "w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 px-2.5 py-1.5 text-sm";
 
 function randomGiftCode() {
   const a = Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -120,10 +116,16 @@ export function GiftcodeTab({
     void load();
   };
 
-  const surface =
-    theme === "dark"
-      ? "bg-[#111827] border-slate-800 text-slate-100"
-      : "bg-white border-slate-200 text-slate-900";
+  const isDark = theme === "dark";
+  const surface = isDark
+    ? "bg-[#111827] border-slate-800 text-slate-100"
+    : "bg-white border-slate-200 text-slate-900";
+  const chipIdle = isDark
+    ? "bg-slate-800/90 text-slate-200 border border-slate-700 hover:bg-slate-700 font-medium text-xs py-1 px-2.5 rounded-md transition"
+    : "bg-slate-100 text-slate-800 border border-slate-300 hover:bg-slate-200 font-medium text-xs py-1 px-2.5 rounded-md transition";
+  const inputCls = isDark
+    ? "w-full rounded-md border border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500 px-2.5 py-1.5 text-sm"
+    : "w-full rounded-md border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 px-2.5 py-1.5 text-sm";
 
   return (
     <div className="space-y-4">

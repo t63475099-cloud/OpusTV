@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { SyncPayload } from "./userData";
 import { mergePayload } from "./userData";
-import { useHistoryStore } from "./history";
+import { useHistoryStore, migrateLegacyWatchHistory } from "./history";
 import { useFavoritesStore } from "./favorites";
 import { useMusicHistoryStore } from "./musicHistory";
 import { useSettingsStore } from "./settings";
@@ -44,6 +44,11 @@ export const useAccountStore = create<AccountState>()(
         set({ username: null, storage: null, lastSyncAt: null });
         // Xóa sạch hồ sơ local — tránh tên/avatar tài khoản A dính sang B
         useSettingsStore.getState().logout();
+        try {
+          useHistoryStore.getState().bindAccount(null);
+        } catch {
+          /* */
+        }
       },
 
       collectLocal: () => {

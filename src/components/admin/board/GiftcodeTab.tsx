@@ -159,7 +159,7 @@ export function GiftcodeTab({
           <div className="flex gap-2 sm:col-span-2">
             <input
               className={`${inputCls} font-mono uppercase`}
-              placeholder="Mã (để trống = tự sinh)"
+              placeholder="Nhập mã"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
             />
@@ -169,12 +169,12 @@ export function GiftcodeTab({
               onClick={() => setCode(randomGiftCode())}
             >
               <Shuffle className="mr-1 inline h-3.5 w-3.5" strokeWidth={1.75} />
-              Tạo mã ngẫu nhiên
+              Tạo mã
             </button>
           </div>
 
           <div className="sm:col-span-2">
-            <p className="mb-1 text-xs text-slate-600 dark:text-slate-400">Số người tối đa</p>
+            <p className="mb-1 text-xs text-slate-600 dark:text-slate-400">Số lượng người dùng</p>
             <input
               className={`${inputCls} mb-1`}
               placeholder="Số nguyên dương"

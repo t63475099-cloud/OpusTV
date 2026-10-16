@@ -3161,3 +3161,172 @@ html.dark body {
   background-color: #090d16 !important;
   color: #f8fafc !important;
 }
+
+
+/* ==== SITE-WIDE THEME HARD FIX v3 ==== */
+html[data-theme="light"] {
+  color-scheme: light;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --foreground: #0f172a;
+  --foreground-muted: #475569;
+  --foreground-subtle: #64748b;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+  --badge-bg: #f1f5f9;
+  --badge-fg: #0f172a;
+  --badge-border: #cbd5e1;
+  --skeleton: #e2e8f0;
+  --banner-scrim-from: rgba(248, 250, 252, 0.98);
+  --banner-scrim-via: rgba(248, 250, 252, 0.75);
+  --banner-scrim-to: transparent;
+}
+
+html[data-theme="dark"],
+html.dark {
+  color-scheme: dark;
+  --background: #090d16;
+  --surface: #111827;
+  --surface-elevated: #1e293b;
+  --foreground: #f8fafc;
+  --foreground-muted: #94a3b8;
+  --foreground-subtle: #64748b;
+  --border: #1e293b;
+  --border-strong: #334155;
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --badge-bg: rgba(15, 23, 42, 0.85);
+  --badge-fg: #f8fafc;
+  --badge-border: #334155;
+  --skeleton: #1e293b;
+  --banner-scrim-from: rgba(9, 13, 22, 0.95);
+  --banner-scrim-via: rgba(9, 13, 22, 0.55);
+  --banner-scrim-to: transparent;
+}
+
+html[data-theme="light"] body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+html[data-theme="dark"] body,
+html.dark body {
+  background-color: #090d16 !important;
+  color: #f8fafc !important;
+}
+
+/* Map common hard-coded dark utility classes under light theme */
+html[data-theme="light"] .bg-black,
+html[data-theme="light"] .bg-zinc-950,
+html[data-theme="light"] .bg-zinc-900,
+html[data-theme="light"] .bg-neutral-950,
+html[data-theme="light"] .bg-neutral-900,
+html[data-theme="light"] .bg-slate-950,
+html[data-theme="light"] .bg-slate-900,
+html[data-theme="light"] .bg-\[\#050505\],
+html[data-theme="light"] .bg-\[\#0B0F19\],
+html[data-theme="light"] .bg-\[\#090D16\],
+html[data-theme="light"] .bg-\[\#111827\],
+html[data-theme="light"] .bg-\[\#121212\],
+html[data-theme="light"] .bg-\[\#0a0a0a\] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .bg-zinc-800,
+html[data-theme="light"] .bg-zinc-850,
+html[data-theme="light"] .bg-slate-800,
+html[data-theme="light"] .bg-neutral-800 {
+  background-color: #f1f5f9 !important;
+}
+
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-zinc-50,
+html[data-theme="light"] .text-zinc-100,
+html[data-theme="light"] .text-zinc-200,
+html[data-theme="light"] .text-slate-50,
+html[data-theme="light"] .text-slate-100 {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .text-zinc-300,
+html[data-theme="light"] .text-zinc-400,
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .text-zinc-500,
+html[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .border-zinc-800,
+html[data-theme="light"] .border-zinc-700,
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-700,
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/20 {
+  border-color: #e2e8f0 !important;
+}
+
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-white\/10,
+html[data-theme="light"] .bg-black\/40,
+html[data-theme="light"] .bg-black\/50,
+html[data-theme="light"] .bg-black\/60,
+html[data-theme="light"] .bg-black\/70 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Navbar / chrome */
+html[data-theme="light"] header,
+html[data-theme="light"] nav,
+html[data-theme="light"] [data-opus-navbar] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html[data-theme="light"] [data-opus-dock="1"] {
+  color: #0f172a;
+}
+html[data-theme="light"] [data-opus-dock="1"] .bg-surface,
+html[data-theme="light"] [data-opus-dock="1"] [class*="bg-"] {
+  /* keep dock readable */
+}
+
+/* Settings / cards already using semantic tokens stay ok */
+html[data-theme="light"] .bg-background { background-color: #f8fafc !important; }
+html[data-theme="light"] .bg-surface { background-color: #ffffff !important; }
+html[data-theme="light"] .text-foreground { color: #0f172a !important; }
+html[data-theme="light"] .text-foreground-muted { color: #475569 !important; }
+html[data-theme="light"] .border-border { border-color: #e2e8f0 !important; }
+
+/* Keep locked overlay dark on posters in both themes */
+html[data-theme="light"] [data-movie-card] .bg-slate-950\/65 {
+  background-color: rgb(2 6 23 / 0.65) !important;
+  color: #fff !important;
+}
+html[data-theme="light"] [data-movie-card] .text-white,
+html[data-theme="light"] [data-movie-card] .text-amber-400 {
+  color: #fff !important;
+}
+
+/* Primary buttons stay high contrast */
+html[data-theme="light"] .bg-primary,
+html[data-theme="light"] .bg-violet-600 {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+}
+html[data-theme="light"] .text-primary-foreground {
+  color: #ffffff !important;
+}
+
+/* VIP countdown cells readable in light */
+html[data-theme="light"] .font-mono.tabular-nums {
+  color: #0f172a !important;
+}

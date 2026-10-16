@@ -85,9 +85,9 @@ export default function Navbar() {
               className={cn(
                 "shrink-0 flex items-center justify-center",
                 "w-9 h-9 rounded-full",
-                "border border-white/20 bg-black/50 text-foreground",
+                "border border-border bg-surface/90 text-foreground backdrop-blur-md ui-border-contrast",
                 "shadow-md",
-                "hover:bg-black/70 transition-colors duration-300"
+                "hover:bg-surface-elevated transition-colors duration-300"
               )}
             >
               <ArrowLeft className="w-5 h-5" strokeWidth={2.25} />

@@ -109,7 +109,7 @@ export default function RootLayout({
             <main className="flex-1 min-w-0 w-full overflow-x-clip">{children}</main>
           </div>
           <FloatingMiniPlayer />
-          <footer className="border-t border-white/10 py-8 px-4 text-center text-zinc-500 text-sm mt-8 pb-[max(2rem,env(safe-area-inset-bottom))] bg-black/20 backdrop-blur-md">
+          <footer className="mt-8 border-t border-border bg-surface px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] text-center text-sm text-foreground-muted ui-border-contrast">
             <p className="font-semibold text-zinc-300">{APP_NAME}</p>
             <p className="mt-1 text-xs text-zinc-500">{APP_TAGLINE}</p>
           </footer>

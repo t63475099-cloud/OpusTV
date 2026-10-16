@@ -19,7 +19,7 @@ async function fetcher<T>(url: string, revalidate = 1800): Promise<T> {
 }
 
 export async function getNewestMovies(page = 1): Promise<ListResponse> {
-  return fetcher(`${API_BASE}/v1/api/danh-sach/phim-moi-cap-nhat?page=${page}`, 900);
+  return fetcher(`${API_BASE}/v1/api/danh-sach/phim-moi-cap-nhat?page=${page}`, 300);
 }
 
 export async function getMoviesByList(slug: string, page = 1): Promise<ListResponse> {

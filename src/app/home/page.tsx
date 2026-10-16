@@ -14,7 +14,7 @@ import { FEATURED_PICKS } from "@/lib/constants";
 import { CURATED_MOVIES } from "@/lib/curatedMovies";
 import type { MovieListItem } from "@/lib/types";
 
-export const revalidate = 1800;
+export const revalidate = 600;
 
 function mergeMovies(...lists: (MovieListItem[] | undefined)[]): MovieListItem[] {
   const seen = new Set<string>();
@@ -40,8 +40,21 @@ async function loadList(slug: string): Promise<MovieListItem[]> {
 }
 
 async function loadNewest(): Promise<MovieListItem[]> {
-  const r = await getNewestMovies(1).catch(() => null);
-  return r?.data?.items || [];
+  const pages = await Promise.all([
+    getNewestMovies(1).catch(() => null),
+    getNewestMovies(2).catch(() => null),
+    getNewestMovies(3).catch(() => null),
+  ]);
+  const seen = new Set<string>();
+  const items: MovieListItem[] = [];
+  for (const r of pages) {
+    for (const m of r?.data?.items || []) {
+      if (!m?.slug || seen.has(m.slug)) continue;
+      seen.add(m.slug);
+      items.push(m);
+    }
+  }
+  return items;
 }
 
 async function loadCountry(slug: string): Promise<MovieListItem[]> {
@@ -75,6 +88,10 @@ export default async function HomePage() {
     hanhDong,
     tinhCam,
     coTrang,
+    vienTuong,
+    phieuLuu,
+    haiHuoc,
+    tamLy,
     phimBo,
     phimLe,
     hoathinh,
@@ -89,6 +106,10 @@ export default async function HomePage() {
     loadCategory("hanh-dong"),
     loadCategory("tinh-cam"),
     loadCategory("co-trang"),
+    loadCategory("vien-tuong"),
+    loadCategory("phieu-luu"),
+    loadCategory("hai-huoc"),
+    loadCategory("tam-ly"),
     loadList("phim-bo"),
     loadList("phim-le"),
     loadList("hoathinh"),
@@ -176,6 +197,18 @@ export default async function HomePage() {
 
         {coTrang.length > 0 ? (
           <MovieRow title="Cổ trang" movies={coTrang} href="/the-loai/co-trang" />
+        {vienTuong.length > 0 ? (
+          <MovieRow title="Viễn tưởng" movies={vienTuong} href="/the-loai/vien-tuong" />
+        ) : null}
+        {phieuLuu.length > 0 ? (
+          <MovieRow title="Phiêu lưu" movies={phieuLuu} href="/the-loai/phieu-luu" />
+        ) : null}
+        {haiHuoc.length > 0 ? (
+          <MovieRow title="Hài hước" movies={haiHuoc} href="/the-loai/hai-huoc" />
+        ) : null}
+        {tamLy.length > 0 ? (
+          <MovieRow title="Tâm lý" movies={tamLy} href="/the-loai/tam-ly" />
+        ) : null}
         ) : null}
 
         <MovieRow title="Phim bộ" movies={phimBo} href="/danh-sach/phim-bo" />

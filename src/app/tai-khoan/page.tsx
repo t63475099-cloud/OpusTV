@@ -401,7 +401,7 @@ export default function AccountPage() {
                 <span>
                   Tôi đồng ý với{" "}
                   <Link href="/dieu-khoan" className="font-medium text-emerald-600 underline">
-                    Điều khoản & Chính sách
+                    Chính sách & Điều khoản
                   </Link>
                 </span>
               </label>

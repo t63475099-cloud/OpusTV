@@ -39,12 +39,36 @@ function unauthorized() {
   return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 }
 
+function mapDbError(e: unknown): { status: number; error: string } {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/402|exceeded the quota|Upgrade your plan/i.test(msg)) {
+    return {
+      status: 503,
+      error:
+        "CSDL Neon đã hết hạn mức (quota). Vào console.neon.tech kiểm tra project, nâng gói hoặc đợi quota reset — không phải lỗi mật khẩu admin.",
+    };
+  }
+  if (/Too many connections/i.test(msg)) {
+    return {
+      status: 503,
+      error: "Neon quá tải kết nối. Đợi 1–2 phút rồi thử lại.",
+    };
+  }
+  return { status: 500, error: msg };
+}
+
 function requireAdmin(req: NextRequest): boolean {
   const secret = adminSecretFromRequest(req.headers, req.nextUrl.searchParams);
   return isAdminSecretValid(secret);
 }
 
+let schemaReady = false;
+let schemaInflight: Promise<void> | null = null;
+
 async function ensureSchema() {
+  if (schemaReady) return;
+  if (schemaInflight) return schemaInflight;
+  schemaInflight = (async () => {
   const sql = db();
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS uid TEXT`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`;
@@ -110,6 +134,11 @@ async function ensureSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
+  schemaReady = true;
+  })().finally(() => {
+    schemaInflight = null;
+  });
+  return schemaInflight;
 }
 
 async function listAccounts(q?: string): Promise<AdminAccount[]> {
@@ -267,8 +296,8 @@ export async function GET(req: NextRequest) {
     const stats = await getStats();
     return NextResponse.json({ ok: true, stats });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    const mapped = mapDbError(e);
+    return NextResponse.json({ ok: false, error: mapped.error }, { status: mapped.status });
   }
 }
 
@@ -1083,8 +1112,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: false, error: `Action không hỗ trợ: ${action}` }, { status: 400 });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    const mapped = mapDbError(e);
+    return NextResponse.json({ ok: false, error: mapped.error }, { status: mapped.status });
   }
 }
 
@@ -1111,7 +1140,7 @@ export async function DELETE(req: NextRequest) {
     });
     return POST(synthetic);
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "Lỗi";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    const mapped = mapDbError(e);
+    return NextResponse.json({ ok: false, error: mapped.error }, { status: mapped.status });
   }
 }

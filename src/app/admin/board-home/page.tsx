@@ -94,14 +94,23 @@ export default function BoardHomePage() {
       return;
     }
     try {
-      const res = await fetch("/api/admin/board-home?section=stats", {
+      // 1) Chỉ kiểm tra secret — không đụng DB
+      const authRes = await fetch("/api/admin/board-home?section=auth", {
         headers: { "x-admin-secret": s },
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.ok === false) {
-        setGateError(data.error || "Mã không hợp lệ");
+      const authData = await authRes.json().catch(() => ({}));
+      if (authRes.status === 401 || authData.ok === false) {
+        setGateError(authData.error || "Mã quản trị không đúng");
         return;
       }
+      if (!authRes.ok) {
+        setGateError(
+          authData.error ||
+            `Không mở được cổng admin (${authRes.status})`
+        );
+        return;
+      }
+
       setSecret(s);
       setUnlocked(true);
       try {
@@ -109,7 +118,24 @@ export default function BoardHomePage() {
       } catch {
         /* */
       }
-      if (data.stats) setStats(data.stats);
+
+      // 2) Stats tùy chọn — nếu Neon hết quota vẫn vào được UI
+      try {
+        const res = await fetch("/api/admin/board-home?section=stats", {
+          headers: { "x-admin-secret": s },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.stats) setStats(data.stats);
+        else if (!res.ok && data.error) {
+          setGateError(
+            data.error.includes("Neon") || data.error.includes("quota")
+              ? data.error
+              : ""
+          );
+        }
+      } catch {
+        /* stats optional */
+      }
     } catch {
       setGateError("Không kết nối được máy chủ");
     }
@@ -130,13 +156,20 @@ export default function BoardHomePage() {
       if (s) {
         setSecret(s);
         void (async () => {
-          const res = await fetch("/api/admin/board-home?section=stats", {
+          const authRes = await fetch("/api/admin/board-home?section=auth", {
             headers: { "x-admin-secret": s },
           });
-          const data = await res.json().catch(() => ({}));
-          if (res.ok && data.ok !== false) {
+          if (authRes.ok) {
             setUnlocked(true);
-            if (data.stats) setStats(data.stats);
+            try {
+              const res = await fetch("/api/admin/board-home?section=stats", {
+                headers: { "x-admin-secret": s },
+              });
+              const data = await res.json().catch(() => ({}));
+              if (res.ok && data.stats) setStats(data.stats);
+            } catch {
+              /* */
+            }
           }
         })();
       }

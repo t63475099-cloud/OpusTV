@@ -747,6 +747,104 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    
+    if (action === "update_account") {
+      const id = Number(body.id || body.userId || 0);
+      const username = String(body.username || "").trim().toLowerCase();
+      if (!id && !username) {
+        return NextResponse.json({ ok: false, error: "Thiếu id/username" }, { status: 400 });
+      }
+      const role = body.role != null ? String(body.role) : null;
+      const email = body.email !== undefined ? (String(body.email || "").trim() || null) : undefined;
+      const verified =
+        body.verified === undefined
+          ? null
+          : body.verified === true || body.verified === 1 || body.verified === "1"
+            ? 1
+            : 0;
+      let expiresAt: string | null | undefined = undefined;
+      if (body.clearVip === true) {
+        expiresAt = null;
+        try {
+          if (id > 0) {
+            await sql`UPDATE users SET is_lifetime_vip = FALSE, vip_expires_at = NULL WHERE id = ${id}`;
+          } else {
+            await sql`UPDATE users SET is_lifetime_vip = FALSE, vip_expires_at = NULL WHERE lower(username) = ${username}`;
+          }
+        } catch {
+          /* optional cols */
+        }
+      } else if (body.expiresAt !== undefined) {
+        const raw = String(body.expiresAt || "").trim();
+        expiresAt = raw ? new Date(raw).toISOString() : null;
+      } else if (body.expiresDays != null && body.expiresDays !== "") {
+        const days = Number(body.expiresDays);
+        if (Number.isFinite(days) && days > 0) {
+          expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+        }
+      }
+
+      if (role != null && !["User", "VIP", "Admin"].includes(role)) {
+        return NextResponse.json({ ok: false, error: "Role không hợp lệ" }, { status: 400 });
+      }
+
+      // Build updates carefully
+      if (id > 0) {
+        if (role != null) {
+          await sql`UPDATE users SET role = ${role}, updated_at = NOW() WHERE id = ${id}`;
+        }
+        if (email !== undefined) {
+          await sql`UPDATE users SET email = ${email}, updated_at = NOW() WHERE id = ${id}`;
+        }
+        if (verified !== null) {
+          await sql`UPDATE users SET verified = ${verified}, updated_at = NOW() WHERE id = ${id}`;
+        }
+        if (expiresAt !== undefined) {
+          await sql`UPDATE users SET expires_at = ${expiresAt}::timestamptz, updated_at = NOW() WHERE id = ${id}`;
+          try {
+            await sql`UPDATE users SET vip_expires_at = ${expiresAt}::timestamptz WHERE id = ${id}`;
+          } catch {
+            /* */
+          }
+        }
+      } else {
+        if (role != null) {
+          await sql`UPDATE users SET role = ${role}, updated_at = NOW() WHERE lower(username) = ${username}`;
+        }
+        if (email !== undefined) {
+          await sql`UPDATE users SET email = ${email}, updated_at = NOW() WHERE lower(username) = ${username}`;
+        }
+        if (verified !== null) {
+          await sql`UPDATE users SET verified = ${verified}, updated_at = NOW() WHERE lower(username) = ${username}`;
+        }
+        if (expiresAt !== undefined) {
+          await sql`UPDATE users SET expires_at = ${expiresAt}::timestamptz, updated_at = NOW() WHERE lower(username) = ${username}`;
+          try {
+            await sql`UPDATE users SET vip_expires_at = ${expiresAt}::timestamptz WHERE lower(username) = ${username}`;
+          } catch {
+            /* */
+          }
+        }
+      }
+
+      if (body.coinsDelta != null && Number(body.coinsDelta) !== 0) {
+        const delta = Number(body.coinsDelta);
+        try {
+          if (id > 0) {
+            await sql`UPDATE users SET coins = GREATEST(0, COALESCE(coins, 0) + ${delta}), updated_at = NOW() WHERE id = ${id}`;
+          } else {
+            await sql`UPDATE users SET coins = GREATEST(0, COALESCE(coins, 0) + ${delta}), updated_at = NOW() WHERE lower(username) = ${username}`;
+          }
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+        }
+      }
+
+      return NextResponse.json({ ok: true, message: "Đã cập nhật tài khoản" });
+    }
+
+
     if (action === "stats") {
       const stats = await getStats();
       return NextResponse.json({ ok: true, stats });

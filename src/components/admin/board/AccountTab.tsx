@@ -38,6 +38,23 @@ export function AccountTab({
   const [coinsReason, setCoinsReason] = useState("");
   const [newPass, setNewPass] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [detailUser, setDetailUser] = useState<AdminAccount | null>(null);
+  const [detailRole, setDetailRole] = useState<AdminRole>("User");
+  const [detailEmail, setDetailEmail] = useState("");
+  const [detailExpires, setDetailExpires] = useState("");
+  const [detailCoins, setDetailCoins] = useState("");
+  const [detailVerified, setDetailVerified] = useState(false);
+
+  const openDetail = (a: AdminAccount) => {
+    setDetailUser(a);
+    setDetailRole(a.role);
+    setDetailEmail(a.email || "");
+    setDetailExpires(
+      a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : ""
+    );
+    setDetailCoins("");
+    setDetailVerified(!!a.verified);
+  };
 
   const filtered = useMemo(() => {
     let list = accounts;
@@ -177,7 +194,13 @@ export function AccountTab({
                 filtered.map((a) => (
                   <tr key={a.id} className={`border-t ${t.border} ${t.rowHover}`}>
                     <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
+                      <div
+                        className="flex cursor-pointer items-center gap-2"
+                        onClick={() => openDetail(a)}
+                        onKeyDown={(e) => e.key === "Enter" && openDetail(a)}
+                        role="button"
+                        tabIndex={0}
+                      >
                         <span
                           className={`h-2 w-2 shrink-0 rounded-full ${
                             a.status === "banned" ? "bg-slate-400" : "bg-emerald-500"
@@ -245,9 +268,10 @@ export function AccountTab({
                           className={`${btn.compact} ${btn.verify}`}
                           onClick={() =>
                             void onAction({
-                              action: a.verified ? "unverify" : "verify_user",
+                              action: "set_verified",
                               username: a.username,
-                              userId: a.id,
+                              id: a.id,
+                              verified: !a.verified,
                             })
                           }
                         >
@@ -295,6 +319,170 @@ export function AccountTab({
           </table>
         </div>
       </div>
+
+
+      <AdminModal
+        open={!!detailUser}
+        onClose={() => setDetailUser(null)}
+        title={`Quản lý · ${detailUser?.username || ""}`}
+        theme={theme}
+        footer={
+          <>
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost}`}
+              onClick={() => setDetailUser(null)}
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.primary}`}
+              onClick={async () => {
+                if (!detailUser) return;
+                await onAction({
+                  action: "update_account",
+                  id: detailUser.id,
+                  username: detailUser.username,
+                  role: detailRole,
+                  email: detailEmail,
+                  verified: detailVerified,
+                  expiresAt: detailExpires || null,
+                  coinsDelta: detailCoins ? Number(detailCoins) : 0,
+                });
+                setDetailUser(null);
+              }}
+            >
+              Lưu thay đổi
+            </button>
+          </>
+        }
+      >
+        {detailUser ? (
+          <div className="space-y-3 text-sm">
+            <div className={`rounded-lg border px-3 py-2 text-xs ${t.border} ${t.muted}`}>
+              <p>
+                UID: <span className="font-mono text-foreground">{detailUser.uid || "—"}</span>
+              </p>
+              <p>
+                Trạng thái: {detailUser.status} · Tạo:{" "}
+                {detailUser.createdAt
+                  ? new Date(detailUser.createdAt).toLocaleString("vi-VN")
+                  : "—"}
+              </p>
+            </div>
+            <label className="block">
+              <span className={`text-xs ${t.muted}`}>Email</span>
+              <input
+                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+                value={detailEmail}
+                onChange={(e) => setDetailEmail(e.target.value)}
+                placeholder="email"
+              />
+            </label>
+            <label className="block">
+              <span className={`text-xs ${t.muted}`}>Role</span>
+              <select
+                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+                value={detailRole}
+                onChange={(e) => setDetailRole(e.target.value as AdminRole)}
+              >
+                <option value="User">User</option>
+                <option value="VIP">VIP</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className={`text-xs ${t.muted}`}>Hạn VIP (datetime)</span>
+              <input
+                type="datetime-local"
+                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+                value={detailExpires}
+                onChange={(e) => setDetailExpires(e.target.value)}
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={detailVerified}
+                onChange={(e) => setDetailVerified(e.target.checked)}
+              />
+              <span>Tick xanh (verified)</span>
+            </label>
+            <label className="block">
+              <span className={`text-xs ${t.muted}`}>Cộng/trừ xu (số âm = trừ)</span>
+              <input
+                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+                placeholder="0"
+                value={detailCoins}
+                onChange={(e) => setDetailCoins(e.target.value)}
+              />
+            </label>
+            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.coins}`}
+                onClick={() => {
+                  setCoinsAmt("");
+                  setCoinsReason("");
+                  setCoinsModal(detailUser);
+                }}
+              >
+                Cấp xu
+              </button>
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.pass}`}
+                onClick={() => {
+                  setNewPass("");
+                  setPassModal(detailUser);
+                }}
+              >
+                Đổi MK
+              </button>
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.ban}`}
+                onClick={() =>
+                  void onAction({
+                    action: detailUser.status === "banned" ? "unban" : "ban",
+                    username: detailUser.username,
+                    userId: detailUser.id,
+                  })
+                }
+              >
+                {detailUser.status === "banned" ? "Mở khóa" : "Khóa"}
+              </button>
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.ban}`}
+                onClick={() => {
+                  setDeleteConfirm("");
+                  setDeleteModal(detailUser);
+                }}
+              >
+                Xóa
+              </button>
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.ghost}`}
+                onClick={async () => {
+                  await onAction({
+                    action: "update_account",
+                    id: detailUser.id,
+                    username: detailUser.username,
+                    clearVip: true,
+                    expiresAt: null,
+                  });
+                  setDetailUser(null);
+                }}
+              >
+                Xóa hạn VIP
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </AdminModal>
 
       <AdminModal
         open={!!coinsModal}

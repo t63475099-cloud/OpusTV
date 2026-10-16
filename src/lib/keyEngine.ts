@@ -7,6 +7,8 @@
  */
 
 import { randomBytes } from "crypto";
+import type { VipTierCode } from "@/lib/vipCatalog";
+import { getVipTier } from "@/lib/vipCatalog";
 
 /** A–Z / 2–9, loại 0 O 1 I L */
 export const KEY_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -162,3 +164,11 @@ export function mapRowToLicense(row: {
 /** Event name cho BroadcastChannel / localStorage sync */
 export const KEY_SYNC_CHANNEL = "opus-keys-sync";
 export const KEY_SYNC_STORAGE = "opus-keys-sync-ts";
+
+/** New 11-tier format: OPUS-<TIER>-XXXXXXXX (hex) */
+export function generateOpusVipKey(tierCode: VipTierCode | string): string {
+  const def = getVipTier(String(tierCode));
+  const seg = def?.keySegment || "24H";
+  const hex = randomBytes(4).toString("hex").toUpperCase();
+  return `OPUS-${seg}-${hex}`;
+}

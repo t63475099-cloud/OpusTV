@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/api";
 import type { MovieListItem } from "@/lib/types";
+import { LockKeyhole } from "lucide-react";
+import { useVipAccess } from "@/lib/vipAccess";
+import { requestVipAccess } from "@/components/vip/VipGateProvider";
 
 interface MovieCardProps {
   movie: MovieListItem;
@@ -10,13 +15,21 @@ interface MovieCardProps {
 
 /** Poster 2:3 — semantic tokens */
 export default function MovieCard({ movie, priority = false }: MovieCardProps) {
+  const hasVip = useVipAccess((s) => s.hasVip);
+  const locked = !hasVip();
   const poster = getImageUrl(movie.poster_url || movie.thumb_url);
   const subtitle = [movie.origin_name, movie.year].filter(Boolean).join(" · ");
 
   return (
     <Link
       data-movie-card="1"
-      href={`/phim/${movie.slug}`}
+      href={locked ? "#" : `/phim/${movie.slug}`}
+      onClick={(e) => {
+        if (locked) {
+          e.preventDefault();
+          requestVipAccess();
+        }
+      }}
       className="group relative block w-[42vw] max-w-[160px] flex-shrink-0 transition-transform duration-300 ease-out hover:-translate-y-1 active:scale-[0.98] sm:w-[140px] md:w-[156px] lg:w-[172px]"
     >
       <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border-2 border-border-strong bg-surface-elevated ui-border-contrast">

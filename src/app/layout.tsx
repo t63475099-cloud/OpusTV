@@ -24,6 +24,7 @@ import { AccountRealtimeBridge } from "@/components/account/AccountRealtimeBridg
 import { SystemHealthBridge } from "@/components/system/SystemHealthBridge";
 import { PatchReleaseModal } from "@/components/system/PatchReleaseModal";
 import { THEME_LOCALE_BOOT_SCRIPT } from "@/lib/themeLocale";
+import { VipGateProvider } from "@/components/vip/VipGateProvider";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
 const geistSans = Geist({
@@ -84,6 +85,7 @@ export default function RootLayout({
           {THEME_LOCALE_BOOT_SCRIPT}
         </Script>
         <ThemeLocaleProvider>
+        <VipGateProvider>
         <AmbientBackdrop />
         <OpusPreloader oncePerSession />
         <PwaRegister />
@@ -112,6 +114,7 @@ export default function RootLayout({
             <p className="mt-1 text-xs text-zinc-500">{APP_TAGLINE}</p>
           </footer>
         </GsapScrollProvider>
+        </VipGateProvider>
         </ThemeLocaleProvider>
       </body>
     </html>

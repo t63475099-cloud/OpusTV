@@ -1,6 +1,7 @@
 "use client";
 
 import OfflineDownloads from "@/components/OfflineDownloads";
+import { VipCountdownCard } from "@/components/vip/VipCountdownCard";
 import {
   THEME_OPTIONS,
   applyTheme,
@@ -354,6 +355,14 @@ function SettingsInner() {
       <div className="relative z-10 mx-auto w-full max-w-xl px-3 mt-3 space-y-3 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]">
         {section === "root" && (
           <div className="space-y-3 animate-[fadeUp_0.5s_ease]">
+            <VipCountdownCard
+              onActivate={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new Event("opus-vip-required"));
+                }
+              }}
+            />
+
             
             <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
               <p className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">

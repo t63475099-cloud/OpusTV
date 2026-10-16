@@ -1,3 +1,4 @@
+import { sql } from "@/lib/neonSql";
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { hashPassword } from "@/lib/password";
@@ -20,6 +21,9 @@ import {
   unrevokeKey,
 } from "@/lib/db/keys";
 import type { KeyTier } from "@/lib/keyEngine";
+import { generateOpusVipKey } from "@/lib/keyEngine";
+import { ensureVipTables } from "@/lib/vipDb";
+import { getVipTier } from "@/lib/vipCatalog";
 import { generateUid } from "@/lib/db/users";
 
 export const runtime = "nodejs";
@@ -746,6 +750,39 @@ export async function POST(req: NextRequest) {
     if (action === "stats") {
       const stats = await getStats();
       return NextResponse.json({ ok: true, stats });
+    }
+
+    
+    if (action === "generate_opus_keys") {
+      await ensureVipTables();
+      const tierCode = String(body.tierCode || body.tier || "24H");
+      const tier = getVipTier(tierCode);
+      if (!tier) {
+        return NextResponse.json({ ok: false, error: "Tier không hợp lệ" }, { status: 400 });
+      }
+      const count = Math.min(50, Math.max(1, Number(body.count) || 1));
+      const codes: string[] = [];
+      for (let i = 0; i < count; i++) {
+        const code = generateOpusVipKey(tier.code);
+        await sql`
+          INSERT INTO license_keys_v2 (key_code, tier_code, status)
+          VALUES (${code}, ${tier.code}, 'AVAILABLE')
+          ON CONFLICT (key_code) DO NOTHING
+        `;
+        codes.push(code);
+      }
+      return NextResponse.json({
+        ok: true,
+        message: `Đã sinh ${codes.length} key ${tier.label}`,
+        keys: codes,
+      });
+    }
+
+    if (action === "delete_opus_key") {
+      await ensureVipTables();
+      const code = String(body.code || "").toUpperCase();
+      await sql`DELETE FROM license_keys_v2 WHERE key_code = ${code}`;
+      return NextResponse.json({ ok: true, message: "Đã xóa key" });
     }
 
     return NextResponse.json({ ok: false, error: `Action không hỗ trợ: ${action}` }, { status: 400 });

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { KeyTier, LicenseKeyRecord } from "@/lib/keyEngine";
+import { KeyRound } from "lucide-react";
+import type { LicenseKeyRecord } from "@/lib/keyEngine";
+import { VIP_TIERS, type VipTierCode } from "@/lib/vipCatalog";
 import type { BoardTheme } from "./adminUi";
 import { boardTokens, btn } from "./adminUi";
 
@@ -19,40 +21,30 @@ export function KeyBoardTab({
   onRefresh: () => void;
 }) {
   const t = boardTokens(theme);
-  const [tier, setTier] = useState<KeyTier>("24H");
+  const [tier, setTier] = useState<VipTierCode>("24H");
   const [count, setCount] = useState("5");
-  const [prefix, setPrefix] = useState("");
 
   return (
     <div className="space-y-4">
       <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="text-sm font-semibold">API Gateway ngoại vi</h3>
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <KeyRound className="h-4 w-4" strokeWidth={1.75} />
+          Sinh License Key (11 mốc)
+        </h3>
         <p className={`mt-1 text-xs ${t.muted}`}>
-          Theo dõi key TMDB / R2 / Neon / Telegram / LLM — cấu hình qua biến môi trường Vercel, không hardcode.
+          Định dạng: OPUS-&lt;GÓI&gt;-XXXXXXXX · mỗi key chỉ gắn 1 tài khoản
         </p>
-        <ul className={`mt-3 space-y-1 text-sm ${t.muted}`}>
-          {["TMDB", "Cloudflare R2", "Neon Pooler", "Telegram Bot", "AI LLM"].map((name) => (
-            <li key={name} className="flex justify-between border-b border-dashed py-1.5 last:border-0">
-              <span>{name}</span>
-              <span className="font-mono text-xs">ENV only</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="text-sm font-semibold">Sinh License Key VIP</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           <select
             className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
             value={tier}
-            onChange={(e) => setTier(e.target.value as KeyTier)}
+            onChange={(e) => setTier(e.target.value as VipTierCode)}
           >
-            <option value="24H">24H</option>
-            <option value="12H">12H</option>
-            <option value="7D">7D</option>
-            <option value="30D">30D</option>
-            <option value="VIP">VIP</option>
+            {VIP_TIERS.map((x) => (
+              <option key={x.code} value={x.code}>
+                {x.label}
+              </option>
+            ))}
           </select>
           <input
             className={`w-20 rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
@@ -60,22 +52,15 @@ export function KeyBoardTab({
             value={count}
             onChange={(e) => setCount(e.target.value)}
           />
-          <input
-            className={`w-28 rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Prefix (tuỳ chọn)"
-            value={prefix}
-            onChange={(e) => setPrefix(e.target.value)}
-          />
           <button
             type="button"
             disabled={loading}
             className={`${btn.compact} ${btn.primary}`}
             onClick={() =>
               void onAction({
-                action: "generate_keys",
-                tier,
+                action: "generate_opus_keys",
+                tierCode: tier,
                 count: Math.min(50, Math.max(1, Number(count) || 1)),
-                customPrefix: prefix.trim() || undefined,
               })
             }
           >
@@ -89,13 +74,13 @@ export function KeyBoardTab({
 
       <div className={`overflow-hidden rounded-xl border ${t.surface}`}>
         <div className="max-h-[min(50vh,480px)] overflow-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead className={`sticky top-0 border-b ${t.border} ${t.surface}`}>
               <tr className={`text-xs uppercase ${t.muted}`}>
                 <th className="px-3 py-2">Mã key</th>
-                <th className="px-3 py-2">Tier</th>
+                <th className="px-3 py-2">Gói</th>
                 <th className="px-3 py-2">Trạng thái</th>
-                <th className="px-3 py-2">Đã dùng</th>
+                <th className="px-3 py-2">Tài khoản</th>
                 <th className="px-3 py-2">Hành động</th>
               </tr>
             </thead>
@@ -108,39 +93,28 @@ export function KeyBoardTab({
                 </tr>
               ) : (
                 keys.map((k) => (
-                  <tr key={k.id || k.code} className={`border-t ${t.border} ${t.rowHover}`}>
-                    <td className="px-3 py-2 font-mono text-xs">{k.code}</td>
-                    <td className="px-3 py-2">{k.tier}</td>
+                  <tr key={k.id || k.keyCode} className={`border-t ${t.border} ${t.rowHover}`}>
+                    <td className="px-3 py-2 font-mono text-xs">{k.keyCode}</td>
+                    <td className="px-3 py-2">{String(k.tier)}</td>
                     <td className="px-3 py-2">{k.status}</td>
                     <td className={`px-3 py-2 text-xs ${t.muted}`}>
                       {k.usedBy || "—"}
                       {k.usedAt ? ` · ${new Date(k.usedAt).toLocaleString("vi-VN")}` : ""}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.ban}`}
-                          onClick={() =>
-                            void onAction({
-                              action: k.status === "revoked" ? "unrevoke_key" : "revoke_key",
-                              code: k.code,
-                              id: k.id,
-                            })
-                          }
-                        >
-                          {k.status === "revoked" ? "Mở lại" : "Thu hồi"}
-                        </button>
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.ban}`}
-                          onClick={() =>
-                            void onAction({ action: "delete_key", code: k.code, id: k.id })
-                          }
-                        >
-                          Xóa
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        className={`${btn.compact} ${btn.ban}`}
+                        onClick={() =>
+                          void onAction({
+                            action: "delete_opus_key",
+                            code: k.keyCode,
+                            id: k.id,
+                          })
+                        }
+                      >
+                        Xóa
+                      </button>
                     </td>
                   </tr>
                 ))

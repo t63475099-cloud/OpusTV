@@ -819,10 +819,14 @@ export async function POST(req: NextRequest) {
 
       const startsRaw = String(body.starts_at ?? body.startsAt ?? "").trim();
       const expiresRaw = String(body.expires_at ?? body.endsAt ?? body.expiresAt ?? "").trim();
-      const parsedStartsAt = startsRaw
-        ? new Date(startsRaw).toISOString()
-        : new Date().toISOString();
-      const parsedExpiresAt = expiresRaw ? new Date(expiresRaw).toISOString() : null;
+      const toIsoOrNull = (raw: string): string | null => {
+        if (!raw) return null;
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return null;
+        return d.toISOString();
+      };
+      const parsedStartsAt = toIsoOrNull(startsRaw) || new Date().toISOString();
+      const parsedExpiresAt = toIsoOrNull(expiresRaw);
 
       if (coinsReward === 0 && vipHours === 0 && !vipTierKey) {
         return NextResponse.json(

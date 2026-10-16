@@ -196,8 +196,14 @@ export default function BoardHomePage() {
     };
   }, [unlocked, tab, loadSection]);
 
-  const runAction = async (body: Record<string, unknown>) => {
-    setLoading(true);
+  const runAction = async (
+    body: Record<string, unknown>,
+    opts?: { silent?: boolean }
+  ) => {
+    const action = String(body.action || "");
+    const isList = action.startsWith("list_") || action === "stats";
+    const silent = opts?.silent ?? isList;
+    if (!silent) setLoading(true);
     try {
       const res = await fetch("/api/admin/board-home", {
         method: "POST",
@@ -206,17 +212,24 @@ export default function BoardHomePage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) {
-        showToast(data.error || "Thao tác thất bại", "err");
-        return null;
+        const errMsg =
+          data.error ||
+          data.message ||
+          (res.status === 500 ? "Lỗi máy chủ (500)" : `Thao tác thất bại (${res.status})`);
+        if (!silent) showToast(errMsg, "err");
+        return { ok: false, error: errMsg, ...data };
       }
-      showToast(data.message || "Thành công", "ok");
-      await loadSection(tab);
+      if (!silent) {
+        showToast(data.message || "Thành công", "ok");
+        await loadSection(tab);
+      }
       return data;
-    } catch {
-      showToast("Lỗi mạng", "err");
-      return null;
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : "Lỗi mạng";
+      if (!silent) showToast(errMsg, "err");
+      return { ok: false, error: errMsg };
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

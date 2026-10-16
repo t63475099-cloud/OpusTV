@@ -38,7 +38,10 @@ export function GiftcodeTab({
   onAction,
 }: {
   theme: BoardTheme;
-  onAction: (body: Record<string, unknown>) => Promise<unknown>;
+  onAction: (
+    body: Record<string, unknown>,
+    opts?: { silent?: boolean }
+  ) => Promise<unknown>;
 }) {
   const [rewardTab, setRewardTab] = useState<RewardTab>("coins");
   const [code, setCode] = useState("");
@@ -56,13 +59,17 @@ export function GiftcodeTab({
     setLoading(true);
     setLocalErr(null);
     try {
-      const data = (await onAction({ action: "list_giftcodes" })) as {
+      const data = (await onAction({ action: "list_giftcodes" }, { silent: true })) as {
         ok?: boolean;
         giftcodes?: Array<Record<string, unknown>>;
         error?: string;
       } | null;
-      if (data && Array.isArray(data.giftcodes)) setList(data.giftcodes);
-      else if (data && data.error) setLocalErr(data.error);
+      if (data && Array.isArray(data.giftcodes)) {
+        setList(data.giftcodes);
+        setLocalErr(null);
+      } else if (data && data.error) {
+        setLocalErr(String(data.error));
+      }
     } finally {
       setLoading(false);
     }

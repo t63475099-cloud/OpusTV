@@ -111,15 +111,42 @@ export function MassOpsTab({
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                if (file.size > 1.5 * 1024 * 1024) {
-                  window.alert("Ảnh tối đa 1.5MB (QR thường nhỏ hơn)");
+                if (file.size > 4 * 1024 * 1024) {
+                  window.alert("Ảnh tối đa 4MB");
                   e.target.value = "";
                   return;
                 }
                 const reader = new FileReader();
                 reader.onload = () => {
                   const result = String(reader.result || "");
-                  if (result.startsWith("data:image")) setAnnImage(result);
+                  if (!result.startsWith("data:image")) return;
+                  const img = new window.Image();
+                  img.onload = () => {
+                    const max = 520;
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > max || h > max) {
+                      const ratio = Math.min(max / w, max / h);
+                      w = Math.round(w * ratio);
+                      h = Math.round(h * ratio);
+                    }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) {
+                      setAnnImage(result);
+                      return;
+                    }
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+                    // JPEG nhỏ hơn data URL, QR vẫn quét được
+                    const compressed = canvas.toDataURL("image/jpeg", 0.92);
+                    setAnnImage(compressed);
+                  };
+                  img.onerror = () => setAnnImage(result);
+                  img.src = result;
                 };
                 reader.readAsDataURL(file);
               }}
@@ -153,15 +180,23 @@ export function MassOpsTab({
             type="button"
             disabled={loading}
             className={`${btn.compact} ${btn.primary}`}
-            onClick={() =>
+            onClick={() => {
+              if (!annImage.trim()) {
+                window.alert("Chọn ảnh QR trên máy hoặc dán URL ảnh hợp lệ");
+                return;
+              }
+              if (annImage.startsWith("data:") && annImage.length < 100) {
+                window.alert("Ảnh local không hợp lệ, chọn lại file");
+                return;
+              }
               void onAction({
                 action: "create_announcement",
                 title: annTitle,
                 content: annContent,
                 image_url: annImage,
                 link_action: annLink,
-              })
-            }
+              });
+            }}
           >
             Đăng thông báo active
           </button>

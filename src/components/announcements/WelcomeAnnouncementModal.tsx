@@ -32,6 +32,28 @@ function writeDismissedId(id: number) {
   }
 }
 
+function AnnouncementImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed || !src) {
+    return (
+      <p className="mt-4 text-center text-xs text-foreground-subtle">
+        Không tải được ảnh QR. Admin hãy đăng lại thông báo và chọn ảnh trên máy.
+      </p>
+    );
+  }
+  return (
+    <div className="mx-auto mt-5 max-w-[280px] overflow-hidden rounded-xl border border-border bg-white p-3 shadow-sm">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="mx-auto h-auto w-full object-contain"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
 export function WelcomeAnnouncementModal() {
   const username = useAccountStore((s) => s.username);
   const pathname = usePathname();
@@ -113,14 +135,7 @@ export function WelcomeAnnouncementModal() {
           ) : null}
 
           {hasImage ? (
-            <div className="mx-auto mt-5 max-w-[260px] overflow-hidden rounded-xl border border-border bg-white p-3 shadow-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.image_url}
-                alt={item.title || "Thông báo"}
-                className="mx-auto h-auto w-full object-contain"
-              />
-            </div>
+            <AnnouncementImage src={item.image_url} alt={item.title || "Thông báo"} />
           ) : null}
 
           <div className="mt-5 flex flex-col gap-2">

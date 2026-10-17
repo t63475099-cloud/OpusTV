@@ -1012,7 +1012,7 @@ export async function POST(req: NextRequest) {
       await sql`UPDATE system_announcements SET is_active = FALSE WHERE is_active = TRUE`;
       const title = String(body.title || "").slice(0, 120);
       const content = String(body.content || "").slice(0, 500);
-      const imageUrl = String(body.image_url || body.imageUrl || "").slice(0, 500);
+      const imageUrl = String(body.image_url || body.imageUrl || "").slice(0, 900_000);
       const linkAction = String(body.link_action || body.linkAction || "").slice(0, 500);
       const rows = await sql`
         INSERT INTO system_announcements (title, content, image_url, link_action, is_active)

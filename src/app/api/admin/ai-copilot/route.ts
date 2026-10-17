@@ -344,31 +344,51 @@ export async function POST(req: NextRequest) {
     }
     contents.push({ role: "user", parts: [{ text: message }] });
 
+    // Ưu tiên gemini-3.8-flash (model mới); fallback 2.5 / 2.0 — bỏ 1.5
     const models = Array.from(
       new Set(
         [
-          process.env.GEMINI_MODEL || "gemini-2.0-flash",
-          "gemini-2.0-flash",
+          process.env.GEMINI_MODEL || "gemini-3.8-flash",
+          "gemini-3.8-flash",
           "gemini-2.5-flash",
-          "gemini-1.5-flash",
+          "gemini-2.0-flash",
+          "gemini-flash-latest",
         ].filter(Boolean)
       )
     );
 
     let data: Awaited<ReturnType<typeof callGemini>>["data"] = {};
-    let modelUsed = models[0];
+    let modelUsed = models[0] || "gemini-3.8-flash";
+    let lastErr = "";
     for (const m of models) {
       const { res, data: d } = await callGemini(geminiKey, m, contents, true);
       data = d;
       modelUsed = m;
-      if (res.ok) break;
-      const msg = String(d?.error?.message || "");
-      if (!/no longer available|not found|not supported/i.test(msg)) break;
+      if (res.ok && d.candidates?.length) break;
+      lastErr = String(d?.error?.message || `HTTP ${res.status}`);
+      // Thử model tiếp theo khi model không tồn tại / không hỗ trợ
+      if (/no longer available|not found|not supported|deprecated/i.test(lastErr)) {
+        continue;
+      }
+      // Lỗi khác (quota, key…) — dừng
+      break;
     }
 
     if (data?.error?.message && !data.candidates?.length) {
       return NextResponse.json(
-        { ok: false, error: data.error.message },
+        {
+          ok: false,
+          error: `${data.error.message} (đã thử: ${models.join(", ")})`,
+        },
+        { status: 502 }
+      );
+    }
+    if (!data.candidates?.length && lastErr) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `${lastErr} (đã thử: ${models.join(", ")})`,
+        },
         { status: 502 }
       );
     }

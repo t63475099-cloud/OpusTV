@@ -24,6 +24,7 @@ import { AccountRealtimeBridge } from "@/components/account/AccountRealtimeBridg
 import { SystemHealthBridge } from "@/components/system/SystemHealthBridge";
 import { PatchReleaseModal } from "@/components/system/PatchReleaseModal";
 import { THEME_LOCALE_BOOT_SCRIPT } from "@/lib/themeLocale";
+import { WelcomeAnnouncementModal } from "@/components/announcements/WelcomeAnnouncementModal";
 import { GlobalRewardModal } from "@/components/rewards/GlobalRewardModal";
 import { VipGateProvider } from "@/components/vip/VipGateProvider";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
@@ -88,6 +89,7 @@ export default function RootLayout({
         <ThemeLocaleProvider>
         <VipGateProvider>
         <GlobalRewardModal />
+        <WelcomeAnnouncementModal />
         <AmbientBackdrop />
         <OpusPreloader oncePerSession />
         <PwaRegister />

@@ -994,7 +994,49 @@ export async function POST(req: NextRequest) {
     }
 
 
-    if (action === "set_verified") {
+    
+    if (action === "create_announcement") {
+      const sql = db();
+      await sql`
+        CREATE TABLE IF NOT EXISTS system_announcements (
+          id SERIAL PRIMARY KEY,
+          title TEXT NOT NULL DEFAULT '',
+          content TEXT NOT NULL DEFAULT '',
+          image_url TEXT DEFAULT '',
+          link_action TEXT DEFAULT '',
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `;
+      // Chỉ 1 active: tắt cái cũ
+      await sql`UPDATE system_announcements SET is_active = FALSE WHERE is_active = TRUE`;
+      const title = String(body.title || "").slice(0, 120);
+      const content = String(body.content || "").slice(0, 500);
+      const imageUrl = String(body.image_url || body.imageUrl || "").slice(0, 500);
+      const linkAction = String(body.link_action || body.linkAction || "").slice(0, 500);
+      const rows = await sql`
+        INSERT INTO system_announcements (title, content, image_url, link_action, is_active)
+        VALUES (${title}, ${content}, ${imageUrl}, ${linkAction}, TRUE)
+        RETURNING id, title, content, image_url, link_action, is_active, created_at
+      `;
+      return NextResponse.json({
+        ok: true,
+        message: "Đã đăng thông báo chào mừng",
+        announcement: rows[0],
+      });
+    }
+
+    if (action === "deactivate_announcements") {
+      const sql = db();
+      try {
+        await sql`UPDATE system_announcements SET is_active = FALSE WHERE is_active = TRUE`;
+      } catch {
+        /* */
+      }
+      return NextResponse.json({ ok: true, message: "Đã tắt thông báo" });
+    }
+
+if (action === "set_verified") {
       const id = Number(body.id || 0);
       const username = String(body.username || "").trim().toLowerCase();
       const verified =

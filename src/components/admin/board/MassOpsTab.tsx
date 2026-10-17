@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { BoardTheme } from "./adminUi";
 import { boardTokens, btn } from "./adminUi";
-import { Gift } from "lucide-react";
+import { Gift, Megaphone } from "lucide-react";
 
 export function MassOpsTab({
   theme,
@@ -18,6 +18,11 @@ export function MassOpsTab({
   const [rewardType, setRewardType] = useState<"coins" | "vip_hours" | "vip_lifetime">("coins");
   const [rewardValue, setRewardValue] = useState("100");
   const [message, setMessage] = useState("");
+  const [annTitle, setAnnTitle] = useState("OpusFilm");
+  const [annContent, setAnnContent] = useState("Nhóm Zalo");
+  const [annImage, setAnnImage] = useState("");
+  const [annLink, setAnnLink] = useState("");
+
 
   return (
     <div className="space-y-4">
@@ -69,6 +74,69 @@ export function MassOpsTab({
           Phát thưởng & kích hoạt toàn server
         </button>
       </section>
+
+      <section className={`rounded-xl border p-4 ${t.surface}`}>
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Megaphone className="h-4 w-4" strokeWidth={1.75} />
+          Thông báo chào mừng / QR
+        </h3>
+        <p className={`mt-1 text-xs ${t.muted}`}>
+          Ảnh QR hoặc banner — user thấy 1 lần cho mỗi thông báo (theo id).
+        </p>
+        <div className="mt-3 grid gap-2">
+          <input
+            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Tiêu đề"
+            value={annTitle}
+            onChange={(e) => setAnnTitle(e.target.value)}
+          />
+          <input
+            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Nội dung ngắn"
+            value={annContent}
+            onChange={(e) => setAnnContent(e.target.value)}
+          />
+          <input
+            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="URL ảnh / mã QR"
+            value={annImage}
+            onChange={(e) => setAnnImage(e.target.value)}
+          />
+          <input
+            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Link hành động (tuỳ chọn)"
+            value={annLink}
+            onChange={(e) => setAnnLink(e.target.value)}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={loading}
+            className={`${btn.compact} ${btn.primary}`}
+            onClick={() =>
+              void onAction({
+                action: "create_announcement",
+                title: annTitle,
+                content: annContent,
+                image_url: annImage,
+                link_action: annLink,
+              })
+            }
+          >
+            Đăng thông báo active
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            className={`${btn.compact} ${btn.ghost}`}
+            onClick={() => void onAction({ action: "deactivate_announcements" })}
+          >
+            Tắt tất cả thông báo
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
+

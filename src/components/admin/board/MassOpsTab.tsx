@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { BoardTheme } from "./adminUi";
 import { boardTokens, btn } from "./adminUi";
 import { Gift, Megaphone } from "lucide-react";
@@ -22,7 +22,7 @@ export function MassOpsTab({
   const [annContent, setAnnContent] = useState("Nhóm Zalo");
   const [annImage, setAnnImage] = useState("");
   const [annLink, setAnnLink] = useState("");
-
+  const fileRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="space-y-4">
@@ -96,12 +96,51 @@ export function MassOpsTab({
             value={annContent}
             onChange={(e) => setAnnContent(e.target.value)}
           />
-          <input
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="URL ảnh / mã QR"
-            value={annImage}
-            onChange={(e) => setAnnImage(e.target.value)}
-          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              className={`min-w-0 flex-1 rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+              placeholder="URL ảnh / mã QR (hoặc chọn file bên cạnh)"
+              value={annImage.startsWith("data:") ? "" : annImage}
+              onChange={(e) => setAnnImage(e.target.value)}
+            />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 1.5 * 1024 * 1024) {
+                  window.alert("Ảnh tối đa 1.5MB (QR thường nhỏ hơn)");
+                  e.target.value = "";
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const result = String(reader.result || "");
+                  if (result.startsWith("data:image")) setAnnImage(result);
+                };
+                reader.readAsDataURL(file);
+              }}
+            />
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost} shrink-0`}
+              onClick={() => fileRef.current?.click()}
+            >
+              Chọn ảnh trên máy
+            </button>
+            {annImage.startsWith("data:") ? (
+              <span className={`text-xs ${t.muted} shrink-0`}>Đã chọn ảnh local</span>
+            ) : null}
+          </div>
+          {annImage ? (
+            <div className="mt-1 max-w-[160px] overflow-hidden rounded-lg border border-border bg-white p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={annImage} alt="Xem trước QR" className="h-auto w-full object-contain" />
+            </div>
+          ) : null}
           <input
             className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
             placeholder="Link hành động (tuỳ chọn)"

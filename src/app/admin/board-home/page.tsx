@@ -12,6 +12,7 @@ import { GiftcodeTab } from "@/components/admin/board/GiftcodeTab";
 import { ModerationTab } from "@/components/admin/board/ModerationTab";
 import { SystemAiTab } from "@/components/admin/board/SystemAiTab";
 import { MassOpsTab } from "@/components/admin/board/MassOpsTab";
+import { AdminAiCopilot } from "@/components/admin/AdminAiCopilot";
 import type { BoardTheme } from "@/components/admin/board/adminUi";
 import { boardTokens, btn } from "@/components/admin/board/adminUi";
 
@@ -437,6 +438,9 @@ export default function BoardHomePage() {
           {toast.msg}
         </div>
       ) : null}
+
+      {/* Admin AI Copilot — chỉ khi đã mở khóa secret */}
+      <AdminAiCopilot adminSecret={secret} unlocked={unlocked} />
     </div>
   );
 }

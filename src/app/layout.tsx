@@ -24,7 +24,7 @@ import { AccountRealtimeBridge } from "@/components/account/AccountRealtimeBridg
 import { SystemHealthBridge } from "@/components/system/SystemHealthBridge";
 import { PatchReleaseModal } from "@/components/system/PatchReleaseModal";
 import { THEME_LOCALE_BOOT_SCRIPT } from "@/lib/themeLocale";
-import { AiAssistantWidget } from "@/components/ai/AiAssistantWidget";
+import { LucianSupportChat } from "@/components/ai/LucianSupportChat";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 import { WelcomeAnnouncementModal } from "@/components/announcements/WelcomeAnnouncementModal";
 import { GlobalRewardModal } from "@/components/rewards/GlobalRewardModal";
@@ -93,7 +93,7 @@ export default function RootLayout({
         <GlobalRewardModal />
         <WelcomeAnnouncementModal />
         <ComingSoonModal />
-        <AiAssistantWidget />
+        <LucianSupportChat />
         <AmbientBackdrop />
         <OpusPreloader oncePerSession />
         <PwaRegister />

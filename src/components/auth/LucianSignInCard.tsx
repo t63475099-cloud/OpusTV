@@ -2,8 +2,12 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { LucianLockoutCard } from "@/components/auth/LucianLockoutCard";
 
 export type AuthMode = "login" | "register" | "recover";
+
+const MAX_LOGIN_TRIES = 5;
+const LOCKOUT_SECONDS = 60;
 
 type Props = {
   mode: AuthMode;
@@ -46,7 +50,8 @@ export function LucianSignInCard({
   const [caps, setCaps] = useState(false);
   const [bad, setBad] = useState(false);
   const [err, setErr] = useState("");
-  const [left, setLeft] = useState(3);
+  const [left, setLeft] = useState(MAX_LOGIN_TRIES);
+  const [locked, setLocked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState(false);
   const [isIn, setIsIn] = useState(false);
@@ -66,7 +71,8 @@ export function LucianSignInCard({
     setPassword("");
     setPassword2("");
     setPin("");
-    setLeft(3);
+    setLeft(MAX_LOGIN_TRIES);
+    setLocked(false);
   }, [mode]);
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
@@ -112,7 +118,16 @@ export function LucianSignInCard({
         setBusy(false);
         const next = Math.max(0, left - 1);
         setLeft(next);
-        setErr(res.error || (next ? `Sai mật khẩu · còn ${next} lần thử` : "Thử lại sau hoặc khôi phục mật khẩu"));
+        if (next <= 0) {
+          setLocked(true);
+          setErr("");
+          setBad(false);
+          return;
+        }
+        setErr(
+          res.error ||
+            `Sai mật khẩu · còn ${next} lần thử`
+        );
         setBad(true);
         setShake(false);
         requestAnimationFrame(() => setShake(true));
@@ -211,12 +226,35 @@ export function LucianSignInCard({
     setIsIn(false);
     setOk(false);
     setBusy(false);
-    setLeft(3);
+    setLeft(MAX_LOGIN_TRIES);
+    setLocked(false);
     setPassword("");
     setBad(false);
     setErr("");
     setTimeout(() => pwRef.current?.focus({ preventScroll: true }), 50);
   };
+
+  if (locked && mode === "login") {
+    return (
+      <LucianLockoutCard
+        lockSeconds={LOCKOUT_SECONDS}
+        failCount={MAX_LOGIN_TRIES}
+        onUnlocked={() => {
+          setLocked(false);
+          setLeft(MAX_LOGIN_TRIES);
+          setPassword("");
+          setBad(false);
+          setErr("");
+          setTimeout(() => pwRef.current?.focus({ preventScroll: true }), 80);
+        }}
+        onRecoverInstead={() => {
+          setLocked(false);
+          setLeft(MAX_LOGIN_TRIES);
+          onModeChange("recover");
+        }}
+      />
+    );
+  }
 
   return (
     <div

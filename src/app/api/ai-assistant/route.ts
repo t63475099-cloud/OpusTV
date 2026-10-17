@@ -69,41 +69,65 @@ export async function POST(req: NextRequest) {
 
     const model =
       process.env.GEMINI_MODEL ||
-      "gemini-2.0-flash";
+      "gemini-3.8-flash";
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
       model
     )}:generateContent?key=${encodeURIComponent(key)}`;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents,
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 1024,
-        },
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
-        ],
-      }),
-    });
+    const payload = {
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: {
+        temperature: 0.6,
+        maxOutputTokens: 1024,
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+      ],
+    };
 
-    const data = (await res.json().catch(() => ({}))) as {
+    const candidates = Array.from(
+      new Set(
+        [
+          model,
+          "gemini-3.8-flash",
+          "gemini-2.5-flash",
+          "gemini-2.0-flash",
+          "gemini-1.5-flash",
+        ].filter(Boolean)
+      )
+    );
+
+    let res: Response | null = null;
+    let data: {
       error?: { message?: string };
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
         finishReason?: string;
       }>;
-    };
+    } = {};
 
-    if (!res.ok) {
-      const errMsg = data?.error?.message || `Gemini lỗi (${res.status})`;
+    for (const m of candidates) {
+      const tryUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        m
+      )}:generateContent?key=${encodeURIComponent(key)}`;
+      res = await fetch(tryUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      data = (await res.json().catch(() => ({}))) as typeof data;
+      if (res.ok) break;
+      const msg = String(data?.error?.message || "");
+      if (!/no longer available|not found|not supported/i.test(msg)) break;
+    }
+
+    if (!res || !res.ok) {
+      const errMsg = data?.error?.message || `Gemini lỗi (${res?.status || 0})`;
       return NextResponse.json({ ok: false, error: errMsg }, { status: 502 });
     }
 

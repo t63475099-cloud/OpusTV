@@ -2,7 +2,7 @@
 import PlayerShortcutsHint from "@/components/PlayerShortcutsHint";
 import { useXpStore } from "@/lib/xpStore";
 import { useEventStore } from "@/lib/eventCoins";
-import { useStreakStore } from "@/lib/streak";
+import { useStreakStore, recordDailyStreak } from "@/lib/streak";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Hls from "hls.js";
@@ -589,7 +589,7 @@ const showControls = useCallback(() => {
       // Thắp lửa chuỗi sau ~30s xem
       if (!streakDone.current && video.currentTime > 30) {
         streakDone.current = true;
-        try { streakCheckIn(); } catch { /* */ }
+        try { streakCheckIn(); recordDailyStreak(); } catch { /* */ }
       }
     }, 5000);
     return () => {

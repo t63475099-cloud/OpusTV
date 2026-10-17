@@ -85,7 +85,7 @@ export const useStreakStore = create<StreakState>()(
   )
 );
 
-/** Gọi khi người dùng đang xem phim */
+/** Gọi khi người dùng đang xem phim / nghe nhạc */
 export function recordDailyStreak() {
   try {
     return useStreakStore.getState().checkIn();
@@ -93,3 +93,48 @@ export function recordDailyStreak() {
     return { lit: false, current: 0, best: 0, already: false };
   }
 }
+
+/** Gắn streak theo tài khoản (tránh lẫn giữa user) */
+export function bindStreakAccount(username: string | null | undefined) {
+  try {
+    const key = username
+      ? `opusfilm-watch-streak:u:${String(username).toLowerCase()}`
+      : "opusfilm-watch-streak:guest";
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        state?: { current?: number; best?: number; lastActive?: string | null };
+      };
+      const s = parsed.state;
+      if (s) {
+        useStreakStore.setState({
+          current: Number(s.current || 0),
+          best: Number(s.best || 0),
+          lastActive: s.lastActive ?? null,
+        });
+      }
+    } else {
+      useStreakStore.setState({ current: 0, best: 0, lastActive: null });
+    }
+    // persist middleware name is fixed — also mirror on each checkIn via subscribe
+    useStreakStore.subscribe((state) => {
+      try {
+        localStorage.setItem(
+          key,
+          JSON.stringify({
+            state: {
+              current: state.current,
+              best: state.best,
+              lastActive: state.lastActive,
+            },
+          })
+        );
+      } catch {
+        /* */
+      }
+    });
+  } catch {
+    /* */
+  }
+}
+

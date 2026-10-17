@@ -10,7 +10,7 @@ import { useOpusPassStore } from "@/lib/opusPass";
 import { useHistoryStore, migrateLegacyWatchHistory } from "@/lib/history";
 import { useFavoritesStore } from "@/lib/favorites";
 import { useSettingsStore } from "@/lib/settings";
-import { useStreakStore } from "@/lib/streak";
+import { useStreakStore, bindStreakAccount } from "@/lib/streak";
 import { useNotifStore } from "@/lib/notifications";
 
 /** Bắt lỗi client để không làm trắng cả site */
@@ -116,6 +116,7 @@ export default function SyncBootstrap() {
     try {
       migrateLegacyWatchHistory();
       useHistoryStore.getState().bindAccount(username);
+      bindStreakAccount(username);
     } catch {
       /* */
     }

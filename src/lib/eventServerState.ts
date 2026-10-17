@@ -100,6 +100,20 @@ let ensured = false;
 export async function ensureEventStateTable() {
   if (ensured) return;
   const sql = db();
+  // Bảng cũ (username PK, không có user_id) → đổi tên rồi tạo schema chuẩn
+  try {
+    await sql`SELECT user_id FROM event_user_state LIMIT 1`;
+  } catch {
+    try {
+      await sql`ALTER TABLE event_user_state RENAME TO event_user_state_legacy`;
+    } catch {
+      try {
+        await sql`DROP TABLE IF EXISTS event_user_state`;
+      } catch {
+        /* */
+      }
+    }
+  }
   await sql`
     CREATE TABLE IF NOT EXISTS event_user_state (
       user_id INTEGER PRIMARY KEY,
@@ -121,6 +135,11 @@ export async function ensureEventStateTable() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  try {
+    await sql`ALTER TABLE event_user_state ADD COLUMN IF NOT EXISTS user_id INTEGER`;
+  } catch {
+    /* */
+  }
   ensured = true;
 }
 
@@ -188,30 +207,8 @@ export async function getOrCreateEventState(
       ON CONFLICT (user_id) DO NOTHING
     `;
     rows = await sql`SELECT * FROM event_user_state WHERE user_id = ${userId} LIMIT 1`;
-  } else {
-    if (username && String((rows[0] as { username: string }).username) !== username) {
-      await sql`UPDATE event_user_state SET username = ${username} WHERE user_id = ${userId}`;
-    }
-    // Đồng bộ xu từ account_state nếu cao hơn (admin cấp / multi-device lệch)
-    try {
-      const acc = await sql`
-        SELECT coins FROM account_state WHERE user_id = ${userId} LIMIT 1
-      `;
-      if (acc.length) {
-        const accCoins = Number((acc[0] as { coins: number }).coins || 0);
-        const evCoins = Number((rows[0] as { coins: number }).coins || 0);
-        if (accCoins > evCoins) {
-          await sql`
-            UPDATE event_user_state
-            SET coins = ${accCoins}, version = version + 1, updated_at = NOW()
-            WHERE user_id = ${userId}
-          `;
-          rows = await sql`SELECT * FROM event_user_state WHERE user_id = ${userId} LIMIT 1`;
-        }
-      }
-    } catch {
-      /* */
-    }
+  } else if (username && String((rows[0] as { username: string }).username) !== username) {
+    await sql`UPDATE event_user_state SET username = ${username} WHERE user_id = ${userId}`;
   }
   return mapRow(rows[0] as Record<string, unknown>, userId);
 }

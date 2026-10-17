@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
+import { openComingSoon } from "@/components/ComingSoonModal";
 import { markEnterSection } from "@/lib/routeManager";
 import { cn } from "@/lib/utils";
 
@@ -151,6 +152,16 @@ export default function GlassDock() {
 
   const go = useCallback(
     (href: string, section?: MainItem["section"] | "pass" | "code") => {
+      if (href.startsWith("/su-kien") || href.startsWith("/code") || section === "code" || section === "pass") {
+        setSheetOpen(false);
+        openComingSoon(
+          "Sắp ra mắt",
+          href.startsWith("/code") || section === "code"
+            ? "Opus Code đang được hoàn thiện. Vui lòng quay lại sau."
+            : "Opus Event đang được hoàn thiện. Vui lòng quay lại sau."
+        );
+        return;
+      }
       if (section) markEnterSection(section);
       setSheetOpen(false);
       router.push(href);

@@ -802,6 +802,7 @@ export async function POST(req: NextRequest) {
           prefix TEXT DEFAULT 'user_',
           created_by TEXT DEFAULT 'admin',
           usernames JSONB DEFAULT '[]'::jsonb,
+          accounts JSONB DEFAULT '[]'::jsonb,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `;
@@ -838,18 +839,33 @@ export async function POST(req: NextRequest) {
         }
       }
       try {
+        await sql`ALTER TABLE bulk_creation_logs ADD COLUMN IF NOT EXISTS accounts JSONB DEFAULT '[]'::jsonb`;
+      } catch { /* */ }
+      try {
         await sql`
-          INSERT INTO bulk_creation_logs (created_count, requested_count, prefix, created_by, usernames)
+          INSERT INTO bulk_creation_logs (created_count, requested_count, prefix, created_by, usernames, accounts)
           VALUES (
             ${created.length},
             ${count},
             ${prefix},
             ${createdBy},
-            ${JSON.stringify(created.map((c) => c.username))}::jsonb
+            ${JSON.stringify(created.map((c) => c.username))}::jsonb,
+            ${JSON.stringify(created)}::jsonb
           )
         `;
       } catch {
-        /* */
+        try {
+          await sql`
+            INSERT INTO bulk_creation_logs (created_count, requested_count, prefix, created_by, usernames)
+            VALUES (
+              ${created.length},
+              ${count},
+              ${prefix},
+              ${createdBy},
+              ${JSON.stringify(created.map((c) => c.username))}::jsonb
+            )
+          `;
+        } catch { /* */ }
       }
       return NextResponse.json({
         ok: true,
@@ -870,11 +886,12 @@ export async function POST(req: NextRequest) {
           prefix TEXT DEFAULT 'user_',
           created_by TEXT DEFAULT 'admin',
           usernames JSONB DEFAULT '[]'::jsonb,
+          accounts JSONB DEFAULT '[]'::jsonb,
           created_at TIMESTAMPTZ DEFAULT NOW()
         )
       `;
       const rows = await sql`
-        SELECT id, created_count, requested_count, prefix, created_by, usernames, created_at
+        SELECT id, created_count, requested_count, prefix, created_by, usernames, accounts, created_at
         FROM bulk_creation_logs
         ORDER BY id DESC LIMIT 30
       `;

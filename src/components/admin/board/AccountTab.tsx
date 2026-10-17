@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AdminAccount, AdminRole } from "@/lib/adminEngine";
 import type { BoardTheme } from "./adminUi";
 import { boardTokens, btn } from "./adminUi";
@@ -11,6 +11,8 @@ type Filter = "all" | "online" | "vip" | "verified" | "banned";
 
 type BulkRow = { username: string; password: string; uid: string };
 
+const BULK_STORAGE = "opus_admin_bulk_batch_v1";
+
 type BulkLog = {
   id: number;
   created_count: number;
@@ -18,6 +20,8 @@ type BulkLog = {
   prefix: string;
   created_by: string;
   created_at: string;
+  accounts?: BulkRow[] | string;
+  usernames?: string[];
 };
 
 function exportCsv(rows: Record<string, string>[], filename: string) {
@@ -42,20 +46,37 @@ function exportPdf(title: string, rows: Record<string, string>[]) {
   const headers = rows[0] ? Object.keys(rows[0]) : [];
   const w = window.open("", "_blank");
   if (!w) return;
-  const th = headers.map((h) => `<th style="border:1px solid #ccc;padding:6px;text-align:left">${h}</th>`).join("");
+  const th = headers
+    .map(
+      (h) =>
+        `<th style="border:1px solid #334155;padding:10px 14px;text-align:left;background:#f1f5f9;white-space:nowrap">${h}</th>`
+    )
+    .join("");
   const body = rows
     .map(
       (r) =>
         `<tr>${headers
-          .map((h) => `<td style="border:1px solid #ccc;padding:6px">${r[h] ?? ""}</td>`)
+          .map(
+            (h) =>
+              `<td style="border:1px solid #cbd5e1;padding:10px 14px;vertical-align:top;word-break:break-all;min-width:120px">${r[h] ?? ""}</td>`
+          )
           .join("")}</tr>`
     )
     .join("");
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title>
-    <style>body{font-family:system-ui,Segoe UI,Arial,sans-serif;padding:24px} table{border-collapse:collapse;width:100%;font-size:12px} h1{font-size:18px}</style>
-    </head><body><h1>${title}</h1><p>Xuất lúc ${new Date().toLocaleString("vi-VN")}</p>
+    <style>
+      @page { margin: 16mm; }
+      body { font-family: "Segoe UI", Arial, sans-serif; padding: 24px; color: #0f172a; }
+      h1 { font-size: 18px; margin: 0 0 8px; }
+      p { font-size: 12px; color: #475569; margin: 0 0 16px; }
+      table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
+      th, td { line-height: 1.45; }
+    </style></head><body>
+    <h1>${title}</h1>
+    <p>Chỉ gồm tài khoản tạo hàng loạt · Xuất lúc ${new Date().toLocaleString("vi-VN")} · ${rows.length} dòng</p>
     <table><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>
-    <script>window.onload=function(){window.print()}<\/script></body></html>`);
+    <script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>
+    </body></html>`);
   w.document.close();
 }
 
@@ -87,7 +108,66 @@ export function AccountTab({
   const [bulkPrefix, setBulkPrefix] = useState("user_");
   const [bulkPass, setBulkPass] = useState("");
   const [bulkCreated, setBulkCreated] = useState<BulkRow[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(BULK_STORAGE);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { accounts?: BulkRow[] };
+      if (Array.isArray(parsed?.accounts) && parsed.accounts.length) {
+        setBulkCreated(parsed.accounts);
+      }
+    } catch {
+      /* */
+    }
+  }, []);
+
+  const persistBulk = (accounts: BulkRow[]) => {
+    setBulkCreated(accounts);
+    try {
+      sessionStorage.setItem(
+        BULK_STORAGE,
+        JSON.stringify({ accounts, savedAt: Date.now() })
+      );
+    } catch {
+      /* */
+    }
+  };
+
   const [bulkLogs, setBulkLogs] = useState<BulkLog[]>([]);
+
+  // Giữ danh sách batch + không mất khi đổi tab / refresh trong phiên
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("opus_admin_bulk_batch_v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as BulkRow[];
+        if (Array.isArray(parsed) && parsed.length) setBulkCreated(parsed);
+      }
+    } catch {
+      /* */
+    }
+    void (async () => {
+      try {
+        const res = (await onAction({ action: "list_bulk_logs" })) as { logs?: BulkLog[] };
+        if (res?.logs) setBulkLogs(res.logs);
+      } catch {
+        /* */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (bulkCreated.length) {
+        sessionStorage.setItem("opus_admin_bulk_batch_v1", JSON.stringify(bulkCreated));
+      }
+    } catch {
+      /* */
+    }
+  }, [bulkCreated]);
+
 
   const [coinsModal, setCoinsModal] = useState<AdminAccount | null>(null);
   const [passModal, setPassModal] = useState<AdminAccount | null>(null);
@@ -135,31 +215,50 @@ export function AccountTab({
     return list;
   }, [accounts, q, filter]);
 
-  const exportSource = (): Record<string, string>[] => {
-    if (bulkCreated.length) {
-      return bulkCreated.map((a) => ({
-        Username: a.username,
-        Password: a.password,
-        UID: a.uid,
-        "Ngày tạo": new Date().toLocaleString("vi-VN"),
-        "Trạng thái": "active",
-      }));
-    }
-    return filtered.map((a) => ({
+  const exportBulkOnly = (): Record<string, string>[] => {
+    return bulkCreated.map((a) => ({
       Username: a.username,
-      Password: "",
+      Password: a.password || "",
       UID: a.uid || "",
-      "Ngày tạo": a.createdAt ? new Date(a.createdAt).toLocaleString("vi-VN") : "",
-      "Trạng thái": a.status,
-      Role: a.role,
-      Email: a.email || "",
+      "Ngày tạo": new Date().toLocaleString("vi-VN"),
+      "Trạng thái": "bulk",
     }));
   };
 
+  const canExportBulk = bulkCreated.length > 0;
+
+
   const loadBulkLogs = async () => {
     const res = (await onAction({ action: "list_bulk_logs" })) as { logs?: BulkLog[] };
-    if (res?.logs) setBulkLogs(res.logs);
+    if (res?.logs) {
+      setBulkLogs(res.logs);
+      const latest = res.logs[0];
+      if (latest && !bulkCreated.length) {
+        let acc = latest.accounts;
+        if (typeof acc === "string") {
+          try {
+            acc = JSON.parse(acc) as BulkRow[];
+          } catch {
+            acc = [];
+          }
+        }
+        if (Array.isArray(acc) && acc.length && acc[0]?.username) {
+          persistBulk(
+            acc.map((x) => ({
+              username: String(x.username),
+              password: String(x.password || ""),
+              uid: String(x.uid || ""),
+            }))
+          );
+        }
+      }
+    }
   };
+
+  useEffect(() => {
+    void loadBulkLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -201,7 +300,7 @@ export function AccountTab({
                 created_by: "admin",
               })) as { accounts?: BulkRow[] };
               if (res?.accounts?.length) {
-                setBulkCreated(res.accounts);
+                persistBulk(res.accounts);
                 void loadBulkLogs();
                 onRefresh();
               }
@@ -221,27 +320,36 @@ export function AccountTab({
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
-            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
-            onClick={() => exportCsv(exportSource(), "accounts.csv")}
+            disabled={!canExportBulk}
+            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1 disabled:opacity-40`}
+            onClick={() =>
+              exportCsv(exportBulkOnly(), `bulk-accounts-${Date.now()}.csv`, ",")
+            }
           >
             <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Xuất CSV
+            Xuất CSV (chỉ hàng loạt)
           </button>
           <button
             type="button"
-            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
-            onClick={() => exportCsv(exportSource(), "accounts.xlsx.csv")}
+            disabled={!canExportBulk}
+            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1 disabled:opacity-40`}
+            onClick={() =>
+              exportCsv(exportBulkOnly(), `bulk-accounts-${Date.now()}.xlsx.csv`, ";")
+            }
           >
             <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Xuất Excel (CSV)
+            Xuất Excel (chỉ hàng loạt)
           </button>
           <button
             type="button"
-            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
-            onClick={() => exportPdf("Danh sách tài khoản OpusFilm", exportSource())}
+            disabled={!canExportBulk}
+            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1 disabled:opacity-40`}
+            onClick={() =>
+              exportPdf("Danh sách tài khoản tạo hàng loạt — OpusFilm", exportBulkOnly())
+            }
           >
             <FileText className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Xuất PDF
+            Xuất PDF (chỉ hàng loạt)
           </button>
           <button
             type="button"
@@ -257,14 +365,73 @@ export function AccountTab({
           </button>
         </div>
 
+      </section>
+
+      {/* Danh sách batch hiện tại — khối riêng, không bị form đơn đè */}
+      {!canExportBulk ? (
+          <p className={`mt-2 text-xs ${t.muted}`}>
+            Chưa có lô hàng loạt — xuất file chỉ áp dụng cho tài khoản tạo hàng loạt (có mật khẩu).
+          </p>
+        ) : null}
+
         {bulkCreated.length > 0 ? (
-          <div className="mt-3 max-h-40 overflow-auto rounded-lg border border-border">
+        <section className={`rounded-xl border p-4 ${t.surface}`}>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">
+              Danh sách vừa tạo hàng loạt ({bulkCreated.length})
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.ghost}`}
+                onClick={() => {
+                  const text = bulkCreated
+                    .map((a) => `${a.username}\t${a.password}\t${a.uid}`)
+                    .join("\n");
+                  void navigator.clipboard.writeText(text);
+                }}
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.ghost}`}
+                onClick={() =>
+                  exportCsv(
+                    bulkCreated.map((a) => ({
+                      Username: a.username,
+                      Password: a.password,
+                      UID: a.uid,
+                    })),
+                    "bulk-accounts.csv"
+                  )
+                }
+              >
+                Xuất batch CSV
+              </button>
+              <button
+                type="button"
+                className={`${btn.compact} ${btn.ghost}`}
+                onClick={() => {
+                  setBulkCreated([]);
+                  try {
+                    sessionStorage.removeItem("opus_admin_bulk_batch_v1");
+                  } catch {
+                    /* */
+                  }
+                }}
+              >
+                Ẩn danh sách batch
+              </button>
+            </div>
+          </div>
+          <div className="max-h-56 overflow-auto rounded-lg border border-border">
             <table className="w-full table-fixed text-left text-xs">
-              <thead>
+              <thead className={`sticky top-0 ${t.surface}`}>
                 <tr className={t.muted}>
-                  <th className="w-[30%] px-2 py-1">Username</th>
-                  <th className="w-[30%] px-2 py-1">Password</th>
-                  <th className="w-[40%] px-2 py-1">UID</th>
+                  <th className="w-[30%] px-2 py-1.5">Username</th>
+                  <th className="w-[30%] px-2 py-1.5">Password</th>
+                  <th className="w-[40%] px-2 py-1.5">UID</th>
                 </tr>
               </thead>
               <tbody>
@@ -278,25 +445,45 @@ export function AccountTab({
               </tbody>
             </table>
           </div>
-        ) : null}
+        </section>
+      ) : null}
 
-        {bulkLogs.length > 0 ? (
-          <div className={`mt-3 text-xs ${t.muted}`}>
-            <p className="mb-1 font-medium text-foreground">Lịch sử tạo hàng loạt</p>
-            <ul className="space-y-1">
-              {bulkLogs.slice(0, 8).map((l) => (
-                <li key={l.id}>
-                  #{l.id} · {l.created_count}/{l.requested_count} · prefix={l.prefix} ·{" "}
-                  {l.created_by} ·{" "}
-                  {l.created_at ? new Date(l.created_at).toLocaleString("vi-VN") : ""}
-                </li>
-              ))}
-            </ul>
+      {/* Lịch sử các đợt — DB, không mất khi refresh */}
+      {bulkLogs.length > 0 ? (
+        <section className={`rounded-xl border p-4 ${t.surface}`}>
+          <h3 className="mb-2 text-sm font-semibold">Lịch sử tạo hàng loạt</h3>
+          <div className="max-h-40 overflow-auto">
+            <table className="w-full table-fixed text-left text-xs">
+              <thead>
+                <tr className={t.muted}>
+                  <th className="w-[10%] px-2 py-1">ID</th>
+                  <th className="w-[20%] px-2 py-1">Số lượng</th>
+                  <th className="w-[20%] px-2 py-1">Prefix</th>
+                  <th className="w-[20%] px-2 py-1">Người tạo</th>
+                  <th className="w-[30%] px-2 py-1">Thời gian</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bulkLogs.map((l) => (
+                  <tr key={l.id} className={`border-t ${t.border}`}>
+                    <td className="px-2 py-1">#{l.id}</td>
+                    <td className="px-2 py-1">
+                      {l.created_count}/{l.requested_count}
+                    </td>
+                    <td className="truncate px-2 py-1 font-mono">{l.prefix}</td>
+                    <td className="truncate px-2 py-1">{l.created_by}</td>
+                    <td className="truncate px-2 py-1">
+                      {l.created_at ? new Date(l.created_at).toLocaleString("vi-VN") : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
-      {/* Single create */}
+      {/* Single create — luôn dưới bulk */}
       <section className={`rounded-xl border p-4 ${t.surface}`}>
         <h3 className="text-sm font-semibold">Tạo tài khoản đơn</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">

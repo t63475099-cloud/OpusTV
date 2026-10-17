@@ -5,8 +5,59 @@ import type { AdminAccount, AdminRole } from "@/lib/adminEngine";
 import type { BoardTheme } from "./adminUi";
 import { boardTokens, btn } from "./adminUi";
 import { AdminModal } from "./AdminModal";
+import { Download, FileSpreadsheet, FileText, Pencil, Trash2, Users } from "lucide-react";
 
 type Filter = "all" | "online" | "vip" | "verified" | "banned";
+
+type BulkRow = { username: string; password: string; uid: string };
+
+type BulkLog = {
+  id: number;
+  created_count: number;
+  requested_count: number;
+  prefix: string;
+  created_by: string;
+  created_at: string;
+};
+
+function exportCsv(rows: Record<string, string>[], filename: string) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const esc = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [headers.join(",")].concat(
+    rows.map((r) => headers.map((h) => esc(r[h] ?? "")).join(","))
+  );
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPdf(title: string, rows: Record<string, string>[]) {
+  const headers = rows[0] ? Object.keys(rows[0]) : [];
+  const w = window.open("", "_blank");
+  if (!w) return;
+  const th = headers.map((h) => `<th style="border:1px solid #ccc;padding:6px;text-align:left">${h}</th>`).join("");
+  const body = rows
+    .map(
+      (r) =>
+        `<tr>${headers
+          .map((h) => `<td style="border:1px solid #ccc;padding:6px">${r[h] ?? ""}</td>`)
+          .join("")}</tr>`
+    )
+    .join("");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title>
+    <style>body{font-family:system-ui,Segoe UI,Arial,sans-serif;padding:24px} table{border-collapse:collapse;width:100%;font-size:12px} h1{font-size:18px}</style>
+    </head><body><h1>${title}</h1><p>Xuất lúc ${new Date().toLocaleString("vi-VN")}</p>
+    <table><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>
+    <script>window.onload=function(){window.print()}<\/script></body></html>`);
+  w.document.close();
+}
 
 export function AccountTab({
   theme,
@@ -31,14 +82,26 @@ export function AccountTab({
     role: "User" as AdminRole,
     expiresDays: "",
   });
+
+  const [bulkCount, setBulkCount] = useState("20");
+  const [bulkPrefix, setBulkPrefix] = useState("user_");
+  const [bulkPass, setBulkPass] = useState("");
+  const [bulkCreated, setBulkCreated] = useState<BulkRow[]>([]);
+  const [bulkLogs, setBulkLogs] = useState<BulkLog[]>([]);
+
   const [coinsModal, setCoinsModal] = useState<AdminAccount | null>(null);
   const [passModal, setPassModal] = useState<AdminAccount | null>(null);
   const [deleteModal, setDeleteModal] = useState<AdminAccount | null>(null);
+  const [detailUser, setDetailUser] = useState<AdminAccount | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deleteAllC1, setDeleteAllC1] = useState("");
+  const [deleteAllC2, setDeleteAllC2] = useState("");
+
   const [coinsAmt, setCoinsAmt] = useState("");
   const [coinsReason, setCoinsReason] = useState("");
   const [newPass, setNewPass] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [detailUser, setDetailUser] = useState<AdminAccount | null>(null);
+
   const [detailRole, setDetailRole] = useState<AdminRole>("User");
   const [detailEmail, setDetailEmail] = useState("");
   const [detailExpires, setDetailExpires] = useState("");
@@ -49,9 +112,7 @@ export function AccountTab({
     setDetailUser(a);
     setDetailRole(a.role);
     setDetailEmail(a.email || "");
-    setDetailExpires(
-      a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : ""
-    );
+    setDetailExpires(a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : "");
     setDetailCoins("");
     setDetailVerified(!!a.verified);
   };
@@ -70,16 +131,174 @@ export function AccountTab({
     if (filter === "vip") list = list.filter((a) => a.role === "VIP");
     if (filter === "verified") list = list.filter((a) => a.verified);
     if (filter === "banned") list = list.filter((a) => a.status === "banned");
-    // online: no presence field → empty intentional (server presence not mocked)
     if (filter === "online") list = list.filter(() => false);
     return list;
   }, [accounts, q, filter]);
 
+  const exportSource = (): Record<string, string>[] => {
+    if (bulkCreated.length) {
+      return bulkCreated.map((a) => ({
+        Username: a.username,
+        Password: a.password,
+        UID: a.uid,
+        "Ngày tạo": new Date().toLocaleString("vi-VN"),
+        "Trạng thái": "active",
+      }));
+    }
+    return filtered.map((a) => ({
+      Username: a.username,
+      Password: "",
+      UID: a.uid || "",
+      "Ngày tạo": a.createdAt ? new Date(a.createdAt).toLocaleString("vi-VN") : "",
+      "Trạng thái": a.status,
+      Role: a.role,
+      Email: a.email || "",
+    }));
+  };
+
+  const loadBulkLogs = async () => {
+    const res = (await onAction({ action: "list_bulk_logs" })) as { logs?: BulkLog[] };
+    if (res?.logs) setBulkLogs(res.logs);
+  };
+
   return (
     <div className="space-y-4">
-      {/* Create */}
+      {/* Bulk creator */}
       <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="text-sm font-semibold">Tạo tài khoản</h3>
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Users className="h-4 w-4" strokeWidth={1.75} />
+          Tạo tài khoản hàng loạt
+        </h3>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <input
+            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Số lượng (1–200)"
+            value={bulkCount}
+            onChange={(e) => setBulkCount(e.target.value)}
+          />
+          <input
+            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Prefix (user_)"
+            value={bulkPrefix}
+            onChange={(e) => setBulkPrefix(e.target.value)}
+          />
+          <input
+            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Mật khẩu chung (trống = random)"
+            value={bulkPass}
+            onChange={(e) => setBulkPass(e.target.value)}
+          />
+          <button
+            type="button"
+            disabled={loading}
+            className={`${btn.compact} ${btn.primary} disabled:opacity-50`}
+            onClick={async () => {
+              const res = (await onAction({
+                action: "bulk_create_accounts",
+                count: Math.min(200, Math.max(1, Number(bulkCount) || 1)),
+                prefix: bulkPrefix,
+                password: bulkPass.trim() || undefined,
+                created_by: "admin",
+              })) as { accounts?: BulkRow[] };
+              if (res?.accounts?.length) {
+                setBulkCreated(res.accounts);
+                void loadBulkLogs();
+                onRefresh();
+              }
+            }}
+          >
+            Tạo hàng loạt
+          </button>
+          <button
+            type="button"
+            className={`${btn.compact} ${btn.ghost}`}
+            onClick={() => void loadBulkLogs()}
+          >
+            Lịch sử tạo
+          </button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
+            onClick={() => exportCsv(exportSource(), "accounts.csv")}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Xuất CSV
+          </button>
+          <button
+            type="button"
+            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
+            onClick={() => exportCsv(exportSource(), "accounts.xlsx.csv")}
+          >
+            <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Xuất Excel (CSV)
+          </button>
+          <button
+            type="button"
+            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
+            onClick={() => exportPdf("Danh sách tài khoản OpusFilm", exportSource())}
+          >
+            <FileText className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Xuất PDF
+          </button>
+          <button
+            type="button"
+            className={`${btn.compact} ${btn.ban} inline-flex items-center gap-1`}
+            onClick={() => {
+              setDeleteAllC1("");
+              setDeleteAllC2("");
+              setDeleteAllOpen(true);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Xóa toàn bộ tài khoản
+          </button>
+        </div>
+
+        {bulkCreated.length > 0 ? (
+          <div className="mt-3 max-h-40 overflow-auto rounded-lg border border-border">
+            <table className="w-full table-fixed text-left text-xs">
+              <thead>
+                <tr className={t.muted}>
+                  <th className="w-[30%] px-2 py-1">Username</th>
+                  <th className="w-[30%] px-2 py-1">Password</th>
+                  <th className="w-[40%] px-2 py-1">UID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bulkCreated.map((a) => (
+                  <tr key={a.username} className={`border-t ${t.border}`}>
+                    <td className="truncate px-2 py-1 font-mono">{a.username}</td>
+                    <td className="truncate px-2 py-1 font-mono">{a.password}</td>
+                    <td className="truncate px-2 py-1 font-mono">{a.uid}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {bulkLogs.length > 0 ? (
+          <div className={`mt-3 text-xs ${t.muted}`}>
+            <p className="mb-1 font-medium text-foreground">Lịch sử tạo hàng loạt</p>
+            <ul className="space-y-1">
+              {bulkLogs.slice(0, 8).map((l) => (
+                <li key={l.id}>
+                  #{l.id} · {l.created_count}/{l.requested_count} · prefix={l.prefix} ·{" "}
+                  {l.created_by} ·{" "}
+                  {l.created_at ? new Date(l.created_at).toLocaleString("vi-VN") : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </section>
+
+      {/* Single create */}
+      <section className={`rounded-xl border p-4 ${t.surface}`}>
+        <h3 className="text-sm font-semibold">Tạo tài khoản đơn</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
           <input
             className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
@@ -129,6 +348,7 @@ export function AccountTab({
                 expiresDays: form.expiresDays ? Number(form.expiresDays) : null,
               });
               setForm({ username: "", email: "", password: "", role: "User", expiresDays: "" });
+              onRefresh();
             }}
           >
             + Tạo tài khoản
@@ -167,10 +387,18 @@ export function AccountTab({
         </button>
       </div>
 
-      {/* Table */}
+      {/* Table — fixed columns */}
       <div className={`overflow-hidden rounded-xl border ${t.surface}`}>
         <div className="max-h-[min(60vh,560px)] overflow-auto">
-          <table className="w-full min-w-[880px] text-left text-sm">
+          <table className="w-full min-w-[960px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-[22%]" />
+              <col className="w-[8%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+              <col className="w-[16%]" />
+              <col className="w-[32%]" />
+            </colgroup>
             <thead className={`sticky top-0 z-10 border-b ${t.border} ${t.surface}`}>
               <tr className={`text-xs uppercase tracking-wide ${t.muted}`}>
                 <th className="px-3 py-2.5 font-medium">Người dùng</th>
@@ -193,65 +421,51 @@ export function AccountTab({
               ) : (
                 filtered.map((a) => (
                   <tr key={a.id} className={`border-t ${t.border} ${t.rowHover}`}>
-                    <td className="px-3 py-2.5">
-                      <div
-                        className="flex cursor-pointer items-center gap-2"
+                    <td className="px-3 py-2.5 align-middle">
+                      <button
+                        type="button"
+                        className="flex max-w-full flex-col text-left"
                         onClick={() => openDetail(a)}
-                        onKeyDown={(e) => e.key === "Enter" && openDetail(a)}
-                        role="button"
-                        tabIndex={0}
                       >
-                        <span
-                          className={`h-2 w-2 shrink-0 rounded-full ${
-                            a.status === "banned" ? "bg-slate-400" : "bg-emerald-500"
-                          }`}
-                          title={a.status === "banned" ? "Offline/Banned" : "Active"}
-                        />
-                        <div>
-                          <div className="flex items-center gap-1.5 font-medium">
-                            {a.username}
-                            {a.verified ? (
-                              <span className="rounded bg-sky-500/20 px-1 text-[10px] font-semibold text-sky-600 dark:text-sky-300">
-                                ✓
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className={`font-mono text-[11px] ${t.muted}`}>
-                            {a.uid || "—"} {a.email ? `· ${a.email}` : ""}
-                          </div>
-                        </div>
-                      </div>
+                        <span className="truncate font-medium">{a.username}</span>
+                        <span className={`truncate font-mono text-[11px] ${t.muted}`}>
+                          {a.uid || "—"}
+                        </span>
+                      </button>
                     </td>
-                    <td className="px-3 py-2.5">{a.role}</td>
-                    <td className="px-3 py-2.5 text-xs">
-                      {a.expiresAt ? (
-                        new Date(a.expiresAt) < new Date() ? (
-                          <span className="text-rose-500">Hết hạn</span>
-                        ) : (
-                          new Date(a.expiresAt).toLocaleDateString("vi-VN")
-                        )
-                      ) : (
-                        "—"
-                      )}
+                    <td className="truncate px-3 py-2.5 align-middle">{a.role}</td>
+                    <td className="truncate px-3 py-2.5 align-middle text-xs">
+                      {a.expiresAt
+                        ? new Date(a.expiresAt) < new Date()
+                          ? "Hết hạn"
+                          : new Date(a.expiresAt).toLocaleDateString("vi-VN")
+                        : "—"}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 align-middle">
                       <span
-                        className={`rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
-                          a.status === "active"
-                            ? "border-emerald-500/50 text-emerald-600 dark:text-emerald-300"
-                            : "border-rose-500/50 text-rose-600 dark:text-rose-300"
+                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          a.status === "banned"
+                            ? "bg-rose-500/15 text-rose-600 dark:text-rose-300"
+                            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                         }`}
                       >
                         {a.status}
                       </span>
                     </td>
-                    <td className={`px-3 py-2.5 text-xs ${t.muted}`}>
-                      {a.createdAt
-                        ? new Date(a.createdAt).toLocaleString("vi-VN")
-                        : "—"}
+                    <td className="truncate px-3 py-2.5 align-middle text-xs">
+                      {a.createdAt ? new Date(a.createdAt).toLocaleString("vi-VN") : "—"}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5 align-middle">
                       <div className="flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
+                          onClick={() => openDetail(a)}
+                          title="Chỉnh sửa"
+                        >
+                          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
+                          Edit
+                        </button>
                         <button
                           type="button"
                           className={`${btn.compact} ${btn.coins}`}
@@ -320,19 +534,15 @@ export function AccountTab({
         </div>
       </div>
 
-
+      {/* Detail / Edit modal */}
       <AdminModal
         open={!!detailUser}
         onClose={() => setDetailUser(null)}
-        title={`Quản lý · ${detailUser?.username || ""}`}
+        title={`Chỉnh sửa · ${detailUser?.username || ""}`}
         theme={theme}
         footer={
           <>
-            <button
-              type="button"
-              className={`${btn.compact} ${btn.ghost}`}
-              onClick={() => setDetailUser(null)}
-            >
+            <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={() => setDetailUser(null)}>
               Đóng
             </button>
             <button
@@ -351,6 +561,7 @@ export function AccountTab({
                   coinsDelta: detailCoins ? Number(detailCoins) : 0,
                 });
                 setDetailUser(null);
+                onRefresh();
               }}
             >
               Lưu thay đổi
@@ -360,24 +571,15 @@ export function AccountTab({
       >
         {detailUser ? (
           <div className="space-y-3 text-sm">
-            <div className={`rounded-lg border px-3 py-2 text-xs ${t.border} ${t.muted}`}>
-              <p>
-                UID: <span className="font-mono text-foreground">{detailUser.uid || "—"}</span>
-              </p>
-              <p>
-                Trạng thái: {detailUser.status} · Tạo:{" "}
-                {detailUser.createdAt
-                  ? new Date(detailUser.createdAt).toLocaleString("vi-VN")
-                  : "—"}
-              </p>
-            </div>
+            <p className={`text-xs ${t.muted}`}>
+              UID: <span className="font-mono">{detailUser.uid || "—"}</span>
+            </p>
             <label className="block">
               <span className={`text-xs ${t.muted}`}>Email</span>
               <input
                 className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
                 value={detailEmail}
                 onChange={(e) => setDetailEmail(e.target.value)}
-                placeholder="email"
               />
             </label>
             <label className="block">
@@ -393,7 +595,7 @@ export function AccountTab({
               </select>
             </label>
             <label className="block">
-              <span className={`text-xs ${t.muted}`}>Hạn VIP (datetime)</span>
+              <span className={`text-xs ${t.muted}`}>Hạn VIP</span>
               <input
                 type="datetime-local"
                 className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
@@ -407,10 +609,10 @@ export function AccountTab({
                 checked={detailVerified}
                 onChange={(e) => setDetailVerified(e.target.checked)}
               />
-              <span>Tick xanh (verified)</span>
+              <span>Tick xanh</span>
             </label>
             <label className="block">
-              <span className={`text-xs ${t.muted}`}>Cộng/trừ xu (số âm = trừ)</span>
+              <span className={`text-xs ${t.muted}`}>Cộng/trừ xu</span>
               <input
                 className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
                 placeholder="0"
@@ -421,24 +623,13 @@ export function AccountTab({
             <div className="flex flex-wrap gap-2 border-t border-border pt-3">
               <button
                 type="button"
-                className={`${btn.compact} ${btn.coins}`}
-                onClick={() => {
-                  setCoinsAmt("");
-                  setCoinsReason("");
-                  setCoinsModal(detailUser);
-                }}
-              >
-                Cấp xu
-              </button>
-              <button
-                type="button"
                 className={`${btn.compact} ${btn.pass}`}
                 onClick={() => {
                   setNewPass("");
                   setPassModal(detailUser);
                 }}
               >
-                Đổi MK
+                Đổi mật khẩu
               </button>
               <button
                 type="button"
@@ -453,37 +644,12 @@ export function AccountTab({
               >
                 {detailUser.status === "banned" ? "Mở khóa" : "Khóa"}
               </button>
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ban}`}
-                onClick={() => {
-                  setDeleteConfirm("");
-                  setDeleteModal(detailUser);
-                }}
-              >
-                Xóa
-              </button>
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ghost}`}
-                onClick={async () => {
-                  await onAction({
-                    action: "update_account",
-                    id: detailUser.id,
-                    username: detailUser.username,
-                    clearVip: true,
-                    expiresAt: null,
-                  });
-                  setDetailUser(null);
-                }}
-              >
-                Xóa hạn VIP
-              </button>
             </div>
           </div>
         ) : null}
       </AdminModal>
 
+      {/* Coins */}
       <AdminModal
         open={!!coinsModal}
         onClose={() => setCoinsModal(null)}
@@ -508,29 +674,32 @@ export function AccountTab({
                 setCoinsModal(null);
               }}
             >
-              Xác nhận
+              Cấp xu
             </button>
           </>
         }
       >
-        <input
-          className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-          placeholder="Số xu (+ cộng / − trừ)"
-          value={coinsAmt}
-          onChange={(e) => setCoinsAmt(e.target.value)}
-        />
-        <input
-          className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-          placeholder="Lý do (tuỳ chọn)"
-          value={coinsReason}
-          onChange={(e) => setCoinsReason(e.target.value)}
-        />
+        <div className="space-y-2">
+          <input
+            className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Số xu"
+            value={coinsAmt}
+            onChange={(e) => setCoinsAmt(e.target.value)}
+          />
+          <input
+            className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            placeholder="Lý do (tuỳ chọn)"
+            value={coinsReason}
+            onChange={(e) => setCoinsReason(e.target.value)}
+          />
+        </div>
       </AdminModal>
 
+      {/* Password */}
       <AdminModal
         open={!!passModal}
         onClose={() => setPassModal(null)}
-        title={`Đổi mật khẩu · ${passModal?.username || ""}`}
+        title={`Đổi MK · ${passModal?.username || ""}`}
         theme={theme}
         footer={
           <>
@@ -550,7 +719,7 @@ export function AccountTab({
                 setPassModal(null);
               }}
             >
-              Lưu
+              Lưu MK
             </button>
           </>
         }
@@ -558,16 +727,17 @@ export function AccountTab({
         <input
           type="password"
           className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-          placeholder="Mật khẩu mới"
+          placeholder="Mật khẩu mới (tối thiểu 8 ký tự)"
           value={newPass}
           onChange={(e) => setNewPass(e.target.value)}
         />
       </AdminModal>
 
+      {/* Delete one */}
       <AdminModal
         open={!!deleteModal}
         onClose={() => setDeleteModal(null)}
-        title={`Xóa tài khoản · ${deleteModal?.username || ""}`}
+        title={`Xóa · ${deleteModal?.username || ""}`}
         theme={theme}
         footer={
           <>
@@ -576,15 +746,16 @@ export function AccountTab({
             </button>
             <button
               type="button"
-              disabled={deleteConfirm !== "DELETE"}
-              className={`${btn.compact} ${btn.ban} disabled:opacity-40`}
+              className={`${btn.compact} ${btn.ban}`}
+              disabled={deleteConfirm !== "XOA"}
               onClick={async () => {
                 await onAction({
                   action: "delete_account",
                   username: deleteModal?.username,
-                  userId: deleteModal?.id,
+                  id: deleteModal?.id,
                 });
                 setDeleteModal(null);
+                onRefresh();
               }}
             >
               Xóa vĩnh viễn
@@ -592,15 +763,65 @@ export function AccountTab({
           </>
         }
       >
-        <p className={`text-sm ${t.muted}`}>
-          Gõ <span className="font-mono font-semibold text-rose-500">DELETE</span> để xác nhận.
-        </p>
+        <p className="text-sm">Gõ <span className="font-mono font-semibold">XOA</span> để xác nhận.</p>
         <input
-          className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+          className={`mt-2 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
           value={deleteConfirm}
           onChange={(e) => setDeleteConfirm(e.target.value)}
-          placeholder="DELETE"
+          placeholder="XOA"
         />
+      </AdminModal>
+
+      {/* Delete all — 2 layer */}
+      <AdminModal
+        open={deleteAllOpen}
+        onClose={() => setDeleteAllOpen(false)}
+        title="Xóa toàn bộ tài khoản"
+        theme={theme}
+        footer={
+          <>
+            <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={() => setDeleteAllOpen(false)}>
+              Hủy
+            </button>
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ban}`}
+              disabled={deleteAllC1 !== "XOA_TAT_CA" || deleteAllC2 !== "CONFIRM" || loading}
+              onClick={async () => {
+                await onAction({
+                  action: "delete_all_accounts",
+                  confirm1: deleteAllC1,
+                  confirm2: deleteAllC2,
+                });
+                setDeleteAllOpen(false);
+                setBulkCreated([]);
+                onRefresh();
+              }}
+            >
+              Xóa toàn bộ
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-rose-600 dark:text-rose-300">
+          Thao tác không hoàn tác. Xác nhận 2 lớp:
+        </p>
+        <label className="mt-3 block text-xs">
+          Lớp 1 — gõ <span className="font-mono">XOA_TAT_CA</span>
+          <input
+            className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            value={deleteAllC1}
+            onChange={(e) => setDeleteAllC1(e.target.value)}
+          />
+        </label>
+        <label className="mt-2 block text-xs">
+          Lớp 2 — gõ <span className="font-mono">CONFIRM</span>
+          <input
+            className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            value={deleteAllC2}
+            onChange={(e) => setDeleteAllC2(e.target.value)}
+          />
+        </label>
       </AdminModal>
     </div>
   );

@@ -794,21 +794,36 @@ export async function POST(req: NextRequest) {
     if (action === "bulk_create_accounts") {
       await ensureSchema();
       const sql = db();
+      await sql`
+        CREATE TABLE IF NOT EXISTS bulk_creation_logs (
+          id SERIAL PRIMARY KEY,
+          created_count INT NOT NULL DEFAULT 0,
+          requested_count INT NOT NULL DEFAULT 0,
+          prefix TEXT DEFAULT 'user_',
+          created_by TEXT DEFAULT 'admin',
+          usernames JSONB DEFAULT '[]'::jsonb,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
       const count = Math.min(200, Math.max(1, Number(body.count) || 1));
       const prefix = String(body.prefix || "user_")
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9_]/g, "")
         .slice(0, 24) || "user_";
-      const defaultPass = String(body.password || "Opus@" + Math.random().toString(36).slice(2, 8));
+      const createdBy = String(body.created_by || body.createdBy || "admin").slice(0, 64);
+      const defaultPass = String(
+        body.password || "Opus@" + Math.random().toString(36).slice(2, 8)
+      );
       const passwordHash = await hashPassword(defaultPass);
       const pinHash = await hashPassword(randomAdminPin(6));
       const created: Array<{ username: string; password: string; uid: string }> = [];
-      let seq = Date.now() % 100000;
+      let seq = Date.now() % 1000000;
       for (let i = 0; i < count; i++) {
-        for (let attempt = 0; attempt < 12; attempt++) {
+        for (let attempt = 0; attempt < 20; attempt++) {
           seq += 1;
-          const username = `${prefix}${seq}`;
+          const suffix = `${seq}${Math.floor(Math.random() * 90 + 10)}`;
+          const username = `${prefix}${suffix}`.slice(0, 32);
           try {
             const uid = generateUid();
             await sql`
@@ -822,6 +837,20 @@ export async function POST(req: NextRequest) {
           }
         }
       }
+      try {
+        await sql`
+          INSERT INTO bulk_creation_logs (created_count, requested_count, prefix, created_by, usernames)
+          VALUES (
+            ${created.length},
+            ${count},
+            ${prefix},
+            ${createdBy},
+            ${JSON.stringify(created.map((c) => c.username))}::jsonb
+          )
+        `;
+      } catch {
+        /* */
+      }
       return NextResponse.json({
         ok: true,
         message: `Đã tạo ${created.length}/${count} tài khoản`,
@@ -829,6 +858,57 @@ export async function POST(req: NextRequest) {
         defaultPassword: defaultPass,
       });
     }
+
+    if (action === "list_bulk_logs") {
+      await ensureSchema();
+      const sql = db();
+      await sql`
+        CREATE TABLE IF NOT EXISTS bulk_creation_logs (
+          id SERIAL PRIMARY KEY,
+          created_count INT NOT NULL DEFAULT 0,
+          requested_count INT NOT NULL DEFAULT 0,
+          prefix TEXT DEFAULT 'user_',
+          created_by TEXT DEFAULT 'admin',
+          usernames JSONB DEFAULT '[]'::jsonb,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      const rows = await sql`
+        SELECT id, created_count, requested_count, prefix, created_by, usernames, created_at
+        FROM bulk_creation_logs
+        ORDER BY id DESC LIMIT 30
+      `;
+      return NextResponse.json({ ok: true, logs: rows });
+    }
+
+    if (action === "delete_all_accounts") {
+      const confirm1 = String(body.confirm1 || "").trim();
+      const confirm2 = String(body.confirm2 || "").trim();
+      if (confirm1 !== "XOA_TAT_CA" || confirm2 !== "CONFIRM") {
+        return NextResponse.json(
+          { ok: false, error: "Xác nhận 2 lớp không khớp (XOA_TAT_CA + CONFIRM)" },
+          { status: 400 }
+        );
+      }
+      await ensureSchema();
+      const sql = db();
+      let deleted = 0;
+      try {
+        const r = await sql`DELETE FROM users RETURNING id`;
+        deleted = r.length;
+      } catch (e: unknown) {
+        const mapped = mapDbError(e);
+        return NextResponse.json({ ok: false, error: mapped.error }, { status: mapped.status });
+      }
+      try { await sql`DELETE FROM sessions`; } catch { /* */ }
+      try { await sql`DELETE FROM user_bans`; } catch { /* */ }
+      return NextResponse.json({
+        ok: true,
+        message: `Đã xóa ${deleted} tài khoản`,
+        deleted,
+      });
+    }
+
 
     if (action === "create_broadcast_reward") {
       await ensureSchema();

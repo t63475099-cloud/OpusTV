@@ -32,7 +32,7 @@ const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: "VERIFY", label: "Xác minh", icon: BadgeCheck },
   { id: "GIFTCODE", label: "Giftcode & Sự kiện", icon: Gift },
   { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt", icon: ShieldAlert },
-  { id: "MASS", label: "Phát thưởng & Hàng loạt", icon: Gift },
+  { id: "MASS", label: "Phát thưởng", icon: Gift },
   { id: "SYSTEM", label: "Hệ thống & AI", icon: Cpu },
 ];
 

@@ -228,10 +228,21 @@ export const useAccountStore = create<AccountState>()(
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok || !data.ok) {
-            return {
-              ok: false,
-              error: data.error || `Đăng ký thất bại (${res.status})`,
-            };
+            let err =
+              (typeof data.error === "string" && data.error) ||
+              (typeof data.message === "string" && data.message) ||
+              "";
+            if (!err) {
+              if (res.status === 404) {
+                err =
+                  "API đăng ký chưa có trên server (404). Deploy lại route /api/auth/register.";
+              } else if (res.status === 503) {
+                err = "Máy chủ hoặc CSDL tạm không khả dụng. Thử lại sau.";
+              } else {
+                err = `Đăng ký thất bại (${res.status})`;
+              }
+            }
+            return { ok: false, error: err };
           }
           get().setSession(data.username);
           // Hồ sơ mới sạch — đúng username lúc tạo, không avatar guest

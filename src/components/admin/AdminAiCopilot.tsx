@@ -20,10 +20,97 @@ type Props = {
 };
 
 const SUGGEST = [
-  "Thống kê số tài khoản trên hệ thống",
-  "Tạo 10 tài khoản prefix test_",
-  "Phát 100 xu toàn server với lời nhắn tri ân",
+  "Thống kê hệ thống",
+  "Liệt kê 15 acc gần nhất",
+  "Tạo 5 acc prefix test_",
+  "Xóa 10 acc prefix test_ (confirm)",
+  "Lịch sử bulk create",
 ];
+
+/** Render text: bảng mono + markdown đơn giản */
+function RichText({ text }: { text: string }) {
+  const blocks = text.split(/(```[\s\S]*?```)/g);
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, i) => {
+        if (block.startsWith("```") && block.endsWith("```")) {
+          const inner = block.replace(/^```\w*\n?/, "").replace(/```$/, "");
+          return (
+            <pre
+              key={i}
+              className="overflow-x-auto rounded-lg bg-black/40 px-2.5 py-2 font-mono text-[10px] leading-relaxed text-emerald-200/90"
+            >
+              {inner.trimEnd()}
+            </pre>
+          );
+        }
+        // Detect plain table lines (has | and ---)
+        const lines = block.split("\n");
+        const looksTable =
+          lines.filter((l) => l.includes("|")).length >= 2 &&
+          lines.some((l) => /[-+]{3,}/.test(l) || l.split("|").length >= 3);
+        if (looksTable) {
+          return (
+            <pre
+              key={i}
+              className="overflow-x-auto rounded-lg bg-black/40 px-2.5 py-2 font-mono text-[10px] leading-relaxed text-sky-100/90 whitespace-pre"
+            >
+              {block.trimEnd()}
+            </pre>
+          );
+        }
+        return (
+          <div
+            key={i}
+            className="whitespace-pre-wrap break-words text-[13px] leading-relaxed"
+          >
+            {block}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ToolPanel({
+  tools,
+}: {
+  tools: Array<{ name: string; result: unknown }>;
+}) {
+  return (
+    <div className="mt-2 space-y-1.5 border-t border-slate-700/60 pt-2">
+      {tools.map((t, i) => {
+        const r = t.result as {
+          summary?: string;
+          table?: string;
+          error?: string;
+          ok?: boolean;
+        };
+        return (
+          <details
+            key={i}
+            className="rounded-lg bg-slate-900/80 text-[11px] text-slate-400"
+            open={!!r?.table}
+          >
+            <summary className="cursor-pointer px-2 py-1.5 font-semibold text-emerald-400/90">
+              {r?.ok === false ? "⚠" : "✓"} {t.name}
+              {r?.summary ? ` — ${r.summary}` : ""}
+            </summary>
+            {r?.table ? (
+              <pre className="max-h-48 overflow-auto px-2 pb-2 font-mono text-[10px] leading-relaxed text-slate-300 whitespace-pre">
+                {r.table}
+              </pre>
+            ) : (
+              <pre className="max-h-32 overflow-auto px-2 pb-2 text-[10px] text-slate-500">
+                {JSON.stringify(t.result, null, 2)}
+              </pre>
+            )}
+          </details>
+        );
+      })}
+    </div>
+  );
+}
 
 export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
   const [open, setOpen] = useState(false);
@@ -34,7 +121,7 @@ export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
       id: "hi",
       role: "assistant",
       content:
-        "Admin Copilot sẵn sàng. Có thể: tạo tài khoản hàng loạt, phát thưởng toàn server, xem thống kê. Gõ lệnh tự nhiên.",
+        "Admin Copilot sẵn sàng.\n• Tạo / xóa acc theo prefix\n• Liệt kê & tìm user\n• Đổi role, phát thưởng, thống kê\nGõ lệnh tự nhiên hoặc chọn gợi ý.",
     },
   ]);
   const listRef = useRef<HTMLDivElement>(null);
@@ -85,9 +172,7 @@ export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
               role: "assistant",
               content:
                 String(data.error || `Lỗi ${res.status}`) +
-                (res.status === 401
-                  ? " — kiểm tra lại admin secret."
-                  : ""),
+                (res.status === 401 ? " — kiểm tra admin secret." : ""),
             },
           ]);
         } else {
@@ -118,7 +203,6 @@ export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
 
   return (
     <>
-      {/* Nút nổi — góc dưới trái, tránh dock/tab admin */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -132,8 +216,8 @@ export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
 
       {open ? (
         <div
-          className="fixed bottom-20 left-5 z-[80] flex w-[min(100vw-2rem,400px)] flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950/95 shadow-2xl backdrop-blur-xl"
-          style={{ maxHeight: "min(560px, calc(100vh - 6rem))" }}
+          className="fixed bottom-20 left-5 z-[80] flex w-[min(100vw-2rem,440px)] flex-col overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950/95 shadow-2xl backdrop-blur-xl"
+          style={{ maxHeight: "min(620px, calc(100vh - 5.5rem))" }}
           role="dialog"
           aria-label="Admin AI Copilot"
         >
@@ -146,7 +230,7 @@ export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
                 Admin AI Copilot
               </div>
               <div className="text-[11px] text-slate-500">
-                Function calling · Ctrl+J đóng/mở
+                9 tools · bảng cột · Ctrl+J
               </div>
             </div>
             <button
@@ -162,46 +246,38 @@ export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
           <div
             ref={listRef}
             className="flex-1 space-y-2 overflow-y-auto px-3 py-3"
-            style={{ minHeight: 200 }}
+            style={{ minHeight: 220 }}
           >
             {msgs.map((m) => (
               <div
                 key={m.id}
-                className={`max-w-[95%] rounded-xl px-3 py-2 text-[13px] leading-relaxed ${
+                className={`max-w-[98%] rounded-xl px-3 py-2 ${
                   m.role === "user"
                     ? "ml-auto bg-violet-600 text-white"
                     : "mr-auto bg-slate-800/90 text-slate-100"
                 }`}
               >
-                <div className="whitespace-pre-wrap break-words">{m.content}</div>
-                {m.tools && m.tools.length > 0 ? (
-                  <div className="mt-2 space-y-1 border-t border-slate-700/60 pt-2">
-                    {m.tools.map((t, i) => (
-                      <details
-                        key={i}
-                        className="rounded-lg bg-slate-900/80 text-[11px] text-slate-400"
-                      >
-                        <summary className="cursor-pointer px-2 py-1 font-semibold text-emerald-400/90">
-                          Tool: {t.name}
-                        </summary>
-                        <pre className="max-h-40 overflow-auto px-2 pb-2 text-[10px] text-slate-400">
-                          {JSON.stringify(t.result, null, 2)}
-                        </pre>
-                      </details>
-                    ))}
+                {m.role === "user" ? (
+                  <div className="whitespace-pre-wrap break-words text-[13px]">
+                    {m.content}
                   </div>
+                ) : (
+                  <RichText text={m.content} />
+                )}
+                {m.tools && m.tools.length > 0 ? (
+                  <ToolPanel tools={m.tools} />
                 ) : null}
               </div>
             ))}
             {busy ? (
               <div className="mr-auto flex items-center gap-2 rounded-xl bg-slate-800/90 px-3 py-2 text-xs text-slate-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Đang xử lý / gọi tool…
+                Đang gọi tool / Gemini…
               </div>
             ) : null}
           </div>
 
-          {!busy && msgs.length <= 2 ? (
+          {!busy ? (
             <div className="flex flex-wrap gap-1.5 border-t border-slate-800/80 px-3 py-2">
               {SUGGEST.map((s) => (
                 <button
@@ -229,7 +305,7 @@ export function AdminAiCopilot({ adminSecret, unlocked }: Props) {
                   void send();
                 }
               }}
-              placeholder="Ví dụ: Tạo 20 acc prefix demo_"
+              placeholder="Vd: Xóa 10 acc prefix test_ confirm"
               className="min-h-[40px] flex-1 resize-none rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-violet-500 focus:outline-none"
             />
             <button

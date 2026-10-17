@@ -11,6 +11,7 @@ import { VerifyTab } from "@/components/admin/board/VerifyTab";
 import { GiftcodeTab } from "@/components/admin/board/GiftcodeTab";
 import { ModerationTab } from "@/components/admin/board/ModerationTab";
 import { SystemAiTab } from "@/components/admin/board/SystemAiTab";
+import { MassOpsTab } from "@/components/admin/board/MassOpsTab";
 import type { BoardTheme } from "@/components/admin/board/adminUi";
 import { boardTokens, btn } from "@/components/admin/board/adminUi";
 
@@ -21,6 +22,7 @@ type TabId =
   | "VERIFY"
   | "GIFTCODE"
   | "MODERATION"
+  | "MASS"
   | "SYSTEM";
 
 const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
@@ -30,6 +32,7 @@ const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: "VERIFY", label: "Xác minh", icon: BadgeCheck },
   { id: "GIFTCODE", label: "Giftcode & Sự kiện", icon: Gift },
   { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt", icon: ShieldAlert },
+  { id: "MASS", label: "Phát thưởng & Hàng loạt", icon: Gift },
   { id: "SYSTEM", label: "Hệ thống & AI", icon: Cpu },
 ];
 
@@ -270,7 +273,7 @@ export default function BoardHomePage() {
     return (
       <div className={`flex h-screen items-center justify-center p-4 ${t.page}`}>
         <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-xl ${t.surface}`}>
-          <h1 className="text-lg font-semibold tracking-tight">OpusFilm · Bảng điều khiển</h1>
+          <h1 className="text-lg font-semibold tracking-tight">OpusFilm · Master Board</h1>
           <p className={`mt-1 text-sm ${t.muted}`}>Nhập mã quản trị để mở bảng điều khiển</p>
           <input
             type="password"
@@ -302,7 +305,7 @@ export default function BoardHomePage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-base font-semibold tracking-tight sm:text-lg">
-                OpusFilm · Bảng điều khiển
+                OpusFilm · Master Board
               </h1>
               <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${t.border} ${t.muted}`}>
                 v1.17
@@ -412,6 +415,9 @@ export default function BoardHomePage() {
         {tab === "GIFTCODE" && <GiftcodeTab theme={theme} onAction={runAction} />}
         {tab === "MODERATION" && (
           <ModerationTab theme={theme} adminSecret={secret} />
+        )}
+        {tab === "MASS" && (
+          <MassOpsTab theme={theme} loading={loading} onAction={runAction} />
         )}
         {tab === "SYSTEM" && (
           <SystemAiTab theme={theme} adminSecret={secret} onAction={runAction} />

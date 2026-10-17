@@ -285,7 +285,51 @@ export async function GET(req: NextRequest) {
       const tier = (["24H", "12H", "CUSTOM", "ALL"].includes(tierParam)
         ? tierParam
         : "ALL") as KeyTier | "ALL";
-      const keys = await listKeys({ limit, tier, status: statusParam });
+      // Legacy activation_keys
+      let keys = await listKeys({ limit, tier: "ALL", status: "all" });
+      // Opus VIP keys (license_keys_v2) — generate_opus_keys ghi vào đây
+      try {
+        await ensureVipTables();
+        const sql = db();
+        const v2 = await sql`
+          SELECT id::text AS id, key_code, tier_code, status, claimed_username, claimed_at, created_at
+          FROM license_keys_v2
+          ORDER BY created_at DESC
+          LIMIT ${limit}
+        `;
+        const mapped = (v2 as Array<Record<string, unknown>>).map((r) => ({
+          id: String(r.id),
+          keyCode: String(r.key_code),
+          tier: String(r.tier_code || "24H"),
+          status:
+            String(r.status) === "CLAIMED"
+              ? "used"
+              : String(r.status) === "REVOKED"
+                ? "revoked"
+                : "active",
+          usedBy: r.claimed_username ? String(r.claimed_username) : null,
+          usedAt: r.claimed_at ? String(r.claimed_at) : null,
+          createdAt: r.created_at ? String(r.created_at) : new Date().toISOString(),
+          expiresAt: null as string | null,
+          note: "",
+        }));
+        const seen = new Set(keys.map((k) => k.keyCode));
+        for (const m of mapped) {
+          if (!seen.has(m.keyCode)) {
+            keys.unshift(m as never);
+            seen.add(m.keyCode);
+          }
+        }
+      } catch {
+        /* v2 optional */
+      }
+      if (tier !== "ALL") {
+        keys = keys.filter((k) => String(k.tier).toUpperCase() === tier);
+      }
+      if (statusParam && statusParam !== "all") {
+        keys = keys.filter((k) => k.status === statusParam);
+      }
+      keys = keys.slice(0, limit);
       return NextResponse.json({ ok: true, keys, count: keys.length });
     }
     if (section === "verify") {
@@ -746,6 +790,113 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    
+    if (action === "bulk_create_accounts") {
+      await ensureSchema();
+      const sql = db();
+      const count = Math.min(200, Math.max(1, Number(body.count) || 1));
+      const prefix = String(body.prefix || "user_")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, "")
+        .slice(0, 24) || "user_";
+      const defaultPass = String(body.password || "Opus@" + Math.random().toString(36).slice(2, 8));
+      const passwordHash = await hashPassword(defaultPass);
+      const pinHash = await hashPassword(randomAdminPin(6));
+      const created: Array<{ username: string; password: string; uid: string }> = [];
+      let seq = Date.now() % 100000;
+      for (let i = 0; i < count; i++) {
+        for (let attempt = 0; attempt < 12; attempt++) {
+          seq += 1;
+          const username = `${prefix}${seq}`;
+          try {
+            const uid = generateUid();
+            await sql`
+              INSERT INTO users (username, password_hash, recovery_pin_hash, uid, role, verified, updated_at)
+              VALUES (${username}, ${passwordHash}, ${pinHash}, ${uid}, 'User', 0, NOW())
+            `;
+            created.push({ username, password: defaultPass, uid });
+            break;
+          } catch {
+            /* duplicate → retry */
+          }
+        }
+      }
+      return NextResponse.json({
+        ok: true,
+        message: `Đã tạo ${created.length}/${count} tài khoản`,
+        accounts: created,
+        defaultPassword: defaultPass,
+      });
+    }
+
+    if (action === "create_broadcast_reward") {
+      await ensureSchema();
+      const sql = db();
+      await sql`
+        CREATE TABLE IF NOT EXISTS global_broadcast_rewards (
+          id SERIAL PRIMARY KEY,
+          reward_type TEXT NOT NULL DEFAULT 'coins',
+          reward_value TEXT NOT NULL DEFAULT '0',
+          message_template TEXT DEFAULT '',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          is_active BOOLEAN DEFAULT TRUE
+        )
+      `;
+      await sql`
+        CREATE TABLE IF NOT EXISTS user_reward_claims (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          reward_id INTEGER NOT NULL,
+          claimed_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE (user_id, reward_id)
+        )
+      `;
+      const rewardType = String(body.reward_type || body.rewardType || "coins");
+      const rewardValue = String(body.reward_value || body.rewardValue || "0");
+      const message = String(body.message || body.message_template || "").slice(0, 500);
+      const rows = await sql`
+        INSERT INTO global_broadcast_rewards (reward_type, reward_value, message_template, is_active)
+        VALUES (${rewardType}, ${rewardValue}, ${message}, TRUE)
+        RETURNING id, reward_type, reward_value, message_template, created_at, is_active
+      `;
+      return NextResponse.json({
+        ok: true,
+        message: "Đã phát thưởng toàn server",
+        reward: rows[0],
+      });
+    }
+
+    if (action === "list_broadcast_rewards") {
+      await ensureSchema();
+      const sql = db();
+      await sql`
+        CREATE TABLE IF NOT EXISTS global_broadcast_rewards (
+          id SERIAL PRIMARY KEY,
+          reward_type TEXT NOT NULL DEFAULT 'coins',
+          reward_value TEXT NOT NULL DEFAULT '0',
+          message_template TEXT DEFAULT '',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          is_active BOOLEAN DEFAULT TRUE
+        )
+      `;
+      const rows = await sql`
+        SELECT id, reward_type, reward_value, message_template, created_at, is_active
+        FROM global_broadcast_rewards
+        ORDER BY id DESC LIMIT 50
+      `;
+      return NextResponse.json({ ok: true, rewards: rows });
+    }
+
+    if (action === "deactivate_broadcast") {
+      const id = Number(body.id || 0);
+      if (!id) return NextResponse.json({ ok: false, error: "Thiếu id" }, { status: 400 });
+      const sql = db();
+      await sql`UPDATE global_broadcast_rewards SET is_active = FALSE WHERE id = ${id}`;
+      return NextResponse.json({ ok: true, message: "Đã tắt đợt phát thưởng" });
+    }
+
+
     if (action === "set_verified") {
       const id = Number(body.id || 0);
       const username = String(body.username || "").trim().toLowerCase();
@@ -896,6 +1047,15 @@ export async function POST(req: NextRequest) {
           VALUES (${code}, ${tier.code}, 'AVAILABLE')
           ON CONFLICT (key_code) DO NOTHING
         `;
+        try {
+          await sql`
+            INSERT INTO activation_keys (code, note, tier)
+            VALUES (${code}, ${"opus:" + tier.code}, ${tier.code})
+            ON CONFLICT (code) DO NOTHING
+          `;
+        } catch {
+          /* activation_keys optional mirror */
+        }
         codes.push(code);
       }
       return NextResponse.json({

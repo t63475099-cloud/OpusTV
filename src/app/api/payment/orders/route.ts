@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/neonSql";
+import { KEY_SHOP_PACKAGES } from "@/lib/keyShopCatalog";
 import { ensurePaymentTables } from "@/lib/paymentDb";
 import { getSessionUser } from "@/lib/session";
 
@@ -81,36 +82,22 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `) as Array<Record<string, unknown>>;
 
-    // Fallback: 11 gói hệ thống + giá mặc định nếu Admin chưa lưu key_products
-    const DEFAULT_VND: Record<string, number> = {
-      "24H": 29000,
-      "3D": 59000,
-      "7D": 99000,
-      "15D": 149000,
-      "1M": 199000,
-      "3M": 499000,
-      "6M": 899000,
-      "1Y": 1490000,
-      "3Y": 2990000,
-      "10Y": 5990000,
-      LIFETIME: 9990000,
-    };
+    const shop = KEY_SHOP_PACKAGES.find((x) => x.tierCode === tierCode);
     const { getVipTier } = await import("@/lib/vipCatalog");
     const tierDef = getVipTier(tierCode);
-    if (!dbProducts[0] && !tierDef) {
+    if (!dbProducts[0] && !shop && !tierDef) {
       return NextResponse.json({ ok: false, error: "Gói không hợp lệ" }, { status: 400 });
     }
-    const productLabel = dbProducts[0]
-      ? String(dbProducts[0].label || tierCode)
-      : tierDef!.label;
-    const amount = dbProducts[0]
-      ? Number(dbProducts[0].amount_vnd)
-      : DEFAULT_VND[tierCode] || 0;
-    const durationLabel = dbProducts[0]
-      ? String(dbProducts[0].duration_label || "")
-      : tierDef!.isLifetime
-        ? "Vĩnh viễn"
-        : tierDef!.label.replace(/^Gói\s+/i, "");
+    // Ưu tiên bảng giá cố định KEY_SHOP_PACKAGES (đồng bộ UI)
+    const productLabel =
+      shop?.label ||
+      (dbProducts[0] ? String(dbProducts[0].label || tierCode) : tierDef?.label || tierCode);
+    const amount =
+      shop?.amountVnd ||
+      (dbProducts[0] ? Number(dbProducts[0].amount_vnd) : 0);
+    const durationLabel =
+      shop?.durationLabel ||
+      (dbProducts[0] ? String(dbProducts[0].duration_label || "") : "");
     if (amount <= 0) {
       return NextResponse.json({ ok: false, error: "Gói chưa có giá" }, { status: 400 });
     }

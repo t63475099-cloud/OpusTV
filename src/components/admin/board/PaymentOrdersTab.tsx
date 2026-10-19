@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Banknote, Check, X } from "lucide-react";
+import { Check, X, RefreshCw } from "lucide-react";
 import type { BoardTheme } from "./adminUi";
 import { boardTokens, btn } from "./adminUi";
-import { VIP_TIERS } from "@/lib/vipCatalog";
 
 type Order = {
   id: string;
@@ -17,21 +16,17 @@ type Order = {
   buyerName: string;
   buyerPhone: string;
   transferContent: string;
+  note?: string;
   status: string;
   keyCode: string | null;
   durationLabel: string;
   createdAt: string | null;
 };
 
-type BankRow = {
-  id: string;
-  name: string;
-  accountNumber: string;
-  accountHolder: string;
-  branch: string;
-  transferHint: string;
-  isActive?: boolean;
-};
+function formatVnd(n: number) {
+  if (!n) return "—";
+  return new Intl.NumberFormat("vi-VN").format(n) + "đ";
+}
 
 export function PaymentOrdersTab({
   theme,
@@ -42,23 +37,8 @@ export function PaymentOrdersTab({
 }) {
   const t = boardTokens(theme);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [banks, setBanks] = useState<BankRow[]>([]);
-  const [products, setProducts] = useState<Array<{ tierCode: string; label: string; amountVnd: number; durationLabel: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
-
-  // bank form
-  const [bName, setBName] = useState("");
-  const [bAcc, setBAcc] = useState("");
-  const [bHolder, setBHolder] = useState("");
-  const [bBranch, setBBranch] = useState("");
-  const [bHint, setBHint] = useState("");
-
-  // product form
-  const [pTier, setPTier] = useState("24H");
-  const [pLabel, setPLabel] = useState("Gói 24 Giờ");
-  const [pAmount, setPAmount] = useState("");
-  const [pDur, setPDur] = useState("24 giờ");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,11 +46,8 @@ export function PaymentOrdersTab({
       const data = (await onAction({ action: "list_payment_orders" }, { silent: true })) as {
         ok?: boolean;
         orders?: Order[];
-        banks?: BankRow[];
       };
       if (data?.orders) setOrders(data.orders);
-      if (data?.banks) setBanks(data.banks);
-      if ((data as { products?: typeof products }).products) setProducts((data as { products: typeof products }).products);
     } finally {
       setLoading(false);
     }
@@ -78,7 +55,7 @@ export function PaymentOrdersTab({
 
   useEffect(() => {
     void load();
-    const id = setInterval(() => void load(), 15000);
+    const id = setInterval(() => void load(), 12000);
     return () => clearInterval(id);
   }, [load]);
 
@@ -87,8 +64,9 @@ export function PaymentOrdersTab({
       ok?: boolean;
       message?: string;
       error?: string;
+      keyCode?: string;
     };
-    setMsg(data?.message || data?.error || "");
+    setMsg(data?.message || data?.error || (data?.ok ? "Đã cấp key" : ""));
     void load();
   };
 
@@ -101,180 +79,125 @@ export function PaymentOrdersTab({
     void load();
   };
 
-  const addBank = async () => {
-    if (!bName.trim() || !bAcc.trim()) {
-      setMsg("Nhập tên ngân hàng và số tài khoản");
-      return;
-    }
-    await onAction({
-      action: "upsert_payment_bank",
-      name: bName.trim(),
-      accountNumber: bAcc.trim(),
-      accountHolder: bHolder.trim(),
-      branch: bBranch.trim(),
-      transferHint: bHint.trim(),
-    });
-    setBName("");
-    setBAcc("");
-    setBHolder("");
-    setBBranch("");
-    setBHint("");
-    void load();
-  };
-
-  const saveProduct = async () => {
-    const amount = Math.floor(Number(pAmount) || 0);
-    if (amount <= 0) {
-      setMsg("Nhập số tiền VND > 0");
-      return;
-    }
-    await onAction({
-      action: "upsert_key_product",
-      tierCode: pTier,
-      label: pLabel.trim() || pTier,
-      amountVnd: amount,
-      durationLabel: pDur.trim(),
-    });
-    setMsg("Đã lưu gói bán");
-    void load();
-  };
-
   const pending = orders.filter((o) => o.status === "PENDING");
+  const done = orders.filter((o) => o.status !== "PENDING");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold tracking-tight">Đơn mua Key</h2>
+          <p className={`mt-0.5 text-xs ${t.muted}`}>
+            Duyệt cấp key hoặc từ chối. Không cần nhập ngân hàng hay tài khoản khách.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={`${btn.compact} ${btn.ghost}`}
+          onClick={() => void load()}
+          disabled={loading}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+          Làm mới
+        </button>
+      </div>
+
       {msg ? <p className={`text-sm ${t.muted}`}>{msg}</p> : null}
 
-      <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <Banknote className="h-4 w-4" strokeWidth={1.75} />
-          Đơn mua key chờ duyệt ({pending.length})
-        </h3>
-        <div className="mt-3 max-h-[min(50vh,420px)] overflow-auto">
-          <table className="w-full min-w-[860px] text-left text-sm">
-            <thead className={`sticky top-0 border-b ${t.border} ${t.surface}`}>
-              <tr className={`text-xs uppercase ${t.muted}`}>
-                <th className="px-2 py-2">User</th>
-                <th className="px-2 py-2">Gói / Tiền</th>
-                <th className="px-2 py-2">Ngân hàng</th>
-                <th className="px-2 py-2">Người CK</th>
-                <th className="px-2 py-2">Nội dung</th>
-                <th className="px-2 py-2">TT</th>
-                <th className="px-2 py-2">Thao tác</th>
+      <section className={`overflow-hidden rounded-xl border ${t.surface}`}>
+        <div className={`border-b px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${t.border} ${t.muted}`}>
+          Chờ duyệt ({pending.length})
+        </div>
+        <div className="max-h-[min(55vh,520px)] overflow-auto">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className={`sticky top-0 border-b text-xs ${t.border} ${t.surface} ${t.muted}`}>
+              <tr>
+                <th className="px-3 py-2 font-medium">Khách</th>
+                <th className="px-3 py-2 font-medium">Gói / Số tiền</th>
+                <th className="px-3 py-2 font-medium">Ngân hàng</th>
+                <th className="px-3 py-2 font-medium">Nội dung CK</th>
+                <th className="px-3 py-2 font-medium">Thời gian</th>
+                <th className="px-3 py-2 font-medium">Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {orders.map((o) => (
-                <tr key={o.id} className={`border-b ${t.border}`}>
-                  <td className="px-2 py-2 font-medium">{o.username}</td>
-                  <td className="px-2 py-2">
-                    {o.productLabel}
-                    <br />
-                    <span className={t.muted}>
-                      {new Intl.NumberFormat("vi-VN").format(o.amountVnd)}đ
-                    </span>
+              {pending.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className={`px-3 py-10 text-center ${t.muted}`}>
+                    Không có đơn chờ
                   </td>
-                  <td className="px-2 py-2">
-                    {o.bankName}
-                    <br />
-                    <span className={t.muted}>{o.bankAccount}</span>
-                  </td>
-                  <td className="px-2 py-2">
-                    {o.buyerName}
-                    <br />
-                    <span className={t.muted}>{o.buyerPhone}</span>
-                  </td>
-                  <td className="px-2 py-2 font-mono text-xs">{o.transferContent}</td>
-                  <td className="px-2 py-2">{o.status}</td>
-                  <td className="px-2 py-2">
-                    {o.status === "PENDING" ? (
-                      <div className="flex flex-wrap gap-1">
+                </tr>
+              ) : (
+                pending.map((o) => (
+                  <tr key={o.id} className={`border-t ${t.border} ${t.rowHover}`}>
+                    <td className="px-3 py-2.5">
+                      <div className="font-medium">{o.username}</div>
+                      <div className={`text-xs ${t.muted}`}>{o.buyerName}</div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div>{o.productLabel || o.tierCode}</div>
+                      <div className="font-semibold tabular-nums">{formatVnd(o.amountVnd)}</div>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs">
+                      <div>{o.bankName}</div>
+                      <div className={`font-mono ${t.muted}`}>{o.bankAccount}</div>
+                    </td>
+                    <td className={`px-3 py-2.5 font-mono text-xs ${t.muted}`}>
+                      {o.transferContent || o.note || "—"}
+                    </td>
+                    <td className={`px-3 py-2.5 text-xs ${t.muted}`}>
+                      {o.createdAt ? new Date(o.createdAt).toLocaleString("vi-VN") : "—"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap gap-1.5">
                         <button
                           type="button"
-                          disabled={loading}
                           className={`${btn.compact} ${btn.primary}`}
                           onClick={() => void approve(o.id)}
                         >
-                          <Check className="h-3.5 w-3.5" /> Gửi key
+                          <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                          Duyệt
                         </button>
                         <button
                           type="button"
-                          className={`${btn.compact} ${btn.danger}`}
+                          className={`${btn.compact} ${btn.ban}`}
                           onClick={() => void reject(o.id)}
                         >
-                          <X className="h-3.5 w-3.5" /> Từ chối
+                          <X className="h-3.5 w-3.5" strokeWidth={2} />
+                          Từ chối
                         </button>
                       </div>
-                    ) : o.keyCode ? (
-                      <span className="font-mono text-xs">{o.keyCode}</span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {!orders.length ? (
-                <tr>
-                  <td colSpan={7} className={`px-2 py-6 text-center ${t.muted}`}>
-                    Chưa có đơn
-                  </td>
-                </tr>
-              ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
-      <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="text-sm font-semibold">Ngân hàng nhận tiền</h3>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <input className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`} placeholder="Tên NH" value={bName} onChange={(e) => setBName(e.target.value)} />
-          <input className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`} placeholder="Số TK" value={bAcc} onChange={(e) => setBAcc(e.target.value)} />
-          <input className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`} placeholder="Chủ TK" value={bHolder} onChange={(e) => setBHolder(e.target.value)} />
-          <input className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`} placeholder="Chi nhánh" value={bBranch} onChange={(e) => setBBranch(e.target.value)} />
-          <input className={`rounded-md border px-2.5 py-1.5 text-sm sm:col-span-2 ${t.input}`} placeholder="Gợi ý CK" value={bHint} onChange={(e) => setBHint(e.target.value)} />
-        </div>
-        <button type="button" className={`mt-2 ${btn.compact} ${btn.primary}`} onClick={() => void addBank()}>
-          Thêm ngân hàng
-        </button>
-        <ul className={`mt-3 space-y-1 text-sm ${t.muted}`}>
-          {banks.map((b) => (
-            <li key={b.id}>
-              {b.name} · {b.accountNumber} · {b.accountHolder}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="text-sm font-semibold">Gói bán (giá VND)</h3>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <select
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            value={pTier}
-            onChange={(e) => {
-              setPTier(e.target.value);
-              const tier = VIP_TIERS.find((x) => x.code === e.target.value);
-              if (tier) {
-                setPLabel(tier.label);
-                setPDur(tier.isLifetime ? "Vĩnh viễn" : tier.label.replace("Gói ", ""));
-              }
-            }}
-          >
-            {VIP_TIERS.map((x) => (
-              <option key={x.code} value={x.code}>
-                {x.label}
-              </option>
-            ))}
-          </select>
-          <input className={`w-40 rounded-md border px-2.5 py-1.5 text-sm ${t.input}`} placeholder="Tên hiển thị" value={pLabel} onChange={(e) => setPLabel(e.target.value)} />
-          <input className={`w-32 rounded-md border px-2.5 py-1.5 text-sm ${t.input}`} placeholder="Giá VND" value={pAmount} onChange={(e) => setPAmount(e.target.value)} />
-          <input className={`w-32 rounded-md border px-2.5 py-1.5 text-sm ${t.input}`} placeholder="Thời hạn" value={pDur} onChange={(e) => setPDur(e.target.value)} />
-          <button type="button" className={`${btn.compact} ${btn.primary}`} onClick={() => void saveProduct()}>
-            Lưu gói
-          </button>
-        </div>
-      </section>
+      {done.length > 0 ? (
+        <section className={`overflow-hidden rounded-xl border ${t.surface}`}>
+          <div className={`border-b px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${t.border} ${t.muted}`}>
+            Đã xử lý
+          </div>
+          <div className="max-h-[240px] overflow-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <tbody>
+                {done.slice(0, 40).map((o) => (
+                  <tr key={o.id} className={`border-t ${t.border}`}>
+                    <td className="px-3 py-2">{o.username}</td>
+                    <td className="px-3 py-2">{o.productLabel}</td>
+                    <td className="px-3 py-2 tabular-nums">{formatVnd(o.amountVnd)}</td>
+                    <td className="px-3 py-2 text-xs">{o.status}</td>
+                    <td className={`px-3 py-2 font-mono text-xs ${t.muted}`}>{o.keyCode || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

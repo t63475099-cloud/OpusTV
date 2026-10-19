@@ -3,6 +3,7 @@ export const APP_TAGLINE = "Phim bạn muốn xem";
 
 /** Một vài tựa hay xem — không giới hạn thể loại */
 export const FEATURED_PICKS = [
+  { slug: "ga-kim-thoa-ga-tram-vang", name: "Gả Kim Thoa" },
   { slug: "tam-sinh-tam-the-thap-ly-dao-hoa", name: "Tam Sinh Tam Thế Thập Lý Đào Hoa" },
   { slug: "tran-tinh-lenh", name: "Trần Tình Lệnh" },
   { slug: "huong-mat-tua-khoi-suong", name: "Hương Mật Tựa Khói Sương" },

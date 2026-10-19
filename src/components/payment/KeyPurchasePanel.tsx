@@ -57,31 +57,23 @@ const DEFAULT_VND: Record<string, number> = {
 const SHORT_CODES = new Set(["24H", "3D", "7D", "15D", "1M", "3M", "6M"]);
 const LONG_CODES = new Set(["1Y", "3Y", "10Y", "LIFETIME"]);
 
-/** Ngân hàng phổ biến (id local) — gộp với NH Admin cấu hình */
-const POPULAR_BANKS: {
-  id: string;
-  name: string;
-  short: string;
-  color: string;
-}[] = [
-  { id: "local:vcb", name: "Vietcombank", short: "VCB", color: "#0A3D91" },
-  { id: "local:mb", name: "MB Bank", short: "MB", color: "#6B2D5C" },
-  { id: "local:tcb", name: "Techcombank", short: "TCB", color: "#E85D04" },
-  { id: "local:acb", name: "ACB", short: "ACB", color: "#0066B3" },
-  { id: "local:bidv", name: "BIDV", short: "BIDV", color: "#006B3F" },
-  { id: "local:ctg", name: "VietinBank", short: "CTG", color: "#004B87" },
-  { id: "local:vpb", name: "VPBank", short: "VPB", color: "#00A651" },
-  { id: "local:tpb", name: "TPBank", short: "TPB", color: "#7B2D8E" },
-  { id: "local:stb", name: "Sacombank", short: "STB", color: "#0033A0" },
-  { id: "local:agr", name: "Agribank", short: "AGR", color: "#C8102E" },
+/** Logo VietQR + mã khớp Admin */
+const BANK_META: { code: string; name: string; match: string[] }[] = [
+  { code: "VCB", name: "Vietcombank", match: ["vietcombank", "vcb"] },
+  { code: "MB", name: "MB Bank", match: ["mb bank", "mbbank", "mb"] },
+  { code: "TCB", name: "Techcombank", match: ["techcombank", "tcb"] },
+  { code: "ACB", name: "ACB", match: ["acb"] },
+  { code: "BIDV", name: "BIDV", match: ["bidv"] },
+  { code: "ICB", name: "VietinBank", match: ["vietin", "ctg", "icb"] },
+  { code: "VPB", name: "VPBank", match: ["vpbank", "vpb"] },
+  { code: "TPB", name: "TPBank", match: ["tpbank", "tpb"] },
+  { code: "STB", name: "Sacombank", match: ["sacombank", "stb"] },
+  { code: "AGR", name: "Agribank", match: ["agribank", "agr"] },
 ];
 
-const CARD_BRANDS: { id: CardBrand; name: string; color: string }[] = [
-  { id: "napas", name: "Napas", color: "#E31C23" },
-  { id: "visa", name: "Visa", color: "#1A1F71" },
-  { id: "mastercard", name: "Mastercard", color: "#EB001B" },
-  { id: "jcb", name: "JCB", color: "#0B4EA2" },
-];
+function bankLogoUrl(code: string) {
+  return `https://api.vietqr.io/img/${code}.png`;
+}
 
 function formatVnd(n: number) {
   if (!n || n <= 0) return "—";
@@ -135,18 +127,41 @@ function KeyRemainLabel({
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [expiresAt, durationLabel, isLifetime]);
-  return <>{text}</>;
+  return <span className="font-mono tabular-nums">{text}</span>;
 }
 
-function BankLogo({ short, color }: { short: string; color: string }) {
+function CardSvg({ brand }: { brand: CardBrand }) {
+  if (brand === "visa") {
+    return (
+      <svg viewBox="0 0 48 32" className="mk-card-svg" aria-hidden>
+        <rect width="48" height="32" rx="4" fill="#1A1F71" />
+        <text x="24" y="20" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700" fontFamily="Arial">VISA</text>
+      </svg>
+    );
+  }
+  if (brand === "mastercard") {
+    return (
+      <svg viewBox="0 0 48 32" className="mk-card-svg" aria-hidden>
+        <rect width="48" height="32" rx="4" fill="#111" />
+        <circle cx="19" cy="16" r="8" fill="#EB001B" />
+        <circle cx="29" cy="16" r="8" fill="#F79E1B" />
+        <path d="M24 9.5a8 8 0 0 1 0 13 8 8 0 0 1 0-13z" fill="#FF5F00" />
+      </svg>
+    );
+  }
+  if (brand === "jcb") {
+    return (
+      <svg viewBox="0 0 48 32" className="mk-card-svg" aria-hidden>
+        <rect width="48" height="32" rx="4" fill="#0B4EA2" />
+        <text x="24" y="20" textAnchor="middle" fill="#fff" fontSize="10" fontWeight="700" fontFamily="Arial">JCB</text>
+      </svg>
+    );
+  }
   return (
-    <span
-      className="mk-logo"
-      style={{ background: color }}
-      aria-hidden
-    >
-      {short.slice(0, 3)}
-    </span>
+    <svg viewBox="0 0 48 32" className="mk-card-svg" aria-hidden>
+      <rect width="48" height="32" rx="4" fill="#E31C23" />
+      <text x="24" y="20" textAnchor="middle" fill="#fff" fontSize="9" fontWeight="700" fontFamily="Arial">NAPAS</text>
+    </svg>
   );
 }
 
@@ -157,11 +172,9 @@ export function KeyPurchasePanel() {
   const [group, setGroup] = useState<"short" | "long">("short");
   const [tierCode, setTierCode] = useState("1M");
   const [payMethod, setPayMethod] = useState<PayMethod>("bank");
-  const [bankId, setBankId] = useState("local:mb");
-  const [cardBrand, setCardBrand] = useState<CardBrand>("napas");
-  const [buyerName, setBuyerName] = useState("");
-  const [buyerPhone, setBuyerPhone] = useState("");
-  const [note, setNote] = useState("");
+  const [bankId, setBankId] = useState("");
+  const [cardBrand, setCardBrand] = useState<CardBrand>("visa");
+  const [confirmNote, setConfirmNote] = useState("");
   const [formErr, setFormErr] = useState("");
   const [phase, setPhase] = useState<"idle" | "run" | "ok" | "rec">("idle");
   const [progress, setProgress] = useState(0);
@@ -169,14 +182,13 @@ export function KeyPurchasePanel() {
   const [order, setOrder] = useState<Order | null>(null);
   const [statusText, setStatusText] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const rafRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   const products: Product[] = useMemo(() => {
-    const byCode = new Map(
-      apiProducts.map((p) => [p.tierCode.toUpperCase(), p])
-    );
+    const byCode = new Map(apiProducts.map((p) => [p.tierCode.toUpperCase(), p]));
     return VIP_TIERS.map((t) => {
       const api = byCode.get(t.code);
       const amount =
@@ -202,95 +214,52 @@ export function KeyPurchasePanel() {
   const selectedProduct =
     products.find((p) => p.tierCode === tierCode) || products[0] || null;
 
-  // Admin banks override same short name; otherwise popular list
-  const bankOptions = useMemo(() => {
-    const list: {
-      id: string;
-      name: string;
-      short: string;
-      color: string;
-      accountNumber: string;
-      accountHolder: string;
-      branch: string;
-      transferHint: string;
-      fromAdmin: boolean;
-    }[] = [];
-    for (const p of POPULAR_BANKS) {
-      const match = adminBanks.find(
-        (a) =>
-          a.name.toLowerCase().includes(p.short.toLowerCase()) ||
-          a.name.toLowerCase().includes(p.name.toLowerCase().slice(0, 4))
-      );
-      list.push({
-        id: match?.id || p.id,
-        name: match?.name || p.name,
-        short: p.short,
-        color: p.color,
-        accountNumber: match?.accountNumber || "",
-        accountHolder: match?.accountHolder || "",
-        branch: match?.branch || "",
-        transferHint: match?.transferHint || "",
-        fromAdmin: !!match,
+  const bankList = useMemo(() => {
+    // Chỉ hiện NH Admin đã cấu hình (có STK thật). Nếu chưa có thì vẫn hiện logo để chọn, STK lấy từ admin match
+    if (adminBanks.length > 0) {
+      return adminBanks.map((b) => {
+        const low = b.name.toLowerCase();
+        const meta =
+          BANK_META.find((m) => m.match.some((k) => low.includes(k))) || null;
+        return {
+          id: b.id,
+          name: b.name,
+          code: meta?.code || "MB",
+          accountNumber: b.accountNumber,
+          accountHolder: b.accountHolder,
+          branch: b.branch,
+          transferHint: b.transferHint,
+        };
       });
     }
-    // Admin banks not in popular list
-    for (const a of adminBanks) {
-      if (list.some((x) => x.id === a.id)) continue;
-      list.push({
-        id: a.id,
-        name: a.name,
-        short: a.name.slice(0, 3).toUpperCase(),
-        color: "#475569",
-        accountNumber: a.accountNumber,
-        accountHolder: a.accountHolder,
-        branch: a.branch,
-        transferHint: a.transferHint,
-        fromAdmin: true,
-      });
-    }
-    return list;
+    // Chưa có Admin bank: hiện logo phổ biến nhưng không fake STK
+    return BANK_META.map((m) => ({
+      id: `pending:${m.code}`,
+      name: m.name,
+      code: m.code,
+      accountNumber: "",
+      accountHolder: "",
+      branch: "",
+      transferHint: "",
+    }));
   }, [adminBanks]);
 
   const selectedBank =
-    bankOptions.find((b) => b.id === bankId) || bankOptions[0] || null;
+    bankList.find((b) => b.id === bankId) || bankList[0] || null;
 
   const transferHint = username
-    ? `OPUS ${username} ${tierCode || ""}`.trim().toUpperCase()
+    ? `OPUS ${username} ${tierCode}`.toUpperCase()
     : "";
-
-  const canSubmit =
-    phase === "idle" &&
-    !!selectedProduct &&
-    selectedProduct.amountVnd > 0 &&
-    !!selectedBank &&
-    (selectedBank.fromAdmin || !!selectedBank.accountNumber) &&
-    buyerName.trim().length > 0 &&
-    buyerPhone.trim().length > 0 &&
-    !!username &&
-    (payMethod === "bank" || payMethod === "card");
-
-  // Real bank UUID required for API — prefer admin bank
-  const apiBankId = useMemo(() => {
-    if (selectedBank?.fromAdmin && selectedBank.id && !selectedBank.id.startsWith("local:")) {
-      return selectedBank.id;
-    }
-    const anyAdmin = adminBanks[0];
-    return anyAdmin?.id || "";
-  }, [selectedBank, adminBanks]);
 
   const loadCatalog = useCallback(async () => {
     try {
       const res = await fetch("/api/payment/banks", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (data?.ok) {
-        setAdminBanks(data.banks || []);
+        const banks: Bank[] = data.banks || [];
+        setAdminBanks(banks);
         setApiProducts(data.products || []);
-        const firstAdmin = (data.banks || [])[0];
-        if (firstAdmin?.id) {
-          setBankId((prev) =>
-            prev.startsWith("local:") ? firstAdmin.id : prev
-          );
-        }
+        if (banks[0]?.id) setBankId(banks[0].id);
       }
     } catch {
       /* */
@@ -302,9 +271,8 @@ export function KeyPurchasePanel() {
   }, [loadCatalog]);
 
   useEffect(() => {
-    // Khi đổi nhóm, giữ gói đang chọn nếu còn trong nhóm, không thì chọn gói đầu
-    if (!visibleProducts.some((p) => p.tierCode === tierCode)) {
-      if (visibleProducts[0]) setTierCode(visibleProducts[0].tierCode);
+    if (!visibleProducts.some((p) => p.tierCode === tierCode) && visibleProducts[0]) {
+      setTierCode(visibleProducts[0].tierCode);
     }
   }, [group, visibleProducts, tierCode]);
 
@@ -364,15 +332,25 @@ export function KeyPurchasePanel() {
 
   const submit = async () => {
     setFormErr("");
-    if (!selectedProduct || !username) return;
-    if (!apiBankId) {
-      setFormErr("Chưa có tài khoản nhận trên hệ thống. Chọn ngân hàng đã cấu hình hoặc báo admin.");
+    if (busy || phase === "run" || phase === "ok" || phase === "rec") return;
+    if (!username) {
+      setFormErr("Bạn cần đăng nhập trước.");
       return;
     }
-    if (!buyerName.trim() || !buyerPhone.trim()) {
-      setFormErr("Nhập họ tên và số điện thoại");
+    if (!selectedProduct) {
+      setFormErr("Chọn một gói Key.");
       return;
     }
+    if (!selectedBank || selectedBank.id.startsWith("pending:") || !selectedBank.accountNumber) {
+      setFormErr("Chưa có tài khoản nhận. Admin cần thêm ngân hàng trong board-home.");
+      return;
+    }
+    if (!confirmNote.trim()) {
+      setFormErr("Nhập tên người chuyển hoặc nội dung CK để đối chiếu.");
+      return;
+    }
+
+    setBusy(true);
     startProgressToWait();
     try {
       const res = await fetch("/api/payment/orders", {
@@ -380,15 +358,13 @@ export function KeyPurchasePanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tierCode: selectedProduct.tierCode,
-          bankId: apiBankId,
-          buyerName: buyerName.trim(),
-          buyerPhone: buyerPhone.trim(),
+          bankId: selectedBank.id,
+          buyerName: confirmNote.trim(),
+          buyerPhone: "-",
           note: [
-            note.trim(),
-            payMethod === "card" ? `Thẻ: ${cardBrand}` : `NH: ${selectedBank?.name || ""}`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
+            confirmNote.trim(),
+            payMethod === "card" ? `Thẻ ${cardBrand}` : selectedBank.name,
+          ].join(" · "),
           username,
         }),
       });
@@ -398,7 +374,8 @@ export function KeyPurchasePanel() {
         setPhase("idle");
         setProgress(0);
         setStepOn([false, false, false]);
-        setFormErr(data.error || "Không tạo được đơn");
+        setFormErr(data.error || "Không gửi được đơn");
+        setBusy(false);
         return;
       }
       setOrder(data.order);
@@ -412,6 +389,7 @@ export function KeyPurchasePanel() {
           setOrder(d.order);
           if (d.order.status === "APPROVED" && d.order.keyCode) {
             completeSuccess(d.order);
+            setBusy(false);
           } else if (d.order.status === "REJECTED") {
             stopPoll();
             cancelAnimationFrame(rafRef.current);
@@ -419,6 +397,7 @@ export function KeyPurchasePanel() {
             setProgress(0);
             setStepOn([false, false, false]);
             setFormErr("Đơn bị từ chối.");
+            setBusy(false);
           } else {
             setProgress((p) => (p < 0.88 ? Math.min(0.88, p + 0.02) : 0.55));
           }
@@ -431,6 +410,7 @@ export function KeyPurchasePanel() {
       setPhase("idle");
       setProgress(0);
       setFormErr("Lỗi mạng");
+      setBusy(false);
     }
   };
 
@@ -443,6 +423,8 @@ export function KeyPurchasePanel() {
     setOrder(null);
     setStatusText("");
     setFormErr("");
+    setBusy(false);
+    setConfirmNote("");
     void loadCatalog();
   };
 
@@ -468,13 +450,11 @@ export function KeyPurchasePanel() {
 
   return (
     <div className={cls}>
-      {/* Header */}
       <header className="mk-hero">
         <h1>Mua Key</h1>
-        <p>Chọn gói phù hợp, chuyển khoản và chờ key.</p>
+        <p>Chọn gói, chuyển khoản, nhận key sau khi admin duyệt.</p>
       </header>
 
-      {/* Toggle nhóm gói */}
       <div className="mk-toggle-wrap">
         <div className="mk-toggle" role="group" aria-label="Nhóm gói">
           <button
@@ -494,22 +474,9 @@ export function KeyPurchasePanel() {
             Dài hạn
           </button>
         </div>
-        <span className="mk-toggle-hint" aria-hidden>
-          <svg viewBox="0 0 40 24" width="36" height="22">
-            <path
-              d="M2 18 C14 18 18 6 34 8"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-            <path d="M30 5 l5 3 -6 2" fill="currentColor" />
-          </svg>
-          <span className="mk-pill">Phổ biến</span>
-        </span>
+        <span className="mk-pill">Phổ biến</span>
       </div>
 
-      {/* Pricing cards */}
       <div className="mk-cards">
         {visibleProducts.map((p) => {
           const on = tierCode === p.tierCode;
@@ -527,13 +494,13 @@ export function KeyPurchasePanel() {
               <p className="mk-dur">{p.durationLabel}</p>
               <ul>
                 <li>
-                  <Check className="ck" strokeWidth={2.5} /> Thời hạn: {p.durationLabel}
+                  <Check className="ck" strokeWidth={2.5} /> {p.durationLabel}
                 </li>
                 <li>
-                  <Check className="ck" strokeWidth={2.5} /> Xem phim full VIP
+                  <Check className="ck" strokeWidth={2.5} /> Xem phim VIP
                 </li>
                 <li>
-                  <Check className="ck" strokeWidth={2.5} /> Key 1 tài khoản
+                  <Check className="ck" strokeWidth={2.5} /> 1 tài khoản / key
                 </li>
               </ul>
               <button
@@ -549,7 +516,6 @@ export function KeyPurchasePanel() {
         })}
       </div>
 
-      {/* Tóm tắt + thanh toán */}
       <div className="u081">
         <div className="u081-sum">
           <div>
@@ -580,7 +546,7 @@ export function KeyPurchasePanel() {
             disabled={idleLocked}
             onClick={() => setPayMethod("card")}
           >
-            Thẻ ATM / QT
+            Thẻ
           </button>
         </div>
 
@@ -588,16 +554,25 @@ export function KeyPurchasePanel() {
           <>
             <p className="u081-lab">Ngân hàng</p>
             <div className="mk-bank-grid">
-              {bankOptions.map((b) => (
+              {bankList.map((b) => (
                 <button
                   key={b.id}
                   type="button"
                   disabled={idleLocked}
                   className={"mk-bank" + (bankId === b.id ? " on" : "")}
                   onClick={() => setBankId(b.id)}
+                  title={b.name}
                 >
-                  <BankLogo short={b.short} color={b.color} />
-                  <span>{b.short}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={bankLogoUrl(b.code)}
+                    alt={b.name}
+                    width={40}
+                    height={40}
+                    className="mk-bank-logo"
+                    loading="lazy"
+                  />
+                  <span>{b.name}</span>
                 </button>
               ))}
             </div>
@@ -605,80 +580,70 @@ export function KeyPurchasePanel() {
         ) : (
           <>
             <p className="u081-lab">Loại thẻ</p>
-            <div className="mk-bank-grid">
-              {CARD_BRANDS.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  disabled={idleLocked}
-                  className={"mk-bank" + (cardBrand === c.id ? " on" : "")}
-                  onClick={() => setCardBrand(c.id)}
-                >
-                  <BankLogo short={c.name.slice(0, 4)} color={c.color} />
-                  <span>{c.name}</span>
-                </button>
-              ))}
+            <div className="mk-bank-grid mk-card-grid">
+              {(["visa", "mastercard", "jcb", "napas"] as CardBrand[]).map(
+                (c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    disabled={idleLocked}
+                    className={"mk-bank" + (cardBrand === c ? " on" : "")}
+                    onClick={() => setCardBrand(c)}
+                  >
+                    <CardSvg brand={c} />
+                    <span>
+                      {c === "visa"
+                        ? "Visa"
+                        : c === "mastercard"
+                          ? "Mastercard"
+                          : c === "jcb"
+                            ? "JCB"
+                            : "Napas"}
+                    </span>
+                  </button>
+                )
+              )}
             </div>
           </>
         )}
 
-        {/* Card info */}
-        <div className="u081-card">
-          <i
-            aria-hidden
-            style={{
-              background:
-                payMethod === "card"
-                  ? CARD_BRANDS.find((c) => c.id === cardBrand)?.color ||
-                    "#5B3FD9"
-                  : selectedBank?.color || "#5B3FD9",
-            }}
-          />
-          <div className="u081-card-body">
-            <strong>
-              {payMethod === "card"
-                ? CARD_BRANDS.find((c) => c.id === cardBrand)?.name
-                : selectedBank?.name || "—"}
-            </strong>
-            <span>
-              {selectedBank?.accountNumber
-                ? selectedBank.accountNumber
-                : "STK nhận theo cấu hình admin"}
-              {selectedBank?.accountHolder
-                ? ` · ${selectedBank.accountHolder}`
-                : ""}
-            </span>
-          </div>
-        </div>
-
-        {selectedProduct ? (
+        {selectedBank && selectedBank.accountNumber ? (
           <div className="u081-payinfo">
-            {selectedBank?.accountNumber ? (
+            <div className="pay-head">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={bankLogoUrl(selectedBank.code)}
+                alt=""
+                width={36}
+                height={36}
+                className="mk-bank-logo"
+              />
+              <strong>{selectedBank.name}</strong>
+            </div>
+            <div className="row">
+              <span>Số tài khoản</span>
+              <button
+                type="button"
+                className="copy"
+                onClick={() => void copyText(selectedBank.accountNumber, "acc")}
+              >
+                {selectedBank.accountNumber}
+                {copied === "acc" ? " · đã chép" : ""}
+                <Copy className="ic" />
+              </button>
+            </div>
+            {selectedBank.accountHolder ? (
               <div className="row">
-                <span>Số tài khoản</span>
-                <button
-                  type="button"
-                  className="copy"
-                  onClick={() =>
-                    void copyText(selectedBank.accountNumber, "acc")
-                  }
-                >
-                  {selectedBank.accountNumber}
-                  {copied === "acc" ? " · đã chép" : ""}
-                  <Copy className="ic" />
-                </button>
-              </div>
-            ) : null}
-            {selectedBank?.accountHolder ? (
-              <div className="row">
-                <span>Chủ TK</span>
+                <span>Chủ tài khoản</span>
                 <b>{selectedBank.accountHolder}</b>
               </div>
             ) : null}
-            <div className="row">
-              <span>Số tiền</span>
-              <b>{formatVnd(selectedProduct.amountVnd)}</b>
-            </div>
+            {selectedProduct ? (
+              <div className="row">
+                <span>Số tiền</span>
+                <b>{formatVnd(selectedProduct.amountVnd)}</b>
+              </div>
+            ) : null}
             <div className="row">
               <span>Nội dung CK</span>
               <button
@@ -694,33 +659,14 @@ export function KeyPurchasePanel() {
           </div>
         ) : null}
 
-        <p className="u081-lab">Thông tin của bạn</p>
-        {!username ? (
-          <p className="u081-err">Đăng nhập trước khi mua key.</p>
-        ) : null}
-        <label className="u081-lab2">Họ tên người chuyển</label>
+        <p className="u081-lab">Xác nhận</p>
         <input
           className="u081-inp"
-          value={buyerName}
+          value={confirmNote}
           disabled={idleLocked}
-          onChange={(e) => setBuyerName(e.target.value)}
-          autoComplete="name"
-        />
-        <label className="u081-lab2">Số điện thoại</label>
-        <input
-          className="u081-inp"
-          value={buyerPhone}
-          disabled={idleLocked}
-          onChange={(e) => setBuyerPhone(e.target.value)}
-          inputMode="tel"
-          autoComplete="tel"
-        />
-        <label className="u081-lab2">Mã GD / ghi chú</label>
-        <input
-          className="u081-inp"
-          value={note}
-          disabled={idleLocked}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => setConfirmNote(e.target.value)}
+          placeholder="Tên người chuyển hoặc nội dung CK"
+          autoComplete="off"
         />
 
         {formErr ? <p className="u081-err">{formErr}</p> : null}
@@ -736,14 +682,6 @@ export function KeyPurchasePanel() {
             className="u081-go"
             type="button"
             onClick={() => void submit()}
-            disabled={
-              idleLocked ||
-              !username ||
-              !selectedProduct ||
-              !buyerName.trim() ||
-              !buyerPhone.trim() ||
-              !apiBankId
-            }
           >
             <span>Xác nhận thanh toán</span>
           </button>
@@ -813,92 +751,78 @@ export function KeyPurchasePanel() {
   --ux-page:var(--background,#f8fafc);
   --ux-surface:var(--surface,#fff);
   --ux-surface-2:var(--surface-elevated,#f1f5f9);
-  --ux-surface-3:#e8e6e1;
+  --ux-surface-3:#e2e8f0;
   --ux-ink:var(--foreground,#0f172a);
   --ux-ink-2:var(--foreground-muted,#475569);
   --ux-ink-3:var(--foreground-subtle,#94a3b8);
   --ux-line:var(--border,rgba(15,23,42,.1));
-  --ux-line-2:rgba(15,23,42,.18);
+  --ux-line-2:rgba(15,23,42,.16);
   --ux-accent:#6a57f2;
   --ux-mint:#119c72;
   --ux-accent-ink:#fff;
-  --ux-shadow-strong:rgba(40,30,80,.28);
+  --ux-shadow-strong:rgba(15,23,42,.18);
   --ux-ease:cubic-bezier(.2,.8,.2,1);
   --ux-spring:cubic-bezier(.34,1.45,.64,1);
-  max-width:72rem;margin:0 auto;color:var(--ux-ink);font-family:inherit
+  max-width:72rem;margin:0 auto;color:var(--ux-ink)
 }
 html[data-theme=dark] .mk-page,html.dark .mk-page{
-  --ux-page:var(--background,#07080d);
-  --ux-surface:var(--surface,#13141c);
-  --ux-surface-2:var(--surface-elevated,#1a1b25);
-  --ux-surface-3:#252632;
-  --ux-ink:var(--foreground,#f4f0e8);
-  --ux-ink-2:var(--foreground-muted,rgba(244,240,232,.68));
-  --ux-ink-3:var(--foreground-subtle,rgba(244,240,232,.42));
-  --ux-line:var(--border,rgba(255,255,255,.08));
-  --ux-line-2:rgba(255,255,255,.16);
-  --ux-accent:#b7a4ff;
-  --ux-mint:#7ee8c0;
-  --ux-accent-ink:#0b0c12;
-  --ux-shadow-strong:rgba(0,0,0,.72)
+  --ux-page:#07080d;--ux-surface:#13141c;--ux-surface-2:#1a1b25;--ux-surface-3:#252632;
+  --ux-ink:#f4f0e8;--ux-ink-2:rgba(244,240,232,.68);--ux-ink-3:rgba(244,240,232,.42);
+  --ux-line:rgba(255,255,255,.08);--ux-line-2:rgba(255,255,255,.14);
+  --ux-accent:#b7a4ff;--ux-mint:#7ee8c0;--ux-accent-ink:#0b0c12;--ux-shadow-strong:rgba(0,0,0,.55)
 }
-.mk-hero{text-align:center;margin:0 auto 1.25rem;max-width:36rem}
-.mk-hero h1{font-size:clamp(1.75rem,4vw,2.25rem);font-weight:800;letter-spacing:-.03em;margin:0}
-.mk-hero p{margin:.5rem 0 0;font-size:.95rem;color:var(--ux-ink-2);font-weight:550}
-.mk-toggle-wrap{display:flex;align-items:center;justify-content:center;gap:.75rem;margin:0 0 1.5rem;flex-wrap:wrap}
-.mk-toggle{display:inline-flex;padding:4px;border-radius:999px;background:var(--ux-surface-2);border:1px solid var(--ux-line)}
-.mk-toggle button{border:0;background:transparent;padding:.55rem 1.1rem;border-radius:999px;font-size:.875rem;font-weight:700;color:var(--ux-ink-2);cursor:pointer;transition:background .25s,color .25s}
+.mk-hero{text-align:center;margin:0 auto 1.25rem}
+.mk-hero h1{font-size:clamp(1.75rem,4vw,2.15rem);font-weight:800;letter-spacing:-.03em;margin:0}
+.mk-hero p{margin:.45rem 0 0;font-size:.9rem;color:var(--ux-ink-2)}
+.mk-toggle-wrap{display:flex;align-items:center;justify-content:center;gap:.75rem;margin-bottom:1.35rem;flex-wrap:wrap}
+.mk-toggle{display:inline-flex;padding:3px;border-radius:999px;background:var(--ux-surface-2);border:1px solid var(--ux-line)}
+.mk-toggle button{border:0;background:transparent;padding:.5rem 1rem;border-radius:999px;font-size:.85rem;font-weight:700;color:var(--ux-ink-2);cursor:pointer}
 .mk-toggle button.on{background:var(--ux-ink);color:var(--ux-page)}
-.mk-toggle-hint{display:inline-flex;align-items:center;gap:.35rem;color:var(--ux-ink-3)}
-.mk-pill{font-size:.7rem;font-weight:800;padding:.2rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--ux-accent) 18%,transparent);color:var(--ux-accent)}
+.mk-pill{font-size:.68rem;font-weight:800;padding:.2rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--ux-accent) 16%,transparent);color:var(--ux-accent)}
 .mk-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-bottom:2rem}
-@media(max-width:1100px){.mk-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1100px){.mk-cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.mk-cards{grid-template-columns:1fr}}
-.mk-card{position:relative;display:flex;flex-direction:column;padding:1.35rem 1.15rem 1.15rem;border-radius:1.35rem;background:var(--ux-surface);border:1.5px solid var(--ux-line);box-shadow:0 12px 28px -20px var(--ux-shadow-strong);transition:transform .35s var(--ux-ease),border-color .25s,box-shadow .35s}
-.mk-card.featured{border-color:color-mix(in srgb,var(--ux-accent) 45%,var(--ux-line))}
-.mk-card.selected{transform:translateY(-6px);border:2px solid var(--ux-accent);box-shadow:0 22px 40px -24px var(--ux-shadow-strong)}
-.mk-badge{position:absolute;top:-.55rem;left:50%;transform:translateX(-50%);font-size:.68rem;font-weight:800;padding:.2rem .65rem;border-radius:999px;background:var(--ux-accent);color:var(--ux-accent-ink);white-space:nowrap}
-.mk-card h3{margin:0;text-align:center;font-size:1.05rem;font-weight:750}
-.mk-price{margin:.65rem 0 .15rem;text-align:center;font-size:clamp(1.5rem,3vw,1.85rem);font-weight:800;letter-spacing:-.03em;color:var(--ux-ink)}
-.mk-dur{margin:0 0 1rem;text-align:center;font-size:.8rem;color:var(--ux-ink-3);font-weight:600}
-.mk-card ul{list-style:none;margin:0 0 1.1rem;padding:0;flex:1}
-.mk-card li{display:flex;align-items:flex-start;gap:.45rem;font-size:.8rem;color:var(--ux-ink-2);font-weight:600;padding:.28rem 0}
-.mk-card .ck{width:14px;height:14px;flex-shrink:0;color:var(--ux-mint);margin-top:2px}
-.mk-select{width:100%;height:44px;border-radius:12px;font-size:.875rem;font-weight:750;cursor:pointer;border:1.5px solid var(--ux-line-2);background:transparent;color:var(--ux-ink);transition:background .25s,color .25s,border-color .25s}
+.mk-card{position:relative;display:flex;flex-direction:column;padding:1.25rem 1.1rem 1.1rem;border-radius:1.25rem;background:var(--ux-surface);border:1.5px solid var(--ux-line);transition:transform .3s var(--ux-ease),border-color .2s,box-shadow .3s}
+.mk-card.selected{transform:translateY(-6px);border:2px solid var(--ux-accent);box-shadow:0 20px 40px -28px var(--ux-shadow-strong)}
+.mk-badge{position:absolute;top:-.5rem;left:50%;transform:translateX(-50%);font-size:.65rem;font-weight:800;padding:.18rem .55rem;border-radius:999px;background:var(--ux-accent);color:var(--ux-accent-ink)}
+.mk-card h3{margin:0;text-align:center;font-size:1rem;font-weight:750}
+.mk-price{margin:.55rem 0 .1rem;text-align:center;font-size:clamp(1.45rem,3vw,1.8rem);font-weight:800}
+.mk-dur{margin:0 0 .85rem;text-align:center;font-size:.78rem;color:var(--ux-ink-3)}
+.mk-card ul{list-style:none;margin:0 0 1rem;padding:0;flex:1}
+.mk-card li{display:flex;gap:.4rem;font-size:.78rem;color:var(--ux-ink-2);padding:.22rem 0;font-weight:600}
+.mk-card .ck{width:13px;height:13px;color:var(--ux-mint);flex-shrink:0;margin-top:2px}
+.mk-select{width:100%;height:42px;border-radius:11px;font-size:.85rem;font-weight:750;cursor:pointer;border:1.5px solid var(--ux-line-2);background:transparent;color:var(--ux-ink)}
 .mk-select.solid{background:var(--ux-accent);border-color:var(--ux-accent);color:var(--ux-accent-ink)}
-.mk-select:disabled{opacity:.5;cursor:default}
 
-.u081{position:relative;width:100%;max-width:480px;margin:0 auto;padding:24px 20px;border-radius:28px;background:var(--ux-surface);box-shadow:0 0 0 1px var(--ux-line),0 30px 60px -36px var(--ux-shadow-strong);overflow:hidden}
-.u081-sum{padding:14px 16px;border-radius:18px;background:var(--ux-surface-2)}
-.u081-sum div{display:flex;justify-content:space-between;font-size:14px;font-weight:650;color:var(--ux-ink-2);padding:4px 0;gap:12px}
-.u081-sum div.t{margin-top:6px;padding-top:10px;border-top:1px dashed var(--ux-line-2);font-size:16.5px;font-weight:850;color:var(--ux-ink)}
-.u081-lab{margin:16px 0 8px;font-size:13px;font-weight:800}
-.u081-lab2{display:block;margin:10px 0 5px;font-size:12px;font-weight:700;color:var(--ux-ink-2)}
+.u081{position:relative;width:100%;max-width:460px;margin:0 auto;padding:22px 18px;border-radius:24px;background:var(--ux-surface);box-shadow:0 0 0 1px var(--ux-line),0 24px 48px -32px var(--ux-shadow-strong);overflow:hidden}
+.u081-sum{padding:12px 14px;border-radius:16px;background:var(--ux-surface-2)}
+.u081-sum div{display:flex;justify-content:space-between;font-size:13.5px;font-weight:650;color:var(--ux-ink-2);padding:3px 0;gap:10px}
+.u081-sum div.t{margin-top:6px;padding-top:10px;border-top:1px dashed var(--ux-line-2);font-size:16px;font-weight:850;color:var(--ux-ink)}
+.u081-lab{margin:14px 0 8px;font-size:12.5px;font-weight:800}
 .mk-method{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.mk-method button{height:44px;border-radius:12px;border:1.5px solid var(--ux-line-2);background:var(--ux-surface-2);font-weight:750;font-size:.85rem;color:var(--ux-ink);cursor:pointer}
-.mk-method button.on{border-color:var(--ux-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ux-accent) 20%,transparent)}
+.mk-method button{height:42px;border-radius:11px;border:1.5px solid var(--ux-line-2);background:var(--ux-surface-2);font-weight:750;font-size:.84rem;color:var(--ux-ink);cursor:pointer}
+.mk-method button.on{border-color:var(--ux-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ux-accent) 18%,transparent)}
 .mk-bank-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-@media(max-width:560px){.mk-bank-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.mk-bank{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:14px;border:1.5px solid var(--ux-line-2);background:var(--ux-surface-2);cursor:pointer;font-size:11px;font-weight:750;color:var(--ux-ink)}
-.mk-bank.on{border-color:var(--ux-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ux-accent) 20%,transparent)}
-.mk-logo{display:grid;place-items:center;width:36px;height:24px;border-radius:5px;color:#fff;font-size:9px;font-weight:800;letter-spacing:-.02em}
-.u081-card{display:flex;align-items:flex-start;gap:10px;margin-top:12px;padding:12px 14px;border-radius:16px;box-shadow:inset 0 0 0 1.5px var(--ux-line-2);font-size:13.5px}
-.u081-card i{flex:none;width:34px;height:24px;border-radius:5px}
-.u081-card-body{display:flex;flex-direction:column;gap:2px;min-width:0}
-.u081-card-body strong{font-weight:800}
-.u081-card-body span{color:var(--ux-ink-3);font-weight:650;font-size:12px}
-.u081-payinfo{margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--ux-surface-2);font-size:13px}
-.u081-payinfo .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0}
+@media(max-width:560px){.mk-bank-grid{grid-template-columns:repeat(3,1fr)}}
+.mk-bank{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:12px;border:1.5px solid var(--ux-line-2);background:var(--ux-surface-2);cursor:pointer;font-size:10px;font-weight:700;color:var(--ux-ink);min-height:72px}
+.mk-bank.on{border-color:var(--ux-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ux-accent) 18%,transparent)}
+.mk-bank-logo{width:40px;height:40px;object-fit:contain;border-radius:8px;background:#fff;padding:2px}
+.mk-card-svg{width:48px;height:32px;display:block}
+.u081-payinfo{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--ux-surface-2);font-size:13px}
+.u081-payinfo .pay-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.u081-payinfo .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;align-items:center}
 .u081-payinfo .row span{color:var(--ux-ink-3);font-weight:650}
 .u081-payinfo .row b{font-weight:800;text-align:right}
-.u081-payinfo .copy{border:0;background:none;color:var(--ux-ink);font:inherit;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:4px;text-align:right;padding:0;max-width:70%}
-.u081-payinfo .ic{width:14px;height:14px;opacity:.7}
-.u081-inp{width:100%;height:46px;padding:0 14px;border:0;border-radius:14px;background:var(--ux-surface-2);color:var(--ux-ink);font-size:14.5px;font-weight:600;outline:none}
+.u081-payinfo .copy{border:0;background:none;color:var(--ux-ink);font:inherit;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:4px;text-align:right;padding:0;max-width:68%}
+.u081-payinfo .ic{width:14px;height:14px;opacity:.65}
+.u081-inp{width:100%;height:46px;padding:0 14px;border:0;border-radius:12px;background:var(--ux-surface-2);color:var(--ux-ink);font-size:14px;font-weight:600;outline:none}
+.u081-inp::placeholder{color:var(--ux-ink-3);font-weight:500}
 .u081-inp:focus{box-shadow:inset 0 0 0 1.5px var(--ux-accent)}
 .u081-err{margin:10px 0 0;font-size:13px;font-weight:700;color:#d93a55}
-.u081-stage{position:relative;width:100%;margin-top:18px;display:flex;align-items:flex-end;justify-content:center;min-height:56px}
-.u081-go{position:relative;width:100%;height:56px;border:0;border-radius:18px;background:var(--ux-ink);color:var(--ux-page);font-size:15.5px;font-weight:800;transition:width .5s var(--ux-spring),border-radius .5s var(--ux-spring),transform .3s var(--ux-spring),background-color .4s;overflow:hidden;cursor:pointer}
-.u081-go:disabled{opacity:.4;cursor:not-allowed}
+.u081-stage{position:relative;width:100%;margin-top:16px;display:flex;align-items:flex-end;justify-content:center;min-height:56px}
+.u081-go{position:relative;width:100%;height:56px;border:0;border-radius:16px;background:var(--ux-ink);color:var(--ux-page);font-size:15px;font-weight:800;transition:width .5s var(--ux-spring),border-radius .5s var(--ux-spring),transform .25s,background-color .35s,opacity .2s;overflow:hidden;cursor:pointer;opacity:1}
+.u081-go:hover{filter:brightness(1.06)}
+.u081-go:active{transform:scale(.98)}
 .u081-go span{transition:opacity .2s}
 .mk-page.is-run .u081-go,.mk-page.is-ok .u081-go{width:56px;border-radius:50%;pointer-events:none}
 .mk-page.is-run .u081-go span,.mk-page.is-ok .u081-go span{opacity:0}
@@ -913,28 +837,28 @@ html[data-theme=dark] .mk-page,html.dark .mk-page{
 .mk-page.is-ok .u081-go{background:var(--ux-mint)}
 .mk-page.is-ok .u081-ck{stroke:var(--ux-accent-ink)}
 .mk-page.is-ok .u081-ck path{stroke-dashoffset:0}
-.u081-steps{display:flex;gap:8px;justify-content:center;margin:18px 0 4px;font-size:12.5px;font-weight:700;color:var(--ux-ink-3);opacity:0;transition:opacity .3s;flex-wrap:wrap}
+.u081-steps{display:flex;gap:8px;justify-content:center;margin:16px 0 4px;font-size:12px;font-weight:700;color:var(--ux-ink-3);opacity:0;transition:opacity .3s;flex-wrap:wrap}
 .mk-page.is-run .u081-steps,.mk-page.is-ok .u081-steps{opacity:1}
 .u081-steps span{display:inline-flex;align-items:center;gap:5px}
 .u081-steps span::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ux-line-2)}
 .u081-steps span.on{color:var(--ux-ink)}
-.u081-steps span.on::before{background:var(--ux-accent);transform:scale(1.25)}
+.u081-steps span.on::before{background:var(--ux-accent)}
 .mk-page.is-ok .u081-steps span.on::before{background:var(--ux-mint)}
 .u081-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.u081-rec{position:absolute;left:16px;right:16px;bottom:16px;top:40px;display:flex;flex-direction:column;justify-content:center;padding:22px 20px;border-radius:22px;background:var(--ux-surface-2);transform:translateY(110%);transition:transform .6s var(--ux-spring);text-align:center;z-index:5}
+.u081-rec{position:absolute;left:14px;right:14px;bottom:14px;top:36px;display:flex;flex-direction:column;justify-content:center;padding:20px;border-radius:20px;background:var(--ux-surface-2);transform:translateY(110%);transition:transform .6s var(--ux-spring);text-align:center;z-index:5}
 .mk-page.is-rec .u081-rec{transform:none}
-.mk-page.is-rec .u081-sum,.mk-page.is-rec .u081-lab,.mk-page.is-rec .u081-lab2,.mk-page.is-rec .mk-method,.mk-page.is-rec .mk-bank-grid,.mk-page.is-rec .u081-card,.mk-page.is-rec .u081-payinfo,.mk-page.is-rec .u081-inp,.mk-page.is-rec .u081-steps,.mk-page.is-rec .u081-err{opacity:0;pointer-events:none}
+.mk-page.is-rec .u081-sum,.mk-page.is-rec .u081-lab,.mk-page.is-rec .mk-method,.mk-page.is-rec .mk-bank-grid,.mk-page.is-rec .u081-payinfo,.mk-page.is-rec .u081-inp,.mk-page.is-rec .u081-steps,.mk-page.is-rec .u081-err{opacity:0;pointer-events:none}
 .mk-page.is-rec .u081-stage{opacity:0}
-.u081-rec i{width:68px;height:68px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:var(--ux-mint);color:var(--ux-accent-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--ux-mint) 16%,transparent)}
-.u081-rec i svg{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.u081-rec b{display:block;font-size:22px;font-weight:850}
-.u081-rec p.thanks{margin:12px 0 16px;font-size:14px;font-weight:650;color:var(--ux-ink-2)}
-.u081-rec dl{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;margin:14px 0 8px;padding:14px;border-radius:14px;background:var(--ux-surface);border:1px solid var(--ux-line);text-align:left;font-size:13.5px}
+.u081-rec i{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--ux-mint);color:var(--ux-accent-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--ux-mint) 16%,transparent)}
+.u081-rec i svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.u081-rec b{display:block;font-size:20px;font-weight:850}
+.u081-rec p.thanks{margin:12px 0 14px;font-size:13.5px;font-weight:650;color:var(--ux-ink-2)}
+.u081-rec dl{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;margin:12px 0 8px;padding:12px;border-radius:12px;background:var(--ux-surface);border:1px solid var(--ux-line);text-align:left;font-size:13px}
 .u081-rec dt{color:var(--ux-ink-3);font-weight:650}
 .u081-rec dd{margin:0;text-align:right;font-weight:800;word-break:break-all}
 .u081-key{border:0;background:none;color:inherit;font:inherit;font-weight:800;cursor:pointer;text-align:right;padding:0}
-.u081-rec>button{width:100%;height:48px;border:0;border-radius:14px;background:var(--ux-ink);color:var(--ux-page);font-size:14.5px;font-weight:750;cursor:pointer}
-@media (prefers-reduced-motion:reduce){.mk-page,.mk-page *{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+.u081-rec>button{width:100%;height:46px;border:0;border-radius:12px;background:var(--ux-ink);color:var(--ux-page);font-size:14px;font-weight:750;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.mk-page,.mk-page *{transition-duration:.001ms!important}}
       `}</style>
     </div>
   );

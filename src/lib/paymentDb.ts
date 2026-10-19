@@ -48,9 +48,11 @@ export async function ensurePaymentTables() {
       admin_note TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       approved_at TIMESTAMPTZ,
-      approved_by TEXT
+      approved_by TEXT,
+      key_expires_at TIMESTAMPTZ
     )
   `;
+  await sql`ALTER TABLE key_purchase_orders ADD COLUMN IF NOT EXISTS key_expires_at TIMESTAMPTZ`;
   await sql`CREATE INDEX IF NOT EXISTS idx_kpo_status ON key_purchase_orders (status, created_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_kpo_user ON key_purchase_orders (username, created_at DESC)`;
   ensured = true;

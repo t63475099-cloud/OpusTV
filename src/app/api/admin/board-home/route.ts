@@ -293,27 +293,40 @@ export async function GET(req: NextRequest) {
         await ensureVipTables();
         const sql = db();
         const v2 = await sql`
-          SELECT id::text AS id, key_code, tier_code, status, claimed_username, claimed_at, created_at
+          SELECT id::text AS id, key_code, tier_code, status, claimed_username, claimed_at, created_at,
+                 expires_at::text AS expires_at, is_lifetime
           FROM license_keys_v2
           ORDER BY created_at DESC
           LIMIT ${limit}
         `;
-        const mapped = (v2 as Array<Record<string, unknown>>).map((r) => ({
-          id: String(r.id),
-          keyCode: String(r.key_code),
-          tier: String(r.tier_code || "24H"),
-          status:
+        const mapped = (v2 as Array<Record<string, unknown>>).map((r) => {
+          const expIso = r.expires_at != null ? String(r.expires_at) : null;
+          const expMs = expIso ? Date.parse(expIso) : NaN;
+          const isLife = !!r.is_lifetime;
+          let status: string =
             String(r.status) === "CLAIMED"
               ? "used"
               : String(r.status) === "REVOKED"
                 ? "revoked"
-                : "active",
-          usedBy: r.claimed_username ? String(r.claimed_username) : null,
-          usedAt: r.claimed_at ? String(r.claimed_at) : null,
-          createdAt: r.created_at ? String(r.created_at) : new Date().toISOString(),
-          expiresAt: null as string | null,
-          note: "",
-        }));
+                : String(r.status) === "EXPIRED"
+                  ? "expired"
+                  : "active";
+          if (status === "active" && !isLife && Number.isFinite(expMs) && expMs <= Date.now()) {
+            status = "expired";
+          }
+          return {
+            id: String(r.id),
+            keyCode: String(r.key_code),
+            tier: String(r.tier_code || "24H"),
+            isLifetime: isLife,
+            status,
+            usedBy: r.claimed_username ? String(r.claimed_username) : null,
+            usedAt: r.claimed_at ? String(r.claimed_at) : null,
+            createdAt: r.created_at ? String(r.created_at) : new Date().toISOString(),
+            expiresAt: expIso,
+            note: "",
+          };
+        });
         const seen = new Set(keys.map((k) => k.keyCode));
         for (const m of mapped) {
           if (!seen.has(m.keyCode)) {
@@ -1182,9 +1195,20 @@ if (action === "set_verified") {
       const codes: string[] = [];
       for (let i = 0; i < count; i++) {
         const code = generateOpusVipKey(tier.code);
+        const isLife = !!tier.isLifetime;
+        const expiresAt = isLife
+          ? null
+          : new Date(Date.now() + tier.durationSec * 1000).toISOString();
         await sql`
-          INSERT INTO license_keys_v2 (key_code, tier_code, status)
-          VALUES (${code}, ${tier.code}, 'AVAILABLE')
+          INSERT INTO license_keys_v2 (key_code, tier_code, status, expires_at, is_lifetime, created_at)
+          VALUES (
+            ${code},
+            ${tier.code},
+            'AVAILABLE',
+            ${expiresAt}::timestamptz,
+            ${isLife},
+            NOW()
+          )
           ON CONFLICT (key_code) DO NOTHING
         `;
         try {
@@ -1536,26 +1560,51 @@ if (action === "set_verified") {
         .join("")
         .toUpperCase();
       const keyCode = `OPUS-${seg}-${hex}`;
+      const tierDef = getVipTier(tierCode);
+      const isLife = !!(tierDef && tierDef.isLifetime);
+      const expiresAt = isLife
+        ? null
+        : new Date(
+            Date.now() + (tierDef?.durationSec || 86400) * 1000
+          ).toISOString();
       try {
         await sql`
-          INSERT INTO license_keys_v2 (key_code, tier_code, status)
-          VALUES (${keyCode}, ${tierCode}, 'AVAILABLE')
+          INSERT INTO license_keys_v2 (key_code, tier_code, status, expires_at, is_lifetime, created_at)
+          VALUES (
+            ${keyCode},
+            ${tierCode},
+            'AVAILABLE',
+            ${expiresAt}::timestamptz,
+            ${isLife},
+            NOW()
+          )
         `;
       } catch {
-        /* table may use different cols — still attach key to order */
+        /* still attach key to order */
       }
       await sql`
         UPDATE key_purchase_orders
         SET status = 'APPROVED',
             key_code = ${keyCode},
+            key_expires_at = ${expiresAt}::timestamptz,
             approved_at = NOW(),
             approved_by = 'admin'
         WHERE id = ${orderId}::uuid
       `;
+      // Lưu expires lên order duration_label nếu cần
+      if (expiresAt) {
+        await sql`
+          UPDATE key_purchase_orders
+          SET duration_label = COALESCE(NULLIF(duration_label, ''), ${tierCode})
+          WHERE id = ${orderId}::uuid
+        `;
+      }
       return NextResponse.json({
         ok: true,
         message: `Đã gửi key ${keyCode}`,
         keyCode,
+        expiresAt,
+        isLifetime: isLife,
       });
     }
 

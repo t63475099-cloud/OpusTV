@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     if (orderId) {
       const rows = (await sql`
         SELECT id::text, username, tier_code, product_label, amount_vnd, bank_name, bank_account,
-               buyer_name, buyer_phone, transfer_content, status, key_code, duration_label,
+               buyer_name, buyer_phone, transfer_content, status, key_code, duration_label, key_expires_at::text,
                created_at::text, approved_at::text
         FROM key_purchase_orders
         WHERE id = ${orderId}::uuid
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     }
     const list = (await sql`
       SELECT id::text, username, tier_code, product_label, amount_vnd, bank_name, status,
-             key_code, duration_label, created_at::text, approved_at::text
+             key_code, duration_label, key_expires_at::text, created_at::text, approved_at::text
       FROM key_purchase_orders
       WHERE lower(username) = ${username}
       ORDER BY created_at DESC
@@ -160,6 +160,8 @@ function mapOrder(o: Record<string, unknown>) {
     status: String(o.status || "PENDING"),
     keyCode: o.key_code ? String(o.key_code) : null,
     durationLabel: String(o.duration_label || ""),
+    keyExpiresAt: o.key_expires_at ? String(o.key_expires_at) : null,
+    isLifetime: !o.key_expires_at && !!o.key_code,
     createdAt: o.created_at ? String(o.created_at) : null,
     approvedAt: o.approved_at ? String(o.approved_at) : null,
   };

@@ -1,11 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyRound } from "lucide-react";
 import type { LicenseKeyRecord } from "@/lib/keyEngine";
 import { VIP_TIERS, type VipTierCode } from "@/lib/vipCatalog";
 import type { BoardTheme } from "./adminUi";
 import { boardTokens, btn } from "./adminUi";
+
+function formatRemain(expiresAt: string | null | undefined, isLifetime?: boolean) {
+  if (isLifetime) return "Vĩnh viễn";
+  if (!expiresAt) return "—";
+  const ms = Date.parse(expiresAt) - Date.now();
+  if (!Number.isFinite(ms)) return "—";
+  if (ms <= 0) return "Hết hạn";
+  const total = Math.floor(ms / 1000);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (d > 0) return `${d}n ${pad(h)}:${pad(m)}:${pad(s)}`;
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+function RemainCell({
+  expiresAt,
+  isLifetime,
+}: {
+  expiresAt?: string | null;
+  isLifetime?: boolean;
+}) {
+  const [label, setLabel] = useState(() => formatRemain(expiresAt, isLifetime));
+  useEffect(() => {
+    setLabel(formatRemain(expiresAt, isLifetime));
+    if (isLifetime || !expiresAt) return;
+    const id = setInterval(() => setLabel(formatRemain(expiresAt, isLifetime)), 1000);
+    return () => clearInterval(id);
+  }, [expiresAt, isLifetime]);
+  return (
+    <span className="font-mono tabular-nums text-xs whitespace-nowrap">{label}</span>
+  );
+}
+
+type KeyRow = LicenseKeyRecord & { isLifetime?: boolean };
 
 export function KeyBoardTab({
   theme,
@@ -15,7 +52,7 @@ export function KeyBoardTab({
   onRefresh,
 }: {
   theme: BoardTheme;
-  keys: LicenseKeyRecord[];
+  keys: KeyRow[];
   loading: boolean;
   onAction: (body: Record<string, unknown>) => Promise<unknown>;
   onRefresh: () => void;
@@ -32,7 +69,7 @@ export function KeyBoardTab({
           Sinh License Key (11 mốc)
         </h3>
         <p className={`mt-1 text-xs ${t.muted}`}>
-          Định dạng: OPUS-&lt;GÓI&gt;-XXXXXXXX · mỗi key chỉ gắn 1 tài khoản
+          Thời hạn chạy ngay từ lúc tạo key (không đợi người dùng nhập).
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <select
@@ -64,7 +101,7 @@ export function KeyBoardTab({
               })
             }
           >
-            Sinh Key
+            Sinh key
           </button>
           <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={onRefresh}>
             Làm mới
@@ -74,11 +111,12 @@ export function KeyBoardTab({
 
       <div className={`overflow-hidden rounded-xl border ${t.surface}`}>
         <div className="max-h-[min(50vh,480px)] overflow-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[820px] text-left text-sm">
             <thead className={`sticky top-0 border-b ${t.border} ${t.surface}`}>
               <tr className={`text-xs uppercase ${t.muted}`}>
                 <th className="px-3 py-2">Mã key</th>
                 <th className="px-3 py-2">Gói</th>
+                <th className="px-3 py-2">Còn lại</th>
                 <th className="px-3 py-2">Trạng thái</th>
                 <th className="px-3 py-2">Tài khoản</th>
                 <th className="px-3 py-2">Hành động</th>
@@ -87,7 +125,7 @@ export function KeyBoardTab({
             <tbody>
               {keys.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className={`px-3 py-8 text-center ${t.muted}`}>
+                  <td colSpan={6} className={`px-3 py-8 text-center ${t.muted}`}>
                     Chưa có license key nào
                   </td>
                 </tr>
@@ -96,6 +134,12 @@ export function KeyBoardTab({
                   <tr key={k.id || k.keyCode} className={`border-t ${t.border} ${t.rowHover}`}>
                     <td className="px-3 py-2 font-mono text-xs">{k.keyCode}</td>
                     <td className="px-3 py-2">{String(k.tier)}</td>
+                    <td className="px-3 py-2">
+                      <RemainCell
+                        expiresAt={k.expiresAt}
+                        isLifetime={(k as KeyRow).isLifetime}
+                      />
+                    </td>
                     <td className="px-3 py-2">{k.status}</td>
                     <td className={`px-3 py-2 text-xs ${t.muted}`}>
                       {k.usedBy || "—"}

@@ -31,11 +31,53 @@ type Order = {
   status: string;
   keyCode: string | null;
   durationLabel: string;
+  keyExpiresAt?: string | null;
+  isLifetime?: boolean;
 };
 
 function formatVnd(n: number) {
   if (!n || n <= 0) return "—";
   return new Intl.NumberFormat("vi-VN").format(n) + "đ";
+}
+
+function KeyRemainLabel({
+  expiresAt,
+  durationLabel,
+  isLifetime,
+}: {
+  expiresAt?: string | null;
+  durationLabel: string;
+  isLifetime?: boolean;
+}) {
+  const [text, setText] = useState(durationLabel);
+  useEffect(() => {
+    if (isLifetime) {
+      setText("Vĩnh viễn");
+      return;
+    }
+    if (!expiresAt) {
+      setText(durationLabel);
+      return;
+    }
+    const tick = () => {
+      const ms = Date.parse(expiresAt) - Date.now();
+      if (!Number.isFinite(ms) || ms <= 0) {
+        setText("Hết hạn");
+        return;
+      }
+      const total = Math.floor(ms / 1000);
+      const d = Math.floor(total / 86400);
+      const h = Math.floor((total % 86400) / 3600);
+      const m = Math.floor((total % 3600) / 60);
+      const s = total % 60;
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setText(d > 0 ? `${d} ngày ${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}:${pad(s)}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt, durationLabel, isLifetime]);
+  return <>{text}</>;
 }
 
 export function KeyPurchasePanel() {
@@ -300,7 +342,7 @@ export function KeyPurchasePanel() {
                   <strong>{p.label}</strong>
                   <span>{formatVnd(p.amountVnd)}</span>
                   {p.durationLabel ? (
-                    <small>{p.durationLabel} · tính từ khi nhập key</small>
+                    <small>{p.durationLabel} · chạy từ lúc Admin tạo key</small>
                   ) : null}
                 </button>
               );
@@ -465,8 +507,11 @@ export function KeyPurchasePanel() {
           </dd>
           <dt>Thời gian sử dụng</dt>
           <dd>
-            {order?.durationLabel || order?.productLabel || "—"} (tính từ khi
-            nhập)
+            <KeyRemainLabel
+              expiresAt={order?.keyExpiresAt || null}
+              durationLabel={order?.durationLabel || order?.productLabel || "—"}
+              isLifetime={!!order?.isLifetime}
+            />
           </dd>
         </dl>
         <p className="thanks">Cảm ơn bạn đã mua sản phẩm bên chúng tôi</p>

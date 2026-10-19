@@ -27,9 +27,13 @@ export async function ensureVipTables() {
           claimed_username VARCHAR(64),
           claimed_at TIMESTAMPTZ,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          expires_at TIMESTAMPTZ,
+          is_lifetime BOOLEAN NOT NULL DEFAULT FALSE,
           note TEXT
         )
       `;
+      await sql`ALTER TABLE license_keys_v2 ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`;
+      await sql`ALTER TABLE license_keys_v2 ADD COLUMN IF NOT EXISTS is_lifetime BOOLEAN NOT NULL DEFAULT FALSE`;
 
       await sql`
         CREATE TABLE IF NOT EXISTS system_giftcodes (

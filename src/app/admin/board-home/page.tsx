@@ -27,34 +27,16 @@ type TabId =
   | "MASS"
   | "SYSTEM";
 
-const NAV_GROUPS: {
-  title: string;
-  items: { id: TabId; label: string; icon: typeof Users }[];
-}[] = [
-  {
-    title: "Tổng quan & Đơn hàng",
-    items: [
-      { id: "PAYMENT", label: "Mua Key & Duyệt đơn", icon: Banknote },
-      { id: "KEY-BOARD", label: "Key-board", icon: KeyRound },
-    ],
-  },
-  {
-    title: "Nội dung & Người dùng",
-    items: [
-      { id: "ACCOUNTS", label: "Tài khoản", icon: Users },
-      { id: "MOVIES", label: "Phim & Tập", icon: Clapperboard },
-      { id: "VERIFY", label: "Xác minh", icon: BadgeCheck },
-    ],
-  },
-  {
-    title: "Tương tác & Hệ thống",
-    items: [
-      { id: "GIFTCODE", label: "Giftcode & Sự kiện", icon: Gift },
-      { id: "MASS", label: "Phát thưởng", icon: Gift },
-      { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt", icon: ShieldAlert },
-      { id: "SYSTEM", label: "Hệ thống & AI", icon: Cpu },
-    ],
-  },
+const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
+  { id: "ACCOUNTS", label: "Tài khoản", icon: Users },
+  { id: "MOVIES", label: "Phim & Tập", icon: Clapperboard },
+  { id: "KEY-BOARD", label: "Key-board", icon: KeyRound },
+  { id: "PAYMENT", label: "Mua Key", icon: Banknote },
+  { id: "VERIFY", label: "Xác minh", icon: BadgeCheck },
+  { id: "GIFTCODE", label: "Giftcode & Sự kiện", icon: Gift },
+  { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt", icon: ShieldAlert },
+  { id: "MASS", label: "Phát thưởng", icon: Gift },
+  { id: "SYSTEM", label: "Hệ thống & AI", icon: Cpu },
 ];
 
 const SECRET_STORAGE = "opus_admin_secret";
@@ -65,7 +47,7 @@ export default function BoardHomePage() {
   const [secret, setSecret] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [gateError, setGateError] = useState("");
-  const [tab, setTab] = useState<TabId>("PAYMENT");
+  const [tab, setTab] = useState<TabId>("ACCOUNTS");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" | "info" } | null>(null);
   const [refreshSpin, setRefreshSpin] = useState(false);
@@ -319,200 +301,140 @@ export default function BoardHomePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#090A0F] text-slate-100">
-      {/* Sidebar */}
-      <aside className="hidden w-[248px] shrink-0 flex-col border-r border-white/[0.07] bg-[#0C0D14] md:flex">
-        <div className="border-b border-white/[0.07] px-5 py-5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-            OpusFilm
-          </p>
-          <h1 className="mt-1 text-sm font-semibold tracking-tight text-slate-100">
-            Master Board
-          </h1>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {NAV_GROUPS.map((g) => (
-            <div key={g.title} className="mb-5">
-              <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                {g.title}
-              </p>
-              <ul className="space-y-0.5">
-                {g.items.map((x) => {
-                  const Icon = x.icon;
-                  const active = tab === x.id;
-                  return (
-                    <li key={x.id}>
-                      <button
-                        type="button"
-                        onClick={() => setTab(x.id)}
-                        className={
-                          "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition " +
-                          (active
-                            ? "bg-white/[0.08] text-white"
-                            : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200")
-                        }
-                      >
-                        <Icon className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.75} />
-                        <span className="min-w-0 flex-1 truncate">{x.label}</span>
-                        {x.id === "PAYMENT" && (stats?.pendingVerify ?? 0) > 0 ? (
-                          <span className="rounded-full bg-violet-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                            {stats?.pendingVerify}
-                          </span>
-                        ) : null}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+    <div className={`min-h-screen ${t.page}`}>
+      <header className={`sticky top-0 z-40 border-b ${t.border} ${t.surface}`}>
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-semibold tracking-tight sm:text-lg">
+                OpusFilm · Master Board
+              </h1>
+              <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${t.border} ${t.muted}`}>
+                v1.17
+              </span>
             </div>
-          ))}
-        </nav>
-        <div className="border-t border-white/[0.07] p-3">
-          <button
-            type="button"
-            onClick={lockScreen}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
-          >
-            <Lock className="h-4 w-4" strokeWidth={1.75} />
-            Khóa màn hình
-          </button>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 border-b border-white/[0.07] bg-[#090A0F]/90 backdrop-blur-md">
-          <div className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              {/* Metric pills */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#12131A] px-2.5 py-1 text-xs text-slate-300">
-                  <Users className="h-3.5 w-3.5 text-slate-500" strokeWidth={1.75} />
-                  <b className="font-semibold text-slate-100">{stats?.users ?? "—"}</b>
-                  <span className="text-slate-500">TK</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#12131A] px-2.5 py-1 text-xs text-slate-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                  <b className="font-semibold text-slate-100">{stats?.sessions ?? "—"}</b>
-                  <span className="text-slate-500">online</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#12131A] px-2.5 py-1 text-xs text-slate-300">
-                  <KeyRound className="h-3.5 w-3.5 text-slate-500" strokeWidth={1.75} />
-                  <b className="font-semibold text-slate-100">
-                    {stats?.keysActive ?? 0}/{stats?.keysTotal ?? 0}
-                  </b>
-                  <span className="text-slate-500">key</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#12131A] px-2.5 py-1 text-xs text-slate-300">
-                  <Activity className="h-3.5 w-3.5 text-slate-500" strokeWidth={1.75} />
-                  <b className="font-semibold text-slate-100">{stats?.pendingVerify ?? 0}</b>
-                  <span className="text-slate-500">chờ</span>
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ghost}`}
-                onClick={() => setThemePersist(theme === "dark" ? "light" : "dark")}
-                aria-label="Theme"
-              >
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ghost}`}
-                onClick={() => {
-                  setRefreshSpin(true);
-                  void loadSection(tab).finally(() => {
-                    window.setTimeout(() => setRefreshSpin(false), 400);
-                  });
-                }}
-                aria-label="Làm mới"
-              >
-                <RefreshCw className={`h-4 w-4 ${refreshSpin ? "animate-spin" : ""}`} />
-              </button>
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ghost} md:hidden`}
-                onClick={lockScreen}
-                aria-label="Khóa"
-              >
-                <Lock className="h-4 w-4" />
-              </button>
+            <div className={`mt-1.5 flex flex-wrap items-center gap-2 text-xs ${t.muted}`}>
+              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.border}">
+                <Users className="h-3 w-3" strokeWidth={1.75} />
+                {stats?.users ?? "—"} TK
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                {stats?.sessions ?? "—"} online
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.border}">
+                <KeyRound className="h-3 w-3" strokeWidth={1.75} />
+                {stats?.keysActive ?? 0}/{stats?.keysTotal ?? 0} key
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.border}">
+                <Activity className="h-3 w-3" strokeWidth={1.75} />
+                {stats?.pendingVerify ?? 0} chờ
+              </span>
             </div>
           </div>
-          {/* Mobile nav scroll */}
-          <div className="flex gap-1 overflow-x-auto px-3 pb-3 md:hidden">
-            {NAV_GROUPS.flatMap((g) => g.items).map((x) => {
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost}`}
+              onClick={() => setThemePersist(theme === "dark" ? "light" : "dark")}
+              aria-label="Đổi theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost}`}
+              onClick={() => {
+                setRefreshSpin(true);
+                void loadSection(tab).finally(() => {
+                  window.setTimeout(() => setRefreshSpin(false), 400);
+                });
+              }}
+              aria-label="Làm mới"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshSpin ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              type="button"
+              className={`${btn.compact} ${btn.ghost}`}
+              onClick={lockScreen}
+              aria-label="Khóa màn hình"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mx-auto max-w-[1600px] px-4 pb-3">
+          <div className={`flex flex-wrap gap-1 rounded-lg border p-1 ${t.border}`}>
+            {TABS.map((x) => {
               const Icon = x.icon;
+              const active = tab === x.id;
               return (
                 <button
                   key={x.id}
                   type="button"
                   onClick={() => setTab(x.id)}
                   className={
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium " +
-                    (tab === x.id
-                      ? "border-violet-500/40 bg-violet-500/15 text-violet-200"
-                      : "border-white/[0.08] bg-[#12131A] text-slate-400")
+                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition " +
+                    (active
+                      ? "bg-violet-600 text-white shadow-sm"
+                      : `${t.muted} hover:bg-black/5 dark:hover:bg-white/5`)
                   }
                 >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
                   {x.label}
                 </button>
               );
             })}
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="mx-auto w-full max-w-[1400px] flex-1 p-4 sm:p-6">
-          {loading ? (
-            <p className="mb-3 text-xs text-slate-500">Đang tải…</p>
-          ) : null}
+      <main className="mx-auto max-w-[1600px] p-4 sm:p-6">
+        {loading ? <p className={`mb-3 text-xs ${t.muted}`}>Đang tải…</p> : null}
 
-          {tab === "PAYMENT" && (
-            <PaymentOrdersTab theme={theme} onAction={runAction} />
-          )}
-          {tab === "KEY-BOARD" && (
-            <KeyBoardTab
-              theme={theme}
-              keys={keys}
-              loading={loading}
-              onAction={runAction}
-              onRefresh={() => void loadSection("KEY-BOARD")}
-            />
-          )}
-          {tab === "ACCOUNTS" && (
-            <AccountTab
-              theme={theme}
-              accounts={accounts}
-              loading={loading}
-              onAction={runAction}
-              onRefresh={() => void loadSection("ACCOUNTS")}
-            />
-          )}
-          {tab === "MOVIES" && <MovieCmsTab theme={theme} />}
-          {tab === "VERIFY" && (
-            <VerifyTab
-              theme={theme}
-              items={verifyItems}
-              loading={loading}
-              onAction={runAction}
-            />
-          )}
-          {tab === "GIFTCODE" && <GiftcodeTab theme={theme} onAction={runAction} />}
-          {tab === "MODERATION" && (
-            <ModerationTab theme={theme} adminSecret={secret} />
-          )}
-          {tab === "MASS" && (
-            <MassOpsTab theme={theme} loading={loading} onAction={runAction} />
-          )}
-          {tab === "SYSTEM" && (
-            <SystemAiTab theme={theme} adminSecret={secret} onAction={runAction} />
-          )}
-        </main>
-      </div>
+        {tab === "ACCOUNTS" && (
+          <AccountTab
+            theme={theme}
+            accounts={accounts}
+            loading={loading}
+            onAction={runAction}
+            onRefresh={() => void loadSection("ACCOUNTS")}
+          />
+        )}
+        {tab === "MOVIES" && <MovieCmsTab theme={theme} />}
+        {tab === "KEY-BOARD" && (
+          <KeyBoardTab
+            theme={theme}
+            keys={keys}
+            loading={loading}
+            onAction={runAction}
+            onRefresh={() => void loadSection("KEY-BOARD")}
+          />
+        )}
+        {tab === "PAYMENT" && (
+          <PaymentOrdersTab theme={theme} onAction={runAction} />
+        )}
+        {tab === "VERIFY" && (
+          <VerifyTab
+            theme={theme}
+            items={verifyItems}
+            loading={loading}
+            onAction={runAction}
+          />
+        )}
+        {tab === "GIFTCODE" && <GiftcodeTab theme={theme} onAction={runAction} />}
+        {tab === "MODERATION" && (
+          <ModerationTab theme={theme} adminSecret={secret} />
+        )}
+        {tab === "MASS" && (
+          <MassOpsTab theme={theme} loading={loading} onAction={runAction} />
+        )}
+        {tab === "SYSTEM" && (
+          <SystemAiTab theme={theme} adminSecret={secret} onAction={runAction} />
+        )}
+      </main>
 
       {toast ? (
         <div
@@ -522,7 +444,7 @@ export default function BoardHomePage() {
               ? "border-emerald-500/30 bg-emerald-950 text-emerald-100"
               : toast.type === "err"
                 ? "border-rose-500/30 bg-rose-950 text-rose-100"
-                : "border-white/10 bg-[#12131A] text-slate-100")
+                : `border ${t.border} ${t.surface}`)
           }
         >
           {toast.msg}

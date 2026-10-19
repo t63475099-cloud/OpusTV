@@ -86,6 +86,7 @@ export function KeyPurchasePanel() {
   const [selectedPkg, setSelectedPkg] = useState<KeyShopPackage | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [bankCode, setBankCode] = useState("MB");
+  const [bankMenuOpen, setBankMenuOpen] = useState(false);
   const [confirmNote, setConfirmNote] = useState("");
   const [formErr, setFormErr] = useState("");
   const [phase, setPhase] = useState<"idle" | "run" | "ok" | "rec" | "fail">("idle");
@@ -143,6 +144,18 @@ export function KeyPurchasePanel() {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!bankMenuOpen) return;
+    const close = () => setBankMenuOpen(false);
+    const tmr = window.setTimeout(() => {
+      window.addEventListener("click", close);
+    }, 0);
+    return () => {
+      window.clearTimeout(tmr);
+      window.removeEventListener("click", close);
+    };
+  }, [bankMenuOpen]);
 
   // ESC closes modal only when idle/fail
   useEffect(() => {
@@ -426,26 +439,58 @@ export function KeyPurchasePanel() {
             {phase === "idle" || phase === "fail" ? (
               <>
                 <p className="u081-lab">Ngân hàng chuyển khoản</p>
-                <div className="mk-select-bank">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={bankLogoUrl(bankCode)}
-                    alt=""
-                    width={28}
-                    height={28}
-                    className="mk-sel-logo"
-                  />
-                  <select
-                    value={bankCode}
-                    onChange={(e) => setBankCode(e.target.value)}
-                    className="mk-dropdown"
+                <div className="mk-dd">
+                  <button
+                    type="button"
+                    className="mk-dd-trigger"
+                    onClick={() => setBankMenuOpen((v) => !v)}
+                    aria-expanded={bankMenuOpen}
                   >
-                    {BANK_OPTIONS.map((b) => (
-                      <option key={b.code} value={b.code}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={bankLogoUrl(bankCode)}
+                      alt=""
+                      width={28}
+                      height={28}
+                      className="mk-sel-logo"
+                    />
+                    <span className="mk-dd-label">
+                      {BANK_OPTIONS.find((b) => b.code === bankCode)?.name || bankCode}
+                    </span>
+                    <span className="mk-dd-chev" aria-hidden>
+                      ▾
+                    </span>
+                  </button>
+                  {bankMenuOpen ? (
+                    <ul className="mk-dd-menu" role="listbox">
+                      {BANK_OPTIONS.map((b) => (
+                        <li key={b.code}>
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={bankCode === b.code}
+                            className={
+                              "mk-dd-item" + (bankCode === b.code ? " on" : "")
+                            }
+                            onClick={() => {
+                              setBankCode(b.code);
+                              setBankMenuOpen(false);
+                            }}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={bankLogoUrl(b.code)}
+                              alt=""
+                              width={24}
+                              height={24}
+                              className="mk-sel-logo"
+                            />
+                            <span>{b.name}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
 
                 {matchedAdmin?.accountNumber ? (
@@ -649,9 +694,14 @@ html[data-theme=dark] .mk-page,html.dark .mk-page{
 .u081-sum div{display:flex;justify-content:space-between;font-size:13.5px;font-weight:650;color:var(--ux-ink-2);padding:3px 0;gap:10px}
 .u081-sum div.t{margin-top:6px;padding-top:10px;border-top:1px dashed var(--ux-line-2);font-size:16px;font-weight:850;color:var(--ux-ink)}
 .u081-lab{margin:14px 0 8px;font-size:12.5px;font-weight:800}
-.mk-select-bank{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:var(--ux-surface-2);border:1px solid var(--ux-line)}
-.mk-sel-logo{width:28px;height:28px;object-fit:contain;border-radius:6px;background:#fff;flex-shrink:0}
-.mk-dropdown{flex:1;min-width:0;border:0;background:transparent;color:var(--ux-ink);font-size:14px;font-weight:650;outline:none;cursor:pointer;height:36px}
+.mk-dd{position:relative;z-index:6}
+.mk-dd-trigger{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--ux-line-2);background:var(--ux-surface-2);color:var(--ux-ink);cursor:pointer;text-align:left}
+.mk-dd-label{flex:1;min-width:0;font-size:14px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk-dd-chev{opacity:.55;font-size:12px}
+.mk-dd-menu{position:absolute;left:0;right:0;top:calc(100% + 6px);max-height:240px;overflow-y:auto;margin:0;padding:6px;list-style:none;border-radius:14px;border:1px solid var(--ux-line-2);background:var(--ux-surface);box-shadow:0 16px 40px -16px var(--ux-shadow-strong);z-index:20}
+.mk-dd-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:var(--ux-ink);font-size:13.5px;font-weight:600;cursor:pointer;text-align:left}
+.mk-dd-item:hover,.mk-dd-item.on{background:var(--ux-surface-2)}
+.mk-sel-logo{width:28px;height:28px;object-fit:contain;border-radius:6px;background:#fff;flex-shrink:0;padding:2px}
 .u081-payinfo{margin-top:12px;padding:12px 14px;border-radius:14px;background:var(--ux-surface-2);font-size:13px}
 .u081-payinfo .pay-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .u081-payinfo .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;align-items:center}

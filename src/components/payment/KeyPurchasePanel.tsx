@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccountStore } from "@/lib/account";
+import { Check, Copy } from "lucide-react";
 
 type Bank = {
   id: string;
@@ -33,6 +34,7 @@ type Order = {
 };
 
 function formatVnd(n: number) {
+  if (!n || n <= 0) return "—";
   return new Intl.NumberFormat("vi-VN").format(n) + "đ";
 }
 
@@ -46,44 +48,60 @@ export function KeyPurchasePanel() {
   const [buyerPhone, setBuyerPhone] = useState("");
   const [note, setNote] = useState("");
   const [loadErr, setLoadErr] = useState("");
+  const [loading, setLoading] = useState(true);
   const [formErr, setFormErr] = useState("");
   const [phase, setPhase] = useState<"idle" | "run" | "ok" | "rec">("idle");
   const [progress, setProgress] = useState(0);
   const [stepOn, setStepOn] = useState([false, false, false]);
   const [order, setOrder] = useState<Order | null>(null);
   const [statusText, setStatusText] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const rafRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   const selectedBank = banks.find((b) => b.id === bankId) || null;
   const selectedProduct = products.find((p) => p.tierCode === tierCode) || null;
+  const transferHint = username
+    ? `OPUS ${username} ${tierCode || ""}`.trim().toUpperCase()
+    : "";
+
+  const canSubmit =
+    phase === "idle" &&
+    !!selectedProduct &&
+    !!selectedBank &&
+    buyerName.trim().length > 0 &&
+    buyerPhone.trim().length > 0 &&
+    !!username;
+
+  const loadCatalog = useCallback(async () => {
+    setLoading(true);
+    setLoadErr("");
+    try {
+      const res = await fetch("/api/payment/banks", { cache: "no-store" });
+      const data = await res.json();
+      if (!data.ok) {
+        setLoadErr(data.error || "Không tải được danh sách gói / ngân hàng");
+        return;
+      }
+      const b: Bank[] = data.banks || [];
+      const p: Product[] = data.products || [];
+      setBanks(b);
+      setProducts(p);
+      setBankId((prev) => (prev && b.some((x) => x.id === prev) ? prev : b[0]?.id || ""));
+      setTierCode((prev) =>
+        prev && p.some((x) => x.tierCode === prev) ? prev : p[0]?.tierCode || ""
+      );
+    } catch {
+      setLoadErr("Lỗi mạng khi tải dữ liệu");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/payment/banks", { cache: "no-store" });
-        const data = await res.json();
-        if (!alive) return;
-        if (!data.ok) {
-          setLoadErr(data.error || "Không tải được thông tin thanh toán");
-          return;
-        }
-        setBanks(data.banks || []);
-        setProducts(data.products || []);
-        if (data.banks?.[0]) setBankId(data.banks[0].id);
-        if (data.products?.[0]) setTierCode(data.products[0].tierCode);
-      } catch {
-        if (alive) setLoadErr("Lỗi mạng khi tải ngân hàng / gói");
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+    void loadCatalog();
+  }, [loadCatalog]);
 
   useEffect(() => {
     return () => {
@@ -143,19 +161,7 @@ export function KeyPurchasePanel() {
 
   const submit = async () => {
     setFormErr("");
-    if (phase === "run" || phase === "ok" || phase === "rec") return;
-    if (!selectedProduct || !selectedBank) {
-      setFormErr("Chọn gói và ngân hàng");
-      return;
-    }
-    if (!buyerName.trim() || !buyerPhone.trim()) {
-      setFormErr("Nhập họ tên và số điện thoại");
-      return;
-    }
-    if (!username) {
-      setFormErr("Đăng nhập trước khi mua key");
-      return;
-    }
+    if (!canSubmit || !selectedProduct || !selectedBank) return;
     startProgressToWait();
     try {
       const res = await fetch("/api/payment/orders", {
@@ -180,7 +186,6 @@ export function KeyPurchasePanel() {
         return;
       }
       setOrder(data.order);
-      // Poll until approved
       pollRef.current = setInterval(async () => {
         try {
           const r = await fetch(`/api/payment/orders?id=${data.order.id}`, {
@@ -199,7 +204,6 @@ export function KeyPurchasePanel() {
             setStepOn([false, false, false]);
             setFormErr("Đơn bị từ chối. Kiểm tra lại thông tin chuyển khoản.");
           } else {
-            // pulse progress between 0.55 and 0.9 while waiting
             setProgress((p) => (p < 0.88 ? Math.min(0.88, p + 0.02) : 0.55));
           }
         } catch {
@@ -223,15 +227,15 @@ export function KeyPurchasePanel() {
     setOrder(null);
     setStatusText("");
     setFormErr("");
-    setCopied(false);
+    void loadCatalog();
   };
 
-  const copyKey = async () => {
-    if (!order?.keyCode) return;
+  const copyText = async (text: string, key: string) => {
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(order.keyCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1500);
     } catch {
       /* */
     }
@@ -243,12 +247,15 @@ export function KeyPurchasePanel() {
     (phase === "ok" || phase === "rec" ? " is-ok" : "") +
     (phase === "rec" ? " is-rec" : "");
 
+  const idleLocked = phase !== "idle";
+
   return (
-    <div ref={rootRef} className={cls}>
+    <div className={cls}>
+      {/* Tóm tắt */}
       <div className="u081-sum">
         <div>
           <span>Gói chọn mua</span>
-          <span>{selectedProduct?.label || "—"}</span>
+          <span>{selectedProduct?.label || "Chưa chọn"}</span>
         </div>
         <div className="t">
           <span>Thanh toán</span>
@@ -258,98 +265,146 @@ export function KeyPurchasePanel() {
         </div>
       </div>
 
-      {loadErr ? (
+      {loading ? (
+        <p className="u081-hint">Đang tải gói và ngân hàng…</p>
+      ) : loadErr ? (
         <p className="u081-err">{loadErr}</p>
-      ) : !banks.length || !products.length ? (
-        <p className="u081-err">
-          Chưa có ngân hàng hoặc gói bán. Admin cần cấu hình trong board-home.
-        </p>
+      ) : !products.length || !banks.length ? (
+        <div className="u081-empty">
+          <p>
+            {!products.length
+              ? "Chưa có gói bán."
+              : "Chưa có ngân hàng nhận tiền."}{" "}
+            Admin mở tab <b>Mua Key</b> trên board-home, thêm gói (giá VND) và
+            ngân hàng, rồi tải lại trang này.
+          </p>
+          <button type="button" className="u081-reload" onClick={() => void loadCatalog()}>
+            Tải lại
+          </button>
+        </div>
       ) : (
         <>
-          <label className="u081-lab">Gói key</label>
-          <select
-            className="u081-sel"
-            value={tierCode}
-            disabled={phase !== "idle"}
-            onChange={(e) => setTierCode(e.target.value)}
-          >
-            {products.map((p) => (
-              <option key={p.tierCode} value={p.tierCode}>
-                {p.label} — {formatVnd(p.amountVnd)}
-              </option>
-            ))}
-          </select>
+          {/* Chọn gói — thẻ */}
+          <p className="u081-lab">1. Chọn gói Key</p>
+          <div className="u081-grid">
+            {products.map((p) => {
+              const on = tierCode === p.tierCode;
+              return (
+                <button
+                  key={p.tierCode}
+                  type="button"
+                  disabled={idleLocked}
+                  className={"u081-pick" + (on ? " on" : "")}
+                  onClick={() => setTierCode(p.tierCode)}
+                >
+                  <strong>{p.label}</strong>
+                  <span>{formatVnd(p.amountVnd)}</span>
+                  {p.durationLabel ? (
+                    <small>{p.durationLabel} · tính từ khi nhập key</small>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
 
-          <label className="u081-lab">Ngân hàng nhận</label>
-          <select
-            className="u081-sel"
-            value={bankId}
-            disabled={phase !== "idle"}
-            onChange={(e) => setBankId(e.target.value)}
-          >
-            {banks.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+          {/* Chọn ngân hàng */}
+          <p className="u081-lab">2. Chọn ngân hàng</p>
+          <div className="u081-grid u081-grid-bank">
+            {banks.map((b) => {
+              const on = bankId === b.id;
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  disabled={idleLocked}
+                  className={"u081-pick" + (on ? " on" : "")}
+                  onClick={() => setBankId(b.id)}
+                >
+                  <strong>{b.name}</strong>
+                  <span className="mono">{b.accountNumber}</span>
+                  {b.accountHolder ? <small>{b.accountHolder}</small> : null}
+                </button>
+              );
+            })}
+          </div>
 
-          {selectedBank ? (
-            <div className="u081-card">
-              <i aria-hidden="true" />
-              <div className="u081-card-body">
-                <strong>{selectedBank.name}</strong>
-                <span>
-                  {selectedBank.accountNumber}
-                  {selectedBank.accountHolder
-                    ? ` · ${selectedBank.accountHolder}`
-                    : ""}
-                </span>
-                {selectedBank.transferHint ? (
-                  <small>{selectedBank.transferHint}</small>
-                ) : null}
+          {selectedBank && selectedProduct ? (
+            <div className="u081-payinfo">
+              <div className="row">
+                <span>Ngân hàng</span>
+                <b>{selectedBank.name}</b>
               </div>
+              <div className="row">
+                <span>Số tài khoản</span>
+                <button
+                  type="button"
+                  className="copy"
+                  onClick={() =>
+                    void copyText(selectedBank.accountNumber, "acc")
+                  }
+                >
+                  {selectedBank.accountNumber}
+                  {copied === "acc" ? " · đã chép" : ""}
+                  <Copy className="ic" />
+                </button>
+              </div>
+              {selectedBank.accountHolder ? (
+                <div className="row">
+                  <span>Chủ tài khoản</span>
+                  <b>{selectedBank.accountHolder}</b>
+                </div>
+              ) : null}
+              <div className="row">
+                <span>Số tiền</span>
+                <b>{formatVnd(selectedProduct.amountVnd)}</b>
+              </div>
+              <div className="row">
+                <span>Nội dung CK</span>
+                <button
+                  type="button"
+                  className="copy"
+                  onClick={() => void copyText(transferHint, "ct")}
+                >
+                  {transferHint || "—"}
+                  {copied === "ct" ? " · đã chép" : ""}
+                  <Copy className="ic" />
+                </button>
+              </div>
+              {selectedBank.transferHint ? (
+                <p className="hint">{selectedBank.transferHint}</p>
+              ) : null}
             </div>
           ) : null}
 
-          <label className="u081-lab">Họ tên người chuyển</label>
+          {/* Thông tin người mua */}
+          <p className="u081-lab">3. Thông tin của bạn</p>
+          {!username ? (
+            <p className="u081-err">Đăng nhập trước khi mua key.</p>
+          ) : null}
+          <label className="u081-lab2">Họ tên người chuyển</label>
           <input
             className="u081-inp"
             value={buyerName}
-            disabled={phase !== "idle"}
+            disabled={idleLocked}
             onChange={(e) => setBuyerName(e.target.value)}
-            placeholder=""
             autoComplete="name"
           />
-          <label className="u081-lab">Số điện thoại</label>
+          <label className="u081-lab2">Số điện thoại</label>
           <input
             className="u081-inp"
             value={buyerPhone}
-            disabled={phase !== "idle"}
+            disabled={idleLocked}
             onChange={(e) => setBuyerPhone(e.target.value)}
-            placeholder=""
             inputMode="tel"
             autoComplete="tel"
           />
-          <label className="u081-lab">Ghi chú (tuỳ chọn)</label>
+          <label className="u081-lab2">Mã GD / ghi chú (tuỳ chọn)</label>
           <input
             className="u081-inp"
             value={note}
-            disabled={phase !== "idle"}
+            disabled={idleLocked}
             onChange={(e) => setNote(e.target.value)}
-            placeholder=""
           />
-
-          {order?.transferContent && phase !== "rec" ? (
-            <p className="u081-hint">
-              Nội dung CK: <b>{order.transferContent}</b>
-            </p>
-          ) : username ? (
-            <p className="u081-hint">
-              Nội dung CK gợi ý:{" "}
-              <b>{`OPUS ${username} ${tierCode}`.toUpperCase()}</b>
-            </p>
-          ) : null}
         </>
       )}
 
@@ -366,7 +421,7 @@ export function KeyPurchasePanel() {
           className="u081-go"
           type="button"
           onClick={() => void submit()}
-          disabled={phase !== "idle" || !banks.length || !products.length}
+          disabled={!canSubmit}
         >
           <span>Xác nhận thanh toán</span>
         </button>
@@ -399,9 +454,13 @@ export function KeyPurchasePanel() {
         <dl>
           <dt>Key của bạn</dt>
           <dd>
-            <button type="button" className="u081-key" onClick={() => void copyKey()}>
+            <button
+              type="button"
+              className="u081-key"
+              onClick={() => void copyText(order?.keyCode || "", "key")}
+            >
               {order?.keyCode || "—"}
-              {copied ? " · đã chép" : " · chép"}
+              {copied === "key" ? " · đã chép" : " · chép"}
             </button>
           </dd>
           <dt>Thời gian sử dụng</dt>
@@ -411,32 +470,50 @@ export function KeyPurchasePanel() {
           </dd>
         </dl>
         <p className="thanks">Cảm ơn bạn đã mua sản phẩm bên chúng tôi</p>
-        <button ref={closeBtnRef} type="button" tabIndex={phase === "rec" ? 0 : -1} onClick={reset}>
+        <button
+          ref={closeBtnRef}
+          type="button"
+          tabIndex={phase === "rec" ? 0 : -1}
+          onClick={reset}
+        >
           Đóng
         </button>
       </div>
 
       <style jsx global>{`
-.u081{--ux-page:var(--background,#f8fafc);--ux-surface:var(--surface,#fff);--ux-surface-2:var(--surface-elevated,#f1f5f9);--ux-ink:var(--foreground,#0f172a);--ux-ink-2:var(--foreground-muted,#475569);--ux-ink-3:var(--foreground-subtle,#94a3b8);--ux-line:var(--border,rgba(15,23,42,.1));--ux-line-2:rgba(15,23,42,.18);--ux-accent:#7c3aed;--ux-mint:#119c72;--ux-accent-ink:#fff;--ux-shadow-strong:rgba(40,30,80,.3);--ux-ease:cubic-bezier(.2,.8,.2,1);--ux-spring:cubic-bezier(.34,1.45,.64,1);position:relative;width:100%;max-width:480px;min-height:520px;margin:0 auto;display:flex;flex-direction:column;align-items:stretch;padding:28px 24px 24px;border-radius:30px;background:var(--ux-surface);box-shadow:0 0 0 1px var(--ux-line),0 30px 60px -36px var(--ux-shadow-strong);overflow:hidden;color:var(--ux-ink);font-family:inherit}
+.u081{--ux-page:var(--background,#f8fafc);--ux-surface:var(--surface,#fff);--ux-surface-2:var(--surface-elevated,#f1f5f9);--ux-ink:var(--foreground,#0f172a);--ux-ink-2:var(--foreground-muted,#475569);--ux-ink-3:var(--foreground-subtle,#94a3b8);--ux-line:var(--border,rgba(15,23,42,.1));--ux-line-2:rgba(15,23,42,.18);--ux-accent:#7c3aed;--ux-mint:#119c72;--ux-accent-ink:#fff;--ux-shadow-strong:rgba(40,30,80,.3);--ux-ease:cubic-bezier(.2,.8,.2,1);--ux-spring:cubic-bezier(.34,1.45,.64,1);position:relative;width:100%;max-width:520px;min-height:520px;margin:0 auto;display:flex;flex-direction:column;align-items:stretch;padding:24px 20px 22px;border-radius:28px;background:var(--ux-surface);box-shadow:0 0 0 1px var(--ux-line),0 30px 60px -36px var(--ux-shadow-strong);overflow:hidden;color:var(--ux-ink);font-family:inherit}
 html[data-theme=dark] .u081,html.dark .u081{--ux-page:var(--background,#07080d);--ux-surface:var(--surface,#13141c);--ux-surface-2:var(--surface-elevated,#1a1b25);--ux-ink:var(--foreground,#f4f0e8);--ux-ink-2:var(--foreground-muted,rgba(244,240,232,.68));--ux-ink-3:var(--foreground-subtle,rgba(244,240,232,.42));--ux-line:var(--border,rgba(255,255,255,.08));--ux-line-2:rgba(255,255,255,.16);--ux-accent:#b7a4ff;--ux-mint:#7ee8c0;--ux-accent-ink:#0b0c12;--ux-shadow-strong:rgba(0,0,0,.72)}
 .u081 *,.u081 *::before,.u081 *::after{box-sizing:border-box}
-.u081-sum{width:100%;padding:16px;border-radius:20px;background:var(--ux-surface-2);transition:opacity .4s,transform .5s var(--ux-ease)}
+.u081-sum{width:100%;padding:14px 16px;border-radius:18px;background:var(--ux-surface-2);transition:opacity .4s,transform .5s var(--ux-ease)}
 .u081-sum div{display:flex;justify-content:space-between;font-size:14px;font-weight:650;color:var(--ux-ink-2);padding:4px 0;gap:12px}
 .u081-sum div.t{margin-top:6px;padding-top:10px;border-top:1px dashed var(--ux-line-2);font-size:16.5px;font-weight:850;color:var(--ux-ink)}
-.u081-lab{display:block;margin:12px 0 6px;font-size:12.5px;font-weight:700;color:var(--ux-ink-2)}
-.u081-sel,.u081-inp{width:100%;height:48px;padding:0 14px;border:0;border-radius:14px;background:var(--ux-surface-2);color:var(--ux-ink);font-size:14.5px;font-weight:600;outline:none;box-shadow:inset 0 0 0 1.5px transparent}
-.u081-sel:focus,.u081-inp:focus{box-shadow:inset 0 0 0 1.5px var(--ux-accent)}
-.u081-card{display:flex;align-items:flex-start;gap:10px;width:100%;margin-top:12px;padding:12px 14px;border-radius:16px;box-shadow:inset 0 0 0 1.5px var(--ux-line-2);font-size:13.5px}
-.u081-card i{flex:none;width:34px;height:24px;border-radius:5px;background:linear-gradient(135deg,#2b1b6b,#5b3fd9 50%,#1e7bd9)}
-.u081-card-body{display:flex;flex-direction:column;gap:2px;min-width:0}
-.u081-card-body strong{font-weight:800}
-.u081-card-body span,.u081-card-body small{color:var(--ux-ink-3);font-weight:650;font-size:12px}
-.u081-hint{margin:10px 0 0;font-size:12.5px;color:var(--ux-ink-3)}
-.u081-hint b{color:var(--ux-ink);font-weight:800}
+.u081-lab{margin:16px 0 8px;font-size:13px;font-weight:800;color:var(--ux-ink)}
+.u081-lab2{display:block;margin:10px 0 5px;font-size:12px;font-weight:700;color:var(--ux-ink-2)}
+.u081-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:420px){.u081-grid{grid-template-columns:1fr}}
+.u081-pick{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px;border-radius:14px;border:1.5px solid var(--ux-line-2);background:var(--ux-surface-2);text-align:left;cursor:pointer;color:var(--ux-ink);transition:border-color .2s,box-shadow .2s}
+.u081-pick:disabled{opacity:.55;cursor:default}
+.u081-pick strong{font-size:13.5px;font-weight:800}
+.u081-pick span{font-size:13px;font-weight:750;color:var(--ux-accent)}
+.u081-pick span.mono{font-family:ui-monospace,monospace;font-size:12px;color:var(--ux-ink-2);font-weight:650}
+.u081-pick small{font-size:11px;color:var(--ux-ink-3);font-weight:600}
+.u081-pick.on{border-color:var(--ux-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ux-accent) 22%,transparent)}
+.u081-payinfo{margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--ux-surface-2);font-size:13px}
+.u081-payinfo .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;align-items:flex-start}
+.u081-payinfo .row span{color:var(--ux-ink-3);font-weight:650;flex-shrink:0}
+.u081-payinfo .row b{font-weight:800;text-align:right;word-break:break-all}
+.u081-payinfo .copy{border:0;background:none;color:var(--ux-ink);font:inherit;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:4px;text-align:right;padding:0;max-width:70%}
+.u081-payinfo .ic{width:14px;height:14px;opacity:.7;flex-shrink:0}
+.u081-payinfo .hint{margin:8px 0 0;font-size:12px;color:var(--ux-ink-3)}
+.u081-inp{width:100%;height:46px;padding:0 14px;border:0;border-radius:14px;background:var(--ux-surface-2);color:var(--ux-ink);font-size:14.5px;font-weight:600;outline:none}
+.u081-inp:focus{box-shadow:inset 0 0 0 1.5px var(--ux-accent)}
+.u081-empty{margin-top:14px;padding:14px;border-radius:16px;background:var(--ux-surface-2);font-size:13.5px;line-height:1.5;color:var(--ux-ink-2)}
+.u081-reload{margin-top:10px;height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--ux-ink);color:var(--ux-page);font-weight:750;cursor:pointer}
+.u081-hint{margin:12px 0 0;font-size:13px;color:var(--ux-ink-3)}
 .u081-err{margin:10px 0 0;font-size:13px;font-weight:700;color:#d93a55}
 .u081-stage{position:relative;width:100%;margin-top:18px;display:flex;align-items:flex-end;justify-content:center;min-height:56px}
 .u081-go{position:relative;width:100%;height:56px;border:0;border-radius:18px;background:var(--ux-ink);color:var(--ux-page);font-size:15.5px;font-weight:800;transition:width .5s var(--ux-spring),border-radius .5s var(--ux-spring),transform .3s var(--ux-spring),background-color .4s;overflow:hidden;cursor:pointer}
-.u081-go:disabled{opacity:.45;cursor:not-allowed}
+.u081-go:disabled{opacity:.4;cursor:not-allowed}
 .u081-go:active:not(:disabled){transform:scale(.97)}
 .u081-go span{transition:opacity .2s}
 .u081.is-run .u081-go,.u081.is-ok .u081-go{width:56px;border-radius:50%;pointer-events:none}
@@ -452,28 +529,28 @@ html[data-theme=dark] .u081,html.dark .u081{--ux-page:var(--background,#07080d);
 .u081.is-ok .u081-go{background:var(--ux-mint)}
 .u081.is-ok .u081-ck{stroke:var(--ux-accent-ink)}
 .u081.is-ok .u081-ck path{stroke-dashoffset:0}
-.u081-steps{display:flex;gap:8px;justify-content:center;margin:22px 0 4px;height:24px;font-size:12.5px;font-weight:700;color:var(--ux-ink-3);opacity:0;transition:opacity .3s;flex-wrap:wrap}
+.u081-steps{display:flex;gap:8px;justify-content:center;margin:18px 0 4px;font-size:12.5px;font-weight:700;color:var(--ux-ink-3);opacity:0;transition:opacity .3s;flex-wrap:wrap}
 .u081.is-run .u081-steps,.u081.is-ok .u081-steps{opacity:1}
-.u081-steps span{display:inline-flex;align-items:center;gap:5px;transition:color .3s}
-.u081-steps span::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ux-line-2);transition:background-color .3s,transform .4s var(--ux-spring)}
+.u081-steps span{display:inline-flex;align-items:center;gap:5px}
+.u081-steps span::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ux-line-2)}
 .u081-steps span.on{color:var(--ux-ink)}
-.u081-steps span.on::before{background:var(--ux-accent);transform:scale(1.3)}
+.u081-steps span.on::before{background:var(--ux-accent);transform:scale(1.25)}
 .u081.is-ok .u081-steps span.on::before{background:var(--ux-mint)}
-.u081-sr{position:absolute;width:1px;height:1px;margin:0;overflow:hidden;clip:rect(0 0 0 0)}
-.u081-rec{position:absolute;left:18px;right:18px;bottom:18px;top:48px;display:flex;flex-direction:column;justify-content:center;padding:24px 22px 20px;border-radius:24px;background:var(--ux-surface-2);transform:translateY(110%);transition:transform .6s var(--ux-spring);text-align:center}
+.u081-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.u081-rec{position:absolute;left:16px;right:16px;bottom:16px;top:40px;display:flex;flex-direction:column;justify-content:center;padding:22px 20px;border-radius:22px;background:var(--ux-surface-2);transform:translateY(110%);transition:transform .6s var(--ux-spring);text-align:center}
 .u081.is-rec .u081-rec{transform:none}
-.u081.is-rec .u081-sum,.u081.is-rec .u081-lab,.u081.is-rec .u081-sel,.u081.is-rec .u081-inp,.u081.is-rec .u081-card,.u081.is-rec .u081-hint,.u081.is-rec .u081-steps,.u081.is-rec .u081-err{opacity:0;pointer-events:none;transform:translateY(-12px);transition:opacity .4s,transform .5s var(--ux-ease)}
-.u081.is-rec .u081-stage{opacity:0;transition:opacity .3s}
-.u081-rec i{width:68px;height:68px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;background:var(--ux-mint);color:var(--ux-accent-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--ux-mint) 16%,transparent)}
+.u081.is-rec .u081-sum,.u081.is-rec .u081-lab,.u081.is-rec .u081-lab2,.u081.is-rec .u081-grid,.u081.is-rec .u081-payinfo,.u081.is-rec .u081-inp,.u081.is-rec .u081-steps,.u081.is-rec .u081-err,.u081.is-rec .u081-empty,.u081.is-rec .u081-hint{opacity:0;pointer-events:none}
+.u081.is-rec .u081-stage{opacity:0}
+.u081-rec i{width:68px;height:68px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:var(--ux-mint);color:var(--ux-accent-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--ux-mint) 16%,transparent)}
 .u081-rec i svg{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.u081-rec b{display:block;font-size:22px;font-weight:850;letter-spacing:-.03em}
-.u081-rec p.thanks{margin:14px 0 18px;font-size:14px;font-weight:650;color:var(--ux-ink-2)}
-.u081-rec dl{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;margin:16px 0 8px;padding:16px;border-radius:16px;background:var(--ux-surface);border:1px solid var(--ux-line);text-align:left;font-size:13.5px}
+.u081-rec b{display:block;font-size:22px;font-weight:850}
+.u081-rec p.thanks{margin:12px 0 16px;font-size:14px;font-weight:650;color:var(--ux-ink-2)}
+.u081-rec dl{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;margin:14px 0 8px;padding:14px;border-radius:14px;background:var(--ux-surface);border:1px solid var(--ux-line);text-align:left;font-size:13.5px}
 .u081-rec dt{color:var(--ux-ink-3);font-weight:650}
-.u081-rec dd{margin:0;text-align:right;font-weight:800;color:var(--ux-ink);word-break:break-all}
+.u081-rec dd{margin:0;text-align:right;font-weight:800;word-break:break-all}
 .u081-key{border:0;background:none;color:inherit;font:inherit;font-weight:800;cursor:pointer;text-align:right;padding:0}
 .u081-rec>button{width:100%;height:48px;border:0;border-radius:14px;background:var(--ux-ink);color:var(--ux-page);font-size:14.5px;font-weight:750;cursor:pointer}
-@media (prefers-reduced-motion:reduce){.u081,.u081 *,.u081 *::before,.u081 *::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+@media (prefers-reduced-motion:reduce){.u081,.u081 *{animation-duration:.001ms!important;transition-duration:.001ms!important}}
       `}</style>
     </div>
   );

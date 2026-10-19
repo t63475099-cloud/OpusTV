@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { PlayCircle, ArrowLeft } from "lucide-react";
+import { PlayCircle, ArrowLeft, KeyRound } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import StreakBadge from "@/components/StreakBadge";
 import { cn } from "@/lib/utils";
@@ -121,8 +121,25 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Phải: streak + bell — căn phải, bề rộng tương đương trái để search thật sự giữa */}
+        {/* Phải: Mua Key + streak + bell */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto lg:ml-0 lg:justify-self-end">
+          {!pathname.startsWith("/tin-nhan") &&
+            !pathname.startsWith("/admin") &&
+            !pathname.startsWith("/mua-key") && (
+              <Link
+                href="/mua-key"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border border-border",
+                  "bg-surface px-2.5 py-1.5 text-xs font-semibold text-foreground",
+                  "hover:bg-surface-elevated transition-colors ui-border-contrast",
+                  "sm:px-3 sm:text-sm"
+                )}
+                aria-label="Mua Key"
+              >
+                <KeyRound className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                <span className="hidden xs:inline sm:inline">Mua Key</span>
+              </Link>
+            )}
           {!pathname.startsWith("/tin-nhan") && (
             <>
               <div className="hidden sm:block">

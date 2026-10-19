@@ -47,6 +47,7 @@ import {
   Globe,
   Clock,
   Lock,
+  KeyRound,
   Info,
   HelpCircle,
 } from "lucide-react";
@@ -391,6 +392,21 @@ function SettingsInner() {
                 </span>
                 <ChevronRight className="w-5 h-5 text-foreground-subtle" />
               </Link>
+              <Link
+                href="/mua-key"
+                className="flex items-center gap-3 border-t border-border px-4 py-3.5 hover:bg-surface-elevated transition-all duration-500"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-violet-500/40 bg-violet-500/15 text-violet-600 dark:text-violet-300">
+                  <KeyRound className="w-5 h-5" strokeWidth={1.75} />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-medium text-foreground">Mua Key</span>
+                  <span className="block truncate text-xs text-foreground-muted">
+                    Chọn gói VIP · chuyển khoản · nhận key
+                  </span>
+                </span>
+                <ChevronRight className="w-5 h-5 text-foreground-subtle" />
+              </Link>
             </div>
 
             <div className="overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
@@ -493,15 +509,25 @@ function SettingsInner() {
         )}
 
         {section === "account" && (
-          <div className="px-4 py-6 rounded-2xl border border-border bg-surface  shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500">
+          <div className="space-y-3 px-1 py-2">
             <Link
               href="/tai-khoan"
-              className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-gradient-to-r from-red-600/25 via-rose-600/15 to-transparent px-4 py-4 text-foreground transition hover:border-red-500/40 active:scale-[0.99]"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-4 text-foreground transition hover:bg-surface-elevated"
             >
               <span className="font-semibold">
                 {profile.loggedIn ? "Hồ sơ của bạn" : "Đăng nhập / Đăng ký"}
               </span>
-              <span className="text-sm text-red-300">Mở →</span>
+              <span className="text-sm text-foreground-muted">Mở →</span>
+            </Link>
+            <Link
+              href="/mua-key"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-4 text-foreground transition hover:bg-violet-500/15"
+            >
+              <span className="flex items-center gap-2 font-semibold">
+                <KeyRound className="h-5 w-5" strokeWidth={1.75} />
+                Mua Key
+              </span>
+              <span className="text-sm text-foreground-muted">Mở →</span>
             </Link>
           </div>
         )}

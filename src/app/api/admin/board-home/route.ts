@@ -1427,8 +1427,20 @@ if (action === "set_verified") {
         FROM payment_banks
         ORDER BY sort_order ASC, created_at DESC
       `) as Array<Record<string, unknown>>;
+      const products = (await sql`
+        SELECT tier_code, label, amount_vnd, duration_label, is_active
+        FROM key_products
+        ORDER BY amount_vnd ASC
+      `) as Array<Record<string, unknown>>;
       return NextResponse.json({
         ok: true,
+        products: products.map((p) => ({
+          tierCode: String(p.tier_code || ""),
+          label: String(p.label || ""),
+          amountVnd: Number(p.amount_vnd || 0),
+          durationLabel: String(p.duration_label || ""),
+          isActive: !!p.is_active,
+        })),
         orders: orders.map((o) => ({
           id: String(o.id),
           username: String(o.username || ""),

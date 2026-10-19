@@ -43,6 +43,7 @@ export function PaymentOrdersTab({
   const t = boardTokens(theme);
   const [orders, setOrders] = useState<Order[]>([]);
   const [banks, setBanks] = useState<BankRow[]>([]);
+  const [products, setProducts] = useState<Array<{ tierCode: string; label: string; amountVnd: number; durationLabel: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -69,6 +70,7 @@ export function PaymentOrdersTab({
       };
       if (data?.orders) setOrders(data.orders);
       if (data?.banks) setBanks(data.banks);
+      if ((data as { products?: typeof products }).products) setProducts((data as { products: typeof products }).products);
     } finally {
       setLoading(false);
     }

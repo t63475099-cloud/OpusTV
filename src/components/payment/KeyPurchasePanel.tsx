@@ -1,9 +1,10 @@
 /* Lucian UX/UI Prompt #081 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#081 */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccountStore } from "@/lib/account";
-import { Check, Copy } from "lucide-react";
+import { Copy } from "lucide-react";
+import { VIP_TIERS } from "@/lib/vipCatalog";
 
 type Bank = {
   id: string;
@@ -35,9 +36,30 @@ type Order = {
   isLifetime?: boolean;
 };
 
+/** Giá hiển thị mặc định (VND) — Admin ghi đè qua key_products */
+const DEFAULT_VND: Record<string, number> = {
+  "24H": 29000,
+  "3D": 59000,
+  "7D": 99000,
+  "15D": 149000,
+  "1M": 199000,
+  "3M": 499000,
+  "6M": 899000,
+  "1Y": 1490000,
+  "3Y": 2990000,
+  "10Y": 5990000,
+  LIFETIME: 9990000,
+};
+
 function formatVnd(n: number) {
   if (!n || n <= 0) return "—";
   return new Intl.NumberFormat("vi-VN").format(n) + "đ";
+}
+
+function durationOf(code: string, isLife: boolean) {
+  if (isLife) return "Vĩnh viễn";
+  const t = VIP_TIERS.find((x) => x.code === code);
+  return t ? t.label.replace(/^Gói\s+/i, "") : code;
 }
 
 function KeyRemainLabel({
@@ -71,7 +93,11 @@ function KeyRemainLabel({
       const m = Math.floor((total % 3600) / 60);
       const s = total % 60;
       const pad = (n: number) => String(n).padStart(2, "0");
-      setText(d > 0 ? `${d} ngày ${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(h)}:${pad(m)}:${pad(s)}`);
+      setText(
+        d > 0
+          ? `${d} ngày ${pad(h)}:${pad(m)}:${pad(s)}`
+          : `${pad(h)}:${pad(m)}:${pad(s)}`
+      );
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -83,14 +109,12 @@ function KeyRemainLabel({
 export function KeyPurchasePanel() {
   const username = useAccountStore((s) => s.username);
   const [banks, setBanks] = useState<Bank[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [bankId, setBankId] = useState("");
-  const [tierCode, setTierCode] = useState("");
+  const [tierCode, setTierCode] = useState<string>(VIP_TIERS[0]?.code || "24H");
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [note, setNote] = useState("");
-  const [loadErr, setLoadErr] = useState("");
-  const [loading, setLoading] = useState(true);
   const [formErr, setFormErr] = useState("");
   const [phase, setPhase] = useState<"idle" | "run" | "ok" | "rec">("idle");
   const [progress, setProgress] = useState(0);
@@ -102,8 +126,27 @@ export function KeyPurchasePanel() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
+  /** Luôn đủ 11 gói: VIP_TIERS + giá Admin (nếu có) */
+  const products: Product[] = useMemo(() => {
+    const byCode = new Map(apiProducts.map((p) => [p.tierCode.toUpperCase(), p]));
+    return VIP_TIERS.map((t) => {
+      const api = byCode.get(t.code);
+      const amount =
+        api && api.amountVnd > 0
+          ? api.amountVnd
+          : DEFAULT_VND[t.code] || 0;
+      return {
+        tierCode: t.code,
+        label: api?.label || t.label,
+        amountVnd: amount,
+        durationLabel:
+          api?.durationLabel || durationOf(t.code, t.isLifetime),
+      };
+    });
+  }, [apiProducts]);
+
   const selectedBank = banks.find((b) => b.id === bankId) || null;
-  const selectedProduct = products.find((p) => p.tierCode === tierCode) || null;
+  const selectedProduct = products.find((p) => p.tierCode === tierCode) || products[0] || null;
   const transferHint = username
     ? `OPUS ${username} ${tierCode || ""}`.trim().toUpperCase()
     : "";
@@ -111,33 +154,27 @@ export function KeyPurchasePanel() {
   const canSubmit =
     phase === "idle" &&
     !!selectedProduct &&
+    selectedProduct.amountVnd > 0 &&
     !!selectedBank &&
     buyerName.trim().length > 0 &&
     buyerPhone.trim().length > 0 &&
     !!username;
 
   const loadCatalog = useCallback(async () => {
-    setLoading(true);
-    setLoadErr("");
     try {
       const res = await fetch("/api/payment/banks", { cache: "no-store" });
-      const data = await res.json();
-      if (!data.ok) {
-        setLoadErr(data.error || "Không tải được danh sách gói / ngân hàng");
-        return;
+      const data = await res.json().catch(() => ({}));
+      if (data?.ok) {
+        const b: Bank[] = data.banks || [];
+        const p: Product[] = data.products || [];
+        setBanks(b);
+        setApiProducts(p);
+        setBankId((prev) =>
+          prev && b.some((x) => x.id === prev) ? prev : b[0]?.id || ""
+        );
       }
-      const b: Bank[] = data.banks || [];
-      const p: Product[] = data.products || [];
-      setBanks(b);
-      setProducts(p);
-      setBankId((prev) => (prev && b.some((x) => x.id === prev) ? prev : b[0]?.id || ""));
-      setTierCode((prev) =>
-        prev && p.some((x) => x.tierCode === prev) ? prev : p[0]?.tierCode || ""
-      );
     } catch {
-      setLoadErr("Lỗi mạng khi tải dữ liệu");
-    } finally {
-      setLoading(false);
+      /* giữ danh sách gói mặc định */
     }
   }, []);
 
@@ -293,7 +330,6 @@ export function KeyPurchasePanel() {
 
   return (
     <div className={cls}>
-      {/* Tóm tắt */}
       <div className="u081-sum">
         <div>
           <span>Gói chọn mua</span>
@@ -307,148 +343,131 @@ export function KeyPurchasePanel() {
         </div>
       </div>
 
-      {loading ? (
-        <p className="u081-hint">Đang tải gói và ngân hàng…</p>
-      ) : loadErr ? (
-        <p className="u081-err">{loadErr}</p>
-      ) : !products.length || !banks.length ? (
-        <div className="u081-empty">
-          <p>
-            {!products.length
-              ? "Chưa có gói bán."
-              : "Chưa có ngân hàng nhận tiền."}{" "}
-            Admin mở tab <b>Mua Key</b> trên board-home, thêm gói (giá VND) và
-            ngân hàng, rồi tải lại trang này.
-          </p>
-          <button type="button" className="u081-reload" onClick={() => void loadCatalog()}>
-            Tải lại
-          </button>
+      {/* 1. Tab / thẻ gói — luôn đủ danh sách */}
+      <p className="u081-lab">1. Chọn gói Key</p>
+      <div className="u081-grid" role="tablist" aria-label="Gói Key">
+        {products.map((p) => {
+          const on = tierCode === p.tierCode;
+          return (
+            <button
+              key={p.tierCode}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              disabled={idleLocked}
+              className={"u081-pick" + (on ? " on" : "")}
+              onClick={() => setTierCode(p.tierCode)}
+            >
+              <strong>{p.label}</strong>
+              <span>{formatVnd(p.amountVnd)}</span>
+              {p.durationLabel ? <small>{p.durationLabel}</small> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 2. Ngân hàng */}
+      <p className="u081-lab">2. Chọn ngân hàng</p>
+      {banks.length > 0 ? (
+        <div className="u081-grid u081-grid-bank">
+          {banks.map((b) => {
+            const on = bankId === b.id;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                disabled={idleLocked}
+                className={"u081-pick" + (on ? " on" : "")}
+                onClick={() => setBankId(b.id)}
+              >
+                <strong>{b.name}</strong>
+                <span className="mono">{b.accountNumber}</span>
+                {b.accountHolder ? <small>{b.accountHolder}</small> : null}
+              </button>
+            );
+          })}
         </div>
       ) : (
-        <>
-          {/* Chọn gói — thẻ */}
-          <p className="u081-lab">1. Chọn gói Key</p>
-          <div className="u081-grid">
-            {products.map((p) => {
-              const on = tierCode === p.tierCode;
-              return (
-                <button
-                  key={p.tierCode}
-                  type="button"
-                  disabled={idleLocked}
-                  className={"u081-pick" + (on ? " on" : "")}
-                  onClick={() => setTierCode(p.tierCode)}
-                >
-                  <strong>{p.label}</strong>
-                  <span>{formatVnd(p.amountVnd)}</span>
-                  {p.durationLabel ? (
-                    <small>{p.durationLabel} · chạy từ lúc Admin tạo key</small>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
+        <p className="u081-hint">
+          Chưa có ngân hàng trên hệ thống. Admin thêm trong board-home → Mua Key.
+        </p>
+      )}
 
-          {/* Chọn ngân hàng */}
-          <p className="u081-lab">2. Chọn ngân hàng</p>
-          <div className="u081-grid u081-grid-bank">
-            {banks.map((b) => {
-              const on = bankId === b.id;
-              return (
-                <button
-                  key={b.id}
-                  type="button"
-                  disabled={idleLocked}
-                  className={"u081-pick" + (on ? " on" : "")}
-                  onClick={() => setBankId(b.id)}
-                >
-                  <strong>{b.name}</strong>
-                  <span className="mono">{b.accountNumber}</span>
-                  {b.accountHolder ? <small>{b.accountHolder}</small> : null}
-                </button>
-              );
-            })}
+      {selectedBank && selectedProduct ? (
+        <div className="u081-payinfo">
+          <div className="row">
+            <span>Ngân hàng</span>
+            <b>{selectedBank.name}</b>
           </div>
-
-          {selectedBank && selectedProduct ? (
-            <div className="u081-payinfo">
-              <div className="row">
-                <span>Ngân hàng</span>
-                <b>{selectedBank.name}</b>
-              </div>
-              <div className="row">
-                <span>Số tài khoản</span>
-                <button
-                  type="button"
-                  className="copy"
-                  onClick={() =>
-                    void copyText(selectedBank.accountNumber, "acc")
-                  }
-                >
-                  {selectedBank.accountNumber}
-                  {copied === "acc" ? " · đã chép" : ""}
-                  <Copy className="ic" />
-                </button>
-              </div>
-              {selectedBank.accountHolder ? (
-                <div className="row">
-                  <span>Chủ tài khoản</span>
-                  <b>{selectedBank.accountHolder}</b>
-                </div>
-              ) : null}
-              <div className="row">
-                <span>Số tiền</span>
-                <b>{formatVnd(selectedProduct.amountVnd)}</b>
-              </div>
-              <div className="row">
-                <span>Nội dung CK</span>
-                <button
-                  type="button"
-                  className="copy"
-                  onClick={() => void copyText(transferHint, "ct")}
-                >
-                  {transferHint || "—"}
-                  {copied === "ct" ? " · đã chép" : ""}
-                  <Copy className="ic" />
-                </button>
-              </div>
-              {selectedBank.transferHint ? (
-                <p className="hint">{selectedBank.transferHint}</p>
-              ) : null}
+          <div className="row">
+            <span>Số tài khoản</span>
+            <button
+              type="button"
+              className="copy"
+              onClick={() => void copyText(selectedBank.accountNumber, "acc")}
+            >
+              {selectedBank.accountNumber}
+              {copied === "acc" ? " · đã chép" : ""}
+              <Copy className="ic" />
+            </button>
+          </div>
+          {selectedBank.accountHolder ? (
+            <div className="row">
+              <span>Chủ tài khoản</span>
+              <b>{selectedBank.accountHolder}</b>
             </div>
           ) : null}
-
-          {/* Thông tin người mua */}
-          <p className="u081-lab">3. Thông tin của bạn</p>
-          {!username ? (
-            <p className="u081-err">Đăng nhập trước khi mua key.</p>
+          <div className="row">
+            <span>Số tiền</span>
+            <b>{formatVnd(selectedProduct.amountVnd)}</b>
+          </div>
+          <div className="row">
+            <span>Nội dung CK</span>
+            <button
+              type="button"
+              className="copy"
+              onClick={() => void copyText(transferHint, "ct")}
+            >
+              {transferHint || "—"}
+              {copied === "ct" ? " · đã chép" : ""}
+              <Copy className="ic" />
+            </button>
+          </div>
+          {selectedBank.transferHint ? (
+            <p className="hint">{selectedBank.transferHint}</p>
           ) : null}
-          <label className="u081-lab2">Họ tên người chuyển</label>
-          <input
-            className="u081-inp"
-            value={buyerName}
-            disabled={idleLocked}
-            onChange={(e) => setBuyerName(e.target.value)}
-            autoComplete="name"
-          />
-          <label className="u081-lab2">Số điện thoại</label>
-          <input
-            className="u081-inp"
-            value={buyerPhone}
-            disabled={idleLocked}
-            onChange={(e) => setBuyerPhone(e.target.value)}
-            inputMode="tel"
-            autoComplete="tel"
-          />
-          <label className="u081-lab2">Mã GD / ghi chú (tuỳ chọn)</label>
-          <input
-            className="u081-inp"
-            value={note}
-            disabled={idleLocked}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </>
-      )}
+        </div>
+      ) : null}
+
+      {/* 3. Thông tin người mua */}
+      <p className="u081-lab">3. Thông tin của bạn</p>
+      {!username ? (
+        <p className="u081-err">Đăng nhập trước khi mua key.</p>
+      ) : null}
+      <label className="u081-lab2">Họ tên người chuyển</label>
+      <input
+        className="u081-inp"
+        value={buyerName}
+        disabled={idleLocked}
+        onChange={(e) => setBuyerName(e.target.value)}
+        autoComplete="name"
+      />
+      <label className="u081-lab2">Số điện thoại</label>
+      <input
+        className="u081-inp"
+        value={buyerPhone}
+        disabled={idleLocked}
+        onChange={(e) => setBuyerPhone(e.target.value)}
+        inputMode="tel"
+        autoComplete="tel"
+      />
+      <label className="u081-lab2">Mã GD / ghi chú (tuỳ chọn)</label>
+      <input
+        className="u081-inp"
+        value={note}
+        disabled={idleLocked}
+        onChange={(e) => setNote(e.target.value)}
+      />
 
       {formErr ? <p className="u081-err">{formErr}</p> : null}
 
@@ -552,9 +571,7 @@ html[data-theme=dark] .u081,html.dark .u081{--ux-page:var(--background,#07080d);
 .u081-payinfo .hint{margin:8px 0 0;font-size:12px;color:var(--ux-ink-3)}
 .u081-inp{width:100%;height:46px;padding:0 14px;border:0;border-radius:14px;background:var(--ux-surface-2);color:var(--ux-ink);font-size:14.5px;font-weight:600;outline:none}
 .u081-inp:focus{box-shadow:inset 0 0 0 1.5px var(--ux-accent)}
-.u081-empty{margin-top:14px;padding:14px;border-radius:16px;background:var(--ux-surface-2);font-size:13.5px;line-height:1.5;color:var(--ux-ink-2)}
-.u081-reload{margin-top:10px;height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--ux-ink);color:var(--ux-page);font-weight:750;cursor:pointer}
-.u081-hint{margin:12px 0 0;font-size:13px;color:var(--ux-ink-3)}
+.u081-hint{margin:8px 0 0;font-size:13px;color:var(--ux-ink-3);line-height:1.45}
 .u081-err{margin:10px 0 0;font-size:13px;font-weight:700;color:#d93a55}
 .u081-stage{position:relative;width:100%;margin-top:18px;display:flex;align-items:flex-end;justify-content:center;min-height:56px}
 .u081-go{position:relative;width:100%;height:56px;border:0;border-radius:18px;background:var(--ux-ink);color:var(--ux-page);font-size:15.5px;font-weight:800;transition:width .5s var(--ux-spring),border-radius .5s var(--ux-spring),transform .3s var(--ux-spring),background-color .4s;overflow:hidden;cursor:pointer}
@@ -584,7 +601,7 @@ html[data-theme=dark] .u081,html.dark .u081{--ux-page:var(--background,#07080d);
 .u081-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .u081-rec{position:absolute;left:16px;right:16px;bottom:16px;top:40px;display:flex;flex-direction:column;justify-content:center;padding:22px 20px;border-radius:22px;background:var(--ux-surface-2);transform:translateY(110%);transition:transform .6s var(--ux-spring);text-align:center}
 .u081.is-rec .u081-rec{transform:none}
-.u081.is-rec .u081-sum,.u081.is-rec .u081-lab,.u081.is-rec .u081-lab2,.u081.is-rec .u081-grid,.u081.is-rec .u081-payinfo,.u081.is-rec .u081-inp,.u081.is-rec .u081-steps,.u081.is-rec .u081-err,.u081.is-rec .u081-empty,.u081.is-rec .u081-hint{opacity:0;pointer-events:none}
+.u081.is-rec .u081-sum,.u081.is-rec .u081-lab,.u081.is-rec .u081-lab2,.u081.is-rec .u081-grid,.u081.is-rec .u081-payinfo,.u081.is-rec .u081-inp,.u081.is-rec .u081-steps,.u081.is-rec .u081-err,.u081.is-rec .u081-hint{opacity:0;pointer-events:none}
 .u081.is-rec .u081-stage{opacity:0}
 .u081-rec i{width:68px;height:68px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:var(--ux-mint);color:var(--ux-accent-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--ux-mint) 16%,transparent)}
 .u081-rec i svg{width:32px;height:32px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}

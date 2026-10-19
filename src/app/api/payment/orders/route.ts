@@ -74,17 +74,45 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const products = (await sql`
+    const dbProducts = (await sql`
       SELECT tier_code, label, amount_vnd, duration_label
       FROM key_products
       WHERE tier_code = ${tierCode} AND is_active = TRUE AND amount_vnd > 0
       LIMIT 1
     `) as Array<Record<string, unknown>>;
-    if (!products[0]) {
-      return NextResponse.json(
-        { ok: false, error: "Gói này chưa mở bán hoặc chưa có giá" },
-        { status: 400 }
-      );
+
+    // Fallback: 11 gói hệ thống + giá mặc định nếu Admin chưa lưu key_products
+    const DEFAULT_VND: Record<string, number> = {
+      "24H": 29000,
+      "3D": 59000,
+      "7D": 99000,
+      "15D": 149000,
+      "1M": 199000,
+      "3M": 499000,
+      "6M": 899000,
+      "1Y": 1490000,
+      "3Y": 2990000,
+      "10Y": 5990000,
+      LIFETIME: 9990000,
+    };
+    const { getVipTier } = await import("@/lib/vipCatalog");
+    const tierDef = getVipTier(tierCode);
+    if (!dbProducts[0] && !tierDef) {
+      return NextResponse.json({ ok: false, error: "Gói không hợp lệ" }, { status: 400 });
+    }
+    const productLabel = dbProducts[0]
+      ? String(dbProducts[0].label || tierCode)
+      : tierDef!.label;
+    const amount = dbProducts[0]
+      ? Number(dbProducts[0].amount_vnd)
+      : DEFAULT_VND[tierCode] || 0;
+    const durationLabel = dbProducts[0]
+      ? String(dbProducts[0].duration_label || "")
+      : tierDef!.isLifetime
+        ? "Vĩnh viễn"
+        : tierDef!.label.replace(/^Gói\s+/i, "");
+    if (amount <= 0) {
+      return NextResponse.json({ ok: false, error: "Gói chưa có giá" }, { status: 400 });
     }
 
     const banks = (await sql`
@@ -97,7 +125,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Ngân hàng không hợp lệ" }, { status: 400 });
     }
 
-    const amount = Number(products[0].amount_vnd);
     const transferContent = `OPUS ${username} ${tierCode}`.toUpperCase();
 
     const inserted = (await sql`
@@ -109,7 +136,7 @@ export async function POST(req: NextRequest) {
         ${username},
         ${user?.userId != null ? String(user.userId) : null},
         ${tierCode},
-        ${String(products[0].label || tierCode)},
+        ${productLabel},
         ${amount},
         ${bankId}::uuid,
         ${String(banks[0].name || "")},
@@ -119,7 +146,7 @@ export async function POST(req: NextRequest) {
         ${transferContent},
         ${note},
         'PENDING',
-        ${String(products[0].duration_label || "")}
+        ${durationLabel}
       )
       RETURNING id::text, created_at::text, transfer_content, amount_vnd, product_label, duration_label, status
     `) as Array<Record<string, unknown>>;

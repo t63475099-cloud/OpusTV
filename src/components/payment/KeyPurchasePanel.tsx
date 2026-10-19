@@ -208,7 +208,7 @@ export function KeyPurchasePanel() {
     setPhase("ok");
     setProgress(1);
     setStepOn([true, true, true]);
-    setStatusText("Successfully Payment");
+    setStatusText("Thanh toán thành công");
     const rm =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -601,7 +601,7 @@ export function KeyPurchasePanel() {
                   <path d="M8 15.5l5 5L23 10" />
                 </svg>
               </i>
-              <b>Successfully Payment</b>
+              <b>Thanh toán thành công</b>
               <dl>
                 <dt>Key của bạn</dt>
                 <dd>
@@ -629,6 +629,7 @@ export function KeyPurchasePanel() {
               <button
                 ref={closeBtnRef}
                 type="button"
+                className="u081-rec-close"
                 tabIndex={phase === "rec" ? 0 : -1}
                 onClick={closeModal}
               >
@@ -740,19 +741,21 @@ html[data-theme=dark] .mk-page,html.dark .mk-page{
 .u081-steps span.on::before{background:var(--ux-accent)}
 .u081.is-ok .u081-steps span.on::before{background:var(--ux-mint)}
 .u081-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.u081-rec{position:absolute;left:14px;right:14px;bottom:14px;top:36px;display:flex;flex-direction:column;justify-content:center;padding:20px;border-radius:20px;background:var(--ux-surface-2);transform:translateY(110%);transition:transform .6s var(--ux-spring);text-align:center;z-index:5}
+.u081-rec{position:absolute;inset:0;display:flex;flex-direction:column;align-items:stretch;justify-content:center;padding:28px 22px 22px;border-radius:24px;background:var(--ux-surface);transform:translateY(110%);transition:transform .6s var(--ux-spring);text-align:center;z-index:8;box-shadow:0 0 0 1px var(--ux-line)}
 .u081.is-rec .u081-rec{transform:none}
-.u081.is-rec .u081-sum,.u081.is-rec .u081-lab,.u081.is-rec .mk-select-bank,.u081.is-rec .u081-payinfo,.u081.is-rec .u081-inp,.u081.is-rec .u081-steps,.u081.is-rec .u081-err,.u081.is-rec .u081-hint,.u081.is-rec .u081-x{opacity:0;pointer-events:none}
-.u081.is-rec .u081-stage{opacity:0}
-.u081-rec i{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--ux-mint);color:var(--ux-accent-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--ux-mint) 16%,transparent)}
+.u081.is-rec .u081-sum,.u081.is-rec .u081-lab,.u081.is-rec .mk-select-bank,.u081.is-rec .mk-dd,.u081.is-rec .u081-payinfo,.u081.is-rec .u081-inp,.u081.is-rec .u081-steps,.u081.is-rec .u081-err,.u081.is-rec .u081-hint,.u081.is-rec .u081-x{opacity:0;pointer-events:none;visibility:hidden}
+.u081.is-rec .u081-stage{opacity:0;pointer-events:none;visibility:hidden}
+.u081-rec i{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:var(--ux-mint);color:#0b0c12;box-shadow:0 0 0 8px color-mix(in srgb,var(--ux-mint) 18%,transparent);flex-shrink:0}
 .u081-rec i svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-.u081-rec b{display:block;font-size:20px;font-weight:850}
-.u081-rec p.thanks{margin:12px 0 14px;font-size:13.5px;font-weight:650;color:var(--ux-ink-2)}
-.u081-rec dl{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;margin:12px 0 8px;padding:12px;border-radius:12px;background:var(--ux-surface);border:1px solid var(--ux-line);text-align:left;font-size:13px}
-.u081-rec dt{color:var(--ux-ink-3);font-weight:650}
-.u081-rec dd{margin:0;text-align:right;font-weight:800;word-break:break-all}
-.u081-key{border:0;background:none;color:inherit;font:inherit;font-weight:800;cursor:pointer;text-align:right;padding:0}
-.u081-rec>button{width:100%;height:46px;border:0;border-radius:12px;background:var(--ux-ink);color:var(--ux-page);font-size:14px;font-weight:750;cursor:pointer}
+.u081-rec b{display:block;font-size:1.25rem;font-weight:800;letter-spacing:-.02em;color:var(--ux-ink);margin:0 0 4px}
+.u081-rec p.thanks{margin:14px 0 16px;font-size:13.5px;font-weight:600;color:var(--ux-ink-2);line-height:1.45}
+.u081-rec dl{display:grid;grid-template-columns:auto 1fr;gap:12px 14px;margin:16px 0 0;padding:14px 16px;border-radius:14px;background:var(--ux-surface-2);border:1px solid var(--ux-line);text-align:left;font-size:13.5px}
+.u081-rec dt{color:var(--ux-ink-3);font-weight:650;align-self:center}
+.u081-rec dd{margin:0;text-align:right;font-weight:800;word-break:break-all;color:var(--ux-ink);align-self:center}
+.u081-key{border:0;background:none;color:var(--ux-ink);font:inherit;font-weight:800;cursor:pointer;text-align:right;padding:0}
+.u081-rec-close{width:100%;height:48px;margin-top:4px;border:0;border-radius:14px;background:#6a57f2;color:#fff;font-size:14.5px;font-weight:750;cursor:pointer;flex-shrink:0}
+.u081-rec-close:hover{filter:brightness(1.08)}
+html[data-theme=dark] .u081-rec-close,html.dark .u081-rec-close{background:#b7a4ff;color:#0b0c12}
 @media (prefers-reduced-motion:reduce){.u081,.u081 *{transition-duration:.001ms!important}}
       `}</style>
     </div>

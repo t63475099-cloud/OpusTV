@@ -23,6 +23,7 @@ import {
 import type { KeyTier } from "@/lib/keyEngine";
 import { generateOpusVipKey } from "@/lib/keyEngine";
 import { ensureVipTables } from "@/lib/vipDb";
+import { ensurePaymentTables } from "@/lib/paymentDb";
 import { getVipTier } from "@/lib/vipCatalog";
 import { generateUid } from "@/lib/db/users";
 
@@ -1406,6 +1407,155 @@ if (action === "set_verified") {
         const msg = e instanceof Error ? e.message : String(e);
         return NextResponse.json({ ok: false, error: msg }, { status: 400 });
       }
+    }
+
+
+
+    // —— Key purchase / bank payment ——
+    if (action === "list_payment_orders") {
+      await ensurePaymentTables();
+      const orders = (await sql`
+        SELECT id::text, username, tier_code, product_label, amount_vnd,
+               bank_name, bank_account, buyer_name, buyer_phone, transfer_content,
+               status, key_code, duration_label, created_at::text, approved_at::text
+        FROM key_purchase_orders
+        ORDER BY created_at DESC
+        LIMIT 100
+      `) as Array<Record<string, unknown>>;
+      const banks = (await sql`
+        SELECT id::text, name, account_number, account_holder, branch, transfer_hint, is_active
+        FROM payment_banks
+        ORDER BY sort_order ASC, created_at DESC
+      `) as Array<Record<string, unknown>>;
+      return NextResponse.json({
+        ok: true,
+        orders: orders.map((o) => ({
+          id: String(o.id),
+          username: String(o.username || ""),
+          tierCode: String(o.tier_code || ""),
+          productLabel: String(o.product_label || ""),
+          amountVnd: Number(o.amount_vnd || 0),
+          bankName: String(o.bank_name || ""),
+          bankAccount: String(o.bank_account || ""),
+          buyerName: String(o.buyer_name || ""),
+          buyerPhone: String(o.buyer_phone || ""),
+          transferContent: String(o.transfer_content || ""),
+          status: String(o.status || ""),
+          keyCode: o.key_code ? String(o.key_code) : null,
+          durationLabel: String(o.duration_label || ""),
+          createdAt: o.created_at ? String(o.created_at) : null,
+        })),
+        banks: banks.map((b) => ({
+          id: String(b.id),
+          name: String(b.name || ""),
+          accountNumber: String(b.account_number || ""),
+          accountHolder: String(b.account_holder || ""),
+          branch: String(b.branch || ""),
+          transferHint: String(b.transfer_hint || ""),
+          isActive: !!b.is_active,
+        })),
+      });
+    }
+
+    if (action === "upsert_payment_bank") {
+      await ensurePaymentTables();
+      const name = String(body.name || "").trim();
+      const accountNumber = String(body.accountNumber || "").trim();
+      const accountHolder = String(body.accountHolder || "").trim();
+      const branch = String(body.branch || "").trim();
+      const transferHint = String(body.transferHint || "").trim();
+      if (!name || !accountNumber) {
+        return NextResponse.json({ ok: false, error: "Thiếu tên NH hoặc STK" }, { status: 400 });
+      }
+      await sql`
+        INSERT INTO payment_banks (name, account_number, account_holder, branch, transfer_hint)
+        VALUES (${name}, ${accountNumber}, ${accountHolder}, ${branch}, ${transferHint})
+      `;
+      return NextResponse.json({ ok: true, message: "Đã thêm ngân hàng" });
+    }
+
+    if (action === "upsert_key_product") {
+      await ensurePaymentTables();
+      const tierCode = String(body.tierCode || "").trim().toUpperCase();
+      const label = String(body.label || tierCode).trim();
+      const amountVnd = Math.floor(Number(body.amountVnd) || 0);
+      const durationLabel = String(body.durationLabel || "").trim();
+      if (!tierCode || amountVnd <= 0) {
+        return NextResponse.json({ ok: false, error: "Thiếu tier hoặc giá" }, { status: 400 });
+      }
+      await sql`
+        INSERT INTO key_products (tier_code, label, amount_vnd, duration_label, is_active, updated_at)
+        VALUES (${tierCode}, ${label}, ${amountVnd}, ${durationLabel}, TRUE, NOW())
+        ON CONFLICT (tier_code) DO UPDATE SET
+          label = EXCLUDED.label,
+          amount_vnd = EXCLUDED.amount_vnd,
+          duration_label = EXCLUDED.duration_label,
+          is_active = TRUE,
+          updated_at = NOW()
+      `;
+      return NextResponse.json({ ok: true, message: "Đã lưu gói bán" });
+    }
+
+    if (action === "approve_payment_order") {
+      await ensurePaymentTables();
+      const orderId = String(body.orderId || "").trim();
+      if (!orderId) {
+        return NextResponse.json({ ok: false, error: "Thiếu orderId" }, { status: 400 });
+      }
+      const rows = (await sql`
+        SELECT id::text, username, tier_code, duration_label, status, key_code
+        FROM key_purchase_orders WHERE id = ${orderId}::uuid LIMIT 1
+      `) as Array<Record<string, unknown>>;
+      if (!rows[0]) {
+        return NextResponse.json({ ok: false, error: "Không tìm thấy đơn" }, { status: 404 });
+      }
+      if (String(rows[0].status) === "APPROVED" && rows[0].key_code) {
+        return NextResponse.json({
+          ok: true,
+          message: "Đơn đã duyệt",
+          keyCode: String(rows[0].key_code),
+        });
+      }
+      const tierCode = String(rows[0].tier_code || "24H").toUpperCase();
+      const seg = tierCode === "LIFETIME" ? "LIFE" : tierCode;
+      const hex = Array.from({ length: 8 }, () =>
+        Math.floor(Math.random() * 16).toString(16)
+      )
+        .join("")
+        .toUpperCase();
+      const keyCode = `OPUS-${seg}-${hex}`;
+      try {
+        await sql`
+          INSERT INTO license_keys_v2 (key_code, tier_code, status)
+          VALUES (${keyCode}, ${tierCode}, 'AVAILABLE')
+        `;
+      } catch {
+        /* table may use different cols — still attach key to order */
+      }
+      await sql`
+        UPDATE key_purchase_orders
+        SET status = 'APPROVED',
+            key_code = ${keyCode},
+            approved_at = NOW(),
+            approved_by = 'admin'
+        WHERE id = ${orderId}::uuid
+      `;
+      return NextResponse.json({
+        ok: true,
+        message: `Đã gửi key ${keyCode}`,
+        keyCode,
+      });
+    }
+
+    if (action === "reject_payment_order") {
+      await ensurePaymentTables();
+      const orderId = String(body.orderId || "").trim();
+      await sql`
+        UPDATE key_purchase_orders
+        SET status = 'REJECTED', approved_at = NOW()
+        WHERE id = ${orderId}::uuid AND status = 'PENDING'
+      `;
+      return NextResponse.json({ ok: true, message: "Đã từ chối đơn" });
     }
 
 

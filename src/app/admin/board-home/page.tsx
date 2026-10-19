@@ -7,12 +7,12 @@ import type { LicenseKeyRecord, KeyTier } from "@/lib/keyEngine";
 import { AccountTab } from "@/components/admin/board/AccountTab";
 import { MovieCmsTab } from "@/components/admin/board/MovieCmsTab";
 import { KeyBoardTab } from "@/components/admin/board/KeyBoardTab";
+import { PaymentOrdersTab } from "@/components/admin/board/PaymentOrdersTab";
 import { VerifyTab } from "@/components/admin/board/VerifyTab";
 import { GiftcodeTab } from "@/components/admin/board/GiftcodeTab";
 import { ModerationTab } from "@/components/admin/board/ModerationTab";
 import { SystemAiTab } from "@/components/admin/board/SystemAiTab";
 import { MassOpsTab } from "@/components/admin/board/MassOpsTab";
-import { AdminAiCopilot } from "@/components/admin/AdminAiCopilot";
 import type { BoardTheme } from "@/components/admin/board/adminUi";
 import { boardTokens, btn } from "@/components/admin/board/adminUi";
 
@@ -20,6 +20,7 @@ type TabId =
   | "ACCOUNTS"
   | "MOVIES"
   | "KEY-BOARD"
+  | "PAYMENT"
   | "VERIFY"
   | "GIFTCODE"
   | "MODERATION"
@@ -30,6 +31,7 @@ const TABS: { id: TabId; label: string; icon: typeof Users }[] = [
   { id: "ACCOUNTS", label: "Tài khoản", icon: Users },
   { id: "MOVIES", label: "Phim & Tập", icon: Clapperboard },
   { id: "KEY-BOARD", label: "Key-board", icon: KeyRound },
+  { id: "PAYMENT", label: "Mua Key", icon: KeyRound },
   { id: "VERIFY", label: "Xác minh", icon: BadgeCheck },
   { id: "GIFTCODE", label: "Giftcode & Sự kiện", icon: Gift },
   { id: "MODERATION", label: "Báo lỗi & Kiểm duyệt", icon: ShieldAlert },
@@ -396,6 +398,9 @@ export default function BoardHomePage() {
           />
         )}
         {tab === "MOVIES" && <MovieCmsTab theme={theme} />}
+        {tab === "PAYMENT" && (
+          <PaymentOrdersTab theme={theme} onAction={runAction} />
+        )}
         {tab === "KEY-BOARD" && (
           <KeyBoardTab
             theme={theme}
@@ -438,9 +443,6 @@ export default function BoardHomePage() {
           {toast.msg}
         </div>
       ) : null}
-
-      {/* Admin AI Copilot — chỉ khi đã mở khóa secret */}
-      <AdminAiCopilot adminSecret={secret} unlocked={unlocked} />
     </div>
   );
 }

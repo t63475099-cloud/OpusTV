@@ -95,6 +95,7 @@ export function KeyPurchasePanel() {
   const [order, setOrder] = useState<Order | null>(null);
   const [statusText, setStatusText] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [waitSeconds, setWaitSeconds] = useState(0);
   const rafRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -157,6 +158,13 @@ export function KeyPurchasePanel() {
     };
   }, [bankMenuOpen]);
 
+  useEffect(() => {
+    if (phase !== "run") return;
+    const id = setInterval(() => setWaitSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+
   // ESC closes modal only when idle/fail
   useEffect(() => {
     if (!modalOpen) return;
@@ -185,6 +193,7 @@ export function KeyPurchasePanel() {
     setStepOn([false, false, false]);
     setOrder(null);
     setStatusText("");
+    setWaitSeconds(0);
     setModalOpen(true);
   };
 
@@ -224,6 +233,7 @@ export function KeyPurchasePanel() {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setPhase("run");
     setProgress(0);
+    setWaitSeconds(0);
     setStepOn([true, false, false]);
     setStatusText("Đang gửi yêu cầu");
     const t0 = performance.now();
@@ -639,6 +649,27 @@ export function KeyPurchasePanel() {
                   </>
                 ) : null}
 
+
+                {(phase === "run" || phase === "ok") && (
+                  <div className="mk-wait-box">
+                    <div className="mk-wait-row">
+                      <span>Thời hạn gói</span>
+                      <strong>{selectedPkg.durationLabel}</strong>
+                    </div>
+                    <div className="mk-wait-row">
+                      <span>Đã chờ</span>
+                      <strong className="mk-wait-time">
+                        {String(Math.floor(waitSeconds / 60)).padStart(2, "0")}:
+                        {String(waitSeconds % 60).padStart(2, "0")}
+                      </strong>
+                    </div>
+                    <p className="mk-wait-msg">
+                      {phase === "ok"
+                        ? "Đã duyệt — đang mở biên lai…"
+                        : "Đang chờ admin duyệt đơn"}
+                    </p>
+                  </div>
+                )}
                 <div
                   className={
                     "mk-steps" +
@@ -787,6 +818,18 @@ html[data-theme=dark] .mk-select.solid,html.dark .mk-select.solid{color:#0b0c12}
 .mk-err{margin:10px 0 0;font-size:13px;font-weight:700;color:#d93a55}
 
 /* Steps */
+.mk-wait-box{
+  margin:16px 0 4px;padding:14px 16px;border-radius:14px;
+  background:var(--ux-surface-2);border:1px solid var(--ux-line);
+}
+.mk-wait-row{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px;padding:6px 0;font-size:14px;
+}
+.mk-wait-row span{color:var(--ux-ink-3);font-weight:650}
+.mk-wait-row strong{font-weight:800;color:var(--ux-ink);text-align:right}
+.mk-wait-time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.mk-wait-msg{margin:10px 0 0;font-size:13px;font-weight:600;color:var(--ux-ink-2);text-align:center}
 .mk-steps{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:20px 0 8px;font-size:12.5px;font-weight:700;color:var(--ux-ink-3);opacity:0;min-height:20px;transition:opacity .3s}
 .mk-steps.show{opacity:1}
 .mk-steps span{display:inline-flex;align-items:center;gap:5px}

@@ -5,9 +5,13 @@ import { VipCountdownCard } from "@/components/vip/VipCountdownCard";
 import {
   THEME_OPTIONS,
   applyTheme,
+  applyLocale,
   readTheme,
   type ThemeMode,
+  type LocaleCode,
 } from "@/lib/themeLocale";
+import { useI18n, setAppLanguage } from "@/hooks/useI18n";
+import { LOCALE_LIST } from "@/lib/i18n/types";
 
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -270,6 +274,7 @@ function SettingsInner() {
   const clearFav = useFavoritesStore((s) => s.clear);
   const historyLen = useHistoryStore((s) => s.history.length);
   const favLen = useFavoritesStore((s) => s.favorites.length);
+  const { t, locale } = useI18n();
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -297,10 +302,7 @@ function SettingsInner() {
     const next = { ...useSettingsStore.getState().settings, ...partial };
     applyDomFlags(next);
     if (partial.language) {
-      try {
-        document.documentElement.lang = partial.language;
-        document.documentElement.dataset.lang = partial.language;
-      } catch {}
+      setAppLanguage(partial.language as LocaleCode);
     }
   };
 
@@ -309,21 +311,21 @@ function SettingsInner() {
   }
 
   const titleMap: Record<Section, string> = {
-    root: "Cài đặt",
-    account: "Tài khoản",
-    playback: "Phát video",
-    player: "Giao diện player",
-    display: "Giao diện",
-    home: "Trang chủ",
-    ux: "Trải nghiệm",
-    privacy: "Quyền riêng tư",
-    a11y: "Trợ năng",
-    data: "Dữ liệu",
-    more: "Tính năng thêm",
-    language: "Ngôn ngữ",
-    notify: "Thông báo",
-    about: "Giới thiệu",
-    legal: "Chính sách & Điều khoản",
+    root: t("settings.title"),
+    account: t("settings.account"),
+    playback: t("settings.playback"),
+    player: t("settings.player"),
+    display: t("settings.display"),
+    home: t("settings.home"),
+    ux: t("settings.ux"),
+    privacy: t("settings.privacy"),
+    a11y: t("settings.a11y"),
+    data: t("settings.data"),
+    more: t("settings.more"),
+    language: t("settings.language"),
+    notify: t("settings.notify"),
+    about: t("settings.about"),
+    legal: t("settings.legal"),
   };
 
   return (
@@ -627,33 +629,18 @@ function SettingsInner() {
 
         {section === "language" && (
           <div className="px-4 py-3 space-y-3 overflow-hidden rounded-xl border border-border bg-surface ui-border-contrast">
-            <p className="text-sm text-foreground-muted">Chọn ngôn ngữ giao diện. Áp dụng ngay trên toàn site.</p>
+            <p className="text-sm text-foreground-muted">{t("settings.language.hint")}</p>
             <div className="grid grid-cols-2 gap-2">
-              {(
-                [
-                  { value: "vi", label: "Tiếng Việt" },
-                  { value: "en", label: "English" },
-                  { value: "zh", label: "中文" },
-                  { value: "ko", label: "한국어" },
-                  { value: "ja", label: "日本語" },
-                  { value: "th", label: "ไทย" },
-                  { value: "fr", label: "Français" },
-                  { value: "es", label: "Español" },
-                  { value: "id", label: "Indonesia" },
-                  { value: "pt", label: "Português" },
-                ] as const
-              ).map((o) => {
-                const active = (settings.language || "vi") === o.value;
+              {LOCALE_LIST.map((o) => {
+                const active = (settings.language || locale || "vi") === o.value;
                 return (
                   <button
                     key={o.value}
                     type="button"
                     onClick={() => {
                       set({ language: o.value });
-                      try {
-                        document.documentElement.lang = o.value;
-                        document.documentElement.dataset.lang = o.value;
-                      } catch {}
+                      setAppLanguage(o.value);
+                      applyLocale(o.value);
                     }}
                     className={
                       "rounded-xl px-3 py-3 text-sm text-left border transition-all duration-500 " +
@@ -667,6 +654,9 @@ function SettingsInner() {
                 );
               })}
             </div>
+            <p className="text-xs text-foreground-subtle leading-relaxed">
+              {t("sub.prefer")}. {t("sub.none")}
+            </p>
           </div>
         )}
 

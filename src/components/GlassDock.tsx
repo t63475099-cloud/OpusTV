@@ -6,22 +6,24 @@ import { usePathname, useRouter } from "next/navigation";
 import { openComingSoon } from "@/components/ComingSoonModal";
 import { markEnterSection } from "@/lib/routeManager";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/hooks/useI18n";
 
 type MainItem = {
   id: string;
   href?: string;
-  label: string;
+  labelKey: string;
+  fallback: string;
   icon: string;
   kind: "link" | "plus";
   section?: "film" | "chat" | "music" | "code" | "settings" | "pass";
 };
 
 const MAIN: MainItem[] = [
-  { id: "home", href: "/home", label: "Trang chủ", icon: "/dock/home.png", kind: "link", section: "film" },
-  { id: "music", href: "/nhac", label: "Music", icon: "/dock/music.png", kind: "link", section: "music" },
-  { id: "plus", label: "Thêm", icon: "/dock/add.png", kind: "plus" },
-  { id: "chat", href: "/tin-nhan", label: "Trò chuyện", icon: "/dock/chat.png", kind: "link", section: "chat" },
-  { id: "settings", href: "/cai-dat", label: "Cài đặt", icon: "/dock/settings.png", kind: "link", section: "settings" },
+  { id: "home", href: "/home", labelKey: "nav.home", fallback: "Trang chủ", icon: "/dock/home.png", kind: "link", section: "film" },
+  { id: "music", href: "/nhac", labelKey: "nav.music", fallback: "Music", icon: "/dock/music.png", kind: "link", section: "music" },
+  { id: "plus", labelKey: "nav.more", fallback: "Thêm", icon: "/dock/add.png", kind: "plus" },
+  { id: "chat", href: "/tin-nhan", labelKey: "nav.chat", fallback: "Trò chuyện", icon: "/dock/chat.png", kind: "link", section: "chat" },
+  { id: "settings", href: "/cai-dat", labelKey: "nav.settings", fallback: "Cài đặt", icon: "/dock/settings.png", kind: "link", section: "settings" },
 ];
 
 const MORE = [
@@ -111,6 +113,7 @@ const GLASS =
 export default function GlassDock() {
   const path = usePathname() || "/";
   const router = useRouter();
+  const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
   const [ready, setReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -299,14 +302,15 @@ export default function GlassDock() {
           }
 
           const active = isMainActive(path, item.id);
+          const label = t(item.labelKey) || item.fallback;
           return (
             <button
               key={item.id}
               type="button"
               onClick={() => item.href && go(item.href, item.section)}
-              aria-label={item.label}
+              aria-label={label}
               aria-current={active ? "page" : undefined}
-              title={item.label}
+              title={label}
               className={cn(
                 "relative flex items-center justify-center shrink-0",
                 "w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-full outline-none",

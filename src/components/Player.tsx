@@ -33,6 +33,7 @@ import {
   loadCuesFromUrl,
   softVietsubFromText,
   subtitleCandidateUrls,
+  orderSubtitleUrlsByLocale,
   type SubCue,
 } from "@/lib/subtitles";
 
@@ -129,6 +130,7 @@ export default function Player({
   const [subText, setSubText] = useState("");
   const [subSource, setSubSource] = useState<"hls" | "file" | "soft" | "none">("none");
   const vietsubSetting = useSettingsStore((s) => s.settings.vietsub !== false);
+  const uiLanguage = useSettingsStore((s) => s.settings.language || "vi");
   const updateSettings = useSettingsStore((s) => s.updateSettings);
   const [vietsubOn, setVietsubOn] = useState(true);
   useEffect(() => {
@@ -267,12 +269,13 @@ export default function Player({
     } catch {}
   }, [m3u8, currentEpisode?.slug]);
 
-  // —— Vietsub: HLS / VTT / soft từ nội dung phim ——
+  // —— Phụ đề theo ngôn ngữ UI (HLS / VTT / soft) ——
   useEffect(() => {
     let cancelled = false;
     setSubCues([]);
     setSubText("");
     setSubSource("none");
+    const locale = uiLanguage || "vi";
 
     (async () => {
       const tryUrls: string[] = [];
@@ -287,8 +290,9 @@ export default function Player({
           episodeSlug: currentEpisode?.slug,
         })
       );
+      const ordered = orderSubtitleUrlsByLocale(tryUrls, locale);
 
-      for (const url of tryUrls) {
+      for (const url of ordered) {
         if (cancelled) return;
         const cues = await loadCuesFromUrl(url);
         if (cues.length >= 2) {
@@ -325,7 +329,7 @@ export default function Player({
     return () => {
       cancelled = true;
     };
-  }, [m3u8, movie.slug, movie.name, (movie as { content?: string }).content, currentEpisode?.slug, currentEpisode?.name]);
+  }, [m3u8, movie.slug, movie.name, (movie as { content?: string }).content, currentEpisode?.slug, currentEpisode?.name, uiLanguage]);
 
   // Cập nhật soft-subs khi biết đúng duration
   useEffect(() => {

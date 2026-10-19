@@ -6,7 +6,17 @@
  */
 
 export type ThemeMode = "dark" | "light" | "system";
-export type LocaleCode = "vi" | "en";
+export type LocaleCode =
+  | "vi"
+  | "en"
+  | "zh"
+  | "ko"
+  | "ja"
+  | "th"
+  | "fr"
+  | "es"
+  | "id"
+  | "pt";
 
 export const THEME_KEY = "opus_theme";
 export const LOCALE_KEY = "opus_locale";
@@ -20,7 +30,18 @@ export const THEME_OPTIONS: { value: ThemeMode; labelVi: string; labelEn: string
 export const LOCALE_OPTIONS: { value: LocaleCode; label: string; native: string }[] = [
   { value: "vi", label: "Tiếng Việt", native: "Tiếng Việt" },
   { value: "en", label: "English", native: "English" },
+  { value: "zh", label: "Chinese", native: "中文" },
+  { value: "ko", label: "Korean", native: "한국어" },
+  { value: "ja", label: "Japanese", native: "日本語" },
+  { value: "th", label: "Thai", native: "ไทย" },
+  { value: "fr", label: "French", native: "Français" },
+  { value: "es", label: "Spanish", native: "Español" },
+  { value: "id", label: "Indonesian", native: "Indonesia" },
+  { value: "pt", label: "Portuguese", native: "Português" },
 ];
+
+const ALL_LOCALES = new Set<string>(LOCALE_OPTIONS.map((o) => o.value));
+
 
 export function readTheme(): ThemeMode {
   if (typeof window === "undefined") return "dark";
@@ -37,7 +58,7 @@ export function readLocale(): LocaleCode {
   if (typeof window === "undefined") return "vi";
   try {
     const v = localStorage.getItem(LOCALE_KEY);
-    if (v === "en" || v === "vi") return v;
+    if (v && ALL_LOCALES.has(v)) return v as LocaleCode;
   } catch {
     /* */
   }
@@ -100,17 +121,26 @@ export function applyTheme(mode: ThemeMode) {
 
 export function applyLocale(locale: LocaleCode) {
   if (typeof document === "undefined") return;
-  document.documentElement.lang = locale;
-  document.documentElement.setAttribute("data-locale", locale);
+  const loc = ALL_LOCALES.has(locale) ? locale : "vi";
+  document.documentElement.lang = loc;
+  document.documentElement.setAttribute("data-locale", loc);
+  document.documentElement.dataset.lang = loc;
   try {
-    localStorage.setItem(LOCALE_KEY, locale);
+    localStorage.setItem(LOCALE_KEY, loc);
+  } catch {
+    /* */
+  }
+  try {
+    window.dispatchEvent(
+      new CustomEvent("opus-locale-change", { detail: { locale: loc } })
+    );
   } catch {
     /* */
   }
 }
 
 /** Inline script for <head> — runs before paint (anti-FOUC) */
-export const THEME_LOCALE_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_KEY}')||'dark';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}else if(t!=='light'&&t!=='dark'){r='dark';}document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-ui','flat');document.documentElement.classList.toggle('dark',r==='dark');document.documentElement.style.colorScheme=r;var hc=localStorage.getItem('${CONTRAST_KEY}')==='1';document.documentElement.setAttribute('data-contrast',hc?'high':'normal');var l=localStorage.getItem('${LOCALE_KEY}')||'vi';if(l!=='en'&&l!=='vi')l='vi';document.documentElement.lang=l;document.documentElement.setAttribute('data-locale',l);}catch(e){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-ui','flat');}})();`;
+export const THEME_LOCALE_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem('${THEME_KEY}')||'dark';var r=t;if(t==='system'){r=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}else if(t!=='light'&&t!=='dark'){r='dark';}document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-ui','flat');document.documentElement.classList.toggle('dark',r==='dark');document.documentElement.style.colorScheme=r;var hc=localStorage.getItem('${CONTRAST_KEY}')==='1';document.documentElement.setAttribute('data-contrast',hc?'high':'normal');var allowed={vi:1,en:1,zh:1,ko:1,ja:1,th:1,fr:1,es:1,id:1,pt:1};var l=localStorage.getItem('${LOCALE_KEY}')||'vi';if(!allowed[l])l='vi';document.documentElement.lang=l;document.documentElement.setAttribute('data-locale',l);document.documentElement.dataset.lang=l;}catch(e){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-ui','flat');}})();`;
 
 type Dict = Record<string, string>;
 
@@ -248,8 +278,8 @@ const EN: Dict = {
   "svc.settings.desc": "Options",
 };
 
-const DICTS: Record<LocaleCode, Dict> = { vi: VI, en: EN };
+const DICTS: Partial<Record<LocaleCode, Dict>> = { vi: VI, en: EN };
 
 export function translate(locale: LocaleCode, key: string): string {
-  return DICTS[locale]?.[key] || DICTS.vi[key] || key;
+  return DICTS[locale]?.[key] || DICTS.en?.[key] || DICTS.vi?.[key] || key;
 }

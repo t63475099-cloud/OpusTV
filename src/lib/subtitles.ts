@@ -73,11 +73,20 @@ export function subtitleCandidateUrls(opts: {
       out.push(`${base}${stem}.vtt`);
       out.push(`${base}${stem}.vi.vtt`);
       out.push(`${base}${stem}.vie.vtt`);
+      out.push(`${base}${stem}.en.vtt`);
+      out.push(`${base}${stem}.eng.vtt`);
+      out.push(`${base}${stem}.zh.vtt`);
+      out.push(`${base}${stem}.ko.vtt`);
+      out.push(`${base}${stem}.ja.vtt`);
       out.push(`${base}subtitle.vtt`);
       out.push(`${base}subs/vi.vtt`);
       out.push(`${base}subs/vie.vtt`);
+      out.push(`${base}subs/en.vtt`);
+      out.push(`${base}subs/eng.vtt`);
+      out.push(`${base}subs/zh.vtt`);
       out.push(m3u8.replace(/\.m3u8(\?.*)?$/i, ".vtt"));
       out.push(m3u8.replace(/\.m3u8(\?.*)?$/i, ".vi.vtt"));
+      out.push(m3u8.replace(/\.m3u8(\?.*)?$/i, ".en.vtt"));
     } catch {
       /* */
     }
@@ -88,6 +97,32 @@ export function subtitleCandidateUrls(opts: {
     out.push(`/api/subtitles?slug=${encodeURIComponent(slug)}&ep=${encodeURIComponent(ep)}`);
   }
   return [...new Set(out)];
+}
+
+/** Prefer VTT URLs matching UI locale first */
+export function orderSubtitleUrlsByLocale(urls: string[], locale: string): string[] {
+  const loc = (locale || "vi").toLowerCase();
+  const aliases: Record<string, string[]> = {
+    vi: [".vi.", ".vie.", "/vi.", "/vie.", "lang=vi"],
+    en: [".en.", ".eng.", "/en.", "/eng.", "lang=en"],
+    zh: [".zh.", ".chi.", "/zh.", "lang=zh"],
+    ko: [".ko.", ".kor.", "/ko.", "lang=ko"],
+    ja: [".ja.", ".jp.", "/ja.", "lang=ja"],
+    th: [".th.", "/th.", "lang=th"],
+    fr: [".fr.", "/fr.", "lang=fr"],
+    es: [".es.", "/es.", "lang=es"],
+    id: [".id.", "/id.", "lang=id"],
+    pt: [".pt.", "/pt.", "lang=pt"],
+  };
+  const keys = aliases[loc] || aliases.en;
+  const scored = urls.map((u) => {
+    const low = u.toLowerCase();
+    let s = 0;
+    for (const k of keys) if (low.includes(k)) s += 10;
+    return { u, s };
+  });
+  scored.sort((a, b) => b.s - a.s);
+  return scored.map((x) => x.u);
 }
 
 /** Soft Vietsub: chia nội dung tiếng Việt theo thời lượng video */

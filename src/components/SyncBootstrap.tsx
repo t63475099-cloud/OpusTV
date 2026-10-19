@@ -12,6 +12,8 @@ import { useFavoritesStore } from "@/lib/favorites";
 import { useSettingsStore } from "@/lib/settings";
 import { useStreakStore, bindStreakAccount } from "@/lib/streak";
 import { useNotifStore } from "@/lib/notifications";
+import { applyLocale, type LocaleCode } from "@/lib/themeLocale";
+import { isLocaleCode } from "@/lib/i18n/types";
 
 /** Bắt lỗi client để không làm trắng cả site */
 class BootErrorBoundary extends Component<
@@ -112,6 +114,7 @@ function IncomingCallLazy() {
  */
 export default function SyncBootstrap() {
   const username = useAccountStore((s) => s.username);
+  const language = useSettingsStore((s) => s.settings.language);
   useEffect(() => {
     try {
       migrateLegacyWatchHistory();
@@ -121,6 +124,16 @@ export default function SyncBootstrap() {
       /* */
     }
   }, [username]);
+
+  // Đồng bộ ngôn ngữ UI + phụ đề ưu tiên
+  useEffect(() => {
+    try {
+      const loc = (language && isLocaleCode(language) ? language : "vi") as LocaleCode;
+      applyLocale(loc);
+    } catch {
+      /* */
+    }
+  }, [language]);
 
   const syncNow = useAccountStore((s) => s.syncNow);
   const refreshMe = useAccountStore((s) => s.refreshMe);

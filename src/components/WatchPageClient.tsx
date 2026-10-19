@@ -17,6 +17,9 @@ import VideoSocial from "@/components/VideoSocial";
 import RelatedInfinite from "@/components/RelatedInfinite";
 import { useEventStore } from "@/lib/eventCoins";
 import { useOfflineQueue } from "@/lib/offlineQueue";
+import { useSettingsStore } from "@/lib/settings";
+import { pickBestServerIndex } from "@/lib/i18n/messages";
+import type { LocaleCode } from "@/lib/i18n/types";
 import {
   Copy,
   ExternalLink,
@@ -62,6 +65,7 @@ export default function WatchPageClient({
   categorySlug = "phim-moi-cap-nhat",
 }: WatchPageClientProps) {
   const historyItem = useHistoryStore((s) => s.getBySlug(movie.slug));
+  const uiLanguage = useSettingsStore((s) => (s.settings.language || "vi") as LocaleCode);
 
   const defaultServerIdx = useMemo(() => {
     const fromHist =
@@ -69,11 +73,22 @@ export default function WatchPageClient({
         ? episodes.findIndex((s) => s.server_name === historyItem.server)
         : -1;
     if (fromHist >= 0) return fromHist;
+    // Ưu tiên server khớp ngôn ngữ UI (Engsub, Chinese, Vietsub…)
+    const byLang = pickBestServerIndex(episodes, uiLanguage);
+    if (byLang > 0 || (byLang === 0 && episodes[0])) {
+      const scoreTry = pickBestServerIndex(episodes, uiLanguage);
+      // nếu có match rõ ràng hơn index 0 khi locale không phải vi
+      if (uiLanguage !== "vi") return scoreTry;
+    }
     const dub = episodes.findIndex((s) => isDubServer(s.server_name));
-    return dub >= 0 ? dub : 0;
-  }, [episodes, historyItem?.server]);
+    if (uiLanguage === "vi" && dub >= 0) return dub;
+    return pickBestServerIndex(episodes, uiLanguage);
+  }, [episodes, historyItem?.server, uiLanguage]);
 
   const [serverIdx, setServerIdx] = useState(defaultServerIdx);
+  useEffect(() => {
+    setServerIdx(defaultServerIdx);
+  }, [defaultServerIdx, uiLanguage]);
   const [epIdx, setEpIdx] = useState(0);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);

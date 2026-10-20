@@ -55,22 +55,32 @@ export async function POST(req: NextRequest) {
     const user = await getSessionUser();
     const body = await req.json().catch(() => ({}));
     const tierCode = String(body.tierCode || "").trim().toUpperCase();
-    const bankId = String(body.bankId || "").trim();
+    // Ngân hàng do user chọn (client catalog) + STK / chủ TK do user nhập
+    const bankName = String(body.bankName || body.bankCode || "").trim().slice(0, 80);
+    const bankAccount = String(body.bankAccount || "").trim().slice(0, 40);
     const buyerName = String(body.buyerName || "").trim().slice(0, 80);
-    const buyerPhone = String(body.buyerPhone || "").trim().slice(0, 20);
     const note = String(body.note || "").trim().slice(0, 200);
     const username =
       (user?.username || String(body.username || "")).trim().toLowerCase();
 
-    if (!tierCode || !bankId || !buyerName || !buyerPhone) {
+    if (!tierCode) {
+      return NextResponse.json({ ok: false, error: "Chưa chọn gói" }, { status: 400 });
+    }
+    if (!bankName) {
+      return NextResponse.json({ ok: false, error: "Chọn ngân hàng" }, { status: 400 });
+    }
+    if (!bankAccount) {
+      return NextResponse.json({ ok: false, error: "Nhập số tài khoản / số thẻ" }, { status: 400 });
+    }
+    if (!buyerName) {
       return NextResponse.json(
-        { ok: false, error: "Điền đủ gói, ngân hàng, họ tên và số điện thoại" },
+        { ok: false, error: "Nhập chủ tài khoản hoặc nội dung giao dịch" },
         { status: 400 }
       );
     }
     if (!username) {
       return NextResponse.json(
-        { ok: false, error: "Cần đăng nhập hoặc nhập tên tài khoản" },
+        { ok: false, error: "Cần đăng nhập" },
         { status: 400 }
       );
     }
@@ -88,7 +98,6 @@ export async function POST(req: NextRequest) {
     if (!dbProducts[0] && !shop && !tierDef) {
       return NextResponse.json({ ok: false, error: "Gói không hợp lệ" }, { status: 400 });
     }
-    // Ưu tiên bảng giá cố định KEY_SHOP_PACKAGES (đồng bộ UI)
     const productLabel =
       shop?.label ||
       (dbProducts[0] ? String(dbProducts[0].label || tierCode) : tierDef?.label || tierCode);
@@ -102,17 +111,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Gói chưa có giá" }, { status: 400 });
     }
 
-    const banks = (await sql`
-      SELECT id::text, name, account_number, account_holder
-      FROM payment_banks
-      WHERE id = ${bankId}::uuid AND is_active = TRUE
-      LIMIT 1
-    `) as Array<Record<string, unknown>>;
-    if (!banks[0]) {
-      return NextResponse.json({ ok: false, error: "Ngân hàng không hợp lệ" }, { status: 400 });
-    }
-
-    const transferContent = `OPUS ${username} ${tierCode}`.toUpperCase();
+    const transferContent =
+      note || `OPUS ${username} ${tierCode}`.toUpperCase();
 
     const inserted = (await sql`
       INSERT INTO key_purchase_orders (
@@ -125,11 +125,11 @@ export async function POST(req: NextRequest) {
         ${tierCode},
         ${productLabel},
         ${amount},
-        ${bankId}::uuid,
-        ${String(banks[0].name || "")},
-        ${String(banks[0].account_number || "")},
+        NULL,
+        ${bankName},
+        ${bankAccount},
         ${buyerName},
-        ${buyerPhone},
+        '',
         ${transferContent},
         ${note},
         'PENDING',
@@ -145,10 +145,10 @@ export async function POST(req: NextRequest) {
         ...row,
         username,
         tier_code: tierCode,
-        bank_name: banks[0].name,
-        bank_account: banks[0].account_number,
+        bank_name: bankName,
+        bank_account: bankAccount,
         buyer_name: buyerName,
-        buyer_phone: buyerPhone,
+        buyer_phone: "",
         key_code: null,
         approved_at: null,
       }),

@@ -12,15 +12,6 @@ import {
   type KeyShopPackage,
 } from "@/lib/keyShopCatalog";
 
-type Bank = {
-  id: string;
-  name: string;
-  accountNumber: string;
-  accountHolder: string;
-  branch: string;
-  transferHint: string;
-};
-
 type Order = {
   id: string;
   productLabel: string;
@@ -81,13 +72,13 @@ function KeyRemainLabel({
 
 export function KeyPurchasePanel() {
   const username = useAccountStore((s) => s.username);
-  const [adminBanks, setAdminBanks] = useState<Bank[]>([]);
   const [group, setGroup] = useState<"short" | "long">("short");
   const [selectedPkg, setSelectedPkg] = useState<KeyShopPackage | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [bankCode, setBankCode] = useState("MB");
   const [bankMenuOpen, setBankMenuOpen] = useState(false);
-  const [confirmNote, setConfirmNote] = useState("");
+  const [userAccount, setUserAccount] = useState("");
+  const [userHolder, setUserHolder] = useState("");
   const [formErr, setFormErr] = useState("");
   const [phase, setPhase] = useState<"idle" | "run" | "ok" | "rec" | "fail">("idle");
   const [progress, setProgress] = useState(0);
@@ -105,39 +96,7 @@ export function KeyPurchasePanel() {
     [group]
   );
 
-  // Map selected bank code to admin bank STK if name matches
-  const matchedAdmin = useMemo(() => {
-    const opt = BANK_OPTIONS.find((b) => b.code === bankCode);
-    if (!opt) return null;
-    const low = opt.name.toLowerCase();
-    const codeLow = bankCode.toLowerCase();
-    return (
-      adminBanks.find((a) => {
-        const n = a.name.toLowerCase();
-        return n.includes(codeLow) || n.includes(low.slice(0, 4)) || low.includes(n.slice(0, 4));
-      }) || adminBanks[0] || null
-    );
-  }, [adminBanks, bankCode]);
-
-  const transferHint = username
-    ? `OPUS ${username} ${selectedPkg?.tierCode || ""}`.toUpperCase()
-    : "";
-
-  const loadCatalog = useCallback(async () => {
-    try {
-      const res = await fetch("/api/payment/banks", { cache: "no-store" });
-      const data = await res.json().catch(() => ({}));
-      if (data?.ok && Array.isArray(data.banks)) {
-        setAdminBanks(data.banks);
-      }
-    } catch {
-      /* */
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadCatalog();
-  }, [loadCatalog]);
+  const bankOpt = BANK_OPTIONS.find((b) => b.code === bankCode);
 
   useEffect(() => {
     return () => {
@@ -186,7 +145,8 @@ export function KeyPurchasePanel() {
 
   const openPackage = (p: KeyShopPackage) => {
     setSelectedPkg(p);
-    setConfirmNote("");
+    setUserAccount("");
+    setUserHolder("");
     setFormErr("");
     setPhase("idle");
     setProgress(0);
@@ -207,7 +167,8 @@ export function KeyPurchasePanel() {
     setStepOn([false, false, false]);
     setOrder(null);
     setFormErr("");
-    setConfirmNote("");
+    setUserAccount("");
+    setUserHolder("");
     setStatusText("");
   };
 
@@ -263,12 +224,12 @@ export function KeyPurchasePanel() {
       setFormErr("Chưa chọn gói.");
       return;
     }
-    if (!matchedAdmin?.id || !matchedAdmin.accountNumber) {
-      setFormErr("Hệ thống chưa có tài khoản nhận. Thử lại sau.");
+    if (!userAccount.trim()) {
+      setFormErr("Nhập số tài khoản / số thẻ của bạn.");
       return;
     }
-    if (!confirmNote.trim()) {
-      setFormErr("Nhập tên người chuyển hoặc nội dung CK.");
+    if (!userHolder.trim()) {
+      setFormErr("Nhập chủ tài khoản hoặc nội dung giao dịch.");
       return;
     }
 
@@ -279,10 +240,11 @@ export function KeyPurchasePanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tierCode: selectedPkg.tierCode,
-          bankId: matchedAdmin.id,
-          buyerName: confirmNote.trim(),
-          buyerPhone: "-",
-          note: `${confirmNote.trim()} · ${BANK_OPTIONS.find((b) => b.code === bankCode)?.name || bankCode}`,
+          bankName: bankOpt?.name || bankCode,
+          bankCode,
+          bankAccount: userAccount.trim(),
+          buyerName: userHolder.trim(),
+          note: userHolder.trim(),
           username,
         }),
       });
@@ -340,7 +302,6 @@ export function KeyPurchasePanel() {
   };
 
   const featured = group === "short" ? "1M" : "1Y";
-  const bankOpt = BANK_OPTIONS.find((b) => b.code === bankCode);
   const cls =
     "ux u081" +
     (phase === "run" ? " is-run" : "") +
@@ -577,72 +538,21 @@ export function KeyPurchasePanel() {
                       ) : null}
                     </div>
 
-                    {matchedAdmin?.accountNumber ? (
-                      <div className="mk-payinfo">
-                        <div className="mk-payinfo-head">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={bankLogoUrl(bankCode)}
-                            alt=""
-                            width={32}
-                            height={32}
-                            className="mk-sel-logo"
-                          />
-                          <strong>
-                            {matchedAdmin.name ||
-                              BANK_OPTIONS.find((b) => b.code === bankCode)
-                                ?.name}
-                          </strong>
-                        </div>
-                        <div className="mk-payinfo-row">
-                          <span>Số tài khoản</span>
-                          <button
-                            type="button"
-                            className="mk-copy"
-                            onClick={() =>
-                              void copyText(matchedAdmin.accountNumber, "acc")
-                            }
-                          >
-                            {matchedAdmin.accountNumber}
-                            {copied === "acc" ? " · đã chép" : ""}
-                            <Copy className="mk-copy-ic" />
-                          </button>
-                        </div>
-                        {matchedAdmin.accountHolder ? (
-                          <div className="mk-payinfo-row">
-                            <span>Chủ tài khoản</span>
-                            <b>{matchedAdmin.accountHolder}</b>
-                          </div>
-                        ) : null}
-                        <div className="mk-payinfo-row">
-                          <span>Số tiền</span>
-                          <b>{formatVnd(selectedPkg.amountVnd)}</b>
-                        </div>
-                        <div className="mk-payinfo-row">
-                          <span>Nội dung CK</span>
-                          <button
-                            type="button"
-                            className="mk-copy"
-                            onClick={() => void copyText(transferHint, "ct")}
-                          >
-                            {transferHint || "—"}
-                            {copied === "ct" ? " · đã chép" : ""}
-                            <Copy className="mk-copy-ic" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="mk-hint">
-                        Chưa cấu hình STK nhận trên hệ thống.
-                      </p>
-                    )}
-
-                    <p className="mk-modal-lab">Xác nhận</p>
+                    <p className="mk-modal-lab">Số tài khoản / Số thẻ</p>
                     <input
                       className="mk-inp"
-                      value={confirmNote}
-                      onChange={(e) => setConfirmNote(e.target.value)}
-                      placeholder="Tên người chuyển hoặc nội dung CK"
+                      value={userAccount}
+                      onChange={(e) => setUserAccount(e.target.value)}
+                      placeholder="Nhập số tài khoản hoặc số thẻ"
+                      autoComplete="off"
+                      inputMode="numeric"
+                    />
+                    <p className="mk-modal-lab">Chủ tài khoản / Nội dung GD</p>
+                    <input
+                      className="mk-inp"
+                      value={userHolder}
+                      onChange={(e) => setUserHolder(e.target.value)}
+                      placeholder="Tên chủ TK hoặc nội dung giao dịch"
                       autoComplete="off"
                     />
                     {formErr ? <p className="mk-err">{formErr}</p> : null}

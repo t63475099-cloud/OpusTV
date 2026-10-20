@@ -129,7 +129,33 @@ export async function areFriends(me: string, other: string) {
     WHERE user_a = ${a} AND user_b = ${b} AND status = 'accepted'
     LIMIT 1
   `;
-  return (rows as unknown[]).length > 0;
+  if ((rows as unknown[]).length > 0) return true;
+  // Đồng bộ với bảng xếp hạng
+  try {
+    const m = me.toLowerCase();
+    const o = other.toLowerCase();
+    const lb = await sql`
+      SELECT 1 FROM friendships
+      WHERE status = 'accepted'
+        AND (
+          (lower(requester_username) = ${m} AND lower(addressee_username) = ${o})
+          OR (lower(requester_username) = ${o} AND lower(addressee_username) = ${m})
+        )
+      LIMIT 1
+    `;
+    if ((lb as unknown[]).length > 0) {
+      // mirror vào chat_friendships để lần sau nhanh hơn
+      try {
+        await sql`
+          INSERT INTO chat_friendships (user_a, user_b, status)
+          VALUES (${a}, ${b}, 'accepted')
+          ON CONFLICT (user_a, user_b) DO NOTHING
+        `;
+      } catch { /* */ }
+      return true;
+    }
+  } catch { /* friendships table optional */ }
+  return false;
 }
 
 export async function addFriendship(me: string, other: string) {

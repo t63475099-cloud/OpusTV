@@ -10,10 +10,9 @@ import ChatWindow from "@/components/chat/ChatWindow";
 import ChatInfoPanel from "@/components/chat/ChatInfoPanel";
 import CreateGroupModal from "@/components/chat/CreateGroupModal";
 import IncomingCallBanner from "@/components/chat/IncomingCallBanner";
-import ChatErrorBoundary from "@/components/chat/ChatErrorBoundary";
 import { startSmartPoll } from "@/lib/smartPoll";
 
-function TinNhanPageInner() {
+export default function TinNhanPage() {
   const username = useAccountStore((s) => s.username);
   const setMe = useChatStore((s) => s.setMe);
   const syncFromServer = useChatStore((s) => s.syncFromServer);
@@ -55,15 +54,17 @@ function TinNhanPageInner() {
   useEffect(() => {
     if (!username) return;
     return startSmartPoll({
-      activeMs: 8000,
-      idleMs: 30000,
-      idleAfterMs: 60000,
+      activeMs: 2000,
+      idleMs: 8000,
+      idleAfterMs: 45000,
       onTick: async () => {
         try {
           await syncFromServer();
           const st = useChatStore.getState();
           const c = st.conversations.find((x) => x.id === st.activeId);
-          if (c?.peerUsername) await loadThread(c.peerUsername);
+          if (!c) return;
+          if (c.isGroup) await st.loadGroupThread(c.id);
+          else if (c.peerUsername) await loadThread(c.peerUsername);
         } catch {
           /* ignore */
         }
@@ -101,17 +102,17 @@ function TinNhanPageInner() {
 
   if (!username) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-surface px-4 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-4">
-          <MessageCircle className="w-7 h-7 text-primary-foreground" />
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#16181c] px-4 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-[#0068ff] flex items-center justify-center mb-4">
+          <MessageCircle className="w-7 h-7 text-white" />
         </div>
-        <p className="text-foreground font-semibold text-lg mb-1">Opus Chat</p>
-        <p className="text-sm text-foreground-muted mb-6 max-w-xs">
+        <p className="text-white font-semibold text-lg mb-1">Opus Chat</p>
+        <p className="text-sm text-zinc-400 mb-6 max-w-xs">
           Đăng nhập để nhắn tin và kết bạn bằng UID.
         </p>
         <Link
           href="/tai-khoan"
-          className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold"
+          className="px-6 py-2.5 rounded-lg bg-[#0068ff] text-white text-sm font-semibold"
         >
           Đăng nhập
         </Link>
@@ -121,7 +122,7 @@ function TinNhanPageInner() {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex bg-background text-foreground"
+      className="fixed inset-0 z-40 flex bg-[#0e1012] text-zinc-100"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -137,7 +138,7 @@ function TinNhanPageInner() {
 
       {/* Trái: danh sách */}
       <div
-        className={`h-full w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-border flex-col bg-surface ${
+        className={`h-full w-full md:w-[340px] lg:w-[360px] shrink-0 border-r border-[#2a2d34] flex-col bg-[#16181c] ${
           showThread ? "hidden md:flex" : "flex"
         }`}
       >
@@ -149,7 +150,7 @@ function TinNhanPageInner() {
 
       {/* Giữa: cửa sổ chat */}
       <div
-        className={`h-full flex-1 min-w-0 flex-col bg-background ${
+        className={`h-full flex-1 min-w-0 flex-col bg-[#1a1d21] ${
           showThread ? "flex" : "hidden md:flex"
         }`}
       >
@@ -161,23 +162,21 @@ function TinNhanPageInner() {
       </div>
 
       {/* Phải: thông tin hội thoại */}
-      {active && showInfo && (
-        <div className="hidden xl:flex h-full w-[300px] shrink-0 border-l border-border bg-surface">
-          <ChatInfoPanel conversation={active} onClose={() => setShowInfo(false)} />
-        </div>
-      )}
+      {active && showInfo ? (
+        <>
+          <div className="hidden xl:flex h-full w-[320px] shrink-0 border-l border-[#2a2d34] bg-[#16181c]">
+            <ChatInfoPanel conversation={active} onClose={() => setShowInfo(false)} />
+          </div>
+          <div className="xl:hidden fixed inset-0 z-[80] flex justify-end bg-black/50">
+            <div className="h-full w-full max-w-[360px] bg-[#16181c] shadow-2xl">
+              <ChatInfoPanel conversation={active} onClose={() => setShowInfo(false)} />
+            </div>
+          </div>
+        </>
+      ) : null}
 
       <CreateGroupModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <IncomingCallBanner />
     </div>
-  );
-}
-
-
-export default function TinNhanPage() {
-  return (
-    <ChatErrorBoundary>
-      <TinNhanPageInner />
-    </ChatErrorBoundary>
   );
 }

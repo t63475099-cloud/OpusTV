@@ -56,13 +56,35 @@ export async function GET(req: NextRequest) {
       ? await getFriendStatus(meName, username)
       : "none";
 
+    let displayName = String(users[0].username);
+    let avatarUrl: string | null = null;
+    try {
+      const rows = (await sql`
+        SELECT s.payload
+        FROM users u
+        LEFT JOIN settings s ON s.user_id = u.id
+        WHERE lower(u.username) = ${username}
+        LIMIT 1
+      `) as Array<{ payload: unknown }>;
+      const payload = rows[0]?.payload as Record<string, unknown> | null;
+      const profile = (payload?.profile as Record<string, unknown>) || {};
+      if (typeof profile.name === "string" && profile.name.trim()) {
+        displayName = profile.name.trim();
+      }
+      if (typeof profile.avatar === "string" && profile.avatar.trim()) {
+        avatarUrl = profile.avatar.trim();
+      }
+    } catch {
+      /* settings optional */
+    }
+
     return NextResponse.json({
       ok: true,
       profile: {
         username: String(users[0].username),
         uid: users[0].uid ? String(users[0].uid) : "—",
-        displayName: String(users[0].username),
-        avatarUrl: null as string | null,
+        displayName,
+        avatarUrl,
         rank,
         totalKeysBought: Number(stats[0]?.keys_bought) || 0,
         totalAmountSpent: Number(stats[0]?.amount_spent) || 0,

@@ -2728,19 +2728,6 @@ html.opus-chrome-hide footer {
 }
 
 
-/* Opus preloader — khóa scroll khi đang load */
-html
-
-
-/* iOS-style 3-dot loader */
-
-  40% {
-    transform: translateY(-10px) scale(1);
-    opacity: 1;
-  }
-}
-
-
 /* Hero title rainbow + breath */
 @keyframes opus-rainbow-shift {
   0% { background-position: 0% center; }

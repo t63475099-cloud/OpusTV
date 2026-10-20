@@ -10,8 +10,21 @@ function formatVnd(n: number) {
   return new Intl.NumberFormat("vi-VN").format(n) + "đ";
 }
 
-function Avatar({ name, size = 48 }: { name: string; size?: number }) {
+function Avatar({ name, url, size = 48 }: { name: string; url?: string | null; size?: number }) {
   const letter = (name || "?").charAt(0).toUpperCase();
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt=""
+        width={size}
+        height={size}
+        className="shrink-0 rounded-full border border-border object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <div
       className="flex shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated font-bold text-foreground"
@@ -130,7 +143,7 @@ export function LeaderboardView() {
                     >
                       {e.rank}
                     </span>
-                    <Avatar name={e.displayName} size={isFirst ? 64 : 48} />
+                    <Avatar name={e.displayName} url={e.avatarUrl} size={isFirst ? 64 : 48} />
                     <p className="mt-2 max-w-[100px] truncate text-sm font-semibold sm:max-w-[120px]">
                       {e.displayName}
                     </p>
@@ -163,7 +176,7 @@ export function LeaderboardView() {
                       <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums text-foreground-muted">
                         #{e.rank}
                       </span>
-                      <Avatar name={e.displayName} size={40} />
+                      <Avatar name={e.displayName} url={e.avatarUrl} size={40} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">{e.displayName}</p>
                         <p className="font-mono text-[11px] text-foreground-muted">

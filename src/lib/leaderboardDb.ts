@@ -77,7 +77,8 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardEntry[]> 
       MAX(u.uid) AS uid,
       MAX(u.created_at)::text AS created_at,
       BOOL_OR(COALESCE(u.is_lifetime_vip, FALSE)) AS is_life,
-      MAX(u.vip_expires_at)::text AS vip_exp
+      MAX(u.vip_expires_at)::text AS vip_exp,
+      MAX(u.id) AS user_id
     FROM key_purchase_orders o
     LEFT JOIN users u ON lower(u.username) = lower(o.username)
     WHERE o.status = 'APPROVED'
@@ -88,17 +89,40 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardEntry[]> 
     LIMIT ${lim}
   `) as Array<Record<string, unknown>>;
 
+  // Lấy avatar / tên hiển thị từ settings (payload.profile)
+  const profileMap = new Map<string, { name?: string; avatar?: string }>();
+  try {
+    const usernames = rows.map((r) => String(r.username || "")).filter(Boolean);
+    if (usernames.length) {
+      const profiles = (await sql`
+        SELECT lower(u.username) AS username, s.payload
+        FROM users u
+        LEFT JOIN settings s ON s.user_id = u.id
+        WHERE lower(u.username) = ANY(${usernames})
+      `) as Array<Record<string, unknown>>;
+      for (const p of profiles) {
+        const payload = p.payload as Record<string, unknown> | null;
+        const profile = (payload?.profile as Record<string, unknown>) || {};
+        profileMap.set(String(p.username), {
+          name: typeof profile.name === "string" ? profile.name : undefined,
+          avatar: typeof profile.avatar === "string" ? profile.avatar : undefined,
+        });
+      }
+    }
+  } catch { /* settings optional */ }
+
   return rows.map((r, i) => {
     const vipExp = r.vip_exp ? Date.parse(String(r.vip_exp)) : NaN;
     const isVip =
       !!r.is_life || (Number.isFinite(vipExp) && vipExp > Date.now());
     const uname = String(r.username || "");
+    const prof = profileMap.get(uname);
     return {
       rank: i + 1,
       username: uname,
       uid: r.uid ? String(r.uid) : "—",
-      displayName: uname,
-      avatarUrl: null,
+      displayName: (prof?.name && prof.name.trim()) || uname,
+      avatarUrl: prof?.avatar || null,
       totalKeysBought: Number(r.keys_bought) || 0,
       totalAmountSpent: Number(r.amount_spent) || 0,
       isVip,

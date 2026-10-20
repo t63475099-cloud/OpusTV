@@ -1,9 +1,12 @@
-import { getNeonSql as getSql, formatDbError, withNeonRetry, wakeNeon } from "@/lib/neonSql";
+import { neon } from "@neondatabase/serverless";
 
-export { formatDbError };
+function getSql() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL missing");
+  return neon(url);
+}
 
 export async function ensureChatTables() {
-  await wakeNeon();
   const sql = getSql();
   // Cột hồ sơ public — tránh lỗi "column uid does not exist"
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS uid TEXT`;
@@ -179,7 +182,22 @@ export async function listFriends(me: string) {
     FROM chat_friendships
     WHERE (user_a = ${m} OR user_b = ${m}) AND status = 'accepted'
   `;
-  const names = (rows as { friend: string }[]).map((r) => r.friend);
+  let names = (rows as { friend: string }[]).map((r) => r.friend);
+  // Đồng bộ bạn bè từ bảng xếp hạng (friendships)
+  try {
+    const lb = await sql`
+      SELECT
+        CASE WHEN lower(requester_username) = ${m} THEN addressee_username
+             ELSE requester_username END AS friend
+      FROM friendships
+      WHERE status = 'accepted'
+        AND (lower(requester_username) = ${m} OR lower(addressee_username) = ${m})
+    `;
+    for (const r of lb as { friend: string }[]) {
+      const f = String(r.friend || "").toLowerCase();
+      if (f && !names.includes(f)) names.push(f);
+    }
+  } catch { /* friendships table may not exist yet */ }
   if (names.length === 0) return [];
   const users = await sql`
     SELECT u.id, u.username, u.uid, u.bio, u.verified

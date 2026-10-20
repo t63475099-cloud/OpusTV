@@ -3,6 +3,7 @@ import { sql } from "@/lib/neonSql";
 import { ensureLeaderboardTables, getFriendStatus } from "@/lib/leaderboardDb";
 import { getSessionUser } from "@/lib/session";
 import { pushInboxItem } from "@/lib/inboxDb";
+import { addFriendship } from "@/lib/chatServer";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
             AND lower(addressee_username) = ${a}
             AND status = 'pending'
         `;
+        try { await addFriendship(a, target); } catch { /* */ }
         return NextResponse.json({ ok: true, friendStatus: "friends", message: "Đã chấp nhận kết bạn" });
       }
       await sql`
@@ -133,6 +135,9 @@ export async function POST(req: NextRequest) {
           AND lower(addressee_username) = ${a}
           AND status = 'pending'
       `;
+      try {
+        await addFriendship(a, target);
+      } catch { /* already friends in chat */ }
       return NextResponse.json({ ok: true, friendStatus: "friends", message: "Đã chấp nhận" });
     }
 

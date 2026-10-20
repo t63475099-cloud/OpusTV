@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock, Infinity, KeyRound, ShieldCheck, Trash2, X } from "lucide-react";
+import { Infinity, KeyRound, ShieldCheck, Trash2 } from "lucide-react";
+import { FlipCountdown } from "@/components/vip/FlipCountdown";
 import { formatVipRemaining, OPUS_KEY_REGEX } from "@/lib/vipCatalog";
 import { useVipAccess } from "@/lib/vipAccess";
 import { useAccountStore } from "@/lib/account";
@@ -29,7 +30,6 @@ export function VipCountdownCard({
 
   const active = isLifetime || (vipExpiresAt != null && vipExpiresAt > now);
   const rem = formatVipRemaining(active && vipExpiresAt ? vipExpiresAt - now : 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
 
   const redeemKey = async () => {
     if (!username) {
@@ -125,25 +125,14 @@ export function VipCountdownCard({
           <span className="text-sm font-medium">Không giới hạn thời gian</span>
         </div>
       ) : (
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {(
-            [
-              [rem.days, "NGÀY"],
-              [rem.hours, "GIỜ"],
-              [rem.minutes, "PHÚT"],
-              [rem.seconds, "GIÂY"],
-            ] as const
-          ).map(([v, label]) => (
-            <div
-              key={label}
-              className="rounded-lg border border-border bg-background px-1 py-2 text-center ui-border-contrast"
-            >
-              <div className="font-mono text-lg font-semibold tabular-nums text-foreground">
-                {pad(v)}
-              </div>
-              <div className="text-[10px] font-medium text-foreground-muted">{label}</div>
-            </div>
-          ))}
+        <div className="mt-3">
+          <FlipCountdown
+            days={rem.days}
+            hours={rem.hours}
+            minutes={rem.minutes}
+            seconds={rem.seconds}
+            active={active}
+          />
         </div>
       )}
 

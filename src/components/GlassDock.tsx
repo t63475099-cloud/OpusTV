@@ -150,6 +150,7 @@ export default function GlassDock() {
   const [ready, setReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [inboxView, setInboxView] = useState(false);
+  const [dockHidden, setDockHidden] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -204,6 +205,27 @@ export default function GlassDock() {
     setSheetOpen(false);
     setInboxView(false);
   }, [path]);
+
+  useEffect(() => {
+    let lastY = typeof window !== "undefined" ? window.scrollY : 0;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY || 0;
+        const dy = y - lastY;
+        if (y < 24) setDockHidden(false);
+        else if (dy > 8) setDockHidden(true);
+        else if (dy < -8) setDockHidden(false);
+        lastY = y;
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
 
   useEffect(() => {
     if (!sheetOpen) return;
@@ -264,8 +286,8 @@ export default function GlassDock() {
       className={cn(
         "u041-wrap fixed z-[60] pointer-events-none left-1/2 -translate-x-1/2",
         "flex flex-col items-center",
-        "transition-opacity duration-300 ease-out",
-        ready ? "opacity-100" : "opacity-0"
+        "transition-all duration-300 ease-out",
+        ready && !dockHidden ? "opacity-100 translate-y-0" : ready && dockHidden ? "opacity-0 translate-y-16 pointer-events-none" : "opacity-0"
       )}
       style={{
         bottom: "calc(0.65rem + env(safe-area-inset-bottom, 0px))",

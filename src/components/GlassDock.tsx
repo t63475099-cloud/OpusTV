@@ -7,6 +7,7 @@ import { openComingSoon } from "@/components/ComingSoonModal";
 import { markEnterSection } from "@/lib/routeManager";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/hooks/useI18n";
+import { InboxDockPanel, useInboxUnread } from "@/components/inbox/InboxDockPanel";
 
 type MainItem = {
   id: string;
@@ -117,7 +118,9 @@ export default function GlassDock() {
   const [mounted, setMounted] = useState(false);
   const [ready, setReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [inboxView, setInboxView] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const inboxUnread = useInboxUnread();
   const plusRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -195,7 +198,7 @@ export default function GlassDock() {
       <div
         ref={sheetRef}
         className={cn(
-          "pointer-events-auto mb-3 w-[min(300px,calc(100vw-1.75rem))]",
+          "pointer-events-auto mb-3 w-[min(340px,calc(100vw-1.5rem))]",
           "transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] origin-bottom",
           sheetOpen
             ? "opacity-100 translate-y-0 scale-100 visible"
@@ -206,7 +209,10 @@ export default function GlassDock() {
         <div className={cn("relative rounded-[28px] px-3 pt-2 pb-3", GLASS)}>
           <button
             type="button"
-            onClick={() => setSheetOpen(false)}
+            onClick={() => {
+              setSheetOpen(false);
+              setInboxView(false);
+            }}
             className="mx-auto mb-2 flex h-8 w-11 items-center justify-center rounded-full
               text-foreground-muted hover:bg-surface-elevated hover:text-foreground transition-colors duration-300"
             aria-label="Đóng"
@@ -227,33 +233,60 @@ export default function GlassDock() {
             </svg>
           </button>
 
-          <div className="flex flex-col gap-2">
-            {MORE.map((item) => {
-              const active =
-                (item.id === "code" && path.startsWith("/code")) ||
-                (item.id === "event" && path.startsWith("/su-kien"));
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => go(item.href, item.section)}
-                  className={cn(
-                    "w-full flex items-center justify-center gap-3",
-                    "h-12 rounded-full px-4",
-                    "border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                    active
-                      ? "border-primary bg-primary/15 text-foreground"
-                      : "border-border bg-surface-elevated text-foreground hover:bg-surface"
-                  )}
-                >
-                  <span className="flex items-center justify-center w-6 h-6 shrink-0">
-                    <DockIcon src={item.icon} className="w-6 h-6" />
+          {inboxView ? (
+            <InboxDockPanel open={inboxView} onBack={() => setInboxView(false)} />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setInboxView(true)}
+                className={cn(
+                  "relative w-full flex items-center justify-center gap-3",
+                  "h-12 rounded-full px-4",
+                  "border border-border bg-surface-elevated text-foreground",
+                  "hover:bg-surface transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                )}
+              >
+                <span className="flex items-center justify-center w-6 h-6 shrink-0 text-foreground">
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 6h16v12H4z" />
+                    <path d="m4 7 8 6 8-6" />
+                  </svg>
+                </span>
+                <span className="text-[15px] font-medium tracking-wide">Hòm thư</span>
+                {inboxUnread > 0 ? (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center">
+                    {inboxUnread > 9 ? "9+" : inboxUnread}
                   </span>
-                  <span className="text-[15px] font-medium tracking-wide">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+                ) : null}
+              </button>
+              {MORE.map((item) => {
+                const active =
+                  (item.id === "code" && path.startsWith("/code")) ||
+                  (item.id === "event" && path.startsWith("/su-kien"));
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => go(item.href, item.section)}
+                    className={cn(
+                      "w-full flex items-center justify-center gap-3",
+                      "h-12 rounded-full px-4",
+                      "border transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                      active
+                        ? "border-primary bg-primary/15 text-foreground"
+                        : "border-border bg-surface-elevated text-foreground hover:bg-surface"
+                    )}
+                  >
+                    <span className="flex items-center justify-center w-6 h-6 shrink-0">
+                      <DockIcon src={item.icon} className="w-6 h-6" />
+                    </span>
+                    <span className="text-[15px] font-medium tracking-wide">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -276,7 +309,12 @@ export default function GlassDock() {
                 key={item.id}
                 ref={plusRef}
                 type="button"
-                onClick={() => setSheetOpen((v) => !v)}
+                onClick={() =>
+                  setSheetOpen((v) => {
+                    if (v) setInboxView(false);
+                    return !v;
+                  })
+                }
                 aria-label={sheetOpen ? "Đóng menu thêm" : "Mở Code & Sự kiện"}
                 aria-expanded={sheetOpen}
                 className={cn(

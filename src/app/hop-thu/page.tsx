@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Mail,
@@ -55,11 +54,16 @@ function Icon({ kind }: { kind: string }) {
 
 export default function HopThuPage() {
   const username = useAccountStore((s) => s.username);
-  const search = useSearchParams();
-  const initial = (search.get("tab") as TabId) || "primary";
-  const [tab, setTab] = useState<TabId>(
-    ["primary", "friend", "other"].includes(initial) ? initial : "primary"
-  );
+  const [tab, setTab] = useState<TabId>("primary");
+
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("tab");
+      if (q === "primary" || q === "friend" || q === "other") setTab(q);
+    } catch {
+      /* */
+    }
+  }, []);
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);

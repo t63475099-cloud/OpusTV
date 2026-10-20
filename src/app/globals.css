@@ -2729,28 +2729,17 @@ html.opus-chrome-hide footer {
 
 
 /* Opus preloader — khóa scroll khi đang load */
-html.opus-preloading,
-html.opus-preloading body {
-  overflow: hidden !important;
-  height: 100%;
-}
+html
 
 
 /* iOS-style 3-dot loader */
-@keyframes opus-dot-bounce {
-  0%, 80%, 100% {
-    transform: translateY(0) scale(0.92);
-    opacity: 0.55;
-  }
+
   40% {
     transform: translateY(-10px) scale(1);
     opacity: 1;
   }
 }
-.opus-dot-bounce {
-  animation: opus-dot-bounce 0.9s ease-in-out infinite;
-  will-change: transform, opacity;
-}
+
 
 /* Hero title rainbow + breath */
 @keyframes opus-rainbow-shift {

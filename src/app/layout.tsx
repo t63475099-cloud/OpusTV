@@ -13,7 +13,6 @@ import AmbientBackdrop from "@/components/AmbientBackdrop";
 import GsapScrollProvider from "@/components/GsapScrollProvider";
 import ChromeGuard from "@/components/ChromeGuard";
 import BehaviorMonitor from "@/components/BehaviorMonitor";
-import OpusPreloader from "@/components/OpusPreloader";
 import SmartBack from "@/components/ecosystem/SmartBack";
 import SectionRouteGuard from "@/components/ecosystem/SectionRouteGuard";
 import PwaRegister from "@/components/PwaRegister";
@@ -96,8 +95,7 @@ export default function RootLayout({
         <ComingSoonModal />
         <LucianSupportChat />
         <AmbientBackdrop />
-        <OpusPreloader oncePerSession />
-        <PwaRegister />
+                <PwaRegister />
         <AuthRedirector />
         <AccountRealtimeBridge />
         <SystemHealthBridge />

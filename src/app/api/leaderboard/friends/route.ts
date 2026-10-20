@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/neonSql";
 import { ensureLeaderboardTables, getFriendStatus } from "@/lib/leaderboardDb";
 import { getSessionUser } from "@/lib/session";
+import { pushInboxItem } from "@/lib/inboxDb";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +104,15 @@ export async function POST(req: NextRequest) {
         ON CONFLICT (requester_username, addressee_username)
         DO UPDATE SET status = 'pending', updated_at = NOW()
       `;
+      await pushInboxItem({
+        username: target,
+        category: "friend",
+        kind: "friend_request",
+        title: `Có lời mời kết bạn mới từ ${a}`,
+        body: `${a} muốn kết bạn với bạn.`,
+        fromUsername: a,
+        refId: `fr-${a}-${target}`,
+      });
       return NextResponse.json({ ok: true, friendStatus: "pending_sent", message: "Đã gửi lời mời" });
     }
 

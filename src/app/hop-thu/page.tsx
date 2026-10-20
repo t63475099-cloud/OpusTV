@@ -1,200 +1,306 @@
 "use client";
 
-import { useEventStore } from "@/lib/eventCoins";
-
-import { useMemo, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
-  MessageCircle,
-  BadgeCheck,
-  Sparkles,
-  Flame,
-  Heart,
-  Info,
-  Trash2,
   Mail,
+  UserPlus,
+  Bell,
+  KeyRound,
+  Check,
+  X,
 } from "lucide-react";
-import { useNotifStore, type NotifKind } from "@/lib/notifications";
-import StreakRestoreForm from "@/components/StreakRestoreForm";
+import { useAccountStore } from "@/lib/account";
 
-const FILTERS: { id: "all" | NotifKind | "social"; label: string }[] = [
-  { id: "all", label: "Tất cả" },
-  { id: "social", label: "Tương tác" },
-  { id: "chat", label: "Opus Chat" },
-  { id: "verify", label: "Xác minh" },
-  { id: "system", label: "Hệ thống" },
+type InboxItem = {
+  id: string;
+  category: string;
+  kind: string;
+  title: string;
+  body: string;
+  fromUsername: string | null;
+  isRead: boolean;
+  isHandled: boolean;
+  createdAt: string | null;
+};
+
+type TabId = "primary" | "friend" | "other";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "primary", label: "Chính" },
+  { id: "friend", label: "Lời mời kết bạn" },
+  { id: "other", label: "Thông báo khác" },
 ];
 
-function iconFor(kind: NotifKind) {
-  const c = "w-4 h-4";
-  switch (kind) {
-    case "reply":
-      return <MessageCircle className={`${c} text-emerald-500`} />;
-    case "verify":
-    case "verify_ok":
-      return <BadgeCheck className={`${c} text-sky-500`} />;
-    case "verify_no":
-      return <BadgeCheck className={`${c} text-amber-500`} />;
-    case "level":
-      return <Sparkles className={`${c} text-violet-500`} />;
-    case "streak":
-      return <Flame className={`${c} text-orange-500`} />;
-    case "like":
-      return <Heart className={`${c} text-rose-500`} />;
-    case "mission":
-      return <Sparkles className={`${c} text-amber-500`} />;
-    case "chat":
-      return <MessageCircle className={`${c} text-rose-500`} />;
-    default:
-      return <Info className={`${c} text-foreground-muted`} />;
-  }
+function timeAgo(iso: string | null) {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 60) return "Vừa xong";
+  if (s < 3600) return `${Math.floor(s / 60)} phút`;
+  if (s < 86400) return `${Math.floor(s / 3600)} giờ`;
+  return `${Math.floor(s / 86400)} ngày`;
+}
+
+function Icon({ kind }: { kind: string }) {
+  if (kind === "friend_request")
+    return <UserPlus className="h-4 w-4 text-violet-300" strokeWidth={1.75} />;
+  if (kind === "key_approved" || kind === "key")
+    return <KeyRound className="h-4 w-4 text-amber-300" strokeWidth={1.75} />;
+  return <Bell className="h-4 w-4 text-slate-400" strokeWidth={1.75} />;
 }
 
 export default function HopThuPage() {
-  useEffect(() => {
+  const username = useAccountStore((s) => s.username);
+  const search = useSearchParams();
+  const initial = (search.get("tab") as TabId) || "primary";
+  const [tab, setTab] = useState<TabId>(
+    ["primary", "friend", "other"].includes(initial) ? initial : "primary"
+  );
+  const [items, setItems] = useState<InboxItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!username) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      useEventStore.getState().addMissionProgress("mailbox");
+      const res = await fetch(`/api/inbox?category=${tab}`, { cache: "no-store" });
+      const data = await res.json();
+      if (data.ok) setItems(data.items || []);
     } catch {
       /* */
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [username, tab]);
 
-  const items = useNotifStore((s) => s.items);
-  const markRead = useNotifStore((s) => s.markRead);
-  const markAllRead = useNotifStore((s) => s.markAllRead);
-  const clear = useNotifStore((s) => s.clear);
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const filtered = useMemo(() => {
-    let list = items;
-    if (filter === "social") list = items.filter((n) => ["reply", "like"].includes(n.kind));
-    else if (filter === "chat") list = items.filter((n) => n.kind === "chat");
-    else if (filter === "verify") list = items.filter((n) => n.kind.startsWith("verify"));
-    else if (filter !== "all")
-      list = items.filter(
-        (n) => n.kind === filter || n.kind === "system" || n.kind === "key"
+  const unread = useMemo(() => items.filter((i) => !i.isRead).length, [items]);
+
+  const markRead = async (id: string) => {
+    setItems((list) =>
+      list.map((x) => (x.id === id ? { ...x, isRead: true } : x))
+    );
+    await fetch("/api/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "mark_read", id }),
+    });
+  };
+
+  const markAll = async () => {
+    setItems((list) => list.map((x) => ({ ...x, isRead: true })));
+    await fetch("/api/inbox", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "mark_all_read" }),
+    });
+  };
+
+  const friendAct = async (item: InboxItem, action: "accept" | "reject") => {
+    if (!item.fromUsername) return;
+    setBusyId(item.id);
+    try {
+      await fetch("/api/leaderboard/friends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, username: item.fromUsername }),
+      });
+      await fetch("/api/inbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark_handled", id: item.id }),
+      });
+      setItems((list) =>
+        list.map((x) =>
+          x.id === item.id ? { ...x, isHandled: true, isRead: true } : x
+        )
       );
-
-    // Gộp bản trùng liên tiếp (cùng title + body trong 30s)
-    const out: typeof list = [];
-    for (const n of list) {
-      const prev = out[out.length - 1];
-      if (
-        prev &&
-        prev.title === n.title &&
-        prev.body === n.body &&
-        Math.abs(prev.createdAt - n.createdAt) < 30_000
-      ) {
-        continue;
-      }
-      out.push(n);
+    } finally {
+      setBusyId(null);
     }
-    return out;
-  }, [items, filter]);
-
-  const unread = items.filter((i) => !i.read).length;
+  };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-background pb-24 pt-4 text-foreground">
+    <div className="min-h-[100dvh] w-full bg-[#07080d] pb-24 pt-4 text-[#F4F0E8]">
       <div className="mx-auto max-w-lg px-3 sm:px-4">
         <div className="flex items-center gap-3 py-4">
           <Link
             href="/tai-khoan"
-            className="rounded-full p-2 text-foreground-muted hover:bg-surface-elevated"
+            className="rounded-full p-2 text-slate-400 hover:bg-white/5 hover:text-white"
             aria-label="Quay lại"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
           </Link>
           <div className="min-w-0 flex-1">
-            <h1 className="flex items-center gap-2 text-lg font-bold text-foreground">
-              <Mail className="h-5 w-5 text-sky-500" />
+            <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <Mail className="h-5 w-5 text-slate-300" strokeWidth={1.75} />
               Hòm thư
             </h1>
-            <p className="text-xs text-foreground-muted">
-              {unread > 0 ? `${unread} chưa đọc` : "Không có tin mới"}
+            <p className="text-xs text-slate-500">
+              {!username
+                ? "Đăng nhập để xem thư"
+                : unread > 0
+                  ? `${unread} chưa đọc`
+                  : "Không có tin mới"}
             </p>
           </div>
-          {unread > 0 && (
+          {username && unread > 0 ? (
             <button
               type="button"
-              onClick={() => markAllRead()}
-              className="px-2 py-1 text-xs font-medium text-sky-600 dark:text-sky-400"
+              onClick={() => void markAll()}
+              className="text-xs font-medium text-violet-300 hover:text-violet-200"
             >
               Đọc hết
             </button>
-          )}
-          {items.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm("Xóa toàn bộ thông báo?")) clear();
-              }}
-              className="rounded-full p-2 text-foreground-muted hover:bg-surface-elevated"
-              aria-label="Xóa hết"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
+          ) : null}
         </div>
 
-        <div className="mb-4">
-          <StreakRestoreForm />
-        </div>
-
-        <div className="flex gap-1.5 overflow-x-auto pb-3 scrollbar-hide">
-          {FILTERS.map((f) => (
+        <div className="mb-4 flex gap-1 overflow-x-auto border-b border-white/10 pb-0">
+          {TABS.map((f) => (
             <button
               key={f.id}
               type="button"
-              onClick={() => setFilter(f.id)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                filter === f.id
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border bg-surface text-foreground-muted hover:bg-surface-elevated"
-              }`}
+              onClick={() => setTab(f.id)}
+              className={
+                "shrink-0 border-b-2 px-3 py-2 text-xs font-semibold transition " +
+                (tab === f.id
+                  ? "border-violet-400 text-white"
+                  : "border-transparent text-slate-500 hover:text-slate-300")
+              }
             >
               {f.label}
             </button>
           ))}
         </div>
 
-        {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-surface p-10 text-center">
-            <Mail className="mx-auto mb-3 h-10 w-10 text-foreground-subtle" />
-            <p className="text-sm text-foreground-muted">Hòm thư trống</p>
+        {!username ? (
+          <div className="rounded-2xl border border-white/10 bg-[#13141C] p-10 text-center">
+            <p className="text-sm text-slate-500">
+              <Link href="/tai-khoan" className="text-violet-300 hover:underline">
+                Đăng nhập
+              </Link>{" "}
+              để mở hòm thư
+            </p>
+          </div>
+        ) : loading ? (
+          <p className="py-12 text-center text-sm text-slate-500">Đang tải…</p>
+        ) : items.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-[#13141C] p-10 text-center">
+            <Mail className="mx-auto mb-3 h-9 w-9 text-slate-600" strokeWidth={1.5} />
+            <p className="text-sm text-slate-500">Chưa có thư trong mục này</p>
           </div>
         ) : (
-          <ul className="hop-thu-scroll max-h-[calc(100dvh-10rem)] space-y-2 overflow-y-auto pr-1">
-            {filtered.map((n) => (
-              <li key={n.id}>
-                <Link
-                  href={n.href || "/tai-khoan"}
-                  onClick={() => markRead(n.id)}
-                  className={`flex gap-3 rounded-2xl border px-3.5 py-3 transition ${
-                    n.read
-                      ? "border-border bg-surface opacity-90"
-                      : "border-primary/30 bg-primary/5"
-                  }`}
+          <ul className="overflow-hidden rounded-2xl border border-white/10 bg-[#13141C]">
+            {items.map((n) => (
+              <li
+                key={n.id}
+                className={
+                  "border-b border-white/5 last:border-0 " +
+                  (!n.isRead ? "bg-white/[0.03]" : "")
+                }
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-3 px-3.5 py-3 text-left hover:bg-white/[0.04]"
+                  onClick={() => {
+                    if (!n.isRead) void markRead(n.id);
+                  }}
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-surface-elevated">
-                    {iconFor(n.kind)}
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/5">
+                    <Icon kind={n.kind} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-foreground">
-                      {n.title}
+                    <span className="flex items-start justify-between gap-2">
+                      <span
+                        className={
+                          "text-sm leading-snug " +
+                          (!n.isRead ? "font-semibold text-white" : "font-medium text-slate-300")
+                        }
+                      >
+                        {n.title}
+                      </span>
+                      <span className="shrink-0 text-[11px] text-slate-500">
+                        {timeAgo(n.createdAt)}
+                      </span>
                     </span>
-                    <span className="mt-0.5 block line-clamp-2 text-xs text-foreground-muted">
-                      {n.body}
-                    </span>
-                    <span className="mt-1 block text-[10px] text-foreground-subtle">
-                      {new Date(n.createdAt).toLocaleString("vi-VN")}
-                    </span>
+                    {n.fromUsername ? (
+                      <span className="mt-0.5 block text-[11px] text-slate-500">
+                        Từ {n.fromUsername}
+                      </span>
+                    ) : null}
+                    {n.body ? (
+                      <span className="mt-1 block text-xs text-slate-400 line-clamp-2">
+                        {n.body}
+                      </span>
+                    ) : null}
+                    {tab === "friend" &&
+                    n.kind === "friend_request" &&
+                    !n.isHandled &&
+                    n.fromUsername ? (
+                      <span className="mt-2 flex gap-2">
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void friendAct(n, "accept");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.stopPropagation();
+                              void friendAct(n, "accept");
+                            }
+                          }}
+                          className={
+                            "inline-flex items-center gap-1 rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white " +
+                            (busyId === n.id ? "opacity-50" : "")
+                          }
+                        >
+                          <Check className="h-3 w-3" strokeWidth={2} />
+                          Chấp nhận
+                        </span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void friendAct(n, "reject");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.stopPropagation();
+                              void friendAct(n, "reject");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1 text-[11px] font-medium text-slate-300"
+                        >
+                          <X className="h-3 w-3" strokeWidth={2} />
+                          Từ chối
+                        </span>
+                      </span>
+                    ) : null}
+                    {n.isHandled ? (
+                      <span className="mt-1 block text-[11px] text-slate-500">
+                        Đã xử lý
+                      </span>
+                    ) : null}
                   </span>
-                  {!n.read && (
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-rose-500" />
-                  )}
-                </Link>
+                  {!n.isRead ? (
+                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-violet-400" />
+                  ) : null}
+                </button>
               </li>
             ))}
           </ul>

@@ -24,6 +24,7 @@ import type { KeyTier } from "@/lib/keyEngine";
 import { generateOpusVipKey } from "@/lib/keyEngine";
 import { ensureVipTables } from "@/lib/vipDb";
 import { ensurePaymentTables } from "@/lib/paymentDb";
+import { pushInboxItem } from "@/lib/inboxDb";
 import { getVipTier } from "@/lib/vipCatalog";
 import { generateUid } from "@/lib/db/users";
 
@@ -1599,6 +1600,19 @@ if (action === "set_verified") {
           WHERE id = ${orderId}::uuid
         `;
       }
+      try {
+        const uname = String(rows[0].username || "").toLowerCase();
+        if (uname) {
+          await pushInboxItem({
+            username: uname,
+            category: "primary",
+            kind: "key_approved",
+            title: "Đơn mua Key đã được duyệt",
+            body: `Key của bạn: ${keyCode}`,
+            refId: `key-order-${orderId}`,
+          });
+        }
+      } catch { /* */ }
       return NextResponse.json({
         ok: true,
         message: `Đã gửi key ${keyCode}`,

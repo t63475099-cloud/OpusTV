@@ -18,6 +18,7 @@ import SmartBack from "@/components/ecosystem/SmartBack";
 import SectionRouteGuard from "@/components/ecosystem/SectionRouteGuard";
 import PwaRegister from "@/components/PwaRegister";
 import IosInstallGuide from "@/components/IosInstallGuide";
+import FriendRequestToast from "@/components/FriendRequestToast";
 import AuthRedirector from "@/components/AuthRedirector";
 import { ThemeLocaleProvider } from "@/components/ThemeLocaleProvider";
 import { AccountRealtimeBridge } from "@/components/account/AccountRealtimeBridge";
@@ -102,6 +103,7 @@ export default function RootLayout({
         <SystemHealthBridge />
         <PatchReleaseModal />
         <IosInstallGuide />
+        <FriendRequestToast />
         <GsapScrollProvider>
           <LanguageSync />
           <SyncBootstrap />

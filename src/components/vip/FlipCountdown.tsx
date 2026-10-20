@@ -2,57 +2,94 @@
 
 /* Lucian UX/UI Prompt #100 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#100 */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 type FlipCardProps = {
   value: string;
   warn?: boolean;
 };
 
+/**
+ * Một chữ số flip đồng bộ đúng thuật toán #100:
+ * - Chỉ lật khi value đổi
+ * - Mặt trên nhảy sang số mới ngay; mặt dưới giữ số cũ đến hết animation
+ * - ft (fold top) = số cũ, fb (fold bottom) = số mới — không lệch pha
+ */
 function FlipCard({ value, warn }: FlipCardProps) {
-  const [display, setDisplay] = useState(value);
-  const [prev, setPrev] = useState(value);
-  const [flipping, setFlipping] = useState(false);
-  const rmRef = useRef(false);
+  const rootRef = useRef<HTMLSpanElement>(null);
+  const topRef = useRef<HTMLElement>(null);
+  const botRef = useRef<HTMLElement>(null);
+  const ftRef = useRef<HTMLSpanElement>(null);
+  const fbRef = useRef<HTMLSpanElement>(null);
+  const valRef = useRef(value);
 
   useEffect(() => {
-    rmRef.current =
+    const v = value;
+    if (v === valRef.current) return;
+    const old = valRef.current;
+    valRef.current = v;
+
+    const top = topRef.current;
+    const bot = botRef.current;
+    const ft = ftRef.current;
+    const fb = fbRef.current;
+    const root = rootRef.current;
+    if (!top || !bot || !ft || !fb || !root) return;
+
+    const rm =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }, []);
 
-  useEffect(() => {
-    if (value === display) return;
-    if (rmRef.current) {
-      setDisplay(value);
-      setPrev(value);
+    top.textContent = v;
+    const ftB = ft.querySelector("b");
+    const fbB = fb.querySelector("b");
+    if (ftB) ftB.textContent = old;
+    if (fbB) fbB.textContent = v;
+
+    if (rm) {
+      bot.textContent = v;
       return;
     }
-    setPrev(display);
-    setFlipping(true);
-    const t = window.setTimeout(() => {
-      setDisplay(value);
-      setFlipping(false);
-    }, 540);
-    return () => window.clearTimeout(t);
-  }, [value, display]);
+
+    bot.textContent = old;
+    root.classList.remove("is-flip");
+    void root.offsetWidth;
+    root.classList.add("is-flip");
+
+    const onEnd = (e: AnimationEvent) => {
+      if (e.target !== fb) return;
+      bot.textContent = valRef.current;
+      root.classList.remove("is-flip");
+      fb.removeEventListener("animationend", onEnd);
+    };
+    fb.addEventListener("animationend", onEnd);
+    return () => fb.removeEventListener("animationend", onEnd);
+  }, [value]);
+
+  useEffect(() => {
+    if (topRef.current) topRef.current.textContent = value;
+    if (botRef.current) botRef.current.textContent = value;
+    valRef.current = value;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <span
-      className={"u100-fl" + (warn ? " warn" : "") + (flipping ? " is-flip" : "")}
+      ref={rootRef}
+      className={"u100-fl" + (warn ? " is-warn" : "")}
       aria-hidden
     >
       <span className="u100-t">
-        <b>{flipping ? prev : display}</b>
+        <b ref={topRef}>{value}</b>
       </span>
       <span className="u100-b">
-        <b>{flipping ? prev : display}</b>
+        <b ref={botRef}>{value}</b>
       </span>
-      <span className="u100-ft">
-        <b>{prev}</b>
+      <span className="u100-ft" ref={ftRef}>
+        <b>{value}</b>
       </span>
-      <span className="u100-fb">
-        <b>{display}</b>
+      <span className="u100-fb" ref={fbRef}>
+        <b>{value}</b>
       </span>
     </span>
   );
@@ -62,7 +99,6 @@ function pad2(n: number) {
   return String(Math.max(0, Math.floor(n))).padStart(2, "0").slice(-2);
 }
 
-/** Đếm ngược VIP — hiệu ứng flip #100, dữ liệu thật từ expiresAt */
 export function FlipCountdown({
   days,
   hours,
@@ -78,18 +114,27 @@ export function FlipCountdown({
 }) {
   const totalSec = days * 86400 + hours * 3600 + minutes * 60 + seconds;
   const warn = active && totalSec > 0 && totalSec <= 10;
-  const d = pad2(days);
+  const dayStr =
+    days > 99 ? String(Math.min(999, days)) : pad2(days);
+  const d1 = dayStr.length >= 2 ? dayStr[dayStr.length - 2] : "0";
+  const d2 = dayStr[dayStr.length - 1];
+  const d0 = dayStr.length >= 3 ? dayStr[dayStr.length - 3] : null;
   const h = pad2(hours);
   const m = pad2(minutes);
   const s = pad2(seconds);
 
   return (
-    <div className={"ux u100-vip" + (warn ? " warn" : "") + (active ? " run" : "")}>
+    <div
+      className={
+        "ux u100-vip" + (warn ? " warn" : "") + (active ? " run" : "")
+      }
+    >
       <div className="u100-clk" role="timer" aria-live="off">
         <div className="u100-unit">
           <div className="u100-pair">
-            <FlipCard value={d[0]} warn={warn} />
-            <FlipCard value={d[1]} warn={warn} />
+            {d0 != null ? <FlipCard value={d0} warn={warn} /> : null}
+            <FlipCard value={d1} warn={warn} />
+            <FlipCard value={d2} warn={warn} />
           </div>
           <span className="u100-ulab">NGÀY</span>
         </div>
@@ -130,11 +175,8 @@ export function FlipCountdown({
 
       <style jsx global>{`
         .u100-vip {
-          --u100-surface: var(--surface, #13141c);
           --u100-line: var(--border, rgba(255, 255, 255, 0.08));
-          --u100-ink: var(--foreground, #f4f0e8);
           --u100-ink-3: var(--foreground-subtle, rgba(244, 240, 232, 0.42));
-          --u100-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
         }
         .u100-vip .u100-clk {
           display: flex;
@@ -164,7 +206,7 @@ export function FlipCountdown({
           display: flex;
           flex-direction: column;
           gap: 10px;
-          padding: 22px 2px 0;
+          padding: 18px 2px 0;
         }
         .u100-vip .u100-co i {
           width: 5px;
@@ -191,7 +233,8 @@ export function FlipCountdown({
           line-height: 40px;
           text-align: center;
           color: #f3f1ec;
-          box-shadow: 0 0 0 1px var(--u100-line), 0 6px 12px -8px rgba(0, 0, 0, 0.55);
+          box-shadow: 0 0 0 1px var(--u100-line),
+            0 6px 12px -8px rgba(0, 0, 0, 0.55);
           font-variant-numeric: tabular-nums;
           overflow: hidden;
         }
@@ -203,7 +246,8 @@ export function FlipCountdown({
             line-height: 46px;
           }
         }
-        .u100-vip.warn .u100-fl {
+        .u100-vip.warn .u100-fl,
+        .u100-vip .u100-fl.is-warn {
           color: #ffb547;
         }
         .u100-vip .u100-fl > span {
@@ -256,16 +300,19 @@ export function FlipCountdown({
         .u100-vip .u100-ft {
           z-index: 2;
           transform: perspective(240px) rotateX(-90deg);
+          pointer-events: none;
         }
         .u100-vip .u100-fb {
           z-index: 2;
           transform: perspective(240px) rotateX(90deg);
+          pointer-events: none;
         }
         .u100-vip .u100-fl.is-flip .u100-ft {
           animation: u100-fold-top 0.24s cubic-bezier(0.55, 0, 0.9, 0.6) forwards;
         }
         .u100-vip .u100-fl.is-flip .u100-fb {
-          animation: u100-fold-bot 0.3s 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.25) forwards;
+          animation: u100-fold-bot 0.3s 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.25)
+            forwards;
         }
         @keyframes u100-fold-top {
           from {

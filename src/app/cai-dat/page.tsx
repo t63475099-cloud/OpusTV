@@ -3,20 +3,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  User,
-  Palette,
-  Play,
-  Settings2,
-  Bell,
-  HelpCircle,
-  LogIn,
-  LogOut,
-  KeyRound,
-  Globe,
-  Trash2,
-  ChevronRight,
-} from "lucide-react";
 import { VipCountdownCard } from "@/components/vip/VipCountdownCard";
 import UserAvatar from "@/components/UserAvatar";
 import {
@@ -29,14 +15,10 @@ import {
 } from "@/lib/themeLocale";
 import { useI18n, setAppLanguage } from "@/hooks/useI18n";
 import { LOCALE_LIST } from "@/lib/i18n/types";
-import {
-  useSettingsStore,
-  type AppSettings,
-} from "@/lib/settings";
+import { useSettingsStore, type AppSettings } from "@/lib/settings";
 import { useAccountStore } from "@/lib/account";
 import { useHistoryStore } from "@/lib/history";
 import { useFavoritesStore } from "@/lib/favorites";
-import { cn } from "@/lib/utils";
 
 type TabId =
   | "account"
@@ -46,13 +28,13 @@ type TabId =
   | "notify"
   | "support";
 
-const TABS: { id: TabId; label: string; icon: typeof User }[] = [
-  { id: "account", label: "Tài khoản", icon: User },
-  { id: "appearance", label: "Giao diện", icon: Palette },
-  { id: "playback", label: "Phát & Giao diện", icon: Play },
-  { id: "general", label: "Cài đặt chung", icon: Settings2 },
-  { id: "notify", label: "Thông báo", icon: Bell },
-  { id: "support", label: "Hỗ trợ", icon: HelpCircle },
+const TABS: { id: TabId; label: string }[] = [
+  { id: "account", label: "Tài khoản" },
+  { id: "appearance", label: "Giao diện" },
+  { id: "playback", label: "Phát & Giao diện" },
+  { id: "general", label: "Cài đặt chung" },
+  { id: "notify", label: "Thông báo" },
+  { id: "support", label: "Hỗ trợ" },
 ];
 
 function applyDomFlags(s: AppSettings) {
@@ -78,28 +60,26 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 px-1 py-3.5 border-b border-white/5 last:border-0">
+    <div className="flex items-center gap-3 border-b border-white/5 py-3.5 last:border-0">
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-foreground">{label}</p>
-        {desc ? (
-          <p className="mt-0.5 text-xs text-foreground-muted">{desc}</p>
-        ) : null}
+        <p className="text-sm text-zinc-100">{label}</p>
+        {desc ? <p className="mt-0.5 text-xs text-zinc-400">{desc}</p> : null}
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={cn(
-          "relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200",
-          checked ? "bg-indigo-500" : "bg-zinc-600/80"
-        )}
+        className={
+          "relative h-7 w-12 shrink-0 rounded-full transition-colors " +
+          (checked ? "bg-indigo-500" : "bg-zinc-600")
+        }
       >
         <span
-          className={cn(
-            "absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200",
-            checked ? "translate-x-5" : "translate-x-0"
-          )}
+          className={
+            "absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform " +
+            (checked ? "translate-x-5" : "translate-x-0")
+          }
         />
       </button>
     </div>
@@ -108,18 +88,24 @@ function Toggle({
 
 function SegmentedTheme() {
   const [mode, setMode] = useState<ThemeMode>("dark");
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
     setMode(readTheme());
+    setReady(true);
   }, []);
+
+  if (!ready) {
+    return (
+      <div className="h-12 rounded-xl border border-white/10 bg-[#0e0f14]" aria-hidden />
+    );
+  }
+
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-foreground">Giao diện</p>
-      <p className="text-xs text-foreground-muted">Áp dụng toàn website</p>
-      <div
-        className="flex rounded-xl border border-white/10 bg-[#0e0f14] p-1"
-        role="group"
-        aria-label="Chọn giao diện"
-      >
+      <p className="text-sm font-medium text-zinc-100">Giao diện</p>
+      <p className="text-xs text-zinc-400">Áp dụng toàn website</p>
+      <div className="flex rounded-xl border border-white/10 bg-[#0e0f14] p-1" role="group">
         {THEME_OPTIONS.map((o) => (
           <button
             key={o.value}
@@ -128,12 +114,12 @@ function SegmentedTheme() {
               setMode(o.value);
               applyTheme(o.value);
             }}
-            className={cn(
-              "flex-1 rounded-lg py-2 text-sm font-medium transition-colors",
-              mode === o.value
-                ? "bg-indigo-600 text-white shadow"
-                : "text-foreground-muted hover:text-foreground"
-            )}
+            className={
+              "flex-1 rounded-lg py-2 text-sm font-medium transition-colors " +
+              (mode === o.value
+                ? "bg-indigo-600 text-white"
+                : "text-zinc-400 hover:text-zinc-200")
+            }
           >
             {o.labelVi}
           </button>
@@ -143,18 +129,10 @@ function SegmentedTheme() {
   );
 }
 
-function Panel({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="animate-in fade-in duration-300">
-      <h2 className="mb-4 text-lg font-semibold tracking-tight text-foreground">
-        {title}
-      </h2>
+    <section>
+      <h2 className="mb-4 text-lg font-semibold text-zinc-50">{title}</h2>
       <div className="rounded-3xl border border-white/5 bg-[#13141C] p-4 sm:p-5">
         {children}
       </div>
@@ -166,6 +144,7 @@ function SettingsInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tabParam = searchParams.get("tab") as TabId | null;
+
   const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<TabId>("account");
 
@@ -180,22 +159,21 @@ function SettingsInner() {
   const favLen = useFavoritesStore((s) => s.favorites.length);
   const accountUser = useAccountStore((s) => s.username);
   const accountLogout = useAccountStore((s) => s.logout);
-  const { t, locale } = useI18n();
+  const { locale } = useI18n();
 
-  useEffect(() => setMounted(true), []);
   useEffect(() => {
-    if (
-      tabParam &&
-      TABS.some((x) => x.id === tabParam)
-    ) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (tabParam && TABS.some((x) => x.id === tabParam)) {
       setTab(tabParam);
     }
   }, [tabParam]);
+
   useEffect(() => {
     if (!mounted) return;
     applyDomFlags(settings);
-    // Chỉ phụ thuộc các flag DOM — không theo dõi cả object settings
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     mounted,
     settings.reducedMotion,
@@ -233,10 +211,7 @@ function SettingsInner() {
     return "Khách";
   }, [profile.name, accountUser]);
 
-  const uid = useMemo(() => {
-    const u = (profile as { uid?: string }).uid || "";
-    return u || "—";
-  }, [profile]);
+  const uid = profile.uid?.trim() || "—";
 
   const onLogout = () => {
     try {
@@ -245,7 +220,7 @@ function SettingsInner() {
       /* */
     }
     try {
-      accountLogout?.();
+      void accountLogout?.();
     } catch {
       /* */
     }
@@ -254,35 +229,34 @@ function SettingsInner() {
 
   if (!mounted) {
     return (
-      <div className="min-h-[60vh] bg-background pt-[max(1rem,env(safe-area-inset-top,0px))]" />
+      <div className="min-h-[60vh] bg-[#0a0a0f] pt-8 text-center text-sm text-zinc-500">
+        Đang tải cài đặt…
+      </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground pb-24 pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
+    <div className="min-h-[100dvh] bg-[#0a0a0f] pb-24 pt-4 text-zinc-100">
       <div className="mx-auto flex max-w-5xl gap-0 px-3 sm:px-4 md:gap-6 md:px-6">
-        {/* Sidebar */}
         <aside className="hidden w-[280px] shrink-0 md:block">
           <div className="sticky top-20 space-y-1 rounded-3xl border border-white/5 bg-[#13141C] p-3">
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
               Cài đặt
             </p>
             {TABS.map((item) => {
-              const Icon = item.icon;
               const active = tab === item.id;
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => go(item.id)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                    active
+                  className={
+                    "flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium " +
+                    (active
                       ? "bg-indigo-600/15 text-indigo-300"
-                      : "text-foreground-muted hover:bg-white/5 hover:text-foreground"
-                  )}
+                      : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100")
+                  }
                 >
-                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                   {item.label}
                 </button>
               );
@@ -290,7 +264,6 @@ function SettingsInner() {
           </div>
         </aside>
 
-        {/* Mobile tab strip */}
         <div className="mb-3 flex w-full gap-1 overflow-x-auto pb-1 md:hidden">
           {TABS.map((item) => {
             const active = tab === item.id;
@@ -299,12 +272,12 @@ function SettingsInner() {
                 key={item.id}
                 type="button"
                 onClick={() => go(item.id)}
-                className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold",
-                  active
+                className={
+                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold " +
+                  (active
                     ? "bg-indigo-600 text-white"
-                    : "bg-[#13141C] text-foreground-muted border border-white/5"
-                )}
+                    : "border border-white/5 bg-[#13141C] text-zinc-400")
+                }
               >
                 {item.label}
               </button>
@@ -312,24 +285,19 @@ function SettingsInner() {
           })}
         </div>
 
-        {/* Main */}
         <main className="min-w-0 flex-1 space-y-4 pb-8">
           {tab === "account" && (
             <Panel title="Tài khoản">
               <div className="space-y-4">
-                <VipCountdownCard
-                  onActivate={() => router.push("/mua-key")}
-                />
+                <VipCountdownCard onActivate={() => router.push("/mua-key")} />
 
                 <div className="flex items-center gap-4 rounded-2xl border border-white/5 bg-[#0e0f14] p-4">
                   <UserAvatar size={56} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-base font-semibold">{displayName}</p>
-                    <p className="font-mono text-xs text-foreground-muted">
-                      UID: {uid}
-                    </p>
+                    <p className="font-mono text-xs text-zinc-400">UID: {uid}</p>
                     {accountUser ? (
-                      <p className="text-xs text-foreground-muted">@{accountUser}</p>
+                      <p className="text-xs text-zinc-500">@{accountUser}</p>
                     ) : null}
                   </div>
                 </div>
@@ -339,31 +307,26 @@ function SettingsInner() {
                     href="/tai-khoan"
                     className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
                   >
-                    <span className="flex items-center gap-2">
-                      <LogIn className="h-4 w-4" strokeWidth={1.75} />
+                    <span>
                       {profile.loggedIn || accountUser
                         ? "Hồ sơ / Đăng nhập"
                         : "Đăng nhập / Đăng ký"}
                     </span>
-                    <ChevronRight className="h-4 w-4 text-foreground-muted" />
+                    <span className="text-zinc-500">→</span>
                   </Link>
                   <Link
                     href="/mua-key"
                     className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
                   >
-                    <span className="flex items-center gap-2">
-                      <KeyRound className="h-4 w-4" strokeWidth={1.75} />
-                      Mua Key
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-foreground-muted" />
+                    <span>Mua Key</span>
+                    <span className="text-zinc-500">→</span>
                   </Link>
                   {(profile.loggedIn || accountUser) && (
                     <button
                       type="button"
                       onClick={onLogout}
-                      className="flex w-full items-center gap-2 rounded-xl px-2 py-3 text-sm text-rose-400 hover:bg-rose-500/10"
+                      className="w-full rounded-xl px-2 py-3 text-left text-sm text-rose-400 hover:bg-rose-500/10"
                     >
-                      <LogOut className="h-4 w-4" strokeWidth={1.75} />
                       Đăng xuất
                     </button>
                   )}
@@ -377,7 +340,7 @@ function SettingsInner() {
               <div className="space-y-6">
                 <SegmentedTheme />
                 <div>
-                  <p className="mb-2 text-sm font-medium text-foreground">Ngôn ngữ</p>
+                  <p className="mb-2 text-sm font-medium text-zinc-100">Ngôn ngữ</p>
                   <div className="flex flex-wrap gap-2">
                     {LOCALE_LIST.map((loc) => (
                       <button
@@ -388,12 +351,12 @@ function SettingsInner() {
                           setAppLanguage(loc.value as LocaleCode);
                           applyLocale(loc.value as LocaleCode);
                         }}
-                        className={cn(
-                          "rounded-lg border px-3 py-1.5 text-xs font-medium",
-                          locale === loc.value
+                        className={
+                          "rounded-lg border px-3 py-1.5 text-xs font-medium " +
+                          (locale === loc.value
                             ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
-                            : "border-white/10 text-foreground-muted hover:bg-white/5"
-                        )}
+                            : "border-white/10 text-zinc-400 hover:bg-white/5")
+                        }
                       >
                         {loc.label}
                       </button>
@@ -462,19 +425,19 @@ function SettingsInner() {
                 onChange={(v) => set({ pauseOnHide: v })}
               />
               <div className="mt-3 space-y-1">
-                <p className="text-xs text-foreground-muted">Thời gian tua (giây)</p>
+                <p className="text-xs text-zinc-400">Thời gian tua (giây)</p>
                 <div className="flex flex-wrap gap-2">
                   {([5, 10, 20, 30] as const).map((n) => (
                     <button
                       key={n}
                       type="button"
                       onClick={() => set({ seekSeconds: n })}
-                      className={cn(
-                        "rounded-lg border px-3 py-1.5 text-xs font-medium",
-                        (settings.seekSeconds ?? 10) === n
+                      className={
+                        "rounded-lg border px-3 py-1.5 text-xs font-medium " +
+                        ((settings.seekSeconds ?? 10) === n
                           ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
-                          : "border-white/10 text-foreground-muted"
-                      )}
+                          : "border-white/10 text-zinc-400")
+                      }
                     >
                       {n}s
                     </button>
@@ -512,29 +475,27 @@ function SettingsInner() {
                 onChange={(v) => set({ roundedCorners: v })}
               />
               <div className="mt-4 space-y-2 border-t border-white/5 pt-4">
-                <p className="text-xs text-foreground-muted">
+                <p className="text-xs text-zinc-500">
                   Lịch sử: {historyLen} · Yêu thích: {favLen}
                 </p>
                 <button
                   type="button"
                   onClick={() => clearHistory()}
-                  className="flex items-center gap-2 text-sm text-rose-400 hover:underline"
+                  className="block text-sm text-rose-400 hover:underline"
                 >
-                  <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                   Xóa lịch sử xem
                 </button>
                 <button
                   type="button"
                   onClick={() => clearFav()}
-                  className="flex items-center gap-2 text-sm text-rose-400 hover:underline"
+                  className="block text-sm text-rose-400 hover:underline"
                 >
-                  <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                   Xóa yêu thích
                 </button>
                 <button
                   type="button"
                   onClick={() => resetSettings()}
-                  className="flex items-center gap-2 text-sm text-foreground-muted hover:underline"
+                  className="block text-sm text-zinc-400 hover:underline"
                 >
                   Đặt lại cài đặt mặc định
                 </button>
@@ -572,21 +533,16 @@ function SettingsInner() {
                   className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
                 >
                   Điều khoản sử dụng
-                  <ChevronRight className="h-4 w-4 text-foreground-muted" />
+                  <span className="text-zinc-500">→</span>
                 </Link>
                 <Link
                   href="/chinh-sach"
                   className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
                 >
                   Chính sách bảo mật
-                  <ChevronRight className="h-4 w-4 text-foreground-muted" />
+                  <span className="text-zinc-500">→</span>
                 </Link>
-                <div className="px-2 py-3 text-xs text-foreground-muted">
-                  <p className="flex items-center gap-2">
-                    <Globe className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    OpusFilm · {t("settings.title")}
-                  </p>
-                </div>
+                <p className="px-2 py-3 text-xs text-zinc-500">OpusFilm · Cài đặt</p>
               </div>
             </Panel>
           )}
@@ -600,7 +556,7 @@ export default function CaiDatPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[60vh] bg-background pt-8 text-center text-sm text-foreground-muted">
+        <div className="min-h-[60vh] bg-[#0a0a0f] pt-8 text-center text-sm text-zinc-500">
           Đang tải…
         </div>
       }

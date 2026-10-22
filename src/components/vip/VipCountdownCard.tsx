@@ -1,29 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Trash2, X } from "lucide-react";
 import { VipTimer } from "@/components/settings/VipTimer";
 import { OPUS_KEY_REGEX } from "@/lib/vipCatalog";
 import { useVipAccess } from "@/lib/vipAccess";
 import { useAccountStore } from "@/lib/account";
 
-export function VipCountdownCard({
-  onActivate,
-}: {
-  onActivate?: () => void;
-}) {
+export function VipCountdownCard({ onActivate }: { onActivate?: () => void }) {
   const username = useAccountStore((s) => s.username);
   const isLifetime = useVipAccess((s) => s.isLifetime);
   const vipExpiresAt = useVipAccess((s) => s.vipExpiresAt);
   const setFromServer = useVipAccess((s) => s.setFromServer);
+
   const [panel, setPanel] = useState<"none" | "key" | "clear">("none");
   const [keyInput, setKeyInput] = useState("");
   const [clearConfirm, setClearConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const active =
-    isLifetime || (vipExpiresAt != null && vipExpiresAt > Date.now());
+  const active = isLifetime || (vipExpiresAt != null && vipExpiresAt > Date.now());
 
   const redeemKey = async () => {
     if (!username) {
@@ -56,7 +51,9 @@ export function VipCountdownCard({
         setMsg(data.message || "Kích hoạt thành công");
         setKeyInput("");
         setPanel("none");
-        window.dispatchEvent(new Event("vip-status-updated"));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("vip-status-updated"));
+        }
       }
     } catch {
       setMsg("Lỗi mạng");
@@ -86,7 +83,9 @@ export function VipCountdownCard({
         setMsg(data.message || "Đã xóa gói");
         setClearConfirm("");
         setPanel("none");
-        window.dispatchEvent(new Event("vip-status-updated"));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("vip-status-updated"));
+        }
       }
     } catch {
       setMsg("Lỗi mạng");
@@ -94,11 +93,6 @@ export function VipCountdownCard({
       setBusy(false);
     }
   };
-
-  const btnSecondary =
-    "inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-elevated px-3 py-1.5 text-xs font-medium text-foreground";
-  const btnDanger =
-    "inline-flex items-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-300";
 
   return (
     <div className="space-y-3">
@@ -109,7 +103,7 @@ export function VipCountdownCard({
           <button
             type="button"
             onClick={onActivate}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+            className="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white"
           >
             Gia hạn / Kích hoạt ngay
           </button>
@@ -120,9 +114,8 @@ export function VipCountdownCard({
             setPanel(panel === "key" ? "none" : "key");
             setMsg(null);
           }}
-          className={btnSecondary}
+          className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200"
         >
-          <KeyRound className="h-4 w-4" strokeWidth={1.75} />
           Nhập Key mới
         </button>
         {(active || isLifetime) && (
@@ -132,34 +125,35 @@ export function VipCountdownCard({
               setPanel(panel === "clear" ? "none" : "clear");
               setMsg(null);
             }}
-            className={btnDanger}
+            className="inline-flex items-center rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-300"
           >
-            <Trash2 className="h-4 w-4" strokeWidth={1.75} />
             Xóa gói
           </button>
         )}
       </div>
 
       {panel === "key" ? (
-        <div className="rounded-lg border border-border bg-background p-3">
+        <div className="rounded-lg border border-white/10 bg-[#0e0f14] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-foreground">Nhập License Key hoặc Giftcode</p>
-            <button type="button" onClick={() => setPanel("none")} aria-label="Đóng">
-              <X className="h-4 w-4 text-foreground-muted" strokeWidth={1.75} />
+            <p className="text-xs font-medium text-zinc-200">Nhập License Key hoặc Giftcode</p>
+            <button type="button" onClick={() => setPanel("none")} className="text-zinc-400">
+              Đóng
             </button>
           </div>
           <input
-            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-sm uppercase text-foreground placeholder:text-foreground-subtle"
+            className="w-full rounded-md border border-white/10 bg-[#13141c] px-2.5 py-1.5 font-mono text-sm uppercase text-white placeholder:text-zinc-500"
             placeholder="OPUS-24H-XXXXXXXX hoặc GIFT-XXXX-YYYY"
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void redeemKey()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void redeemKey();
+            }}
           />
           <button
             type="button"
             disabled={busy}
             onClick={() => void redeemKey()}
-            className="mt-2 w-full rounded-lg bg-primary py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+            className="mt-2 w-full rounded-lg bg-indigo-600 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {busy ? "Đang xử lý…" : "Kích hoạt"}
           </button>
@@ -169,16 +163,14 @@ export function VipCountdownCard({
       {panel === "clear" ? (
         <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium text-foreground">Xóa gói VIP hiện tại?</p>
-            <button type="button" onClick={() => setPanel("none")} aria-label="Đóng">
-              <X className="h-4 w-4 text-foreground-muted" strokeWidth={1.75} />
+            <p className="text-xs font-medium text-zinc-200">Xóa gói VIP hiện tại?</p>
+            <button type="button" onClick={() => setPanel("none")} className="text-zinc-400">
+              Đóng
             </button>
           </div>
-          <p className="mb-2 text-[11px] text-foreground-muted">
-            Gõ CONFIRM để xác nhận. Thao tác không hoàn tác.
-          </p>
+          <p className="mb-2 text-[11px] text-zinc-400">Gõ CONFIRM để xác nhận.</p>
           <input
-            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-foreground"
+            className="w-full rounded-md border border-white/10 bg-[#13141c] px-2.5 py-1.5 text-sm text-white"
             placeholder="CONFIRM"
             value={clearConfirm}
             onChange={(e) => setClearConfirm(e.target.value)}
@@ -194,11 +186,7 @@ export function VipCountdownCard({
         </div>
       ) : null}
 
-      {msg ? (
-        <p className="text-xs text-foreground-muted" role="status">
-          {msg}
-        </p>
-      ) : null}
+      {msg ? <p className="text-xs text-zinc-400">{msg}</p> : null}
     </div>
   );
 }

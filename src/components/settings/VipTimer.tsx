@@ -1,12 +1,6 @@
 "use client";
 
-/**
- * VIP timer: cập nhật số qua DOM ref, KHÔNG setState mỗi giây
- * → tránh re-render / đơ trình duyệt trên /cai-dat
- */
-
-import { useEffect, useRef, memo } from "react";
-import { Infinity, ShieldCheck } from "lucide-react";
+import { useEffect, useState, memo } from "react";
 import { useVipAccess } from "@/lib/vipAccess";
 
 function pad2(n: number) {
@@ -14,109 +8,106 @@ function pad2(n: number) {
 }
 
 function splitRemain(ms: number) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const days = Math.floor(s / 86400);
-  const hours = Math.floor((s % 86400) / 3600);
-  const minutes = Math.floor((s % 3600) / 60);
-  const seconds = s % 60;
-  return { days, hours, minutes, seconds };
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return {
+    days: Math.floor(total / 86400),
+    hours: Math.floor((total % 86400) / 3600),
+    minutes: Math.floor((total % 3600) / 60),
+    seconds: total % 60,
+  };
 }
 
+/**
+ * Bộ đếm VIP an toàn hydration:
+ * - Chỉ hiện số sau khi client mount
+ * - useEffect deps [] + clearInterval khi unmount
+ * - Không setState mỗi giây (chỉ cập nhật local state đã mount)
+ */
 export const VipTimer = memo(function VipTimer() {
   const isLifetime = useVipAccess((s) => s.isLifetime);
   const vipExpiresAt = useVipAccess((s) => s.vipExpiresAt);
 
-  const statusRef = useRef<HTMLSpanElement>(null);
-  const dRef = useRef<HTMLSpanElement>(null);
-  const hRef = useRef<HTMLSpanElement>(null);
-  const mRef = useRef<HTMLSpanElement>(null);
-  const sRef = useRef<HTMLSpanElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const lifeRef = useRef<HTMLDivElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [rem, setRem] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
-    if (isLifetime) {
-      if (statusRef.current) statusRef.current.textContent = "VIP VĨNH VIỄN";
-      if (gridRef.current) gridRef.current.style.display = "none";
-      if (lifeRef.current) lifeRef.current.style.display = "flex";
-      return;
-    }
+    setIsMounted(true);
+  }, []);
 
-    if (lifeRef.current) lifeRef.current.style.display = "none";
-    if (gridRef.current) gridRef.current.style.display = "grid";
+  useEffect(() => {
+    if (!isMounted) return;
 
-    const paint = () => {
-      const exp = useVipAccess.getState().vipExpiresAt;
+    const tick = () => {
       const life = useVipAccess.getState().isLifetime;
-      if (life) return;
-      const now = Date.now();
-      const active = exp != null && exp > now;
-      const rem = splitRemain(active && exp ? exp - now : 0);
-      if (statusRef.current) {
-        statusRef.current.textContent = active
-          ? "ĐANG KÍCH HOẠT VIP"
-          : "CHƯA KÍCH HOẠT VIP";
+      const exp = useVipAccess.getState().vipExpiresAt;
+      if (life) {
+        setActive(true);
+        setRem({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
       }
-      if (dRef.current) dRef.current.textContent = String(rem.days);
-      if (hRef.current) hRef.current.textContent = pad2(rem.hours);
-      if (mRef.current) mRef.current.textContent = pad2(rem.minutes);
-      if (sRef.current) sRef.current.textContent = pad2(rem.seconds);
+      const now = Date.now();
+      const isActive = exp != null && exp > now;
+      setActive(isActive);
+      setRem(splitRemain(isActive && exp ? exp - now : 0));
     };
 
-    paint();
-    const id = window.setInterval(paint, 1000);
-    return () => window.clearInterval(id);
-  }, [isLifetime, vipExpiresAt]);
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [isMounted, isLifetime, vipExpiresAt]);
+
+  const statusLabel = !isMounted
+    ? "…"
+    : isLifetime
+      ? "VIP VĨNH VIỄN"
+      : active
+        ? "ĐANG KÍCH HOẠT VIP"
+        : "CHƯA KÍCH HOẠT VIP";
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-600/25 via-[#1a1b25] to-[#13141c] p-4 shadow-lg">
+    <div className="rounded-2xl border border-white/10 bg-[#1a1b25] p-4">
       <div className="mb-3 flex items-center gap-2">
-        <ShieldCheck className="h-5 w-5 text-indigo-300" strokeWidth={1.75} />
-        <span ref={statusRef} className="text-sm font-semibold text-white">
-          {isLifetime
-            ? "VIP VĨNH VIỄN"
-            : vipExpiresAt && vipExpiresAt > Date.now()
-              ? "ĐANG KÍCH HOẠT VIP"
-              : "CHƯA KÍCH HOẠT VIP"}
-        </span>
+        <svg
+          className="h-5 w-5 text-indigo-300"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        <span className="text-sm font-semibold text-white">{statusLabel}</span>
       </div>
 
-      <div
-        ref={lifeRef}
-        className="items-center gap-2 text-emerald-400"
-        style={{ display: isLifetime ? "flex" : "none" }}
-      >
-        <Infinity className="h-5 w-5" strokeWidth={1.75} />
-        <span className="text-sm font-medium">Không giới hạn thời gian</span>
-      </div>
-
-      <div
-        ref={gridRef}
-        className="grid grid-cols-4 gap-2"
-        style={{ display: isLifetime ? "none" : "grid" }}
-      >
-        {(
-          [
-            [dRef, "NGÀY"],
-            [hRef, "GIỜ"],
-            [mRef, "PHÚT"],
-            [sRef, "GIÂY"],
-          ] as const
-        ).map(([ref, label]) => (
-          <div
-            key={label}
-            className="rounded-lg border border-white/10 bg-black/30 px-1 py-2 text-center"
-          >
-            <span
-              ref={ref}
-              className="block font-mono text-lg font-semibold tabular-nums text-white"
+      {isMounted && isLifetime ? (
+        <p className="text-sm font-medium text-emerald-400">Không giới hạn thời gian</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-2">
+          {(
+            [
+              [isMounted ? String(rem.days) : "00", "NGÀY"],
+              [isMounted ? pad2(rem.hours) : "00", "GIỜ"],
+              [isMounted ? pad2(rem.minutes) : "00", "PHÚT"],
+              [isMounted ? pad2(rem.seconds) : "00", "GIÂY"],
+            ] as const
+          ).map(([val, label]) => (
+            <div
+              key={label}
+              className="rounded-lg border border-white/10 bg-black/30 px-1 py-2 text-center"
             >
-              00
-            </span>
-            <span className="text-[10px] font-medium text-zinc-400">{label}</span>
-          </div>
-        ))}
-      </div>
+              <span className="block font-mono text-lg font-semibold tabular-nums text-white">
+                {val}
+              </span>
+              <span className="text-[10px] font-medium text-zinc-400">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });

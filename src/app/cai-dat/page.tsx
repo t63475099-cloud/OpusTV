@@ -1,24 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { VipCountdownCard } from "@/components/vip/VipCountdownCard";
-import UserAvatar from "@/components/UserAvatar";
-import {
-  THEME_OPTIONS,
-  applyTheme,
-  applyLocale,
-  readTheme,
-  type ThemeMode,
-  type LocaleCode,
-} from "@/lib/themeLocale";
-import { useI18n, setAppLanguage } from "@/hooks/useI18n";
-import { LOCALE_LIST } from "@/lib/i18n/types";
-import { useSettingsStore, type AppSettings } from "@/lib/settings";
-import { useAccountStore } from "@/lib/account";
-import { useHistoryStore } from "@/lib/history";
-import { useFavoritesStore } from "@/lib/favorites";
+import { useRouter } from "next/navigation";
 
 type TabId =
   | "account"
@@ -37,41 +21,114 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "support", label: "Hỗ trợ" },
 ];
 
-function applyDomFlags(s: AppSettings) {
-  if (typeof document === "undefined") return;
-  const h = document.documentElement;
-  h.classList.toggle("reduce-motion", !!s.reducedMotion);
-  h.classList.toggle("yt-dense", !!s.denseHome);
-  h.classList.toggle("yt-large-text", !!s.largeText);
-  h.classList.toggle("yt-high-contrast", !!s.highContrast);
-  h.classList.toggle("yt-reduce-transparency", !!s.reduceTransparency);
-  if (s.accent) h.dataset.accent = s.accent;
+function pad2(n: number) {
+  return String(Math.max(0, Math.floor(n))).padStart(2, "0");
 }
 
-function Toggle({
+/** Đồng hồ VIP: chỉ chạy trên client, mount-gated, clearInterval */
+function SafeVipTimer() {
+  const [mounted, setMounted] = useState(false);
+  const [label, setLabel] = useState("…");
+  const [parts, setParts] = useState(["00", "00", "00", "00"]);
+  const [lifetime, setLifetime] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const readVip = () => {
+      try {
+        const raw = localStorage.getItem("opus-vip-access");
+        if (!raw) {
+          setLabel("CHƯA KÍCH HOẠT VIP");
+          setParts(["0", "00", "00", "00"]);
+          setLifetime(false);
+          return;
+        }
+        const parsed = JSON.parse(raw) as {
+          state?: { isLifetime?: boolean; vipExpiresAt?: number | null };
+          isLifetime?: boolean;
+          vipExpiresAt?: number | null;
+        };
+        const st = parsed.state || parsed;
+        if (st.isLifetime) {
+          setLifetime(true);
+          setLabel("VIP VĨNH VIỄN");
+          return;
+        }
+        setLifetime(false);
+        const exp = st.vipExpiresAt ?? null;
+        const now = Date.now();
+        if (exp != null && exp > now) {
+          setLabel("ĐANG KÍCH HOẠT VIP");
+          const s = Math.floor((exp - now) / 1000);
+          const days = Math.floor(s / 86400);
+          const hours = Math.floor((s % 86400) / 3600);
+          const minutes = Math.floor((s % 3600) / 60);
+          const seconds = s % 60;
+          setParts([String(days), pad2(hours), pad2(minutes), pad2(seconds)]);
+        } else {
+          setLabel("CHƯA KÍCH HOẠT VIP");
+          setParts(["0", "00", "00", "00"]);
+        }
+      } catch {
+        setLabel("CHƯA KÍCH HOẠT VIP");
+        setParts(["0", "00", "00", "00"]);
+        setLifetime(false);
+      }
+    };
+
+    readVip();
+    const timer = window.setInterval(readVip, 1000);
+    return () => window.clearInterval(timer);
+  }, [mounted]);
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#1a1b25] p-4">
+      <p className="mb-3 text-sm font-semibold text-white">{label}</p>
+      {lifetime ? (
+        <p className="text-sm text-emerald-400">Không giới hạn thời gian</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-2">
+          {(["NGÀY", "GIỜ", "PHÚT", "GIÂY"] as const).map((lab, i) => (
+            <div
+              key={lab}
+              className="rounded-lg border border-white/10 bg-black/30 px-1 py-2 text-center"
+            >
+              <span className="block font-mono text-lg font-semibold tabular-nums text-white">
+                {mounted ? parts[i] : "00"}
+              </span>
+              <span className="text-[10px] text-zinc-400">{lab}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ToggleRow({
   label,
-  desc,
   checked,
   onChange,
 }: {
   label: string;
-  desc?: string;
   checked: boolean;
-  onChange: (v: boolean) => void;
+  onChange: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-white/5 py-3.5 last:border-0">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-zinc-100">{label}</p>
-        {desc ? <p className="mt-0.5 text-xs text-zinc-400">{desc}</p> : null}
-      </div>
+    <div className="flex items-center justify-between border-b border-white/5 py-3.5 last:border-0">
+      <span className="text-sm text-zinc-100">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
+        onClick={onChange}
         className={
-          "relative h-7 w-12 shrink-0 rounded-full transition-colors " +
+          "relative h-7 w-12 rounded-full transition-colors " +
           (checked ? "bg-indigo-500" : "bg-zinc-600")
         }
       >
@@ -86,482 +143,325 @@ function Toggle({
   );
 }
 
-function SegmentedTheme() {
-  const [mode, setMode] = useState<ThemeMode>("dark");
-  const [ready, setReady] = useState(false);
+function KeyPanel() {
+  const [open, setOpen] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
 
-  useEffect(() => {
-    setMode(readTheme());
-    setReady(true);
-  }, []);
-
-  if (!ready) {
-    return (
-      <div className="h-12 rounded-xl border border-white/10 bg-[#0e0f14]" aria-hidden />
-    );
-  }
+  const submit = async () => {
+    const raw = keyInput.trim().toUpperCase();
+    if (!raw) {
+      setMsg("Nhập mã Key hoặc Giftcode");
+      return;
+    }
+    let username = "";
+    try {
+      const acc = localStorage.getItem("opus-account");
+      if (acc) {
+        const j = JSON.parse(acc) as { state?: { username?: string }; username?: string };
+        username = String(j.state?.username || j.username || "").trim().toLowerCase();
+      }
+    } catch {
+      /* */
+    }
+    if (!username) {
+      setMsg("Cần đăng nhập");
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      const isKey = /^OPUS-[A-Z0-9]+-[A-Z0-9]+$/i.test(raw);
+      const res = await fetch(isKey ? "/api/vip/redeem-key" : "/api/vip/redeem-gift", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isKey ? { username, key: raw } : { username, code: raw }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; message?: string };
+      setMsg(data.ok ? data.message || "Kích hoạt thành công" : data.error || "Thất bại");
+      if (data.ok) {
+        setKeyInput("");
+        setOpen(false);
+      }
+    } catch {
+      setMsg("Lỗi mạng");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-zinc-100">Giao diện</p>
-      <p className="text-xs text-zinc-400">Áp dụng toàn website</p>
-      <div className="flex rounded-xl border border-white/10 bg-[#0e0f14] p-1" role="group">
-        {THEME_OPTIONS.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => {
-              setMode(o.value);
-              applyTheme(o.value);
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200"
+      >
+        {open ? "Đóng" : "Nhập Key mới"}
+      </button>
+      {open ? (
+        <div className="rounded-lg border border-white/10 bg-[#0e0f14] p-3">
+          <input
+            className="w-full rounded-md border border-white/10 bg-[#13141c] px-2.5 py-1.5 font-mono text-sm uppercase text-white placeholder:text-zinc-500"
+            placeholder="OPUS-24H-XXXXXXXX"
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void submit();
             }}
-            className={
-              "flex-1 rounded-lg py-2 text-sm font-medium transition-colors " +
-              (mode === o.value
-                ? "bg-indigo-600 text-white"
-                : "text-zinc-400 hover:text-zinc-200")
-            }
+          />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit()}
+            className="mt-2 w-full rounded-lg bg-indigo-600 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
-            {o.labelVi}
+            {busy ? "Đang xử lý…" : "Kích hoạt"}
           </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h2 className="mb-4 text-lg font-semibold text-zinc-50">{title}</h2>
-      <div className="rounded-3xl border border-white/5 bg-[#13141C] p-4 sm:p-5">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function SettingsInner() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const tabParam = searchParams.get("tab") as TabId | null;
-
-  const [mounted, setMounted] = useState(false);
-  const [tab, setTab] = useState<TabId>("account");
-
-  const profile = useSettingsStore((s) => s.profile);
-  const settings = useSettingsStore((s) => s.settings);
-  const logoutSettings = useSettingsStore((s) => s.logout);
-  const updateSettings = useSettingsStore((s) => s.updateSettings);
-  const resetSettings = useSettingsStore((s) => s.resetSettings);
-  const clearHistory = useHistoryStore((s) => s.clear);
-  const clearFav = useFavoritesStore((s) => s.clear);
-  const historyLen = useHistoryStore((s) => s.history.length);
-  const favLen = useFavoritesStore((s) => s.favorites.length);
-  const accountUser = useAccountStore((s) => s.username);
-  const accountLogout = useAccountStore((s) => s.logout);
-  const { locale } = useI18n();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (tabParam && TABS.some((x) => x.id === tabParam)) {
-      setTab(tabParam);
-    }
-  }, [tabParam]);
-
-  useEffect(() => {
-    if (!mounted) return;
-    applyDomFlags(settings);
-  }, [
-    mounted,
-    settings.reducedMotion,
-    settings.denseHome,
-    settings.largeText,
-    settings.highContrast,
-    settings.reduceTransparency,
-    settings.accent,
-  ]);
-
-  const go = useCallback(
-    (id: TabId) => {
-      setTab(id);
-      router.replace(`/cai-dat?tab=${id}`, { scroll: false });
-    },
-    [router]
-  );
-
-  const set = useCallback(
-    (partial: Partial<AppSettings>) => {
-      updateSettings(partial);
-      const next = { ...useSettingsStore.getState().settings, ...partial };
-      applyDomFlags(next);
-      if (partial.language) {
-        setAppLanguage(partial.language as LocaleCode);
-        applyLocale(partial.language as LocaleCode);
-      }
-    },
-    [updateSettings]
-  );
-
-  const displayName = useMemo(() => {
-    if (profile.name?.trim()) return profile.name.trim();
-    if (accountUser) return accountUser;
-    return "Khách";
-  }, [profile.name, accountUser]);
-
-  const uid = profile.uid?.trim() || "—";
-
-  const onLogout = () => {
-    try {
-      logoutSettings();
-    } catch {
-      /* */
-    }
-    try {
-      void accountLogout?.();
-    } catch {
-      /* */
-    }
-    router.push("/tai-khoan");
-  };
-
-  if (!mounted) {
-    return (
-      <div className="min-h-[60vh] bg-[#0a0a0f] pt-8 text-center text-sm text-zinc-500">
-        Đang tải cài đặt…
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-[100dvh] bg-[#0a0a0f] pb-24 pt-4 text-zinc-100">
-      <div className="mx-auto flex max-w-5xl gap-0 px-3 sm:px-4 md:gap-6 md:px-6">
-        <aside className="hidden w-[280px] shrink-0 md:block">
-          <div className="sticky top-20 space-y-1 rounded-3xl border border-white/5 bg-[#13141C] p-3">
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Cài đặt
-            </p>
-            {TABS.map((item) => {
-              const active = tab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => go(item.id)}
-                  className={
-                    "flex w-full items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium " +
-                    (active
-                      ? "bg-indigo-600/15 text-indigo-300"
-                      : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100")
-                  }
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        <div className="mb-3 flex w-full gap-1 overflow-x-auto pb-1 md:hidden">
-          {TABS.map((item) => {
-            const active = tab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => go(item.id)}
-                className={
-                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold " +
-                  (active
-                    ? "bg-indigo-600 text-white"
-                    : "border border-white/5 bg-[#13141C] text-zinc-400")
-                }
-              >
-                {item.label}
-              </button>
-            );
-          })}
+          {msg ? <p className="mt-2 text-xs text-zinc-400">{msg}</p> : null}
         </div>
-
-        <main className="min-w-0 flex-1 space-y-4 pb-8">
-          {tab === "account" && (
-            <Panel title="Tài khoản">
-              <div className="space-y-4">
-                <VipCountdownCard onActivate={() => router.push("/mua-key")} />
-
-                <div className="flex items-center gap-4 rounded-2xl border border-white/5 bg-[#0e0f14] p-4">
-                  <UserAvatar profile={profile} size={56} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-semibold">{displayName}</p>
-                    <p className="font-mono text-xs text-zinc-400">UID: {uid}</p>
-                    {accountUser ? (
-                      <p className="text-xs text-zinc-500">@{accountUser}</p>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <Link
-                    href="/tai-khoan"
-                    className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
-                  >
-                    <span>
-                      {profile.loggedIn || accountUser
-                        ? "Hồ sơ / Đăng nhập"
-                        : "Đăng nhập / Đăng ký"}
-                    </span>
-                    <span className="text-zinc-500">→</span>
-                  </Link>
-                  <Link
-                    href="/mua-key"
-                    className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
-                  >
-                    <span>Mua Key</span>
-                    <span className="text-zinc-500">→</span>
-                  </Link>
-                  {(profile.loggedIn || accountUser) && (
-                    <button
-                      type="button"
-                      onClick={onLogout}
-                      className="w-full rounded-xl px-2 py-3 text-left text-sm text-rose-400 hover:bg-rose-500/10"
-                    >
-                      Đăng xuất
-                    </button>
-                  )}
-                </div>
-              </div>
-            </Panel>
-          )}
-
-          {tab === "appearance" && (
-            <Panel title="Giao diện">
-              <div className="space-y-6">
-                <SegmentedTheme />
-                <div>
-                  <p className="mb-2 text-sm font-medium text-zinc-100">Ngôn ngữ</p>
-                  <div className="flex flex-wrap gap-2">
-                    {LOCALE_LIST.map((loc) => (
-                      <button
-                        key={loc.value}
-                        type="button"
-                        onClick={() => {
-                          set({ language: loc.value as LocaleCode });
-                          setAppLanguage(loc.value as LocaleCode);
-                          applyLocale(loc.value as LocaleCode);
-                        }}
-                        className={
-                          "rounded-lg border px-3 py-1.5 text-xs font-medium " +
-                          (locale === loc.value
-                            ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
-                            : "border-white/10 text-zinc-400 hover:bg-white/5")
-                        }
-                      >
-                        {loc.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <Toggle
-                  label="Chữ lớn"
-                  checked={!!settings.largeText}
-                  onChange={(v) => set({ largeText: v })}
-                />
-                <Toggle
-                  label="Tương phản cao"
-                  checked={!!settings.highContrast}
-                  onChange={(v) => set({ highContrast: v })}
-                />
-                <Toggle
-                  label="Giảm chuyển động"
-                  checked={!!settings.reducedMotion}
-                  onChange={(v) => set({ reducedMotion: v })}
-                />
-                <Toggle
-                  label="Nền đen OLED"
-                  checked={!!settings.trueBlackOled}
-                  onChange={(v) => set({ trueBlackOled: v })}
-                />
-              </div>
-            </Panel>
-          )}
-
-          {tab === "playback" && (
-            <Panel title="Phát & Giao diện">
-              <Toggle
-                label="Tự phát khi mở tập"
-                checked={settings.autoPlayStart !== false}
-                onChange={(v) => set({ autoPlayStart: v })}
-              />
-              <Toggle
-                label="Tự chuyển tập tiếp theo"
-                checked={settings.autoPlayNext !== false}
-                onChange={(v) => set({ autoPlayNext: v })}
-              />
-              <Toggle
-                label="Chạm đôi để tua"
-                checked={settings.doubleTapSeek !== false}
-                onChange={(v) => set({ doubleTapSeek: v })}
-              />
-              <Toggle
-                label="Tắt tiếng lúc bắt đầu"
-                checked={!!settings.muteOnStart}
-                onChange={(v) => set({ muteOnStart: v })}
-              />
-              <Toggle
-                label="Nhớ tốc độ phát"
-                checked={settings.rememberSpeed !== false}
-                onChange={(v) => set({ rememberSpeed: v })}
-              />
-              <Toggle
-                label="Tự bỏ qua intro"
-                checked={!!settings.autoSkipIntro}
-                onChange={(v) => set({ autoSkipIntro: v })}
-              />
-              <Toggle
-                label="Tạm dừng khi chuyển tab"
-                checked={!!settings.pauseOnHide}
-                onChange={(v) => set({ pauseOnHide: v })}
-              />
-              <div className="mt-3 space-y-1">
-                <p className="text-xs text-zinc-400">Thời gian tua (giây)</p>
-                <div className="flex flex-wrap gap-2">
-                  {([5, 10, 20, 30] as const).map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => set({ seekSeconds: n })}
-                      className={
-                        "rounded-lg border px-3 py-1.5 text-xs font-medium " +
-                        ((settings.seekSeconds ?? 10) === n
-                          ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
-                          : "border-white/10 text-zinc-400")
-                      }
-                    >
-                      {n}s
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </Panel>
-          )}
-
-          {tab === "general" && (
-            <Panel title="Cài đặt chung">
-              <Toggle
-                label="Hàng Tiếp tục xem"
-                checked={settings.showContinueRow !== false}
-                onChange={(v) => set({ showContinueRow: v })}
-              />
-              <Toggle
-                label="Lưu lịch sử xem"
-                checked={settings.saveHistory !== false}
-                onChange={(v) => set({ saveHistory: v })}
-              />
-              <Toggle
-                label="Lưu yêu thích"
-                checked={settings.saveFavorites !== false}
-                onChange={(v) => set({ saveFavorites: v })}
-              />
-              <Toggle
-                label="Gợi ý tìm kiếm"
-                checked={settings.searchSuggest !== false}
-                onChange={(v) => set({ searchSuggest: v })}
-              />
-              <Toggle
-                label="Bo góc thẻ phim"
-                checked={settings.roundedCorners !== false}
-                onChange={(v) => set({ roundedCorners: v })}
-              />
-              <div className="mt-4 space-y-2 border-t border-white/5 pt-4">
-                <p className="text-xs text-zinc-500">
-                  Lịch sử: {historyLen} · Yêu thích: {favLen}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => clearHistory()}
-                  className="block text-sm text-rose-400 hover:underline"
-                >
-                  Xóa lịch sử xem
-                </button>
-                <button
-                  type="button"
-                  onClick={() => clearFav()}
-                  className="block text-sm text-rose-400 hover:underline"
-                >
-                  Xóa yêu thích
-                </button>
-                <button
-                  type="button"
-                  onClick={() => resetSettings()}
-                  className="block text-sm text-zinc-400 hover:underline"
-                >
-                  Đặt lại cài đặt mặc định
-                </button>
-              </div>
-            </Panel>
-          )}
-
-          {tab === "notify" && (
-            <Panel title="Thông báo">
-              <Toggle
-                label="Thông báo toast"
-                desc="Hiện thông báo nhỏ góc màn hình"
-                checked={settings.toastNotifications !== false}
-                onChange={(v) => set({ toastNotifications: v })}
-              />
-              <Toggle
-                label="Ít thông báo hơn"
-                checked={!!settings.quietToasts}
-                onChange={(v) => set({ quietToasts: v })}
-              />
-              <Toggle
-                label="Chế độ ẩn danh"
-                desc="Hạn chế lưu hành vi xem"
-                checked={!!settings.anonymousMode}
-                onChange={(v) => set({ anonymousMode: v })}
-              />
-            </Panel>
-          )}
-
-          {tab === "support" && (
-            <Panel title="Hỗ trợ">
-              <div className="space-y-1">
-                <Link
-                  href="/dieu-khoan"
-                  className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
-                >
-                  Điều khoản sử dụng
-                  <span className="text-zinc-500">→</span>
-                </Link>
-                <Link
-                  href="/chinh-sach"
-                  className="flex items-center justify-between rounded-xl px-2 py-3 text-sm hover:bg-white/5"
-                >
-                  Chính sách bảo mật
-                  <span className="text-zinc-500">→</span>
-                </Link>
-                <p className="px-2 py-3 text-xs text-zinc-500">OpusFilm · Cài đặt</p>
-              </div>
-            </Panel>
-          )}
-        </main>
-      </div>
+      ) : null}
     </div>
   );
 }
 
 export default function CaiDatPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-[60vh] bg-[#0a0a0f] pt-8 text-center text-sm text-zinc-500">
-          Đang tải…
-        </div>
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  const [tab, setTab] = useState<TabId>("account");
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("dark");
+  const [flags, setFlags] = useState({
+    autoPlayNext: true,
+    autoPlayStart: true,
+    toastNotifications: true,
+    saveHistory: true,
+    largeText: false,
+    reducedMotion: false,
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const t = localStorage.getItem("opus_theme") || localStorage.getItem("theme");
+      if (t === "light" || t === "dark" || t === "system") setTheme(t);
+    } catch {
+      /* */
+    }
+  }, []);
+
+  const applyThemeLocal = useCallback((v: "light" | "dark" | "system") => {
+    setTheme(v);
+    try {
+      localStorage.setItem("opus_theme", v);
+      const root = document.documentElement;
+      if (v === "system") {
+        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        root.classList.toggle("dark", dark);
+        root.setAttribute("data-theme", dark ? "dark" : "light");
+      } else {
+        root.classList.toggle("dark", v === "dark");
+        root.setAttribute("data-theme", v);
       }
-    >
-      <SettingsInner />
-    </Suspense>
+    } catch {
+      /* */
+    }
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center bg-[#0a0a0f] text-sm text-zinc-500">
+        Đang tải…
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-[100dvh] bg-[#0a0a0f] pb-28 pt-4 text-zinc-100">
+      <div className="mx-auto flex max-w-5xl gap-6 px-3 sm:px-4 md:px-6">
+        <aside className="hidden w-[260px] shrink-0 md:block">
+          <nav className="sticky top-20 space-y-1 rounded-3xl border border-white/5 bg-[#13141C] p-3">
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              Cài đặt
+            </p>
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={
+                  "flex w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium " +
+                  (tab === item.id
+                    ? "bg-indigo-600/15 text-indigo-300"
+                    : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100")
+                }
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="mb-3 flex w-full gap-1 overflow-x-auto md:hidden">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setTab(item.id)}
+              className={
+                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold " +
+                (tab === item.id
+                  ? "bg-indigo-600 text-white"
+                  : "border border-white/5 bg-[#13141C] text-zinc-400")
+              }
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <main className="min-w-0 flex-1 space-y-4">
+          <h1 className="text-lg font-semibold text-zinc-50">
+            {TABS.find((x) => x.id === tab)?.label || "Cài đặt"}
+          </h1>
+          <div className="rounded-3xl border border-white/5 bg-[#13141C] p-4 sm:p-5">
+            {tab === "account" && (
+              <div className="space-y-4">
+                <SafeVipTimer />
+                <KeyPanel />
+                <div className="flex flex-col gap-1">
+                  <Link
+                    href="/tai-khoan"
+                    className="rounded-xl px-2 py-3 text-sm hover:bg-white/5"
+                  >
+                    Hồ sơ / Đăng nhập →
+                  </Link>
+                  <Link
+                    href="/mua-key"
+                    className="rounded-xl px-2 py-3 text-sm hover:bg-white/5"
+                  >
+                    Mua Key →
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/tai-khoan")}
+                    className="rounded-xl px-2 py-3 text-left text-sm text-rose-400 hover:bg-rose-500/10"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tab === "appearance" && (
+              <div className="space-y-4">
+                <p className="text-sm text-zinc-400">Giao diện sáng / tối</p>
+                <div className="flex rounded-xl border border-white/10 bg-[#0e0f14] p-1">
+                  {(
+                    [
+                      ["light", "Sáng"],
+                      ["dark", "Tối"],
+                      ["system", "Hệ thống"],
+                    ] as const
+                  ).map(([v, lab]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => applyThemeLocal(v)}
+                      className={
+                        "flex-1 rounded-lg py-2 text-sm font-medium " +
+                        (theme === v
+                          ? "bg-indigo-600 text-white"
+                          : "text-zinc-400 hover:text-zinc-200")
+                      }
+                    >
+                      {lab}
+                    </button>
+                  ))}
+                </div>
+                <ToggleRow
+                  label="Chữ lớn"
+                  checked={flags.largeText}
+                  onChange={() =>
+                    setFlags((f) => ({ ...f, largeText: !f.largeText }))
+                  }
+                />
+                <ToggleRow
+                  label="Giảm chuyển động"
+                  checked={flags.reducedMotion}
+                  onChange={() =>
+                    setFlags((f) => ({ ...f, reducedMotion: !f.reducedMotion }))
+                  }
+                />
+              </div>
+            )}
+
+            {tab === "playback" && (
+              <div>
+                <ToggleRow
+                  label="Tự phát khi mở tập"
+                  checked={flags.autoPlayStart}
+                  onChange={() =>
+                    setFlags((f) => ({ ...f, autoPlayStart: !f.autoPlayStart }))
+                  }
+                />
+                <ToggleRow
+                  label="Tự chuyển tập tiếp theo"
+                  checked={flags.autoPlayNext}
+                  onChange={() =>
+                    setFlags((f) => ({ ...f, autoPlayNext: !f.autoPlayNext }))
+                  }
+                />
+              </div>
+            )}
+
+            {tab === "general" && (
+              <div>
+                <ToggleRow
+                  label="Lưu lịch sử xem"
+                  checked={flags.saveHistory}
+                  onChange={() =>
+                    setFlags((f) => ({ ...f, saveHistory: !f.saveHistory }))
+                  }
+                />
+              </div>
+            )}
+
+            {tab === "notify" && (
+              <div>
+                <ToggleRow
+                  label="Thông báo toast"
+                  checked={flags.toastNotifications}
+                  onChange={() =>
+                    setFlags((f) => ({
+                      ...f,
+                      toastNotifications: !f.toastNotifications,
+                    }))
+                  }
+                />
+              </div>
+            )}
+
+            {tab === "support" && (
+              <div className="space-y-1">
+                <Link
+                  href="/dieu-khoan"
+                  className="block rounded-xl px-2 py-3 text-sm hover:bg-white/5"
+                >
+                  Điều khoản sử dụng →
+                </Link>
+                <Link
+                  href="/chinh-sach"
+                  className="block rounded-xl px-2 py-3 text-sm hover:bg-white/5"
+                >
+                  Chính sách bảo mật →
+                </Link>
+                <p className="px-2 py-3 text-xs text-zinc-500">OpusFilm</p>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }

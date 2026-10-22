@@ -306,7 +306,7 @@ export async function listInbox(me: string) {
 export async function getThread(me: string, other: string, limit = 120) {
   await ensureChatTables();
   if (!(await areFriends(me, other))) {
-    throw new Error("Chỉ chat được với bạn bè (kết bạn bằng UID)");
+    return [];
   }
   const sql = getSql();
   const m = me.toLowerCase();

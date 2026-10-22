@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Infinity, KeyRound, ShieldCheck, Trash2 } from "lucide-react";
+import { Clock, Infinity, KeyRound, ShieldCheck, Trash2, X } from "lucide-react";
 import { FlipCountdown } from "@/components/vip/FlipCountdown";
 import { formatVipRemaining, OPUS_KEY_REGEX } from "@/lib/vipCatalog";
 import { useVipAccess } from "@/lib/vipAccess";

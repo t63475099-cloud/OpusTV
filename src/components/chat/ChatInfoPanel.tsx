@@ -16,6 +16,8 @@ import type { Conversation } from "@/lib/chatStore";
 import { useChatStore } from "@/lib/chatStore";
 import ChatAvatar from "./ChatAvatar";
 
+const EMPTY_MSGS: never[] = [];
+
 export default function ChatInfoPanel({
   conversation,
   onClose,
@@ -56,13 +58,16 @@ export default function ChatInfoPanel({
     !!peer &&
     (conversation.blocked || blockedUsers.includes(peer.id));
 
-  const allMessages = useChatStore((s) => s.messages[conversation.id] || []);
+  const allMessages = useChatStore((s) => {
+    const list = s.messages[conversation.id];
+    return list && list.length ? list : EMPTY_MSGS;
+  });
   const mediaAtts = useMemo(() => {
     const list: { url: string; type: string; name?: string }[] = [];
     for (const m of allMessages) {
       for (const a of m.attachments || []) {
-        const t = (a.type || a.mime || "").toLowerCase();
-        if (t.startsWith("image") || t.startsWith("video") || /\.(jpe?g|png|gif|webp|mp4|webm)$/i.test(a.url || a.name || "")) {
+        const t = String(a.type || a.mime || "").toLowerCase();
+        if (t === "image" || t.startsWith("image/") || t === "video" || t.startsWith("video/") || /\.(jpe?g|png|gif|webp|mp4|webm)$/i.test(a.url || a.name || "")) {
           list.push({ url: a.url || "", type: t, name: a.name });
         }
       }
@@ -73,8 +78,8 @@ export default function ChatInfoPanel({
     const list: { url: string; name: string; size?: number }[] = [];
     for (const m of allMessages) {
       for (const a of m.attachments || []) {
-        const t = (a.type || a.mime || "").toLowerCase();
-        if (t.startsWith("image") || t.startsWith("video")) continue;
+        const t = String(a.type || a.mime || "").toLowerCase();
+        if (t === "image" || t.startsWith("image/") || t === "video" || t.startsWith("video/")) continue;
         if (a.url || a.name) list.push({ url: a.url || "", name: a.name || "File", size: a.size });
       }
     }

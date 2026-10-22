@@ -91,9 +91,9 @@ export default function ChatWindow({
   useEffect(() => {
     if (!activeId) return;
     return startSmartPoll({
-      activeMs: 2000,
-      idleMs: 10000,
-      idleAfterMs: 45000,
+      activeMs: 3000,
+      idleMs: 15000,
+      idleAfterMs: 60000,
       onTick: async () => {
         try {
           if (conversation?.isGroup) await loadGroupThread(activeId);

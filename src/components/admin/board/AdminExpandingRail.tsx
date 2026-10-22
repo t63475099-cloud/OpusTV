@@ -124,6 +124,7 @@ export function AdminExpandingRail({
   adminSub = "Master Board",
   titleExtra,
   children,
+  theme = "dark",
 }: {
   activeTab: AdminRailTabId;
   onTabChange: (id: AdminRailTabId) => void;
@@ -132,6 +133,7 @@ export function AdminExpandingRail({
   adminSub?: string;
   titleExtra?: ReactNode;
   children: ReactNode;
+  theme?: "dark" | "light";
 }) {
   const [wide, setWide] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -164,7 +166,11 @@ export function AdminExpandingRail({
   }, [placeHighlight]);
 
   return (
-    <div ref={rootRef} className={"ux u040" + (wide ? " is-wide" : "")}>
+    <div
+      ref={rootRef}
+      data-theme={theme}
+      className={"ux u040" + (wide ? " is-wide" : "") + (theme === "light" ? " u040-light" : " u040-dark")}
+    >
       <nav className="u040-rail" aria-label="Admin menu">
         <div className="u040-top">
           <span className="u040-logo" aria-hidden />
@@ -255,8 +261,35 @@ export function AdminExpandingRail({
           padding: 16px;
           box-sizing: border-box;
           font-family: inherit;
-          color: var(--ux-ink, #f4f0e8);
           -webkit-font-smoothing: antialiased;
+        }
+        /* Dark (default) */
+        .u040.u040-dark {
+          --ux-page: #07080d;
+          --ux-surface: #13141c;
+          --ux-surface-2: #1a1b25;
+          --ux-ink: #f4f0e8;
+          --ux-ink-2: rgba(244, 240, 232, 0.68);
+          --ux-ink-3: rgba(244, 240, 232, 0.42);
+          --ux-line: rgba(255, 255, 255, 0.08);
+          --ux-rail: #16151b;
+          --ux-rail-ink: #f4f2ee;
+          color: var(--ux-ink);
+          background: var(--ux-page);
+        }
+        /* Light — tương phản rõ, không chữ trắng trên nền sáng */
+        .u040.u040-light {
+          --ux-page: #f4f2ee;
+          --ux-surface: #ffffff;
+          --ux-surface-2: #f5f3ef;
+          --ux-ink: #16151b;
+          --ux-ink-2: #57535f;
+          --ux-ink-3: #8e8a97;
+          --ux-line: rgba(22, 21, 27, 0.09);
+          --ux-rail: #16151b;
+          --ux-rail-ink: #f4f2ee;
+          color: var(--ux-ink);
+          background: var(--ux-page);
         }
         .u040.is-wide {
           --rw: 236px;
@@ -270,8 +303,8 @@ export function AdminExpandingRail({
           height: calc(100vh - 32px);
           padding: 12px 10px 76px;
           border-radius: 24px;
-          background: var(--ux-ink, #16151b);
-          color: var(--ux-page, #f4f2ee);
+          background: var(--ux-rail, #16151b);
+          color: var(--ux-rail-ink, #f4f2ee);
           overflow: hidden;
           transition: width 0.6s cubic-bezier(0.34, 1.45, 0.64, 1);
           z-index: 20;
@@ -312,7 +345,7 @@ export function AdminExpandingRail({
           border: 0;
           padding: 0;
           border-radius: 10px 0 0 10px;
-          background: color-mix(in srgb, var(--ux-page, #f4f2ee) 14%, transparent);
+          background: color-mix(in srgb, var(--ux-rail-ink, #f4f2ee) 14%, transparent);
           color: inherit;
           display: grid;
           place-items: center;
@@ -359,7 +392,7 @@ export function AdminExpandingRail({
           top: 0;
           height: 48px;
           border-radius: 15px;
-          background: color-mix(in srgb, var(--ux-page, #f4f2ee) 15%, transparent);
+          background: color-mix(in srgb, var(--ux-rail-ink, #f4f2ee) 15%, transparent);
           transition: transform 0.5s cubic-bezier(0.34, 1.45, 0.64, 1);
           pointer-events: none;
         }
@@ -433,7 +466,7 @@ export function AdminExpandingRail({
           display: grid;
           place-items: center;
           font-style: normal;
-          box-shadow: 0 0 0 2.5px var(--ux-ink, #16151b);
+          box-shadow: 0 0 0 2.5px var(--ux-rail, #16151b);
           transition: left 0.5s cubic-bezier(0.34, 1.45, 0.64, 1);
         }
         .u040.is-wide .u040-bd {
@@ -450,7 +483,7 @@ export function AdminExpandingRail({
           height: 52px;
           padding: 0 0 0 10px;
           border-radius: 16px;
-          background: color-mix(in srgb, var(--ux-page, #f4f2ee) 8%, transparent);
+          background: color-mix(in srgb, var(--ux-rail-ink, #f4f2ee) 8%, transparent);
         }
         .u040-me i {
           width: 34px;
@@ -480,8 +513,9 @@ export function AdminExpandingRail({
           min-width: 0;
           padding: 18px 20px 24px;
           border-radius: 24px;
-          background: var(--ux-surface, #13141c);
-          box-shadow: 0 0 0 1px var(--ux-line, rgba(255, 255, 255, 0.08));
+          background: var(--ux-surface);
+          color: var(--ux-ink);
+          box-shadow: 0 0 0 1px var(--ux-line);
           overflow-x: auto;
         }
         .u040-main-head {
@@ -496,13 +530,14 @@ export function AdminExpandingRail({
           display: block;
           font-size: 12px;
           font-weight: 700;
-          color: var(--ux-ink-3, rgba(244, 240, 232, 0.42));
+          color: var(--ux-ink-3);
         }
         .u040-main h3 {
           margin: 4px 0 0;
           font-size: 21px;
           font-weight: 780;
           letter-spacing: -0.035em;
+          color: var(--ux-ink);
         }
         .u040-main-actions {
           display: flex;

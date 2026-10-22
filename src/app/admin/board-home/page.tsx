@@ -318,6 +318,7 @@ export default function BoardHomePage() {
   return (
     <div className={`min-h-screen ${t.page}`}>
       <AdminExpandingRail
+        theme={theme}
         activeTab={tab}
         onTabChange={setTab}
         paymentPending={pendingPayments}

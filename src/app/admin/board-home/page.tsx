@@ -13,6 +13,7 @@ import { GiftcodeTab } from "@/components/admin/board/GiftcodeTab";
 import { ModerationTab } from "@/components/admin/board/ModerationTab";
 import { SystemAiTab } from "@/components/admin/board/SystemAiTab";
 import { MassOpsTab } from "@/components/admin/board/MassOpsTab";
+import { AdminExpandingRail } from "@/components/admin/board/AdminExpandingRail";
 import type { BoardTheme } from "@/components/admin/board/adminUi";
 import { boardTokens, btn } from "@/components/admin/board/adminUi";
 
@@ -56,6 +57,7 @@ export default function BoardHomePage() {
   const [keys, setKeys] = useState<LicenseKeyRecord[]>([]);
   const [verifyItems, setVerifyItems] = useState<VerifyRequestItem[]>([]);
   const [stats, setStats] = useState<SystemStats | null>(null);
+  const [pendingPayments, setPendingPayments] = useState(0);
   const [accountQ, setAccountQ] = useState("");
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -216,6 +218,19 @@ export default function BoardHomePage() {
         });
         const stData = await st.json().catch(() => ({}));
         if (stData.ok && stData.stats) setStats(stData.stats);
+        try {
+          const pay = await fetch(`/api/admin/board-home?section=payment_orders&status=PENDING`, {
+            headers: headers(),
+          });
+          const payData = await pay.json().catch(() => ({}));
+          if (pay.ok && Array.isArray(payData.orders)) {
+            setPendingPayments(payData.orders.length);
+          } else if (pay.ok && typeof payData.pendingCount === "number") {
+            setPendingPayments(payData.pendingCount);
+          }
+        } catch {
+          /* optional */
+        }
       } catch {
         showToast("Lỗi tải dữ liệu", "err");
       } finally {
@@ -302,37 +317,27 @@ export default function BoardHomePage() {
 
   return (
     <div className={`min-h-screen ${t.page}`}>
-      <header className={`sticky top-0 z-40 border-b ${t.border} ${t.surface}`}>
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold tracking-tight sm:text-lg">
-                OpusFilm · Master Board
-              </h1>
-              <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${t.border} ${t.muted}`}>
-                v1.17
-              </span>
-            </div>
-            <div className={`mt-1.5 flex flex-wrap items-center gap-2 text-xs ${t.muted}`}>
-              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.border}">
-                <Users className="h-3 w-3" strokeWidth={1.75} />
-                {stats?.users ?? "—"} TK
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                {stats?.sessions ?? "—"} online
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.border}">
-                <KeyRound className="h-3 w-3" strokeWidth={1.75} />
-                {stats?.keysActive ?? 0}/{stats?.keysTotal ?? 0} key
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${t.border}">
-                <Activity className="h-3 w-3" strokeWidth={1.75} />
-                {stats?.pendingVerify ?? 0} chờ
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
+      <AdminExpandingRail
+        activeTab={tab}
+        onTabChange={setTab}
+        paymentPending={pendingPayments}
+        adminLabel="OpusFilm Admin"
+        adminSub="Master Board"
+        titleExtra={
+          <>
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums ${t.border} ${t.muted}`}>
+              {stats?.users ?? "—"} TK
+            </span>
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums ${t.border} ${t.muted}`}>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {stats?.sessions ?? "—"} online
+            </span>
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums ${t.border} ${t.muted}`}>
+              {stats?.keysActive ?? 0}/{stats?.keysTotal ?? 0} key
+            </span>
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium tabular-nums ${t.border} ${t.muted}`}>
+              {stats?.pendingVerify ?? 0} chờ
+            </span>
             <button
               type="button"
               className={`${btn.compact} ${btn.ghost}`}
@@ -362,36 +367,9 @@ export default function BoardHomePage() {
             >
               <Lock className="h-4 w-4" />
             </button>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-[1600px] px-4 pb-3">
-          <div className={`flex flex-wrap gap-1 rounded-lg border p-1 ${t.border}`}>
-            {TABS.map((x) => {
-              const Icon = x.icon;
-              const active = tab === x.id;
-              return (
-                <button
-                  key={x.id}
-                  type="button"
-                  onClick={() => setTab(x.id)}
-                  className={
-                    "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition " +
-                    (active
-                      ? "bg-violet-600 text-white shadow-sm"
-                      : `${t.muted} hover:bg-black/5 dark:hover:bg-white/5`)
-                  }
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-                  {x.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1600px] p-4 sm:p-6">
+          </>
+        }
+      >
         {loading ? <p className={`mb-3 text-xs ${t.muted}`}>Đang tải…</p> : null}
 
         {tab === "ACCOUNTS" && (
@@ -434,7 +412,7 @@ export default function BoardHomePage() {
         {tab === "SYSTEM" && (
           <SystemAiTab theme={theme} adminSecret={secret} onAction={runAction} />
         )}
-      </main>
+      </AdminExpandingRail>
 
       {toast ? (
         <div

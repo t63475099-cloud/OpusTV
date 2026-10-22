@@ -7,9 +7,6 @@ import { OPUS_KEY_REGEX } from "@/lib/vipCatalog";
 import { useVipAccess } from "@/lib/vipAccess";
 import { useAccountStore } from "@/lib/account";
 
-/**
- * Card VIP: đồng hồ tách riêng (VipTimer) — form Key/Xóa không tick mỗi giây.
- */
 export function VipCountdownCard({
   onActivate,
 }: {

@@ -17,7 +17,6 @@ import {
   Trash2,
   ChevronRight,
 } from "lucide-react";
-import OfflineDownloads from "@/components/OfflineDownloads";
 import { VipCountdownCard } from "@/components/vip/VipCountdownCard";
 import UserAvatar from "@/components/UserAvatar";
 import {
@@ -193,8 +192,19 @@ function SettingsInner() {
     }
   }, [tabParam]);
   useEffect(() => {
-    if (mounted) applyDomFlags(settings);
-  }, [mounted, settings]);
+    if (!mounted) return;
+    applyDomFlags(settings);
+    // Chỉ phụ thuộc các flag DOM — không theo dõi cả object settings
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    mounted,
+    settings.reducedMotion,
+    settings.denseHome,
+    settings.largeText,
+    settings.highContrast,
+    settings.reduceTransparency,
+    settings.accent,
+  ]);
 
   const go = useCallback(
     (id: TabId) => {
@@ -528,9 +538,6 @@ function SettingsInner() {
                 >
                   Đặt lại cài đặt mặc định
                 </button>
-              </div>
-              <div className="mt-4 border-t border-white/5 pt-4">
-                <OfflineDownloads />
               </div>
             </Panel>
           )}

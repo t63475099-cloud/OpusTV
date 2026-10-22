@@ -292,7 +292,7 @@ function SettingsInner() {
                 <VipCountdownCard onActivate={() => router.push("/mua-key")} />
 
                 <div className="flex items-center gap-4 rounded-2xl border border-white/5 bg-[#0e0f14] p-4">
-                  <UserAvatar size={56} />
+                  <UserAvatar profile={profile} size={56} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-base font-semibold">{displayName}</p>
                     <p className="font-mono text-xs text-zinc-400">UID: {uid}</p>

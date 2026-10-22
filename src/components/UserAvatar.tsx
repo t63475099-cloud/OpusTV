@@ -10,10 +10,10 @@ import {
 import { User } from "lucide-react";
 
 interface Props {
-  profile: Pick<
+  profile?: Pick<
     UserProfile,
     "name" | "avatar" | "avatarPosition" | "verified" | "avatarFrame"
-  >;
+  > | null;
   size?: number;
   className?: string;
   ring?: boolean;
@@ -50,7 +50,14 @@ export default function UserAvatar({
   showBadge = false,
   frameOverride,
 }: Props) {
-  const frame = getAvatarFrame(frameOverride || profile.avatarFrame);
+  const profileSafe = profile || {
+    name: "",
+    avatar: undefined,
+    avatarPosition: "50% 50%",
+    verified: false,
+    avatarFrame: "frame:none",
+  };
+  const frame = getAvatarFrame(frameOverride || profileSafe.avatarFrame);
   const hasFrame = !!(frame && frame.css && frame.css !== "none" && frame.id !== "frame:none");
   const pad = hasFrame ? Math.max(3, Math.round(size * 0.06)) : 0;
   const inner = size - pad * 2;
@@ -58,7 +65,7 @@ export default function UserAvatar({
   const imgStyle: React.CSSProperties = {
     width: inner,
     height: inner,
-    objectPosition: profile.avatarPosition || "50% 50%",
+    objectPosition: profileSafe.avatarPosition || "50% 50%",
   };
 
   const ringCls =
@@ -66,10 +73,10 @@ export default function UserAvatar({
       ? "ring-2 ring-red-500/60 ring-offset-2 ring-offset-[#0a0a0a]"
       : "";
 
-  const lqUrl = getLqAvatarUrl(profile.avatar);
+  const lqUrl = getLqAvatarUrl(profileSafe.avatar);
   const imgSrc =
     lqUrl ||
-    (profile.avatar && !isPresetAvatar(profile.avatar) ? profile.avatar : null);
+    (profileSafe.avatar && !isPresetAvatar(profileSafe.avatar) ? profileSafe.avatar : null);
 
   let face: React.ReactNode;
   if (imgSrc) {
@@ -77,7 +84,7 @@ export default function UserAvatar({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={imgSrc}
-        alt={profile.name || "Avatar"}
+        alt={profileSafe.name || "Avatar"}
         className={`rounded-full object-cover bg-zinc-800 ${ringCls} ${className}`}
         style={{ ...imgStyle, display: "block" }}
         referrerPolicy="no-referrer"
@@ -85,12 +92,12 @@ export default function UserAvatar({
         decoding="async"
       />
     );
-  } else if (isPresetAvatar(profile.avatar)) {
-    const letter = (profile.name || "?").charAt(0).toUpperCase();
+  } else if (isPresetAvatar(profileSafe.avatar)) {
+    const letter = (profileSafe.name || "?").charAt(0).toUpperCase();
     face = (
       <div
         className={`rounded-full bg-gradient-to-br ${presetGradient(
-          profile.avatar
+          profileSafe.avatar
         )} flex items-center justify-center text-white font-bold select-none ${ringCls} ${className}`}
         style={{ width: inner, height: inner, fontSize: inner * 0.4 }}
       >
@@ -120,7 +127,7 @@ export default function UserAvatar({
         {face}
       </span>
       {hasFrame && <span className="ab-ring" aria-hidden />}
-      {showBadge && profile.verified && (
+      {showBadge && profileSafe.verified && (
         <span
           className="absolute z-10"
           style={{

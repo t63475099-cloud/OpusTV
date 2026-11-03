@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { AdminAccount, AdminRole } from "@/lib/adminEngine";
+import type { BoardTheme } from "./adminUi";
+import { boardTokens, btn } from "./adminUi";
+import { AdminModal } from "./AdminModal";
 import {
   BadgeCheck,
-  Check,
-  ChevronDown,
   Coins,
   Copy,
   Crown,
-  Gift,
-  KeyRound,
+  Download,
+  FileSpreadsheet,
+  FileText,
   Lock,
   Pencil,
   Plus,
@@ -20,486 +23,327 @@ import {
   Trash2,
   Unlock,
   User as UserIcon,
-  RotateCcw,
+  Users,
 } from "lucide-react";
-import type {
-  AccountFilter,
-  AdminUserRow,
-  RoleFilter,
-  SortKey,
-} from "./accountTypes";
-import { AccountBulkBar } from "./AccountBulkBar";
-import { DeviceSessionModal } from "./DeviceSessionModal";
 
-type Props = {
-  adminSecret: string;
-  onToast?: (msg: string, ok?: boolean) => void;
+type Filter = "all" | "online" | "vip" | "verified" | "banned";
+type SortKey = "newest" | "name_asc" | "vip_expiring";
+
+type BulkRow = { username: string; password: string; uid: string };
+
+const BULK_STORAGE = "opus_admin_bulk_batch_v1";
+
+type BulkLog = {
+  id: number;
+  created_count: number;
+  requested_count: number;
+  prefix: string;
+  created_by: string;
+  created_at: string;
+  accounts?: BulkRow[] | string;
+  usernames?: string[];
 };
 
-function normalizeRole(u: AdminUserRow): "ADMIN" | "VIP" | "USER" {
-  const r = String(u.role || "").toUpperCase();
-  if (r === "ADMIN" || u.username?.toLowerCase() === "admin") return "ADMIN";
-  if (r === "VIP") return "VIP";
-  return "USER";
+/** Mở rộng an toàn — field mới có thể chưa có trên DB / type cũ */
+type AccountRow = AdminAccount & {
+  coins?: number | null;
+  xu?: number | null;
+  avatarUrl?: string | null;
+  avatar?: string | null;
+  isVerified?: boolean;
+  online?: boolean;
+  isOnline?: boolean;
+  devices?: unknown;
+  deviceCount?: number;
+  maxDevices?: number;
+  lastPlatform?: string | null;
+};
+
+function exportCsv(rows: Record<string, string>[], filename: string) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [headers.join(","), ...rows.map((r) => headers.map((h) => esc(r[h] ?? "")).join(","))];
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-function isVerified(u: AdminUserRow) {
-  return !!(u.isVerified ?? u.verified);
+function exportPdf(title: string, rows: Record<string, string>[]) {
+  if (!rows.length || typeof window === "undefined") return;
+  const headers = Object.keys(rows[0]);
+  const th = headers.map((h) => `<th style="text-align:left;padding:6px;border-bottom:1px solid #cbd5e1">${h}</th>`).join("");
+  const body = rows
+    .map(
+      (r) =>
+        `<tr>${headers
+          .map((h) => `<td style="padding:6px;border-bottom:1px solid #e2e8f0">${String(r[h] ?? "").replace(/</g, "&lt;")}</td>`)
+          .join("")}</tr>`,
+    )
+    .join("");
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title>
+    <style>
+      body { font-family: system-ui, sans-serif; padding: 24px; color: #0f172a; }
+      h1 { font-size: 18px; margin: 0 0 8px; }
+      p { font-size: 12px; color: #475569; margin: 0 0 16px; }
+      table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
+    </style></head><body>
+    <h1>${title}</h1>
+    <p>Chỉ gồm tài khoản tạo hàng loạt · ${new Date().toLocaleString("vi-VN")} · ${rows.length} dòng</p>
+    <table><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>
+    <script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>
+    </body></html>`);
+  w.document.close();
 }
 
-function isLocked(u: AdminUserRow) {
-  return !!(u.locked ?? u.isLocked);
+function normalizeAccount(raw: unknown): AccountRow | null {
+  if (!raw || typeof raw !== "object") return null;
+  const u = raw as Record<string, unknown>;
+  const username = String(u.username ?? "");
+  if (!username && u.id == null) return null;
+  const roleRaw = String(u.role ?? "User");
+  const roleLower = roleRaw.toLowerCase();
+  const role: AdminRole =
+    username.toLowerCase() === "admin" || roleLower === "admin"
+      ? "Admin"
+      : roleLower === "vip"
+        ? "VIP"
+        : "User";
+  const coins = Number(u.coins ?? u.xu ?? 0);
+  return {
+    id: Number(u.id ?? 0),
+    username,
+    uid: u.uid != null ? String(u.uid) : null,
+    email: u.email != null ? String(u.email) : null,
+    role,
+    verified: Boolean(u.isVerified ?? u.verified ?? false),
+    status: (String(u.status || "active").toLowerCase() === "banned" ? "banned" : "active") as AdminAccount["status"],
+    banReason: u.banReason != null ? String(u.banReason) : null,
+    banUntil: u.banUntil != null ? String(u.banUntil) : null,
+    createdAt: String(u.createdAt ?? u.created_at ?? ""),
+    lastLogin: u.lastLogin != null ? String(u.lastLogin) : u.last_login != null ? String(u.last_login) : null,
+    expiresAt: u.expiresAt != null ? String(u.expiresAt) : u.expires_at != null ? String(u.expires_at) : null,
+    coins: Number.isFinite(coins) ? coins : 0,
+    avatarUrl: (u.avatarUrl as string) ?? (u.avatar as string) ?? null,
+    isVerified: Boolean(u.isVerified ?? u.verified ?? false),
+    online: Boolean(u.online ?? u.isOnline ?? false),
+    devices: Array.isArray(u.devices) ? u.devices : [],
+    deviceCount: Number(u.deviceCount ?? 0),
+    maxDevices: Number(u.maxDevices ?? 2),
+    lastPlatform: u.lastPlatform != null ? String(u.lastPlatform) : null,
+  };
 }
 
-function isOnline(u: AdminUserRow) {
-  return !!(u.online ?? u.isOnline);
-}
-
-function formatCoins(n: number) {
-  return `${Number(n || 0).toLocaleString("vi-VN")} Xu`;
-}
-
-function vipLabel(u: AdminUserRow): { line1: string; line2: string; tone: string } {
-  if (u.vipPermanent) {
-    return { line1: "Vĩnh viễn", line2: "Không giới hạn", tone: "text-amber-300" };
+function normalizeList(resData: unknown): AccountRow[] {
+  if (Array.isArray(resData)) {
+    return resData.map(normalizeAccount).filter(Boolean) as AccountRow[];
   }
-  if (!u.vipExpiresAt) {
-    return { line1: "—", line2: "Chưa kích hoạt", tone: "text-slate-500" };
-  }
-  const end = new Date(u.vipExpiresAt).getTime();
-  const days = Math.ceil((end - Date.now()) / 86400000);
-  const d = new Date(u.vipExpiresAt);
-  const line1 = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-  if (days < 0) return { line1, line2: "Đã hết hạn", tone: "text-red-400/80" };
-  return { line1, line2: `Còn ${days} ngày`, tone: "text-emerald-400" };
-}
-
-function createdLabel(iso?: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("vi-VN");
-}
-
-export function AccountTab({ adminSecret, onToast }: Props) {
-  const toast = onToast || ((m: string) => console.log(m));
-
-  const [users, setUsers] = useState<AdminUserRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<AccountFilter>("all");
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
-  const [sort, setSort] = useState<SortKey>("newest");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [deviceUser, setDeviceUser] = useState<AdminUserRow | null>(null);
-  const [roleMenuId, setRoleMenuId] = useState<string | null>(null);
-  const [vipMenuId, setVipMenuId] = useState<string | null>(null);
-
-  // dialogs
-  const [coinTarget, setCoinTarget] = useState<{ ids: string[]; label: string } | null>(null);
-  const [coinAmount, setCoinAmount] = useState("");
-  const [vipBulk, setVipBulk] = useState<{ ids: string[] } | null>(null);
-  const [vipDays, setVipDays] = useState("7");
-  const [giftOpen, setGiftOpen] = useState(false);
-  const [giftAudience, setGiftAudience] = useState<"all" | "vip" | "online">("all");
-  const [giftDays, setGiftDays] = useState("");
-  const [giftCoins, setGiftCoins] = useState("");
-  const [giftMsg, setGiftMsg] = useState("");
-  const [purgeOpen, setPurgeOpen] = useState(false);
-  const [purgeConfirm, setPurgeConfirm] = useState("");
-  const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: "", password: "", coins: "" });
-
-  // bulk create (preserved)
-  const [bulkCount, setBulkCount] = useState("10");
-  const [bulkPrefix, setBulkPrefix] = useState("user_");
-  const [bulkPassword, setBulkPassword] = useState("");
-  const [bulkBusy, setBulkBusy] = useState(false);
-  const [bulkHistory, setBulkHistory] = useState<
-    { at: string; count: number; accounts: { username: string; password: string }[] }[]
-  >([]);
-
-  // single create
-  const [newUser, setNewUser] = useState({ username: "", password: "" });
-
-  const headers = useMemo(
-    () => ({
-      "Content-Type": "application/json",
-      "x-admin-secret": adminSecret,
-    }),
-    [adminSecret],
-  );
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/accounts?action=list", { headers: { "x-admin-secret": adminSecret } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Không tải được danh sách");
-      setUsers(Array.isArray(data.users) ? data.users : []);
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi tải", false);
-    } finally {
-      setLoading(false);
+  if (resData && typeof resData === "object") {
+    const o = resData as Record<string, unknown>;
+    const rawList = o.users ?? o.accounts ?? o.data ?? [];
+    if (Array.isArray(rawList)) {
+      return rawList.map(normalizeAccount).filter(Boolean) as AccountRow[];
     }
-  }, [adminSecret, toast]);
+  }
+  return [];
+}
+
+function vipMeta(a: AccountRow): { line: string; sub: string; tone: string } {
+  if (!a.expiresAt) return { line: "—", sub: "Chưa VIP", tone: "opacity-60" };
+  const end = new Date(a.expiresAt).getTime();
+  if (Number.isNaN(end)) return { line: "—", sub: "—", tone: "opacity-60" };
+  const days = Math.ceil((end - Date.now()) / 86400000);
+  const d = new Date(a.expiresAt);
+  const line = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  if (days < 0) return { line, sub: "Đã hết hạn", tone: "text-red-400" };
+  return { line, sub: `Còn ${days} ngày`, tone: "text-emerald-400" };
+}
+
+export function AccountTab({
+  theme,
+  accounts,
+  loading,
+  onRefresh,
+  onAction,
+}: {
+  theme: BoardTheme;
+  accounts: AdminAccount[];
+  loading: boolean;
+  onRefresh: () => void;
+  onAction: (body: Record<string, unknown>) => Promise<unknown>;
+}) {
+  const t = boardTokens(theme);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [sort, setSort] = useState<SortKey>("newest");
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  const [form, setForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    role: "User" as AdminRole,
+    expiresDays: "",
+  });
+
+  const [bulkCount, setBulkCount] = useState("20");
+  const [bulkPrefix, setBulkPrefix] = useState("user_");
+  const [bulkPass, setBulkPass] = useState("");
+  const [bulkCreated, setBulkCreated] = useState<BulkRow[]>([]);
+  const [bulkLogs, setBulkLogs] = useState<BulkLog[]>([]);
+
+  const [coinsModal, setCoinsModal] = useState<AccountRow | null>(null);
+  const [passModal, setPassModal] = useState<AccountRow | null>(null);
+  const [deleteModal, setDeleteModal] = useState<AccountRow | null>(null);
+  const [detailUser, setDetailUser] = useState<AccountRow | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState("");
+  const [coinsAmt, setCoinsAmt] = useState("");
+  const [coinsReason, setCoinsReason] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  /** Chuẩn hóa list từ prop board-home (cùng nguồn với "5 TK") */
+  const rows = useMemo(() => {
+    const list = normalizeList(accounts);
+    if (list.length) return list;
+    // fallback: nếu parent truyền mảng AdminAccount thuần
+    if (Array.isArray(accounts)) {
+      return accounts.map((a) => normalizeAccount(a)).filter(Boolean) as AccountRow[];
+    }
+    return [];
+  }, [accounts]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    try {
+      const raw = sessionStorage.getItem(BULK_STORAGE);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as BulkRow[] | { accounts?: BulkRow[] };
+      if (Array.isArray(parsed) && parsed.length) setBulkCreated(parsed);
+      else if (parsed && typeof parsed === "object" && Array.isArray((parsed as { accounts?: BulkRow[] }).accounts)) {
+        setBulkCreated((parsed as { accounts: BulkRow[] }).accounts);
+      }
+    } catch {
+      /* */
+    }
+    void (async () => {
+      try {
+        const res = (await onAction({ action: "list_bulk_logs" })) as { logs?: BulkLog[] };
+        if (res?.logs) setBulkLogs(res.logs);
+      } catch {
+        /* */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (bulkCreated.length) {
+        sessionStorage.setItem(BULK_STORAGE, JSON.stringify(bulkCreated));
+      }
+    } catch {
+      /* */
+    }
+  }, [bulkCreated]);
 
   const counts = useMemo(() => {
+    const now = Date.now();
     return {
-      all: users.length,
-      online: users.filter(isOnline).length,
-      vip: users.filter((u) => normalizeRole(u) === "VIP" || (!!u.vipExpiresAt && new Date(u.vipExpiresAt).getTime() > Date.now()) || u.vipPermanent).length,
-      verified: users.filter(isVerified).length,
-      locked: users.filter(isLocked).length,
+      all: rows.length,
+      online: rows.filter((a) => a.online || a.isOnline || (!!a.lastLogin && now - new Date(a.lastLogin).getTime() < 15 * 60 * 1000)).length,
+      vip: rows.filter((a) => a.role === "VIP" || (a.expiresAt && new Date(a.expiresAt).getTime() > now)).length,
+      verified: rows.filter((a) => a.verified || a.isVerified).length,
+      banned: rows.filter((a) => a.status === "banned").length,
     };
-  }, [users]);
+  }, [rows]);
 
   const filtered = useMemo(() => {
-    let list = [...users];
+    let list = [...rows];
     const query = q.trim().toLowerCase();
     if (query) {
       list = list.filter(
-        (u) =>
-          u.username?.toLowerCase().includes(query) ||
-          u.uid?.includes(query) ||
-          (u.email || "").toLowerCase().includes(query) ||
-          (u.displayName || "").toLowerCase().includes(query),
+        (a) =>
+          a.username.toLowerCase().includes(query) ||
+          (a.uid || "").includes(query) ||
+          (a.email || "").toLowerCase().includes(query),
       );
     }
-    if (filter === "online") list = list.filter(isOnline);
-    if (filter === "vip")
-      list = list.filter(
-        (u) => u.vipPermanent || (u.vipExpiresAt && new Date(u.vipExpiresAt).getTime() > Date.now()) || normalizeRole(u) === "VIP",
-      );
-    if (filter === "verified") list = list.filter(isVerified);
-    if (filter === "locked") list = list.filter(isLocked);
-    if (roleFilter === "admin") list = list.filter((u) => normalizeRole(u) === "ADMIN");
-    if (roleFilter === "vip") list = list.filter((u) => normalizeRole(u) === "VIP");
-    if (roleFilter === "user") list = list.filter((u) => normalizeRole(u) === "USER");
+    if (filter === "online") {
+      list = list.filter((a) => a.online || a.isOnline);
+    }
+    if (filter === "vip") {
+      list = list.filter((a) => a.role === "VIP" || (a.expiresAt && new Date(a.expiresAt).getTime() > Date.now()));
+    }
+    if (filter === "verified") list = list.filter((a) => a.verified || a.isVerified);
+    if (filter === "banned") list = list.filter((a) => a.status === "banned");
 
     list.sort((a, b) => {
-      if (sort === "coins_desc") return (b.coins || 0) - (a.coins || 0);
-      if (sort === "name_asc") return (a.username || "").localeCompare(b.username || "");
+      if (sort === "name_asc") return a.username.localeCompare(b.username);
       if (sort === "vip_expiring") {
-        const ta = a.vipPermanent ? Number.MAX_SAFE_INTEGER : a.vipExpiresAt ? new Date(a.vipExpiresAt).getTime() : 0;
-        const tb = b.vipPermanent ? Number.MAX_SAFE_INTEGER : b.vipExpiresAt ? new Date(b.vipExpiresAt).getTime() : 0;
+        const ta = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
+        const tb = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
         return ta - tb;
       }
-      const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return cb - ca;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
     return list;
-  }, [users, q, filter, roleFilter, sort]);
+  }, [rows, q, filter, sort]);
 
-  const pageIds = filtered.map((u) => u.id);
+  const pageIds = filtered.map((a) => a.id);
   const selectedOnPage = pageIds.filter((id) => selected.has(id));
   const allPageSelected = pageIds.length > 0 && selectedOnPage.length === pageIds.length;
   const somePageSelected = selectedOnPage.length > 0 && !allPageSelected;
 
-  function toggleAllPage() {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
-      else pageIds.forEach((id) => next.add(id));
-      return next;
-    });
-  }
-
-  function toggleOne(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  async function api(body: Record<string, unknown>) {
-    const res = await fetch("/api/admin/accounts", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Thao tác thất bại");
-    return data;
-  }
-
-  async function setRole(userId: string, role: string) {
+  async function run(body: Record<string, unknown>) {
+    setBusy(true);
+    setLocalError(null);
     try {
-      await api({ action: "set_role", userId, role });
-      toast("Đã đổi role", true);
-      setRoleMenuId(null);
-      await load();
+      await onAction(body);
+      onRefresh();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function adjustVip(userId: string, days: number | "clear") {
-    try {
-      await api({ action: "adjust_vip", userId, days });
-      toast(days === "clear" ? "Đã hủy VIP" : `Đã cộng ${days} ngày VIP`, true);
-      setVipMenuId(null);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function resetAvatar(userId: string) {
-    try {
-      await api({ action: "reset_avatar", userId });
-      toast("Đã reset avatar", true);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function toggleVerify(userId: string, value: boolean) {
-    try {
-      await api({ action: "set_verified", userId, verified: value });
-      toast(value ? "Đã cấp tick xanh" : "Đã gỡ tick", true);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function toggleLock(userId: string, value: boolean) {
-    try {
-      await api({ action: "set_locked", userId, locked: value });
-      toast(value ? "Đã khóa" : "Đã mở khóa", true);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function deleteUser(userId: string) {
-    if (!confirm("Xóa tài khoản này?")) return;
-    try {
-      await api({ action: "delete_user", userId });
-      toast("Đã xóa", true);
-      setSelected((s) => {
-        const n = new Set(s);
-        n.delete(userId);
-        return n;
-      });
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function submitCoins() {
-    if (!coinTarget) return;
-    const amount = Number(coinAmount);
-    if (!Number.isFinite(amount) || amount === 0) {
-      toast("Nhập số xu khác 0", false);
-      return;
-    }
-    try {
-      await api({ action: "bulk_coins", userIds: coinTarget.ids, amount });
-      toast("Đã cập nhật xu", true);
-      setCoinTarget(null);
-      setCoinAmount("");
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function submitVipBulk() {
-    if (!vipBulk) return;
-    const days = Number(vipDays);
-    if (!Number.isFinite(days) || days === 0) {
-      toast("Nhập số ngày", false);
-      return;
-    }
-    try {
-      await api({ action: "bulk_vip_days", userIds: vipBulk.ids, days });
-      toast("Đã cộng VIP", true);
-      setVipBulk(null);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function bulkVerify(value: boolean) {
-    const ids = [...selected];
-    if (!ids.length) return;
-    try {
-      await api({ action: "bulk_verify", userIds: ids, verified: value });
-      toast(value ? "Đã cấp tick" : "Đã gỡ tick", true);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function bulkLock(value: boolean) {
-    const ids = [...selected];
-    if (!ids.length) return;
-    try {
-      await api({ action: "bulk_lock", userIds: ids, locked: value });
-      toast(value ? "Đã khóa" : "Đã mở khóa", true);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function bulkDelete() {
-    const ids = [...selected].filter((id) => {
-      const u = users.find((x) => x.id === id);
-      return u && normalizeRole(u) !== "ADMIN";
-    });
-    if (!ids.length) {
-      toast("Không xóa được Admin / không có mục hợp lệ", false);
-      return;
-    }
-    if (!confirm(`Xóa ${ids.length} tài khoản (không gồm Admin)?`)) return;
-    try {
-      await api({ action: "bulk_delete", userIds: ids });
-      toast("Đã xóa", true);
-      setSelected(new Set());
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function submitGift() {
-    try {
-      await api({
-        action: "global_compensation",
-        audience: giftAudience,
-        vipDays: giftDays ? Number(giftDays) : 0,
-        coins: giftCoins ? Number(giftCoins) : 0,
-        message: giftMsg.trim(),
-      });
-      toast("Đã phát đền bù toàn server", true);
-      setGiftOpen(false);
-      setGiftDays("");
-      setGiftCoins("");
-      setGiftMsg("");
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function purgeAll() {
-    if (purgeConfirm !== "XOA TAT CA") {
-      toast('Gõ đúng "XOA TAT CA"', false);
-      return;
-    }
-    try {
-      await api({ action: "purge_non_admin_users", confirm: "XOA TAT CA" });
-      toast("Đã xóa toàn bộ user (giữ Admin)", true);
-      setPurgeOpen(false);
-      setPurgeConfirm("");
-      setSelected(new Set());
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function createOne() {
-    if (!newUser.username.trim() || !newUser.password.trim()) {
-      toast("Nhập username và mật khẩu", false);
-      return;
-    }
-    try {
-      await api({ action: "create_user", username: newUser.username.trim(), password: newUser.password });
-      toast("Đã tạo tài khoản", true);
-      setNewUser({ username: "", password: "" });
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
-    }
-  }
-
-  async function createBulk() {
-    const count = Math.min(500, Math.max(1, Number(bulkCount) || 0));
-    setBulkBusy(true);
-    try {
-      const data = await api({
-        action: "bulk_create",
-        count,
-        prefix: bulkPrefix || "user_",
-        password: bulkPassword || undefined,
-      });
-      const accounts = Array.isArray(data.accounts) ? data.accounts : [];
-      setBulkHistory((h) => [
-        { at: new Date().toISOString(), count: accounts.length, accounts },
-        ...h,
-      ]);
-      toast(`Đã tạo ${accounts.length} tài khoản`, true);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
+      const msg = e instanceof Error ? e.message : "Thao tác thất bại";
+      setLocalError(msg);
+      throw e;
     } finally {
-      setBulkBusy(false);
+      setBusy(false);
     }
   }
 
-  function exportBulkCsv() {
-    const rows = bulkHistory[0]?.accounts;
-    if (!rows?.length) {
-      toast("Chưa có đợt tạo hàng loạt", false);
-      return;
-    }
-    const lines = ["username,password", ...rows.map((r: { username: string; password: string }) => `${r.username},${r.password}`)];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `bulk-accounts-${Date.now()}.csv`;
-    a.click();
-  }
-
-  async function saveEdit() {
-    if (!editUser) return;
+  const persistBulk = (list: BulkRow[]) => {
+    setBulkCreated(list);
     try {
-      await api({
-        action: "update_user",
-        userId: editUser.id,
-        displayName: editForm.displayName,
-        password: editForm.password || undefined,
-        coins: editForm.coins === "" ? undefined : Number(editForm.coins),
-      });
-      toast("Đã lưu", true);
-      setEditUser(null);
-      await load();
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Lỗi", false);
+      sessionStorage.setItem(BULK_STORAGE, JSON.stringify(list));
+    } catch {
+      /* */
     }
-  }
+  };
 
-  function copyUid(uid: string) {
-    void navigator.clipboard.writeText(uid);
-    toast("Đã copy UID", true);
-  }
+  const exportBulkOnly = (): Record<string, string>[] =>
+    bulkCreated.map((a) => ({
+      Username: a.username,
+      Password: a.password,
+      UID: a.uid,
+      "Trạng thái": "bulk",
+    }));
 
-  const filterBtn = (id: AccountFilter, label: string, count: number) => (
+  const filterChip = (id: Filter, label: string, count: number) => (
     <button
       key={id}
       type="button"
       onClick={() => setFilter(id)}
-      className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
+      className={
         filter === id
-          ? "border-violet-500 bg-violet-600 text-white"
-          : "border-slate-600 bg-slate-800/80 text-slate-200 hover:bg-slate-700"
-      }`}
+          ? "rounded-lg border border-violet-500 bg-violet-600 px-2.5 py-1.5 text-xs font-medium text-white"
+          : `rounded-lg border px-2.5 py-1.5 text-xs font-medium ${t.border} ${t.card} ${t.text}`
+      }
     >
       {label} ({count})
     </button>
@@ -507,159 +351,185 @@ export function AccountTab({ adminSecret, onToast }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Toolbar top */}
+      {localError ? (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{localError}</div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[220px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <div className="relative min-w-[200px] flex-1">
+          <Search className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${t.muted}`} />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Tìm Username, UID, Email..."
-            className="w-full rounded-xl border border-slate-600 bg-slate-900 py-2 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500"
+            className={`w-full rounded-xl border py-2 pl-9 pr-3 text-sm ${t.border} ${t.input}`}
           />
         </div>
         <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
-          className="rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-        >
-          <option value="all">Tất cả Role</option>
-          <option value="admin">Admin</option>
-          <option value="vip">VIP</option>
-          <option value="user">User</option>
-        </select>
-        <select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
-          className="rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+          className={`rounded-xl border px-3 py-2 text-xs ${t.border} ${t.input}`}
         >
           <option value="newest">Mới tạo gần nhất</option>
-          <option value="coins_desc">Số dư Xu: Cao → Thấp</option>
           <option value="vip_expiring">Hạn VIP: Sắp hết hạn</option>
           <option value="name_asc">Tên A → Z</option>
         </select>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:bg-slate-700"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
+        <button type="button" onClick={() => onRefresh()} className={btn(theme, "ghost")}>
+          <RefreshCw className="mr-1 inline h-3.5 w-3.5" />
           Làm mới
         </button>
-        <button
-          type="button"
-          onClick={() => setGiftOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-2 text-xs font-medium text-fuchsia-200 hover:bg-fuchsia-500/25"
-        >
-          <Gift className="h-3.5 w-3.5" />
-          Đền bù / Tặng quà toàn Server
-        </button>
-        <button
-          type="button"
-          onClick={() => setPurgeOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/15 px-3 py-2 text-xs font-medium text-red-200 hover:bg-red-500/25"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
+        <button type="button" onClick={() => setDeleteAllOpen(true)} className={btn(theme, "danger")}>
           Xóa toàn bộ tài khoản
         </button>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {filterBtn("all", "Tất cả", counts.all)}
-        {filterBtn("online", "Đang Online", counts.online)}
-        {filterBtn("vip", "Gói VIP", counts.vip)}
-        {filterBtn("verified", "Có Tick xanh", counts.verified)}
-        {filterBtn("locked", "Bị khóa", counts.locked)}
+        {filterChip("all", "Tất cả", counts.all)}
+        {filterChip("online", "Đang Online", counts.online)}
+        {filterChip("vip", "Gói VIP", counts.vip)}
+        {filterChip("verified", "Có Tick xanh", counts.verified)}
+        {filterChip("banned", "Bị khóa", counts.banned)}
       </div>
 
-      {/* Bulk create strip */}
-      <div className="rounded-2xl border border-slate-700/80 bg-slate-900/50 p-4 space-y-3">
-        <p className="text-sm font-semibold text-slate-100">Tạo tài khoản hàng loạt</p>
+      {/* Tạo đơn */}
+      <div className={`rounded-2xl border p-4 space-y-3 ${t.border} ${t.card}`}>
+        <p className={`text-sm font-semibold ${t.text}`}>Tạo tài khoản đơn</p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={form.username}
+            onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+            placeholder="Username"
+            className={`rounded-lg border px-2 py-1.5 text-sm ${t.border} ${t.input}`}
+          />
+          <input
+            value={form.password}
+            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            placeholder="Mật khẩu"
+            className={`rounded-lg border px-2 py-1.5 text-sm ${t.border} ${t.input}`}
+          />
+          <input
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            placeholder="Email (tuỳ chọn)"
+            className={`rounded-lg border px-2 py-1.5 text-sm ${t.border} ${t.input}`}
+          />
+          <select
+            value={form.role}
+            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as AdminRole }))}
+            className={`rounded-lg border px-2 py-1.5 text-sm ${t.border} ${t.input}`}
+          >
+            <option value="User">User</option>
+            <option value="VIP">VIP</option>
+            <option value="Admin">Admin</option>
+          </select>
+          <button
+            type="button"
+            disabled={busy}
+            className={btn(theme, "primary")}
+            onClick={() =>
+              void run({
+                action: "create_account",
+                username: form.username.trim(),
+                password: form.password,
+                email: form.email || undefined,
+                role: form.role,
+                expiresDays: form.expiresDays ? Number(form.expiresDays) : undefined,
+              }).then(() => setForm({ username: "", email: "", password: "", role: "User", expiresDays: "" }))
+            }
+          >
+            Tạo đơn
+          </button>
+        </div>
+
+        <p className={`text-sm font-semibold pt-2 ${t.text}`}>Tạo hàng loạt</p>
         <div className="flex flex-wrap gap-2">
           <input
             value={bulkCount}
             onChange={(e) => setBulkCount(e.target.value)}
             placeholder="Số lượng"
-            className="w-24 rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+            className={`w-24 rounded-lg border px-2 py-1.5 text-sm ${t.border} ${t.input}`}
           />
           <input
             value={bulkPrefix}
             onChange={(e) => setBulkPrefix(e.target.value)}
             placeholder="Prefix"
-            className="w-32 rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+            className={`w-28 rounded-lg border px-2 py-1.5 text-sm ${t.border} ${t.input}`}
           />
           <input
-            value={bulkPassword}
-            onChange={(e) => setBulkPassword(e.target.value)}
-            placeholder="Mật khẩu chung (trống = random)"
-            className="min-w-[180px] flex-1 rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+            value={bulkPass}
+            onChange={(e) => setBulkPass(e.target.value)}
+            placeholder="MK chung (trống = random)"
+            className={`min-w-[160px] flex-1 rounded-lg border px-2 py-1.5 text-sm ${t.border} ${t.input}`}
           />
           <button
             type="button"
-            disabled={bulkBusy}
-            onClick={() => void createBulk()}
-            className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+            disabled={busy}
+            className={btn(theme, "primary")}
+            onClick={async () => {
+              setBusy(true);
+              setLocalError(null);
+              try {
+                const res = (await onAction({
+                  action: "bulk_create_accounts",
+                  count: Math.min(200, Math.max(1, Number(bulkCount) || 1)),
+                  prefix: bulkPrefix || "user_",
+                  password: bulkPass || undefined,
+                })) as { accounts?: BulkRow[] };
+                const acc = Array.isArray(res?.accounts) ? res.accounts : [];
+                if (acc.length) persistBulk(acc);
+                onRefresh();
+              } catch (e) {
+                setLocalError(e instanceof Error ? e.message : "Tạo hàng loạt thất bại");
+              } finally {
+                setBusy(false);
+              }
+            }}
           >
-            {bulkBusy ? "Đang tạo…" : "Tạo hàng loạt"}
+            Tạo hàng loạt
           </button>
           <button
             type="button"
-            onClick={exportBulkCsv}
-            className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800"
+            className={btn(theme, "ghost")}
+            disabled={!bulkCreated.length}
+            onClick={() => exportCsv(exportBulkOnly(), `bulk-${Date.now()}.csv`)}
           >
-            Xuất CSV đợt gần nhất
+            <FileSpreadsheet className="mr-1 inline h-3.5 w-3.5" /> CSV
+          </button>
+          <button
+            type="button"
+            className={btn(theme, "ghost")}
+            disabled={!bulkCreated.length}
+            onClick={() => exportPdf("Bulk accounts", exportBulkOnly())}
+          >
+            <FileText className="mr-1 inline h-3.5 w-3.5" /> PDF
           </button>
         </div>
-        {bulkHistory[0] && (
-          <div className="max-h-40 overflow-auto rounded-lg border border-slate-700 bg-slate-950/80 p-2 text-xs font-mono text-slate-300">
-            <p className="mb-1 text-slate-500">
-              Đợt {new Date(bulkHistory[0].at).toLocaleString("vi-VN")} · {bulkHistory[0].count} acc
-            </p>
-            {bulkHistory[0].accounts.slice(0, 50).map((a) => (
+        {bulkCreated.length > 0 && (
+          <div className={`max-h-36 overflow-auto rounded-lg border p-2 font-mono text-[11px] ${t.border} ${t.muted}`}>
+            {bulkCreated.slice(0, 40).map((a) => (
               <div key={a.username}>
-                {a.username} / {a.password}
+                {a.username} / {a.password} {a.uid ? `· ${a.uid}` : ""}
               </div>
             ))}
           </div>
         )}
-        <div className="flex flex-wrap gap-2 border-t border-slate-700 pt-3">
-          <input
-            value={newUser.username}
-            onChange={(e) => setNewUser((s) => ({ ...s, username: e.target.value }))}
-            placeholder="Username đơn"
-            className="rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
-          />
-          <input
-            value={newUser.password}
-            onChange={(e) => setNewUser((s) => ({ ...s, password: e.target.value }))}
-            placeholder="Mật khẩu"
-            className="rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
-          />
-          <button
-            type="button"
-            onClick={() => void createOne()}
-            className="rounded-lg border border-slate-500 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-800"
-          >
-            Tạo đơn
-          </button>
-        </div>
       </div>
 
-      <AccountBulkBar
-        count={selected.size}
-        onClear={() => setSelected(new Set())}
-        onBulkCoins={() => setCoinTarget({ ids: [...selected], label: `${selected.size} tài khoản` })}
-        onBulkVip={() => setVipBulk({ ids: [...selected] })}
-        onBulkVerify={() => void bulkVerify(true)}
-        onBulkLock={() => void bulkLock(true)}
-        onBulkDelete={() => void bulkDelete()}
-      />
+      {selected.size > 0 && (
+        <div className={`flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2 ${t.border} ${t.card}`}>
+          <span className={`text-sm ${t.text}`}>
+            Đã chọn <strong>{selected.size}</strong>
+          </span>
+          <button type="button" className={btn(theme, "ghost")} onClick={() => setSelected(new Set())}>
+            Bỏ chọn
+          </button>
+        </div>
+      )}
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-700/80">
-        <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
-          <thead className="bg-slate-900/90 text-[11px] uppercase tracking-wide text-slate-400">
-            <tr>
+      <div className={`overflow-x-auto rounded-2xl border ${t.border}`}>
+        <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
+          <thead className={`text-[11px] uppercase tracking-wide ${t.muted}`}>
+            <tr className={t.card}>
               <th className="w-10 px-2 py-3">
                 <input
                   type="checkbox"
@@ -667,249 +537,202 @@ export function AccountTab({ adminSecret, onToast }: Props) {
                   ref={(el) => {
                     if (el) el.indeterminate = somePageSelected;
                   }}
-                  onChange={toggleAllPage}
-                  className="h-4 w-4 rounded border-slate-500"
-                  aria-label="Chọn tất cả trang"
+                  onChange={() => {
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+                      else pageIds.forEach((id) => next.add(id));
+                      return next;
+                    });
+                  }}
                 />
               </th>
               <th className="px-2 py-3">Người dùng</th>
               <th className="px-2 py-3">Role</th>
-              <th className="px-2 py-3">Số dư Xu</th>
+              <th className="px-2 py-3">Xu</th>
               <th className="px-2 py-3">Hạn VIP</th>
-              <th className="px-2 py-3">Thiết bị</th>
               <th className="px-2 py-3">Trạng thái</th>
               <th className="px-2 py-3">Hành động</th>
             </tr>
           </thead>
           <tbody>
-            {loading && (
+            {loading && rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={7} className={`px-4 py-10 text-center ${t.muted}`}>
                   Đang tải…
                 </td>
               </tr>
-            )}
-            {!loading && filtered.length === 0 && (
+            ) : null}
+            {!loading && filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
-                  Không có tài khoản
+                <td colSpan={7} className={`px-4 py-10 text-center ${t.muted}`}>
+                  {rows.length === 0
+                    ? "Không có tài khoản từ API board-home. Bấm Làm mới hoặc kiểm tra section=accounts."
+                    : "Không khớp bộ lọc / tìm kiếm."}
                 </td>
               </tr>
-            )}
-            {filtered.map((u) => {
-              const role = normalizeRole(u);
-              const vip = vipLabel(u);
-              const selectedRow = selected.has(u.id);
+            ) : null}
+            {filtered.map((a) => {
+              const vip = vipMeta(a);
+              const coins = Number(a.coins ?? a.xu ?? 0);
+              const verified = !!(a.verified || a.isVerified);
+              const selectedRow = selected.has(a.id);
+              const initial = (a.username || "?").charAt(0).toUpperCase();
               return (
                 <tr
-                  key={u.id}
-                  className={`border-t border-slate-800/80 ${
-                    selectedRow ? "bg-violet-500/10 border-l-2 border-l-violet-400" : "hover:bg-white/[0.02]"
-                  }`}
+                  key={a.id}
+                  className={`border-t ${t.border} ${selectedRow ? "bg-violet-500/10" : ""}`}
                 >
-                  <td className="px-2 py-3 align-middle">
+                  <td className="px-2 py-3">
                     <input
                       type="checkbox"
                       checked={selectedRow}
-                      onChange={() => toggleOne(u.id)}
-                      className="h-4 w-4 rounded border-slate-500"
+                      onChange={() =>
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(a.id)) next.delete(a.id);
+                          else next.add(a.id);
+                          return next;
+                        })
+                      }
                     />
                   </td>
                   <td className="px-2 py-3">
-                    <div className="flex items-center gap-2.5 min-w-[200px]">
-                      <div className="group relative h-10 w-10 shrink-0">
-                        {u.avatarUrl ? (
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-600 to-sky-600 text-sm font-bold text-white">
+                        {a.avatarUrl || a.avatar ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={u.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                          <img src={String(a.avatarUrl || a.avatar)} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-sky-600 text-sm font-bold text-white">
-                            {(u.username || "?").charAt(0).toUpperCase()}
-                          </div>
+                          initial
                         )}
-                        <button
-                          type="button"
-                          title="Reset Avatar"
-                          onClick={() => void resetAvatar(u.id)}
-                          className="absolute inset-0 hidden items-center justify-center rounded-full bg-black/70 text-[10px] text-white group-hover:flex"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                        </button>
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="truncate font-semibold text-slate-100">{u.username}</span>
-                          {isVerified(u) && (
-                            <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" strokeWidth={1.75} />
-                          )}
-                          {isOnline(u) && (
-                            <span className="relative flex h-2 w-2">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                            </span>
-                          )}
+                          <button
+                            type="button"
+                            className={`truncate font-semibold hover:underline ${t.text}`}
+                            onClick={() => setDetailUser(a)}
+                          >
+                            {a.username}
+                          </button>
+                          {verified ? <BadgeCheck className="h-4 w-4 text-sky-400" strokeWidth={1.75} /> : null}
+                          {a.online || a.isOnline ? (
+                            <span className="h-2 w-2 rounded-full bg-emerald-400" title="Online" />
+                          ) : null}
                         </div>
                         <button
                           type="button"
-                          onClick={() => copyUid(u.uid)}
-                          className="mt-0.5 inline-flex items-center gap-1 font-mono text-[11px] text-slate-500 hover:text-slate-300"
+                          className={`mt-0.5 inline-flex items-center gap-1 font-mono text-[11px] ${t.muted}`}
+                          onClick={() => {
+                            if (a.uid) void navigator.clipboard.writeText(a.uid);
+                          }}
                         >
-                          {u.uid}
-                          <Copy className="h-3 w-3" />
+                          {a.uid || "—"}
+                          {a.uid ? <Copy className="h-3 w-3" /> : null}
                         </button>
                       </div>
                     </div>
                   </td>
-                  <td className="px-2 py-3 relative">
-                    <button
-                      type="button"
-                      onClick={() => setRoleMenuId(roleMenuId === u.id ? null : u.id)}
+                  <td className="px-2 py-3">
+                    <span
                       className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${
-                        role === "ADMIN"
+                        a.role === "Admin"
                           ? "border-purple-500/40 bg-purple-500/20 text-purple-300"
-                          : role === "VIP"
+                          : a.role === "VIP"
                             ? "border-amber-500/40 bg-amber-500/20 text-amber-300"
-                            : "border-slate-600 bg-slate-700/50 text-slate-300"
+                            : "border-slate-600 bg-slate-700/40 text-slate-300"
                       }`}
                     >
-                      {role === "ADMIN" && <Shield className="h-3 w-3" />}
-                      {role === "VIP" && <Crown className="h-3 w-3" />}
-                      {role === "USER" && <UserIcon className="h-3 w-3" />}
-                      {role === "ADMIN" ? "Admin" : role === "VIP" ? "VIP" : "User"}
-                      <ChevronDown className="h-3 w-3 opacity-60" />
-                    </button>
-                    {roleMenuId === u.id && (
-                      <div className="absolute z-20 mt-1 w-28 rounded-lg border border-slate-600 bg-slate-900 py-1 shadow-xl">
-                        {(["USER", "VIP", "ADMIN"] as const).map((r) => (
-                          <button
-                            key={r}
-                            type="button"
-                            onClick={() => void setRole(u.id, r)}
-                            className="block w-full px-3 py-1.5 text-left text-xs text-slate-200 hover:bg-white/5"
-                          >
-                            {r === "ADMIN" ? "Admin" : r === "VIP" ? "VIP" : "User"}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                      {a.role === "Admin" ? <Shield className="h-3 w-3" /> : null}
+                      {a.role === "VIP" ? <Crown className="h-3 w-3" /> : null}
+                      {a.role === "User" ? <UserIcon className="h-3 w-3" /> : null}
+                      {a.role}
+                    </span>
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex items-center gap-1">
-                      <span className="font-semibold text-amber-400">{formatCoins(u.coins)}</span>
+                      <span className="font-semibold text-amber-400">{coins.toLocaleString("vi-VN")} Xu</span>
                       <button
                         type="button"
-                        onClick={() => setCoinTarget({ ids: [u.id], label: u.username })}
-                        className="rounded border border-amber-500/30 p-0.5 text-amber-300 hover:bg-amber-500/10"
-                        title="Cộng/trừ xu"
+                        className="rounded border border-amber-500/30 p-0.5 text-amber-300"
+                        onClick={() => {
+                          setCoinsModal(a);
+                          setCoinsAmt("");
+                          setCoinsReason("");
+                        }}
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>
-                  <td className="px-2 py-3 relative">
-                    <div className="text-xs text-slate-200">{vip.line1}</div>
-                    <div className={`text-[11px] ${vip.tone}`}>{vip.line2}</div>
-                    <button
-                      type="button"
-                      onClick={() => setVipMenuId(vipMenuId === u.id ? null : u.id)}
-                      className="mt-1 rounded border border-emerald-500/30 px-1.5 py-0.5 text-[10px] text-emerald-300 hover:bg-emerald-500/10"
-                    >
-                      +Gia hạn
-                    </button>
-                    {vipMenuId === u.id && (
-                      <div className="absolute z-20 mt-1 w-32 rounded-lg border border-slate-600 bg-slate-900 py-1 shadow-xl">
-                        {[7, 30, 90, 365].map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => void adjustVip(u.id, d)}
-                            className="block w-full px-3 py-1.5 text-left text-xs text-slate-200 hover:bg-white/5"
-                          >
-                            +{d} ngày
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => void adjustVip(u.id, "clear")}
-                          className="block w-full px-3 py-1.5 text-left text-xs text-red-300 hover:bg-white/5"
-                        >
-                          Hủy VIP
-                        </button>
-                      </div>
-                    )}
-                  </td>
                   <td className="px-2 py-3">
-                    <button
-                      type="button"
-                      onClick={() => setDeviceUser(u)}
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-600 bg-slate-800/80 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-700"
-                    >
-                      {u.lastPlatform === "ANDROID" ? (
-                        <Smartphone className="h-3.5 w-3.5" />
-                      ) : (
-                        <span className="text-xs">Web</span>
-                      )}
-                      {u.deviceCount ?? 0}/{u.maxDevices ?? 2} thiết bị
-                    </button>
+                    <div className={`text-xs ${t.text}`}>{vip.line}</div>
+                    <div className={`text-[11px] ${vip.tone}`}>{vip.sub}</div>
                   </td>
                   <td className="px-2 py-3">
                     <span
                       className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium ${
-                        isLocked(u)
+                        a.status === "banned"
                           ? "border-red-500/40 bg-red-500/15 text-red-300"
                           : "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
                       }`}
                     >
-                      {isLocked(u) ? "locked" : "active"}
+                      {a.status === "banned" ? "locked" : "active"}
                     </span>
-                    <div className="mt-1 text-[10px] text-slate-500">{createdLabel(u.createdAt)}</div>
+                    <div className={`mt-1 text-[10px] ${t.muted}`}>
+                      {a.createdAt ? new Date(a.createdAt).toLocaleString("vi-VN") : "—"}
+                    </div>
                   </td>
                   <td className="px-2 py-3">
-                    <div className="flex max-w-[280px] flex-wrap gap-1.5">
-                      <Act onClick={() => {
-                        setEditUser(u);
-                        setEditForm({
-                          displayName: u.displayName || "",
-                          password: "",
-                          coins: String(u.coins ?? 0),
-                        });
-                      }} label="Edit" icon={<Pencil className="h-3 w-3" />} />
-                      <Act
-                        onClick={() => setCoinTarget({ ids: [u.id], label: u.username })}
-                        label="Cấp xu"
-                        icon={<Coins className="h-3 w-3" />}
-                        tone="amber"
-                      />
-                      <Act
-                        onClick={() => setDeviceUser(u)}
-                        label="Thiết bị"
-                        icon={<Smartphone className="h-3 w-3" />}
-                      />
-                      <Act
-                        onClick={() => void toggleVerify(u.id, !isVerified(u))}
-                        label={isVerified(u) ? "Gỡ tick" : "Tick xanh"}
-                        icon={<BadgeCheck className="h-3 w-3" />}
-                        tone="sky"
-                      />
-                      <Act
+                    <div className="flex max-w-[260px] flex-wrap gap-1.5">
+                      <button type="button" className={btn(theme, "ghost")} onClick={() => setDetailUser(a)}>
+                        <Pencil className="h-3 w-3" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={btn(theme, "ghost")}
                         onClick={() => {
-                          const pw = prompt("Mật khẩu mới");
-                          if (pw) void api({ action: "set_password", userId: u.id, password: pw }).then(() => toast("Đã đổi MK", true)).catch((e) => toast(String(e.message || e), false));
+                          setCoinsModal(a);
+                          setCoinsAmt("");
                         }}
-                        label="Đổi MK"
-                        icon={<KeyRound className="h-3 w-3" />}
-                      />
-                      <Act
-                        onClick={() => void toggleLock(u.id, !isLocked(u))}
-                        label={isLocked(u) ? "Mở khóa" : "Khóa"}
-                        icon={isLocked(u) ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                        tone="red"
-                      />
-                      <Act
-                        onClick={() => void deleteUser(u.id)}
-                        label="Xóa"
-                        icon={<Trash2 className="h-3 w-3" />}
-                        tone="red"
-                      />
+                      >
+                        <Coins className="h-3 w-3" /> Xu
+                      </button>
+                      <button
+                        type="button"
+                        className={btn(theme, "ghost")}
+                        onClick={() =>
+                          void run({ action: "toggle_verified", userId: a.id, verified: !verified })
+                        }
+                      >
+                        <BadgeCheck className="h-3 w-3" /> {verified ? "Gỡ tick" : "Tick"}
+                      </button>
+                      <button
+                        type="button"
+                        className={btn(theme, "ghost")}
+                        onClick={() => {
+                          setPassModal(a);
+                          setNewPass("");
+                        }}
+                      >
+                        MK
+                      </button>
+                      <button
+                        type="button"
+                        className={btn(theme, "ghost")}
+                        onClick={() =>
+                          void run({
+                            action: a.status === "banned" ? "unban_account" : "ban_account",
+                            userId: a.id,
+                          })
+                        }
+                      >
+                        {a.status === "banned" ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                      </button>
+                      <button type="button" className={btn(theme, "danger")} onClick={() => setDeleteModal(a)}>
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -919,174 +742,120 @@ export function AccountTab({ adminSecret, onToast }: Props) {
         </table>
       </div>
 
-      {/* Coin dialog */}
-      {coinTarget && (
-        <Modal title={`Xu — ${coinTarget.label}`} onClose={() => setCoinTarget(null)}>
+      <p className={`text-xs ${t.muted}`}>
+        Nguồn danh sách: prop từ board-home (`/api/admin/board-home?section=accounts`) — cùng nguồn với số TK trên header.
+        {loading ? " · Đang đồng bộ…" : ` · ${rows.length} tài khoản`}
+      </p>
+
+      {coinsModal && (
+        <AdminModal theme={theme} title={`Xu · ${coinsModal.username}`} onClose={() => setCoinsModal(null)}>
           <input
-            value={coinAmount}
-            onChange={(e) => setCoinAmount(e.target.value)}
-            placeholder="Số xu (+ cộng / - trừ)"
-            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+            value={coinsAmt}
+            onChange={(e) => setCoinsAmt(e.target.value)}
+            placeholder="Số xu (+/-)"
+            className={`mb-2 w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
           />
-          <button type="button" onClick={() => void submitCoins()} className="w-full rounded-xl bg-amber-600 py-2 text-sm font-medium text-white">
+          <input
+            value={coinsReason}
+            onChange={(e) => setCoinsReason(e.target.value)}
+            placeholder="Lý do (tuỳ chọn)"
+            className={`mb-3 w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
+          />
+          <button
+            type="button"
+            className={btn(theme, "primary")}
+            disabled={busy}
+            onClick={() =>
+              void run({
+                action: "grant_coins",
+                userId: coinsModal.id,
+                amount: Number(coinsAmt),
+                reason: coinsReason || undefined,
+              }).then(() => setCoinsModal(null))
+            }
+          >
             Xác nhận
           </button>
-        </Modal>
+        </AdminModal>
       )}
 
-      {vipBulk && (
-        <Modal title="Cộng ngày VIP hàng loạt" onClose={() => setVipBulk(null)}>
+      {passModal && (
+        <AdminModal theme={theme} title={`Đổi MK · ${passModal.username}`} onClose={() => setPassModal(null)}>
           <input
-            value={vipDays}
-            onChange={(e) => setVipDays(e.target.value)}
-            placeholder="Số ngày"
-            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+            value={newPass}
+            onChange={(e) => setNewPass(e.target.value)}
+            placeholder="Mật khẩu mới"
+            className={`mb-3 w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
           />
-          <button type="button" onClick={() => void submitVipBulk()} className="w-full rounded-xl bg-violet-600 py-2 text-sm font-medium text-white">
-            Cộng VIP
-          </button>
-        </Modal>
-      )}
-
-      {giftOpen && (
-        <Modal title="Đền bù / Tặng quà toàn Server" onClose={() => setGiftOpen(false)}>
-          <label className="mb-1 block text-xs text-slate-400">Đối tượng</label>
-          <select
-            value={giftAudience}
-            onChange={(e) => setGiftAudience(e.target.value as typeof giftAudience)}
-            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          <button
+            type="button"
+            className={btn(theme, "primary")}
+            disabled={busy}
+            onClick={() =>
+              void run({ action: "set_password", userId: passModal.id, password: newPass }).then(() => setPassModal(null))
+            }
           >
-            <option value="all">Tất cả người dùng</option>
-            <option value="vip">Chỉ đang có VIP</option>
-            <option value="online">Chỉ đang Online</option>
-          </select>
-          <input
-            value={giftDays}
-            onChange={(e) => setGiftDays(e.target.value)}
-            placeholder="Ngày VIP cộng thêm"
-            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
-          />
-          <input
-            value={giftCoins}
-            onChange={(e) => setGiftCoins(e.target.value)}
-            placeholder="Xu thưởng"
-            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
-          />
-          <textarea
-            value={giftMsg}
-            onChange={(e) => setGiftMsg(e.target.value)}
-            placeholder="Lời nhắn hòm thư"
-            rows={3}
-            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
-          />
-          <button type="button" onClick={() => void submitGift()} className="w-full rounded-xl bg-fuchsia-600 py-2 text-sm font-medium text-white">
-            Phát ngay
-          </button>
-        </Modal>
-      )}
-
-      {purgeOpen && (
-        <Modal title="Xóa toàn bộ tài khoản (giữ Admin)" onClose={() => setPurgeOpen(false)}>
-          <p className="mb-2 text-sm text-slate-400">
-            Gõ <code className="text-red-300">XOA TAT CA</code> để xác nhận. Tài khoản Admin không bị xóa.
-          </p>
-          <input
-            value={purgeConfirm}
-            onChange={(e) => setPurgeConfirm(e.target.value)}
-            className="mb-3 w-full rounded-lg border border-red-500/40 bg-slate-950 px-3 py-2 text-sm text-white"
-            placeholder=""
-          />
-          <button type="button" onClick={() => void purgeAll()} className="w-full rounded-xl bg-red-600 py-2 text-sm font-medium text-white">
-            Xóa
-          </button>
-        </Modal>
-      )}
-
-      {editUser && (
-        <Modal title={`Sửa · ${editUser.username}`} onClose={() => setEditUser(null)}>
-          <input
-            value={editForm.displayName}
-            onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
-            placeholder="Tên hiển thị"
-            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
-          />
-          <input
-            value={editForm.password}
-            onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
-            placeholder="Mật khẩu mới (trống = giữ)"
-            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
-          />
-          <input
-            value={editForm.coins}
-            onChange={(e) => setEditForm((f) => ({ ...f, coins: e.target.value }))}
-            placeholder="Số xu"
-            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
-          />
-          <button type="button" onClick={() => void saveEdit()} className="w-full rounded-xl bg-violet-600 py-2 text-sm font-medium text-white">
             Lưu
           </button>
-        </Modal>
+        </AdminModal>
       )}
 
-      <DeviceSessionModal
-        open={!!deviceUser}
-        user={deviceUser}
-        adminSecret={adminSecret}
-        onClose={() => setDeviceUser(null)}
-        onToast={toast}
-      />
-    </div>
-  );
-}
+      {deleteModal && (
+        <AdminModal theme={theme} title={`Xóa · ${deleteModal.username}`} onClose={() => setDeleteModal(null)}>
+          <p className={`mb-3 text-sm ${t.muted}`}>Không thể hoàn tác.</p>
+          <button
+            type="button"
+            className={btn(theme, "danger")}
+            disabled={busy}
+            onClick={() =>
+              void run({ action: "delete_account", userId: deleteModal.id }).then(() => setDeleteModal(null))
+            }
+          >
+            Xóa
+          </button>
+        </AdminModal>
+      )}
 
-function Act({
-  onClick,
-  label,
-  icon,
-  tone = "slate",
-}: {
-  onClick: () => void;
-  label: string;
-  icon: React.ReactNode;
-  tone?: "slate" | "amber" | "sky" | "red";
-}) {
-  const map = {
-    slate: "border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700",
-    amber: "border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20",
-    sky: "border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20",
-    red: "border-red-500/40 bg-red-500/10 text-red-200 hover:bg-red-500/20",
-  };
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium ${map[tone]}`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
+      {deleteAllOpen && (
+        <AdminModal theme={theme} title="Xóa toàn bộ tài khoản (giữ Admin)" onClose={() => setDeleteAllOpen(false)}>
+          <p className={`mb-2 text-sm ${t.muted}`}>
+            Gõ <code className="text-red-300">XOA TAT CA</code> để xác nhận.
+          </p>
+          <input
+            value={deleteAllConfirm}
+            onChange={(e) => setDeleteAllConfirm(e.target.value)}
+            className={`mb-3 w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
+            placeholder=""
+          />
+          <button
+            type="button"
+            className={btn(theme, "danger")}
+            disabled={busy || deleteAllConfirm !== "XOA TAT CA"}
+            onClick={() =>
+              void run({ action: "delete_all_accounts", confirm: "XOA TAT CA" }).then(() => {
+                setDeleteAllOpen(false);
+                setDeleteAllConfirm("");
+              })
+            }
+          >
+            Xóa
+          </button>
+        </AdminModal>
+      )}
 
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
-      <div
-        className="w-full max-w-md rounded-2xl border border-white/10 bg-[#12141C] p-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-      >
-        <h3 className="mb-3 text-base font-semibold text-white">{title}</h3>
-        {children}
-      </div>
+      {detailUser && (
+        <AdminModal theme={theme} title={`Chi tiết · ${detailUser.username}`} onClose={() => setDetailUser(null)}>
+          <div className={`space-y-1 text-sm ${t.text}`}>
+            <p>UID: {detailUser.uid || "—"}</p>
+            <p>Role: {detailUser.role}</p>
+            <p>Xu: {Number(detailUser.coins ?? 0).toLocaleString("vi-VN")}</p>
+            <p>Email: {detailUser.email || "—"}</p>
+            <p>VIP: {detailUser.expiresAt || "—"}</p>
+            <p>Trạng thái: {detailUser.status}</p>
+            <p>Tạo: {detailUser.createdAt ? new Date(detailUser.createdAt).toLocaleString("vi-VN") : "—"}</p>
+          </div>
+        </AdminModal>
+      )}
     </div>
   );
 }

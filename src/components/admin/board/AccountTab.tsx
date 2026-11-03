@@ -81,7 +81,7 @@ function createdLabel(iso?: string | null) {
   return d.toLocaleString("vi-VN");
 }
 
-export default function AccountTab({ adminSecret, onToast }: Props) {
+export function AccountTab({ adminSecret, onToast }: Props) {
   const toast = onToast || ((m: string) => console.log(m));
 
   const [users, setUsers] = useState<AdminUserRow[]>([]);
@@ -1090,3 +1090,5 @@ function Modal({
     </div>
   );
 }
+
+export default AccountTab;

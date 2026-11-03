@@ -342,7 +342,7 @@ export function AccountTab({
       className={
         filter === id
           ? "rounded-lg border border-violet-500 bg-violet-600 px-2.5 py-1.5 text-xs font-medium text-white"
-          : `rounded-lg border px-2.5 py-1.5 text-xs font-medium ${t.border} ${t.card} ${t.text}`
+          : `rounded-lg border px-2.5 py-1.5 text-xs font-medium ${t.border} ${t.surface} `
       }
     >
       {label} ({count})
@@ -374,11 +374,11 @@ export function AccountTab({
           <option value="vip_expiring">Hạn VIP: Sắp hết hạn</option>
           <option value="name_asc">Tên A → Z</option>
         </select>
-        <button type="button" onClick={() => onRefresh()} className={btn(theme, "ghost")}>
+        <button type="button" onClick={() => onRefresh()} className={`${btn.ghost} ${btn.compact}`}>
           <RefreshCw className="mr-1 inline h-3.5 w-3.5" />
           Làm mới
         </button>
-        <button type="button" onClick={() => setDeleteAllOpen(true)} className={btn(theme, "danger")}>
+        <button type="button" onClick={() => setDeleteAllOpen(true)} className={`${btn.ban} ${btn.compact}`}>
           Xóa toàn bộ tài khoản
         </button>
       </div>
@@ -392,8 +392,8 @@ export function AccountTab({
       </div>
 
       {/* Tạo đơn */}
-      <div className={`rounded-2xl border p-4 space-y-3 ${t.border} ${t.card}`}>
-        <p className={`text-sm font-semibold ${t.text}`}>Tạo tài khoản đơn</p>
+      <div className={`rounded-2xl border p-4 space-y-3 ${t.border} ${t.surface}`}>
+        <p className={`text-sm font-semibold `}>Tạo tài khoản đơn</p>
         <div className="flex flex-wrap gap-2">
           <input
             value={form.username}
@@ -425,7 +425,7 @@ export function AccountTab({
           <button
             type="button"
             disabled={busy}
-            className={btn(theme, "primary")}
+            className={`${btn.primary} ${btn.compact}`}
             onClick={() =>
               void run({
                 action: "create_account",
@@ -441,7 +441,7 @@ export function AccountTab({
           </button>
         </div>
 
-        <p className={`text-sm font-semibold pt-2 ${t.text}`}>Tạo hàng loạt</p>
+        <p className={`text-sm font-semibold pt-2 `}>Tạo hàng loạt</p>
         <div className="flex flex-wrap gap-2">
           <input
             value={bulkCount}
@@ -464,7 +464,7 @@ export function AccountTab({
           <button
             type="button"
             disabled={busy}
-            className={btn(theme, "primary")}
+            className={`${btn.primary} ${btn.compact}`}
             onClick={async () => {
               setBusy(true);
               setLocalError(null);
@@ -489,7 +489,7 @@ export function AccountTab({
           </button>
           <button
             type="button"
-            className={btn(theme, "ghost")}
+            className={`${btn.ghost} ${btn.compact}`}
             disabled={!bulkCreated.length}
             onClick={() => exportCsv(exportBulkOnly(), `bulk-${Date.now()}.csv`)}
           >
@@ -497,7 +497,7 @@ export function AccountTab({
           </button>
           <button
             type="button"
-            className={btn(theme, "ghost")}
+            className={`${btn.ghost} ${btn.compact}`}
             disabled={!bulkCreated.length}
             onClick={() => exportPdf("Bulk accounts", exportBulkOnly())}
           >
@@ -516,11 +516,11 @@ export function AccountTab({
       </div>
 
       {selected.size > 0 && (
-        <div className={`flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2 ${t.border} ${t.card}`}>
-          <span className={`text-sm ${t.text}`}>
+        <div className={`flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2 ${t.border} ${t.surface}`}>
+          <span className={`text-sm `}>
             Đã chọn <strong>{selected.size}</strong>
           </span>
-          <button type="button" className={btn(theme, "ghost")} onClick={() => setSelected(new Set())}>
+          <button type="button" className={`${btn.ghost} ${btn.compact}`} onClick={() => setSelected(new Set())}>
             Bỏ chọn
           </button>
         </div>
@@ -529,7 +529,7 @@ export function AccountTab({
       <div className={`overflow-x-auto rounded-2xl border ${t.border}`}>
         <table className="w-full min-w-[1000px] border-collapse text-left text-sm">
           <thead className={`text-[11px] uppercase tracking-wide ${t.muted}`}>
-            <tr className={t.card}>
+            <tr className={t.surface}>
               <th className="w-10 px-2 py-3">
                 <input
                   type="checkbox"
@@ -611,7 +611,7 @@ export function AccountTab({
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            className={`truncate font-semibold hover:underline ${t.text}`}
+                            className={`truncate font-semibold hover:underline `}
                             onClick={() => setDetailUser(a)}
                           >
                             {a.username}
@@ -667,7 +667,7 @@ export function AccountTab({
                     </div>
                   </td>
                   <td className="px-2 py-3">
-                    <div className={`text-xs ${t.text}`}>{vip.line}</div>
+                    <div className={`text-xs `}>{vip.line}</div>
                     <div className={`text-[11px] ${vip.tone}`}>{vip.sub}</div>
                   </td>
                   <td className="px-2 py-3">
@@ -686,12 +686,12 @@ export function AccountTab({
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex max-w-[260px] flex-wrap gap-1.5">
-                      <button type="button" className={btn(theme, "ghost")} onClick={() => setDetailUser(a)}>
+                      <button type="button" className={`${btn.ghost} ${btn.compact}`} onClick={() => setDetailUser(a)}>
                         <Pencil className="h-3 w-3" /> Edit
                       </button>
                       <button
                         type="button"
-                        className={btn(theme, "ghost")}
+                        className={`${btn.ghost} ${btn.compact}`}
                         onClick={() => {
                           setCoinsModal(a);
                           setCoinsAmt("");
@@ -701,7 +701,7 @@ export function AccountTab({
                       </button>
                       <button
                         type="button"
-                        className={btn(theme, "ghost")}
+                        className={`${btn.ghost} ${btn.compact}`}
                         onClick={() =>
                           void run({ action: "toggle_verified", userId: a.id, verified: !verified })
                         }
@@ -710,7 +710,7 @@ export function AccountTab({
                       </button>
                       <button
                         type="button"
-                        className={btn(theme, "ghost")}
+                        className={`${btn.ghost} ${btn.compact}`}
                         onClick={() => {
                           setPassModal(a);
                           setNewPass("");
@@ -720,7 +720,7 @@ export function AccountTab({
                       </button>
                       <button
                         type="button"
-                        className={btn(theme, "ghost")}
+                        className={`${btn.ghost} ${btn.compact}`}
                         onClick={() =>
                           void run({
                             action: a.status === "banned" ? "unban_account" : "ban_account",
@@ -730,7 +730,7 @@ export function AccountTab({
                       >
                         {a.status === "banned" ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                       </button>
-                      <button type="button" className={btn(theme, "danger")} onClick={() => setDeleteModal(a)}>
+                      <button type="button" className={`${btn.ban} ${btn.compact}`} onClick={() => setDeleteModal(a)}>
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
@@ -748,7 +748,7 @@ export function AccountTab({
       </p>
 
       {coinsModal && (
-        <AdminModal theme={theme} title={`Xu · ${coinsModal.username}`} onClose={() => setCoinsModal(null)}>
+        <AdminModal open theme={theme} title={`Xu · ${coinsModal.username}`} onClose={() => setCoinsModal(null)}>
           <input
             value={coinsAmt}
             onChange={(e) => setCoinsAmt(e.target.value)}
@@ -763,7 +763,7 @@ export function AccountTab({
           />
           <button
             type="button"
-            className={btn(theme, "primary")}
+            className={`${btn.primary} ${btn.compact}`}
             disabled={busy}
             onClick={() =>
               void run({
@@ -780,7 +780,7 @@ export function AccountTab({
       )}
 
       {passModal && (
-        <AdminModal theme={theme} title={`Đổi MK · ${passModal.username}`} onClose={() => setPassModal(null)}>
+        <AdminModal open theme={theme} title={`Đổi MK · ${passModal.username}`} onClose={() => setPassModal(null)}>
           <input
             value={newPass}
             onChange={(e) => setNewPass(e.target.value)}
@@ -789,7 +789,7 @@ export function AccountTab({
           />
           <button
             type="button"
-            className={btn(theme, "primary")}
+            className={`${btn.primary} ${btn.compact}`}
             disabled={busy}
             onClick={() =>
               void run({ action: "set_password", userId: passModal.id, password: newPass }).then(() => setPassModal(null))
@@ -801,11 +801,11 @@ export function AccountTab({
       )}
 
       {deleteModal && (
-        <AdminModal theme={theme} title={`Xóa · ${deleteModal.username}`} onClose={() => setDeleteModal(null)}>
+        <AdminModal open theme={theme} title={`Xóa · ${deleteModal.username}`} onClose={() => setDeleteModal(null)}>
           <p className={`mb-3 text-sm ${t.muted}`}>Không thể hoàn tác.</p>
           <button
             type="button"
-            className={btn(theme, "danger")}
+            className={`${btn.ban} ${btn.compact}`}
             disabled={busy}
             onClick={() =>
               void run({ action: "delete_account", userId: deleteModal.id }).then(() => setDeleteModal(null))
@@ -817,7 +817,7 @@ export function AccountTab({
       )}
 
       {deleteAllOpen && (
-        <AdminModal theme={theme} title="Xóa toàn bộ tài khoản (giữ Admin)" onClose={() => setDeleteAllOpen(false)}>
+        <AdminModal open theme={theme} title="Xóa toàn bộ tài khoản (giữ Admin)" onClose={() => setDeleteAllOpen(false)}>
           <p className={`mb-2 text-sm ${t.muted}`}>
             Gõ <code className="text-red-300">XOA TAT CA</code> để xác nhận.
           </p>
@@ -829,7 +829,7 @@ export function AccountTab({
           />
           <button
             type="button"
-            className={btn(theme, "danger")}
+            className={`${btn.ban} ${btn.compact}`}
             disabled={busy || deleteAllConfirm !== "XOA TAT CA"}
             onClick={() =>
               void run({ action: "delete_all_accounts", confirm: "XOA TAT CA" }).then(() => {
@@ -844,8 +844,8 @@ export function AccountTab({
       )}
 
       {detailUser && (
-        <AdminModal theme={theme} title={`Chi tiết · ${detailUser.username}`} onClose={() => setDetailUser(null)}>
-          <div className={`space-y-1 text-sm ${t.text}`}>
+        <AdminModal open theme={theme} title={`Chi tiết · ${detailUser.username}`} onClose={() => setDetailUser(null)}>
+          <div className={`space-y-1 text-sm `}>
             <p>UID: {detailUser.uid || "—"}</p>
             <p>Role: {detailUser.role}</p>
             <p>Xu: {Number(detailUser.coins ?? 0).toLocaleString("vi-VN")}</p>

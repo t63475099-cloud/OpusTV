@@ -30,6 +30,11 @@ export interface AdminAccount {
   createdAt: string;
   lastLogin: string | null;
   expiresAt: string | null;
+  /** true nếu lastLogin trong 5 phút gần nhất */
+  online?: boolean;
+  lastSeenMs?: number | null;
+  coins?: number;
+  avatarUrl?: string | null;
 }
 
 export interface VerifyRequestItem {

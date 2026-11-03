@@ -132,7 +132,14 @@ function normalizeAccount(raw: unknown): AccountRow | null {
     coins: Number.isFinite(coins) ? coins : 0,
     avatarUrl: (u.avatarUrl as string) ?? (u.avatar as string) ?? null,
     isVerified: Boolean(u.isVerified ?? u.verified ?? false),
-    online: Boolean(u.online ?? u.isOnline ?? false),
+    online: Boolean(
+      u.online ??
+        u.isOnline ??
+        (u.lastLogin || u.last_login
+          ? Date.now() - new Date(String(u.lastLogin || u.last_login)).getTime() < 5 * 60 * 1000
+          : false),
+    ),
+    lastLogin: u.lastLogin != null ? String(u.lastLogin) : u.last_login != null ? String(u.last_login) : null,
     devices: Array.isArray(u.devices) ? u.devices : [],
     deviceCount: Number(u.deviceCount ?? 0),
     maxDevices: Number(u.maxDevices ?? 2),
@@ -152,6 +159,24 @@ function normalizeList(resData: unknown): AccountRow[] {
     }
   }
   return [];
+}
+
+
+function formatLastSeen(lastLogin: string | null | undefined, online?: boolean): { label: string; online: boolean } {
+  if (!lastLogin) return { label: "Chưa từng online", online: false };
+  const ms = new Date(lastLogin).getTime();
+  if (Number.isNaN(ms)) return { label: "—", online: false };
+  const diff = Date.now() - ms;
+  const on = online ?? diff < 5 * 60 * 1000;
+  if (on) return { label: "Đang online", online: true };
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return { label: `Offline · ${sec}s trước`, online: false };
+  const min = Math.floor(sec / 60);
+  if (min < 60) return { label: `Offline · ${min} phút trước`, online: false };
+  const hr = Math.floor(min / 60);
+  if (hr < 48) return { label: `Offline · ${hr} giờ trước`, online: false };
+  const day = Math.floor(hr / 24);
+  return { label: `Offline · ${day} ngày trước`, online: false };
 }
 
 function vipMeta(a: AccountRow): { line: string; sub: string; tone: string } {
@@ -203,6 +228,14 @@ export function AccountTab({
   const [passModal, setPassModal] = useState<AccountRow | null>(null);
   const [deleteModal, setDeleteModal] = useState<AccountRow | null>(null);
   const [detailUser, setDetailUser] = useState<AccountRow | null>(null);
+  const [editForm, setEditForm] = useState({
+    email: "",
+    role: "User" as AdminRole,
+    expiresDays: "",
+    clearVip: false,
+    coinsDelta: "",
+    password: "",
+  });
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState("");
   const [coinsAmt, setCoinsAmt] = useState("");
@@ -612,7 +645,17 @@ export function AccountTab({
                           <button
                             type="button"
                             className={`truncate font-semibold hover:underline `}
-                            onClick={() => setDetailUser(a)}
+                            onClick={() => {
+                          setDetailUser(a);
+                          setEditForm({
+                            email: a.email || "",
+                            role: a.role,
+                            expiresDays: "",
+                            clearVip: false,
+                            coinsDelta: "",
+                            password: "",
+                          });
+                        }}
                           >
                             {a.username}
                           </button>
@@ -680,13 +723,31 @@ export function AccountTab({
                     >
                       {a.status === "banned" ? "locked" : "active"}
                     </span>
-                    <div className={`mt-1 text-[10px] ${t.muted}`}>
-                      {a.createdAt ? new Date(a.createdAt).toLocaleString("vi-VN") : "—"}
+                    {(() => {
+                      const s = formatLastSeen(a.lastLogin, a.online);
+                      return (
+                        <div className={`mt-1 text-[10px] ${s.online ? "text-emerald-400" : t.muted}`}>
+                          {s.online ? "● Online" : "○"} {s.label}
+                        </div>
+                      );
+                    })()}
+                    <div className={`text-[10px] ${t.muted}`}>
+                      Tạo: {a.createdAt ? new Date(a.createdAt).toLocaleString("vi-VN") : "—"}
                     </div>
                   </td>
                   <td className="px-2 py-3">
                     <div className="flex max-w-[260px] flex-wrap gap-1.5">
-                      <button type="button" className={`${btn.ghost} ${btn.compact}`} onClick={() => setDetailUser(a)}>
+                      <button type="button" className={`${btn.ghost} ${btn.compact}`} onClick={() => {
+                          setDetailUser(a);
+                          setEditForm({
+                            email: a.email || "",
+                            role: a.role,
+                            expiresDays: "",
+                            clearVip: false,
+                            coinsDelta: "",
+                            password: "",
+                          });
+                        }}>
                         <Pencil className="h-3 w-3" /> Edit
                       </button>
                       <button
@@ -844,15 +905,109 @@ export function AccountTab({
       )}
 
       {detailUser && (
-        <AdminModal open theme={theme} title={`Chi tiết · ${detailUser.username}`} onClose={() => setDetailUser(null)}>
-          <div className={`space-y-1 text-sm `}>
-            <p>UID: {detailUser.uid || "—"}</p>
-            <p>Role: {detailUser.role}</p>
-            <p>Xu: {Number(detailUser.coins ?? 0).toLocaleString("vi-VN")}</p>
-            <p>Email: {detailUser.email || "—"}</p>
-            <p>VIP: {detailUser.expiresAt || "—"}</p>
-            <p>Trạng thái: {detailUser.status}</p>
-            <p>Tạo: {detailUser.createdAt ? new Date(detailUser.createdAt).toLocaleString("vi-VN") : "—"}</p>
+        <AdminModal open theme={theme} title={`Chỉnh sửa · ${detailUser.username}`} onClose={() => setDetailUser(null)}>
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-600 to-sky-600 text-lg font-bold text-white">
+                {detailUser.avatarUrl || detailUser.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={String(detailUser.avatarUrl || detailUser.avatar)} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  (detailUser.username || "?").charAt(0).toUpperCase()
+                )}
+              </div>
+              <div>
+                <p className="font-semibold text-slate-100">{detailUser.username}</p>
+                <p className="font-mono text-[11px] text-slate-400">UID {detailUser.uid || "—"}</p>
+                {(() => {
+                  const s = formatLastSeen(detailUser.lastLogin, detailUser.online);
+                  return (
+                    <p className={`text-xs ${s.online ? "text-emerald-400" : "text-slate-500"}`}>
+                      {s.online ? "● " : "○ "}
+                      {s.label}
+                      {detailUser.lastLogin ? ` · ${new Date(detailUser.lastLogin).toLocaleString("vi-VN")}` : ""}
+                    </p>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <label className={`block text-xs ${t.muted}`}>Email</label>
+            <input
+              value={editForm.email}
+              onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+              className={`w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
+              placeholder=""
+            />
+
+            <label className={`block text-xs ${t.muted}`}>Role</label>
+            <select
+              value={editForm.role}
+              onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as AdminRole }))}
+              className={`w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
+            >
+              <option value="User">User</option>
+              <option value="VIP">VIP</option>
+              <option value="Admin">Admin</option>
+            </select>
+
+            <label className={`block text-xs ${t.muted}`}>Cộng / trừ xu (delta)</label>
+            <input
+              value={editForm.coinsDelta}
+              onChange={(e) => setEditForm((f) => ({ ...f, coinsDelta: e.target.value }))}
+              className={`w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
+              placeholder="VD: 500 hoặc -100"
+            />
+
+            <label className={`block text-xs ${t.muted}`}>Gia hạn VIP (số ngày từ hôm nay)</label>
+            <input
+              value={editForm.expiresDays}
+              onChange={(e) => setEditForm((f) => ({ ...f, expiresDays: e.target.value }))}
+              className={`w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
+              placeholder="7 / 30 / 365"
+            />
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={editForm.clearVip}
+                onChange={(e) => setEditForm((f) => ({ ...f, clearVip: e.target.checked }))}
+              />
+              Xóa gói VIP (clearVip)
+            </label>
+
+            <label className={`block text-xs ${t.muted}`}>Mật khẩu mới (trống = giữ)</label>
+            <input
+              value={editForm.password}
+              onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
+              className={`w-full rounded-lg border px-3 py-2 text-sm ${t.border} ${t.input}`}
+              placeholder=""
+            />
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                className={`${btn.primary} ${btn.compact}`}
+                disabled={busy}
+                onClick={() =>
+                  void run({
+                    action: "update_account",
+                    userId: detailUser.id,
+                    username: detailUser.username,
+                    email: editForm.email || undefined,
+                    role: editForm.role,
+                    expiresDays: editForm.expiresDays ? Number(editForm.expiresDays) : undefined,
+                    clearVip: editForm.clearVip || undefined,
+                    coinsDelta: editForm.coinsDelta ? Number(editForm.coinsDelta) : undefined,
+                    password: editForm.password || undefined,
+                  }).then(() => setDetailUser(null))
+                }
+              >
+                Lưu thay đổi
+              </button>
+              <button type="button" className={`${btn.ghost} ${btn.compact}`} onClick={() => setDetailUser(null)}>
+                Đóng
+              </button>
+            </div>
           </div>
         </AdminModal>
       )}

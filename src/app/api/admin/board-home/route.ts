@@ -188,6 +188,9 @@ async function listAccounts(q?: string): Promise<AdminAccount[]> {
       (r.ban_reason != null && r.ban_until == null && r.permanent !== false && r.ban_reason !== "");
     // Treat presence of active ban row as banned
     const hasBan = r.ban_reason != null || r.ban_until != null || r.permanent === true;
+    const lastLogin = r.last_login != null ? String(r.last_login) : null;
+    const lastMs = lastLogin ? new Date(lastLogin).getTime() : 0;
+    const online = lastMs > 0 && Date.now() - lastMs < 5 * 60 * 1000;
     return {
       id: Number(r.id),
       username: String(r.username || ""),
@@ -199,8 +202,10 @@ async function listAccounts(q?: string): Promise<AdminAccount[]> {
       banReason: r.ban_reason != null ? String(r.ban_reason) : null,
       banUntil: r.ban_until != null ? String(r.ban_until) : null,
       createdAt: String(r.created_at || ""),
-      lastLogin: r.last_login != null ? String(r.last_login) : null,
+      lastLogin,
       expiresAt: r.expires_at != null ? String(r.expires_at) : null,
+      online,
+      lastSeenMs: lastMs || null,
     };
   });
 }

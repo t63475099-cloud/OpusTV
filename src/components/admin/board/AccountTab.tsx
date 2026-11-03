@@ -1,1015 +1,1092 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { AdminAccount, AdminRole } from "@/lib/adminEngine";
-import type { BoardTheme } from "./adminUi";
-import { boardTokens, btn } from "./adminUi";
-import { AdminModal } from "./AdminModal";
-import { Download, FileSpreadsheet, FileText, Pencil, Trash2, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BadgeCheck,
+  Check,
+  ChevronDown,
+  Coins,
+  Copy,
+  Crown,
+  Gift,
+  KeyRound,
+  Lock,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Shield,
+  Smartphone,
+  Trash2,
+  Unlock,
+  User as UserIcon,
+  RotateCcw,
+} from "lucide-react";
+import type {
+  AccountFilter,
+  AdminUserRow,
+  RoleFilter,
+  SortKey,
+} from "./accountTypes";
+import { AccountBulkBar } from "./AccountBulkBar";
+import { DeviceSessionModal } from "./DeviceSessionModal";
 
-type Filter = "all" | "online" | "vip" | "verified" | "banned";
-
-type BulkRow = { username: string; password: string; uid: string };
-
-const BULK_STORAGE = "opus_admin_bulk_batch_v1";
-
-type BulkLog = {
-  id: number;
-  created_count: number;
-  requested_count: number;
-  prefix: string;
-  created_by: string;
-  created_at: string;
-  accounts?: BulkRow[] | string;
-  usernames?: string[];
+type Props = {
+  adminSecret: string;
+  onToast?: (msg: string, ok?: boolean) => void;
 };
 
-function exportCsv(rows: Record<string, string>[], filename: string) {
-  if (!rows.length) return;
-  const headers = Object.keys(rows[0]);
-  const esc = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const lines = [headers.join(",")].concat(
-    rows.map((r) => headers.map((h) => esc(r[h] ?? "")).join(","))
-  );
-  const blob = new Blob(["\uFEFF" + lines.join("\n")], {
-    type: "text/csv;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+function normalizeRole(u: AdminUserRow): "ADMIN" | "VIP" | "USER" {
+  const r = String(u.role || "").toUpperCase();
+  if (r === "ADMIN" || u.username?.toLowerCase() === "admin") return "ADMIN";
+  if (r === "VIP") return "VIP";
+  return "USER";
 }
 
-function exportPdf(title: string, rows: Record<string, string>[]) {
-  const headers = rows[0] ? Object.keys(rows[0]) : [];
-  const w = window.open("", "_blank");
-  if (!w) return;
-  const th = headers
-    .map(
-      (h) =>
-        `<th style="border:1px solid #334155;padding:10px 14px;text-align:left;background:#f1f5f9;white-space:nowrap">${h}</th>`
-    )
-    .join("");
-  const body = rows
-    .map(
-      (r) =>
-        `<tr>${headers
-          .map(
-            (h) =>
-              `<td style="border:1px solid #cbd5e1;padding:10px 14px;vertical-align:top;word-break:break-all;min-width:120px">${r[h] ?? ""}</td>`
-          )
-          .join("")}</tr>`
-    )
-    .join("");
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${title}</title>
-    <style>
-      @page { margin: 16mm; }
-      body { font-family: "Segoe UI", Arial, sans-serif; padding: 24px; color: #0f172a; }
-      h1 { font-size: 18px; margin: 0 0 8px; }
-      p { font-size: 12px; color: #475569; margin: 0 0 16px; }
-      table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
-      th, td { line-height: 1.45; }
-    </style></head><body>
-    <h1>${title}</h1>
-    <p>Chỉ gồm tài khoản tạo hàng loạt · Xuất lúc ${new Date().toLocaleString("vi-VN")} · ${rows.length} dòng</p>
-    <table><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table>
-    <script>window.onload=function(){setTimeout(function(){window.print()},200)}<\/script>
-    </body></html>`);
-  w.document.close();
+function isVerified(u: AdminUserRow) {
+  return !!(u.isVerified ?? u.verified);
 }
 
-export function AccountTab({
-  theme,
-  accounts,
-  loading,
-  onRefresh,
-  onAction,
-}: {
-  theme: BoardTheme;
-  accounts: AdminAccount[];
-  loading: boolean;
-  onRefresh: () => void;
-  onAction: (body: Record<string, unknown>) => Promise<unknown>;
-}) {
-  const t = boardTokens(theme);
+function isLocked(u: AdminUserRow) {
+  return !!(u.locked ?? u.isLocked);
+}
+
+function isOnline(u: AdminUserRow) {
+  return !!(u.online ?? u.isOnline);
+}
+
+function formatCoins(n: number) {
+  return `${Number(n || 0).toLocaleString("vi-VN")} Xu`;
+}
+
+function vipLabel(u: AdminUserRow): { line1: string; line2: string; tone: string } {
+  if (u.vipPermanent) {
+    return { line1: "Vĩnh viễn", line2: "Không giới hạn", tone: "text-amber-300" };
+  }
+  if (!u.vipExpiresAt) {
+    return { line1: "—", line2: "Chưa kích hoạt", tone: "text-slate-500" };
+  }
+  const end = new Date(u.vipExpiresAt).getTime();
+  const days = Math.ceil((end - Date.now()) / 86400000);
+  const d = new Date(u.vipExpiresAt);
+  const line1 = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  if (days < 0) return { line1, line2: "Đã hết hạn", tone: "text-red-400/80" };
+  return { line1, line2: `Còn ${days} ngày`, tone: "text-emerald-400" };
+}
+
+function createdLabel(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("vi-VN");
+}
+
+export default function AccountTab({ adminSecret, onToast }: Props) {
+  const toast = onToast || ((m: string) => console.log(m));
+
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [form, setForm] = useState({
-    username: "",
-    email: "",
-    password: "",
-    role: "User" as AdminRole,
-    expiresDays: "",
-  });
+  const [filter, setFilter] = useState<AccountFilter>("all");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [sort, setSort] = useState<SortKey>("newest");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deviceUser, setDeviceUser] = useState<AdminUserRow | null>(null);
+  const [roleMenuId, setRoleMenuId] = useState<string | null>(null);
+  const [vipMenuId, setVipMenuId] = useState<string | null>(null);
 
-  const [bulkCount, setBulkCount] = useState("20");
+  // dialogs
+  const [coinTarget, setCoinTarget] = useState<{ ids: string[]; label: string } | null>(null);
+  const [coinAmount, setCoinAmount] = useState("");
+  const [vipBulk, setVipBulk] = useState<{ ids: string[] } | null>(null);
+  const [vipDays, setVipDays] = useState("7");
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [giftAudience, setGiftAudience] = useState<"all" | "vip" | "online">("all");
+  const [giftDays, setGiftDays] = useState("");
+  const [giftCoins, setGiftCoins] = useState("");
+  const [giftMsg, setGiftMsg] = useState("");
+  const [purgeOpen, setPurgeOpen] = useState(false);
+  const [purgeConfirm, setPurgeConfirm] = useState("");
+  const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
+  const [editForm, setEditForm] = useState({ displayName: "", password: "", coins: "" });
+
+  // bulk create (preserved)
+  const [bulkCount, setBulkCount] = useState("10");
   const [bulkPrefix, setBulkPrefix] = useState("user_");
-  const [bulkPass, setBulkPass] = useState("");
-  const [bulkCreated, setBulkCreated] = useState<BulkRow[]>([]);
+  const [bulkPassword, setBulkPassword] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkHistory, setBulkHistory] = useState<
+    { at: string; count: number; accounts: { username: string; password: string }[] }[]
+  >([]);
+
+  // single create
+  const [newUser, setNewUser] = useState({ username: "", password: "" });
+
+  const headers = useMemo(
+    () => ({
+      "Content-Type": "application/json",
+      "x-admin-secret": adminSecret,
+    }),
+    [adminSecret],
+  );
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/accounts?action=list", { headers: { "x-admin-secret": adminSecret } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không tải được danh sách");
+      setUsers(Array.isArray(data.users) ? data.users : []);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi tải", false);
+    } finally {
+      setLoading(false);
+    }
+  }, [adminSecret, toast]);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(BULK_STORAGE);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { accounts?: BulkRow[] };
-      if (Array.isArray(parsed?.accounts) && parsed.accounts.length) {
-        setBulkCreated(parsed.accounts);
-      }
-    } catch {
-      /* */
-    }
-  }, []);
+    void load();
+  }, [load]);
 
-  const persistBulk = (accounts: BulkRow[]) => {
-    setBulkCreated(accounts);
-    try {
-      sessionStorage.setItem(
-        BULK_STORAGE,
-        JSON.stringify({ accounts, savedAt: Date.now() })
-      );
-    } catch {
-      /* */
-    }
-  };
-
-  const [bulkLogs, setBulkLogs] = useState<BulkLog[]>([]);
-
-  // Giữ danh sách batch + không mất khi đổi tab / refresh trong phiên
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("opus_admin_bulk_batch_v1");
-      if (raw) {
-        const parsed = JSON.parse(raw) as BulkRow[];
-        if (Array.isArray(parsed) && parsed.length) setBulkCreated(parsed);
-      }
-    } catch {
-      /* */
-    }
-    void (async () => {
-      try {
-        const res = (await onAction({ action: "list_bulk_logs" })) as { logs?: BulkLog[] };
-        if (res?.logs) setBulkLogs(res.logs);
-      } catch {
-        /* */
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try {
-      if (bulkCreated.length) {
-        sessionStorage.setItem("opus_admin_bulk_batch_v1", JSON.stringify(bulkCreated));
-      }
-    } catch {
-      /* */
-    }
-  }, [bulkCreated]);
-
-
-  const [coinsModal, setCoinsModal] = useState<AdminAccount | null>(null);
-  const [passModal, setPassModal] = useState<AdminAccount | null>(null);
-  const [deleteModal, setDeleteModal] = useState<AdminAccount | null>(null);
-  const [detailUser, setDetailUser] = useState<AdminAccount | null>(null);
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
-  const [deleteAllC1, setDeleteAllC1] = useState("");
-  const [deleteAllC2, setDeleteAllC2] = useState("");
-
-  const [coinsAmt, setCoinsAmt] = useState("");
-  const [coinsReason, setCoinsReason] = useState("");
-  const [newPass, setNewPass] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-
-  const [detailRole, setDetailRole] = useState<AdminRole>("User");
-  const [detailEmail, setDetailEmail] = useState("");
-  const [detailExpires, setDetailExpires] = useState("");
-  const [detailCoins, setDetailCoins] = useState("");
-  const [detailVerified, setDetailVerified] = useState(false);
-
-  const openDetail = (a: AdminAccount) => {
-    setDetailUser(a);
-    setDetailRole(a.role);
-    setDetailEmail(a.email || "");
-    setDetailExpires(a.expiresAt ? new Date(a.expiresAt).toISOString().slice(0, 16) : "");
-    setDetailCoins("");
-    setDetailVerified(!!a.verified);
-  };
+  const counts = useMemo(() => {
+    return {
+      all: users.length,
+      online: users.filter(isOnline).length,
+      vip: users.filter((u) => normalizeRole(u) === "VIP" || (!!u.vipExpiresAt && new Date(u.vipExpiresAt).getTime() > Date.now()) || u.vipPermanent).length,
+      verified: users.filter(isVerified).length,
+      locked: users.filter(isLocked).length,
+    };
+  }, [users]);
 
   const filtered = useMemo(() => {
-    let list = accounts;
-    const s = q.trim().toLowerCase();
-    if (s) {
+    let list = [...users];
+    const query = q.trim().toLowerCase();
+    if (query) {
       list = list.filter(
-        (a) =>
-          a.username.toLowerCase().includes(s) ||
-          (a.uid || "").toLowerCase().includes(s) ||
-          (a.email || "").toLowerCase().includes(s)
+        (u) =>
+          u.username?.toLowerCase().includes(query) ||
+          u.uid?.includes(query) ||
+          (u.email || "").toLowerCase().includes(query) ||
+          (u.displayName || "").toLowerCase().includes(query),
       );
     }
-    if (filter === "vip") list = list.filter((a) => a.role === "VIP");
-    if (filter === "verified") list = list.filter((a) => a.verified);
-    if (filter === "banned") list = list.filter((a) => a.status === "banned");
-    if (filter === "online") list = list.filter(() => false);
-    return list;
-  }, [accounts, q, filter]);
+    if (filter === "online") list = list.filter(isOnline);
+    if (filter === "vip")
+      list = list.filter(
+        (u) => u.vipPermanent || (u.vipExpiresAt && new Date(u.vipExpiresAt).getTime() > Date.now()) || normalizeRole(u) === "VIP",
+      );
+    if (filter === "verified") list = list.filter(isVerified);
+    if (filter === "locked") list = list.filter(isLocked);
+    if (roleFilter === "admin") list = list.filter((u) => normalizeRole(u) === "ADMIN");
+    if (roleFilter === "vip") list = list.filter((u) => normalizeRole(u) === "VIP");
+    if (roleFilter === "user") list = list.filter((u) => normalizeRole(u) === "USER");
 
-  const exportBulkOnly = (): Record<string, string>[] => {
-    return bulkCreated.map((a) => ({
-      Username: a.username,
-      Password: a.password || "",
-      UID: a.uid || "",
-      "Ngày tạo": new Date().toLocaleString("vi-VN"),
-      "Trạng thái": "bulk",
-    }));
-  };
-
-  const canExportBulk = bulkCreated.length > 0;
-
-
-  const loadBulkLogs = async () => {
-    const res = (await onAction({ action: "list_bulk_logs" })) as { logs?: BulkLog[] };
-    if (res?.logs) {
-      setBulkLogs(res.logs);
-      const latest = res.logs[0];
-      if (latest && !bulkCreated.length) {
-        let acc = latest.accounts;
-        if (typeof acc === "string") {
-          try {
-            acc = JSON.parse(acc) as BulkRow[];
-          } catch {
-            acc = [];
-          }
-        }
-        if (Array.isArray(acc) && acc.length && acc[0]?.username) {
-          persistBulk(
-            acc.map((x) => ({
-              username: String(x.username),
-              password: String(x.password || ""),
-              uid: String(x.uid || ""),
-            }))
-          );
-        }
+    list.sort((a, b) => {
+      if (sort === "coins_desc") return (b.coins || 0) - (a.coins || 0);
+      if (sort === "name_asc") return (a.username || "").localeCompare(b.username || "");
+      if (sort === "vip_expiring") {
+        const ta = a.vipPermanent ? Number.MAX_SAFE_INTEGER : a.vipExpiresAt ? new Date(a.vipExpiresAt).getTime() : 0;
+        const tb = b.vipPermanent ? Number.MAX_SAFE_INTEGER : b.vipExpiresAt ? new Date(b.vipExpiresAt).getTime() : 0;
+        return ta - tb;
       }
-    }
-  };
+      const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return cb - ca;
+    });
+    return list;
+  }, [users, q, filter, roleFilter, sort]);
 
-  useEffect(() => {
-    void loadBulkLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const pageIds = filtered.map((u) => u.id);
+  const selectedOnPage = pageIds.filter((id) => selected.has(id));
+  const allPageSelected = pageIds.length > 0 && selectedOnPage.length === pageIds.length;
+  const somePageSelected = selectedOnPage.length > 0 && !allPageSelected;
+
+  function toggleAllPage() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function api(body: Record<string, unknown>) {
+    const res = await fetch("/api/admin/accounts", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Thao tác thất bại");
+    return data;
+  }
+
+  async function setRole(userId: string, role: string) {
+    try {
+      await api({ action: "set_role", userId, role });
+      toast("Đã đổi role", true);
+      setRoleMenuId(null);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function adjustVip(userId: string, days: number | "clear") {
+    try {
+      await api({ action: "adjust_vip", userId, days });
+      toast(days === "clear" ? "Đã hủy VIP" : `Đã cộng ${days} ngày VIP`, true);
+      setVipMenuId(null);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function resetAvatar(userId: string) {
+    try {
+      await api({ action: "reset_avatar", userId });
+      toast("Đã reset avatar", true);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function toggleVerify(userId: string, value: boolean) {
+    try {
+      await api({ action: "set_verified", userId, verified: value });
+      toast(value ? "Đã cấp tick xanh" : "Đã gỡ tick", true);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function toggleLock(userId: string, value: boolean) {
+    try {
+      await api({ action: "set_locked", userId, locked: value });
+      toast(value ? "Đã khóa" : "Đã mở khóa", true);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function deleteUser(userId: string) {
+    if (!confirm("Xóa tài khoản này?")) return;
+    try {
+      await api({ action: "delete_user", userId });
+      toast("Đã xóa", true);
+      setSelected((s) => {
+        const n = new Set(s);
+        n.delete(userId);
+        return n;
+      });
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function submitCoins() {
+    if (!coinTarget) return;
+    const amount = Number(coinAmount);
+    if (!Number.isFinite(amount) || amount === 0) {
+      toast("Nhập số xu khác 0", false);
+      return;
+    }
+    try {
+      await api({ action: "bulk_coins", userIds: coinTarget.ids, amount });
+      toast("Đã cập nhật xu", true);
+      setCoinTarget(null);
+      setCoinAmount("");
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function submitVipBulk() {
+    if (!vipBulk) return;
+    const days = Number(vipDays);
+    if (!Number.isFinite(days) || days === 0) {
+      toast("Nhập số ngày", false);
+      return;
+    }
+    try {
+      await api({ action: "bulk_vip_days", userIds: vipBulk.ids, days });
+      toast("Đã cộng VIP", true);
+      setVipBulk(null);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function bulkVerify(value: boolean) {
+    const ids = [...selected];
+    if (!ids.length) return;
+    try {
+      await api({ action: "bulk_verify", userIds: ids, verified: value });
+      toast(value ? "Đã cấp tick" : "Đã gỡ tick", true);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function bulkLock(value: boolean) {
+    const ids = [...selected];
+    if (!ids.length) return;
+    try {
+      await api({ action: "bulk_lock", userIds: ids, locked: value });
+      toast(value ? "Đã khóa" : "Đã mở khóa", true);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function bulkDelete() {
+    const ids = [...selected].filter((id) => {
+      const u = users.find((x) => x.id === id);
+      return u && normalizeRole(u) !== "ADMIN";
+    });
+    if (!ids.length) {
+      toast("Không xóa được Admin / không có mục hợp lệ", false);
+      return;
+    }
+    if (!confirm(`Xóa ${ids.length} tài khoản (không gồm Admin)?`)) return;
+    try {
+      await api({ action: "bulk_delete", userIds: ids });
+      toast("Đã xóa", true);
+      setSelected(new Set());
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function submitGift() {
+    try {
+      await api({
+        action: "global_compensation",
+        audience: giftAudience,
+        vipDays: giftDays ? Number(giftDays) : 0,
+        coins: giftCoins ? Number(giftCoins) : 0,
+        message: giftMsg.trim(),
+      });
+      toast("Đã phát đền bù toàn server", true);
+      setGiftOpen(false);
+      setGiftDays("");
+      setGiftCoins("");
+      setGiftMsg("");
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function purgeAll() {
+    if (purgeConfirm !== "XOA TAT CA") {
+      toast('Gõ đúng "XOA TAT CA"', false);
+      return;
+    }
+    try {
+      await api({ action: "purge_non_admin_users", confirm: "XOA TAT CA" });
+      toast("Đã xóa toàn bộ user (giữ Admin)", true);
+      setPurgeOpen(false);
+      setPurgeConfirm("");
+      setSelected(new Set());
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function createOne() {
+    if (!newUser.username.trim() || !newUser.password.trim()) {
+      toast("Nhập username và mật khẩu", false);
+      return;
+    }
+    try {
+      await api({ action: "create_user", username: newUser.username.trim(), password: newUser.password });
+      toast("Đã tạo tài khoản", true);
+      setNewUser({ username: "", password: "" });
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  async function createBulk() {
+    const count = Math.min(500, Math.max(1, Number(bulkCount) || 0));
+    setBulkBusy(true);
+    try {
+      const data = await api({
+        action: "bulk_create",
+        count,
+        prefix: bulkPrefix || "user_",
+        password: bulkPassword || undefined,
+      });
+      const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+      setBulkHistory((h) => [
+        { at: new Date().toISOString(), count: accounts.length, accounts },
+        ...h,
+      ]);
+      toast(`Đã tạo ${accounts.length} tài khoản`, true);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  function exportBulkCsv() {
+    const rows = bulkHistory[0]?.accounts;
+    if (!rows?.length) {
+      toast("Chưa có đợt tạo hàng loạt", false);
+      return;
+    }
+    const lines = ["username,password", ...rows.map((r: { username: string; password: string }) => `${r.username},${r.password}`)];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `bulk-accounts-${Date.now()}.csv`;
+    a.click();
+  }
+
+  async function saveEdit() {
+    if (!editUser) return;
+    try {
+      await api({
+        action: "update_user",
+        userId: editUser.id,
+        displayName: editForm.displayName,
+        password: editForm.password || undefined,
+        coins: editForm.coins === "" ? undefined : Number(editForm.coins),
+      });
+      toast("Đã lưu", true);
+      setEditUser(null);
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Lỗi", false);
+    }
+  }
+
+  function copyUid(uid: string) {
+    void navigator.clipboard.writeText(uid);
+    toast("Đã copy UID", true);
+  }
+
+  const filterBtn = (id: AccountFilter, label: string, count: number) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => setFilter(id)}
+      className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
+        filter === id
+          ? "border-violet-500 bg-violet-600 text-white"
+          : "border-slate-600 bg-slate-800/80 text-slate-200 hover:bg-slate-700"
+      }`}
+    >
+      {label} ({count})
+    </button>
+  );
 
   return (
     <div className="space-y-4">
-      {/* Bulk creator */}
-      <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="flex items-center gap-2 text-sm font-semibold">
-          <Users className="h-4 w-4" strokeWidth={1.75} />
-          Tạo tài khoản hàng loạt
-        </h3>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <input
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Số lượng (1–200)"
-            value={bulkCount}
-            onChange={(e) => setBulkCount(e.target.value)}
-          />
-          <input
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Prefix (user_)"
-            value={bulkPrefix}
-            onChange={(e) => setBulkPrefix(e.target.value)}
-          />
-          <input
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Mật khẩu chung (trống = random)"
-            value={bulkPass}
-            onChange={(e) => setBulkPass(e.target.value)}
-          />
-          <button
-            type="button"
-            disabled={loading}
-            className={`${btn.compact} ${btn.primary} disabled:opacity-50`}
-            onClick={async () => {
-              const res = (await onAction({
-                action: "bulk_create_accounts",
-                count: Math.min(200, Math.max(1, Number(bulkCount) || 1)),
-                prefix: bulkPrefix,
-                password: bulkPass.trim() || undefined,
-                created_by: "admin",
-              })) as { accounts?: BulkRow[] };
-              if (res?.accounts?.length) {
-                persistBulk(res.accounts);
-                void loadBulkLogs();
-                onRefresh();
-              }
-            }}
-          >
-            Tạo hàng loạt
-          </button>
-          <button
-            type="button"
-            className={`${btn.compact} ${btn.ghost}`}
-            onClick={() => void loadBulkLogs()}
-          >
-            Lịch sử tạo
-          </button>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!canExportBulk}
-            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1 disabled:opacity-40`}
-            onClick={() =>
-              exportCsv(exportBulkOnly(), `bulk-accounts-${Date.now()}.csv`, ",")
-            }
-          >
-            <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Xuất CSV (chỉ hàng loạt)
-          </button>
-          <button
-            type="button"
-            disabled={!canExportBulk}
-            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1 disabled:opacity-40`}
-            onClick={() =>
-              exportCsv(exportBulkOnly(), `bulk-accounts-${Date.now()}.xlsx.csv`, ";")
-            }
-          >
-            <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Xuất Excel (chỉ hàng loạt)
-          </button>
-          <button
-            type="button"
-            disabled={!canExportBulk}
-            className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1 disabled:opacity-40`}
-            onClick={() =>
-              exportPdf("Danh sách tài khoản tạo hàng loạt — OpusFilm", exportBulkOnly())
-            }
-          >
-            <FileText className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Xuất PDF (chỉ hàng loạt)
-          </button>
-          <button
-            type="button"
-            className={`${btn.compact} ${btn.ban} inline-flex items-center gap-1`}
-            onClick={() => {
-              setDeleteAllC1("");
-              setDeleteAllC2("");
-              setDeleteAllOpen(true);
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-            Xóa toàn bộ tài khoản
-          </button>
-        </div>
-
-      </section>
-
-      {/* Danh sách batch hiện tại — khối riêng, không bị form đơn đè */}
-      {!canExportBulk ? (
-          <p className={`mt-2 text-xs ${t.muted}`}>
-            Chưa có lô hàng loạt — xuất file chỉ áp dụng cho tài khoản tạo hàng loạt (có mật khẩu).
-          </p>
-        ) : null}
-
-        {bulkCreated.length > 0 ? (
-        <section className={`rounded-xl border p-4 ${t.surface}`}>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">
-              Danh sách vừa tạo hàng loạt ({bulkCreated.length})
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ghost}`}
-                onClick={() => {
-                  const text = bulkCreated
-                    .map((a) => `${a.username}\t${a.password}\t${a.uid}`)
-                    .join("\n");
-                  void navigator.clipboard.writeText(text);
-                }}
-              >
-                Copy
-              </button>
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ghost}`}
-                onClick={() =>
-                  exportCsv(
-                    bulkCreated.map((a) => ({
-                      Username: a.username,
-                      Password: a.password,
-                      UID: a.uid,
-                    })),
-                    "bulk-accounts.csv"
-                  )
-                }
-              >
-                Xuất batch CSV
-              </button>
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ghost}`}
-                onClick={() => {
-                  setBulkCreated([]);
-                  try {
-                    sessionStorage.removeItem("opus_admin_bulk_batch_v1");
-                  } catch {
-                    /* */
-                  }
-                }}
-              >
-                Ẩn danh sách batch
-              </button>
-            </div>
-          </div>
-          <div className="max-h-56 overflow-auto rounded-lg border border-border">
-            <table className="w-full table-fixed text-left text-xs">
-              <thead className={`sticky top-0 ${t.surface}`}>
-                <tr className={t.muted}>
-                  <th className="w-[30%] px-2 py-1.5">Username</th>
-                  <th className="w-[30%] px-2 py-1.5">Password</th>
-                  <th className="w-[40%] px-2 py-1.5">UID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bulkCreated.map((a) => (
-                  <tr key={a.username} className={`border-t ${t.border}`}>
-                    <td className="truncate px-2 py-1 font-mono">{a.username}</td>
-                    <td className="truncate px-2 py-1 font-mono">{a.password}</td>
-                    <td className="truncate px-2 py-1 font-mono">{a.uid}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : null}
-
-      {/* Lịch sử các đợt — DB, không mất khi refresh */}
-      {bulkLogs.length > 0 ? (
-        <section className={`rounded-xl border p-4 ${t.surface}`}>
-          <h3 className="mb-2 text-sm font-semibold">Lịch sử tạo hàng loạt</h3>
-          <div className="max-h-40 overflow-auto">
-            <table className="w-full table-fixed text-left text-xs">
-              <thead>
-                <tr className={t.muted}>
-                  <th className="w-[10%] px-2 py-1">ID</th>
-                  <th className="w-[20%] px-2 py-1">Số lượng</th>
-                  <th className="w-[20%] px-2 py-1">Prefix</th>
-                  <th className="w-[20%] px-2 py-1">Người tạo</th>
-                  <th className="w-[30%] px-2 py-1">Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bulkLogs.map((l) => (
-                  <tr key={l.id} className={`border-t ${t.border}`}>
-                    <td className="px-2 py-1">#{l.id}</td>
-                    <td className="px-2 py-1">
-                      {l.created_count}/{l.requested_count}
-                    </td>
-                    <td className="truncate px-2 py-1 font-mono">{l.prefix}</td>
-                    <td className="truncate px-2 py-1">{l.created_by}</td>
-                    <td className="truncate px-2 py-1">
-                      {l.created_at ? new Date(l.created_at).toLocaleString("vi-VN") : ""}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : null}
-
-      {/* Single create — luôn dưới bulk */}
-      <section className={`rounded-xl border p-4 ${t.surface}`}>
-        <h3 className="text-sm font-semibold">Tạo tài khoản đơn</h3>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <input
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Username"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-          />
-          <input
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Email (tuỳ chọn)"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-          <input
-            type="password"
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Mật khẩu"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-          <select
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value as AdminRole })}
-          >
-            <option value="User">User</option>
-            <option value="VIP">VIP</option>
-            <option value="Admin">Admin</option>
-          </select>
-          <input
-            className={`rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Hạn VIP (ngày)"
-            value={form.expiresDays}
-            onChange={(e) => setForm({ ...form, expiresDays: e.target.value })}
-          />
-          <button
-            type="button"
-            disabled={loading || !form.username.trim() || !form.password}
-            className={`${btn.compact} ${btn.primary} disabled:opacity-50`}
-            onClick={async () => {
-              await onAction({
-                action: "create_account",
-                username: form.username.trim(),
-                email: form.email.trim() || null,
-                password: form.password,
-                role: form.role,
-                expiresDays: form.expiresDays ? Number(form.expiresDays) : null,
-              });
-              setForm({ username: "", email: "", password: "", role: "User", expiresDays: "" });
-              onRefresh();
-            }}
-          >
-            + Tạo tài khoản
-          </button>
-        </div>
-      </section>
-
-      {/* Filters */}
+      {/* Toolbar top */}
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          className={`min-w-[200px] flex-1 rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-          placeholder="Tìm Username, UID, Email…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        {(
-          [
-            ["all", "Tất cả"],
-            ["online", "Đang Online"],
-            ["vip", "Gói VIP"],
-            ["verified", "Có Tick xanh"],
-            ["banned", "Bị khóa"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setFilter(id)}
-            className={`${btn.compact} ${filter === id ? btn.primary : btn.ghost}`}
-          >
-            {label}
-          </button>
-        ))}
-        <button type="button" onClick={onRefresh} className={`${btn.compact} ${btn.ghost}`}>
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Tìm Username, UID, Email..."
+            className="w-full rounded-xl border border-slate-600 bg-slate-900 py-2 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500"
+          />
+        </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
+          className="rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+        >
+          <option value="all">Tất cả Role</option>
+          <option value="admin">Admin</option>
+          <option value="vip">VIP</option>
+          <option value="user">User</option>
+        </select>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortKey)}
+          className="rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+        >
+          <option value="newest">Mới tạo gần nhất</option>
+          <option value="coins_desc">Số dư Xu: Cao → Thấp</option>
+          <option value="vip_expiring">Hạn VIP: Sắp hết hạn</option>
+          <option value="name_asc">Tên A → Z</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-600 bg-slate-800 px-3 py-2 text-xs text-slate-200 hover:bg-slate-700"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
           Làm mới
+        </button>
+        <button
+          type="button"
+          onClick={() => setGiftOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-2 text-xs font-medium text-fuchsia-200 hover:bg-fuchsia-500/25"
+        >
+          <Gift className="h-3.5 w-3.5" />
+          Đền bù / Tặng quà toàn Server
+        </button>
+        <button
+          type="button"
+          onClick={() => setPurgeOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/15 px-3 py-2 text-xs font-medium text-red-200 hover:bg-red-500/25"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Xóa toàn bộ tài khoản
         </button>
       </div>
 
-      {/* Table — fixed columns */}
-      <div className={`overflow-hidden rounded-xl border ${t.surface}`}>
-        <div className="max-h-[min(60vh,560px)] overflow-auto">
-          <table className="w-full min-w-[960px] table-fixed border-collapse text-left text-sm">
-            <colgroup>
-              <col className="w-[22%]" />
-              <col className="w-[8%]" />
-              <col className="w-[12%]" />
-              <col className="w-[10%]" />
-              <col className="w-[16%]" />
-              <col className="w-[32%]" />
-            </colgroup>
-            <thead className={`sticky top-0 z-10 border-b ${t.border} ${t.surface}`}>
-              <tr className={`text-xs uppercase tracking-wide ${t.muted}`}>
-                <th className="px-3 py-2.5 font-medium">Người dùng</th>
-                <th className="px-3 py-2.5 font-medium">Role</th>
-                <th className="px-3 py-2.5 font-medium">Hạn VIP</th>
-                <th className="px-3 py-2.5 font-medium">Trạng thái</th>
-                <th className="px-3 py-2.5 font-medium">Tạo lúc</th>
-                <th className="px-3 py-2.5 font-medium">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className={`px-3 py-8 text-center text-sm ${t.muted}`}>
-                    {filter === "online"
-                      ? "Chưa có dữ liệu presence online từ server"
-                      : "Chưa có tài khoản khớp bộ lọc"}
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((a) => (
-                  <tr key={a.id} className={`border-t ${t.border} ${t.rowHover}`}>
-                    <td className="px-3 py-2.5 align-middle">
-                      <button
-                        type="button"
-                        className="flex max-w-full flex-col text-left"
-                        onClick={() => openDetail(a)}
-                      >
-                        <span className="truncate font-medium">{a.username}</span>
-                        <span className={`truncate font-mono text-[11px] ${t.muted}`}>
-                          {a.uid || "—"}
-                        </span>
-                      </button>
-                    </td>
-                    <td className="truncate px-3 py-2.5 align-middle">{a.role}</td>
-                    <td className="truncate px-3 py-2.5 align-middle text-xs">
-                      {a.expiresAt
-                        ? new Date(a.expiresAt) < new Date()
-                          ? "Hết hạn"
-                          : new Date(a.expiresAt).toLocaleDateString("vi-VN")
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 align-middle">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          a.status === "banned"
-                            ? "bg-rose-500/15 text-rose-600 dark:text-rose-300"
-                            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                        }`}
-                      >
-                        {a.status}
-                      </span>
-                    </td>
-                    <td className="truncate px-3 py-2.5 align-middle text-xs">
-                      {a.createdAt ? new Date(a.createdAt).toLocaleString("vi-VN") : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 align-middle">
-                      <div className="flex flex-wrap gap-1">
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.ghost} inline-flex items-center gap-1`}
-                          onClick={() => openDetail(a)}
-                          title="Chỉnh sửa"
-                        >
-                          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.coins}`}
-                          onClick={() => {
-                            setCoinsAmt("");
-                            setCoinsReason("");
-                            setCoinsModal(a);
-                          }}
-                        >
-                          Cấp xu
-                        </button>
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.verify}`}
-                          onClick={() =>
-                            void onAction({
-                              action: "set_verified",
-                              username: a.username,
-                              id: a.id,
-                              verified: !a.verified,
-                            })
-                          }
-                        >
-                          {a.verified ? "Gỡ tick" : "Tick xanh"}
-                        </button>
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.pass}`}
-                          onClick={() => {
-                            setNewPass("");
-                            setPassModal(a);
-                          }}
-                        >
-                          Đổi MK
-                        </button>
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.ban}`}
-                          onClick={() =>
-                            void onAction({
-                              action: a.status === "banned" ? "unban" : "ban",
-                              username: a.username,
-                              userId: a.id,
-                            })
-                          }
-                        >
-                          {a.status === "banned" ? "Mở khóa" : "Khóa"}
-                        </button>
-                        <button
-                          type="button"
-                          className={`${btn.compact} ${btn.ban}`}
-                          onClick={() => {
-                            setDeleteConfirm("");
-                            setDeleteModal(a);
-                          }}
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      <div className="flex flex-wrap gap-1.5">
+        {filterBtn("all", "Tất cả", counts.all)}
+        {filterBtn("online", "Đang Online", counts.online)}
+        {filterBtn("vip", "Gói VIP", counts.vip)}
+        {filterBtn("verified", "Có Tick xanh", counts.verified)}
+        {filterBtn("locked", "Bị khóa", counts.locked)}
+      </div>
+
+      {/* Bulk create strip */}
+      <div className="rounded-2xl border border-slate-700/80 bg-slate-900/50 p-4 space-y-3">
+        <p className="text-sm font-semibold text-slate-100">Tạo tài khoản hàng loạt</p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            value={bulkCount}
+            onChange={(e) => setBulkCount(e.target.value)}
+            placeholder="Số lượng"
+            className="w-24 rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+          />
+          <input
+            value={bulkPrefix}
+            onChange={(e) => setBulkPrefix(e.target.value)}
+            placeholder="Prefix"
+            className="w-32 rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+          />
+          <input
+            value={bulkPassword}
+            onChange={(e) => setBulkPassword(e.target.value)}
+            placeholder="Mật khẩu chung (trống = random)"
+            className="min-w-[180px] flex-1 rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+          />
+          <button
+            type="button"
+            disabled={bulkBusy}
+            onClick={() => void createBulk()}
+            className="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+          >
+            {bulkBusy ? "Đang tạo…" : "Tạo hàng loạt"}
+          </button>
+          <button
+            type="button"
+            onClick={exportBulkCsv}
+            className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800"
+          >
+            Xuất CSV đợt gần nhất
+          </button>
+        </div>
+        {bulkHistory[0] && (
+          <div className="max-h-40 overflow-auto rounded-lg border border-slate-700 bg-slate-950/80 p-2 text-xs font-mono text-slate-300">
+            <p className="mb-1 text-slate-500">
+              Đợt {new Date(bulkHistory[0].at).toLocaleString("vi-VN")} · {bulkHistory[0].count} acc
+            </p>
+            {bulkHistory[0].accounts.slice(0, 50).map((a) => (
+              <div key={a.username}>
+                {a.username} / {a.password}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2 border-t border-slate-700 pt-3">
+          <input
+            value={newUser.username}
+            onChange={(e) => setNewUser((s) => ({ ...s, username: e.target.value }))}
+            placeholder="Username đơn"
+            className="rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+          />
+          <input
+            value={newUser.password}
+            onChange={(e) => setNewUser((s) => ({ ...s, password: e.target.value }))}
+            placeholder="Mật khẩu"
+            className="rounded-lg border border-slate-600 bg-slate-950 px-2 py-1.5 text-sm text-white"
+          />
+          <button
+            type="button"
+            onClick={() => void createOne()}
+            className="rounded-lg border border-slate-500 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-800"
+          >
+            Tạo đơn
+          </button>
         </div>
       </div>
 
-      {/* Detail / Edit modal */}
-      <AdminModal
-        open={!!detailUser}
-        onClose={() => setDetailUser(null)}
-        title={`Chỉnh sửa · ${detailUser?.username || ""}`}
-        theme={theme}
-        footer={
-          <>
-            <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={() => setDetailUser(null)}>
-              Đóng
-            </button>
-            <button
-              type="button"
-              className={`${btn.compact} ${btn.primary}`}
-              onClick={async () => {
-                if (!detailUser) return;
-                await onAction({
-                  action: "update_account",
-                  id: detailUser.id,
-                  username: detailUser.username,
-                  role: detailRole,
-                  email: detailEmail,
-                  verified: detailVerified,
-                  expiresAt: detailExpires || null,
-                  coinsDelta: detailCoins ? Number(detailCoins) : 0,
-                });
-                setDetailUser(null);
-                onRefresh();
-              }}
-            >
-              Lưu thay đổi
-            </button>
-          </>
-        }
-      >
-        {detailUser ? (
-          <div className="space-y-3 text-sm">
-            <p className={`text-xs ${t.muted}`}>
-              UID: <span className="font-mono">{detailUser.uid || "—"}</span>
-            </p>
-            <label className="block">
-              <span className={`text-xs ${t.muted}`}>Email</span>
-              <input
-                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-                value={detailEmail}
-                onChange={(e) => setDetailEmail(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className={`text-xs ${t.muted}`}>Role</span>
-              <select
-                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-                value={detailRole}
-                onChange={(e) => setDetailRole(e.target.value as AdminRole)}
-              >
-                <option value="User">User</option>
-                <option value="VIP">VIP</option>
-                <option value="Admin">Admin</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className={`text-xs ${t.muted}`}>Hạn VIP</span>
-              <input
-                type="datetime-local"
-                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-                value={detailExpires}
-                onChange={(e) => setDetailExpires(e.target.value)}
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={detailVerified}
-                onChange={(e) => setDetailVerified(e.target.checked)}
-              />
-              <span>Tick xanh</span>
-            </label>
-            <label className="block">
-              <span className={`text-xs ${t.muted}`}>Cộng/trừ xu</span>
-              <input
-                className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-                placeholder="0"
-                value={detailCoins}
-                onChange={(e) => setDetailCoins(e.target.value)}
-              />
-            </label>
-            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.pass}`}
-                onClick={() => {
-                  setNewPass("");
-                  setPassModal(detailUser);
-                }}
-              >
-                Đổi mật khẩu
-              </button>
-              <button
-                type="button"
-                className={`${btn.compact} ${btn.ban}`}
-                onClick={() =>
-                  void onAction({
-                    action: detailUser.status === "banned" ? "unban" : "ban",
-                    username: detailUser.username,
-                    userId: detailUser.id,
-                  })
-                }
-              >
-                {detailUser.status === "banned" ? "Mở khóa" : "Khóa"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </AdminModal>
+      <AccountBulkBar
+        count={selected.size}
+        onClear={() => setSelected(new Set())}
+        onBulkCoins={() => setCoinTarget({ ids: [...selected], label: `${selected.size} tài khoản` })}
+        onBulkVip={() => setVipBulk({ ids: [...selected] })}
+        onBulkVerify={() => void bulkVerify(true)}
+        onBulkLock={() => void bulkLock(true)}
+        onBulkDelete={() => void bulkDelete()}
+      />
 
-      {/* Coins */}
-      <AdminModal
-        open={!!coinsModal}
-        onClose={() => setCoinsModal(null)}
-        title={`Cấp xu · ${coinsModal?.username || ""}`}
-        theme={theme}
-        footer={
-          <>
-            <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={() => setCoinsModal(null)}>
-              Hủy
-            </button>
-            <button
-              type="button"
-              className={`${btn.compact} ${btn.primary}`}
-              onClick={async () => {
-                await onAction({
-                  action: "grant_coins",
-                  username: coinsModal?.username,
-                  userId: coinsModal?.id,
-                  amount: Number(coinsAmt),
-                  reason: coinsReason.trim() || null,
-                });
-                setCoinsModal(null);
-              }}
-            >
-              Cấp xu
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-2">
+      {/* Table */}
+      <div className="overflow-x-auto rounded-2xl border border-slate-700/80">
+        <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
+          <thead className="bg-slate-900/90 text-[11px] uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="w-10 px-2 py-3">
+                <input
+                  type="checkbox"
+                  checked={allPageSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = somePageSelected;
+                  }}
+                  onChange={toggleAllPage}
+                  className="h-4 w-4 rounded border-slate-500"
+                  aria-label="Chọn tất cả trang"
+                />
+              </th>
+              <th className="px-2 py-3">Người dùng</th>
+              <th className="px-2 py-3">Role</th>
+              <th className="px-2 py-3">Số dư Xu</th>
+              <th className="px-2 py-3">Hạn VIP</th>
+              <th className="px-2 py-3">Thiết bị</th>
+              <th className="px-2 py-3">Trạng thái</th>
+              <th className="px-2 py-3">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (
+              <tr>
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                  Đang tải…
+                </td>
+              </tr>
+            )}
+            {!loading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                  Không có tài khoản
+                </td>
+              </tr>
+            )}
+            {filtered.map((u) => {
+              const role = normalizeRole(u);
+              const vip = vipLabel(u);
+              const selectedRow = selected.has(u.id);
+              return (
+                <tr
+                  key={u.id}
+                  className={`border-t border-slate-800/80 ${
+                    selectedRow ? "bg-violet-500/10 border-l-2 border-l-violet-400" : "hover:bg-white/[0.02]"
+                  }`}
+                >
+                  <td className="px-2 py-3 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={selectedRow}
+                      onChange={() => toggleOne(u.id)}
+                      className="h-4 w-4 rounded border-slate-500"
+                    />
+                  </td>
+                  <td className="px-2 py-3">
+                    <div className="flex items-center gap-2.5 min-w-[200px]">
+                      <div className="group relative h-10 w-10 shrink-0">
+                        {u.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={u.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-sky-600 text-sm font-bold text-white">
+                            {(u.username || "?").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          title="Reset Avatar"
+                          onClick={() => void resetAvatar(u.id)}
+                          className="absolute inset-0 hidden items-center justify-center rounded-full bg-black/70 text-[10px] text-white group-hover:flex"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate font-semibold text-slate-100">{u.username}</span>
+                          {isVerified(u) && (
+                            <BadgeCheck className="h-4 w-4 shrink-0 text-sky-400" strokeWidth={1.75} />
+                          )}
+                          {isOnline(u) && (
+                            <span className="relative flex h-2 w-2">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyUid(u.uid)}
+                          className="mt-0.5 inline-flex items-center gap-1 font-mono text-[11px] text-slate-500 hover:text-slate-300"
+                        >
+                          {u.uid}
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-2 py-3 relative">
+                    <button
+                      type="button"
+                      onClick={() => setRoleMenuId(roleMenuId === u.id ? null : u.id)}
+                      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${
+                        role === "ADMIN"
+                          ? "border-purple-500/40 bg-purple-500/20 text-purple-300"
+                          : role === "VIP"
+                            ? "border-amber-500/40 bg-amber-500/20 text-amber-300"
+                            : "border-slate-600 bg-slate-700/50 text-slate-300"
+                      }`}
+                    >
+                      {role === "ADMIN" && <Shield className="h-3 w-3" />}
+                      {role === "VIP" && <Crown className="h-3 w-3" />}
+                      {role === "USER" && <UserIcon className="h-3 w-3" />}
+                      {role === "ADMIN" ? "Admin" : role === "VIP" ? "VIP" : "User"}
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </button>
+                    {roleMenuId === u.id && (
+                      <div className="absolute z-20 mt-1 w-28 rounded-lg border border-slate-600 bg-slate-900 py-1 shadow-xl">
+                        {(["USER", "VIP", "ADMIN"] as const).map((r) => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => void setRole(u.id, r)}
+                            className="block w-full px-3 py-1.5 text-left text-xs text-slate-200 hover:bg-white/5"
+                          >
+                            {r === "ADMIN" ? "Admin" : r === "VIP" ? "VIP" : "User"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-2 py-3">
+                    <div className="flex items-center gap-1">
+                      <span className="font-semibold text-amber-400">{formatCoins(u.coins)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCoinTarget({ ids: [u.id], label: u.username })}
+                        className="rounded border border-amber-500/30 p-0.5 text-amber-300 hover:bg-amber-500/10"
+                        title="Cộng/trừ xu"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-2 py-3 relative">
+                    <div className="text-xs text-slate-200">{vip.line1}</div>
+                    <div className={`text-[11px] ${vip.tone}`}>{vip.line2}</div>
+                    <button
+                      type="button"
+                      onClick={() => setVipMenuId(vipMenuId === u.id ? null : u.id)}
+                      className="mt-1 rounded border border-emerald-500/30 px-1.5 py-0.5 text-[10px] text-emerald-300 hover:bg-emerald-500/10"
+                    >
+                      +Gia hạn
+                    </button>
+                    {vipMenuId === u.id && (
+                      <div className="absolute z-20 mt-1 w-32 rounded-lg border border-slate-600 bg-slate-900 py-1 shadow-xl">
+                        {[7, 30, 90, 365].map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => void adjustVip(u.id, d)}
+                            className="block w-full px-3 py-1.5 text-left text-xs text-slate-200 hover:bg-white/5"
+                          >
+                            +{d} ngày
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => void adjustVip(u.id, "clear")}
+                          className="block w-full px-3 py-1.5 text-left text-xs text-red-300 hover:bg-white/5"
+                        >
+                          Hủy VIP
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-2 py-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeviceUser(u)}
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-600 bg-slate-800/80 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-700"
+                    >
+                      {u.lastPlatform === "ANDROID" ? (
+                        <Smartphone className="h-3.5 w-3.5" />
+                      ) : (
+                        <span className="text-xs">Web</span>
+                      )}
+                      {u.deviceCount ?? 0}/{u.maxDevices ?? 2} thiết bị
+                    </button>
+                  </td>
+                  <td className="px-2 py-3">
+                    <span
+                      className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium ${
+                        isLocked(u)
+                          ? "border-red-500/40 bg-red-500/15 text-red-300"
+                          : "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                      }`}
+                    >
+                      {isLocked(u) ? "locked" : "active"}
+                    </span>
+                    <div className="mt-1 text-[10px] text-slate-500">{createdLabel(u.createdAt)}</div>
+                  </td>
+                  <td className="px-2 py-3">
+                    <div className="flex max-w-[280px] flex-wrap gap-1.5">
+                      <Act onClick={() => {
+                        setEditUser(u);
+                        setEditForm({
+                          displayName: u.displayName || "",
+                          password: "",
+                          coins: String(u.coins ?? 0),
+                        });
+                      }} label="Edit" icon={<Pencil className="h-3 w-3" />} />
+                      <Act
+                        onClick={() => setCoinTarget({ ids: [u.id], label: u.username })}
+                        label="Cấp xu"
+                        icon={<Coins className="h-3 w-3" />}
+                        tone="amber"
+                      />
+                      <Act
+                        onClick={() => setDeviceUser(u)}
+                        label="Thiết bị"
+                        icon={<Smartphone className="h-3 w-3" />}
+                      />
+                      <Act
+                        onClick={() => void toggleVerify(u.id, !isVerified(u))}
+                        label={isVerified(u) ? "Gỡ tick" : "Tick xanh"}
+                        icon={<BadgeCheck className="h-3 w-3" />}
+                        tone="sky"
+                      />
+                      <Act
+                        onClick={() => {
+                          const pw = prompt("Mật khẩu mới");
+                          if (pw) void api({ action: "set_password", userId: u.id, password: pw }).then(() => toast("Đã đổi MK", true)).catch((e) => toast(String(e.message || e), false));
+                        }}
+                        label="Đổi MK"
+                        icon={<KeyRound className="h-3 w-3" />}
+                      />
+                      <Act
+                        onClick={() => void toggleLock(u.id, !isLocked(u))}
+                        label={isLocked(u) ? "Mở khóa" : "Khóa"}
+                        icon={isLocked(u) ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                        tone="red"
+                      />
+                      <Act
+                        onClick={() => void deleteUser(u.id)}
+                        label="Xóa"
+                        icon={<Trash2 className="h-3 w-3" />}
+                        tone="red"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Coin dialog */}
+      {coinTarget && (
+        <Modal title={`Xu — ${coinTarget.label}`} onClose={() => setCoinTarget(null)}>
           <input
-            className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
+            value={coinAmount}
+            onChange={(e) => setCoinAmount(e.target.value)}
+            placeholder="Số xu (+ cộng / - trừ)"
+            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <button type="button" onClick={() => void submitCoins()} className="w-full rounded-xl bg-amber-600 py-2 text-sm font-medium text-white">
+            Xác nhận
+          </button>
+        </Modal>
+      )}
+
+      {vipBulk && (
+        <Modal title="Cộng ngày VIP hàng loạt" onClose={() => setVipBulk(null)}>
+          <input
+            value={vipDays}
+            onChange={(e) => setVipDays(e.target.value)}
+            placeholder="Số ngày"
+            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <button type="button" onClick={() => void submitVipBulk()} className="w-full rounded-xl bg-violet-600 py-2 text-sm font-medium text-white">
+            Cộng VIP
+          </button>
+        </Modal>
+      )}
+
+      {giftOpen && (
+        <Modal title="Đền bù / Tặng quà toàn Server" onClose={() => setGiftOpen(false)}>
+          <label className="mb-1 block text-xs text-slate-400">Đối tượng</label>
+          <select
+            value={giftAudience}
+            onChange={(e) => setGiftAudience(e.target.value as typeof giftAudience)}
+            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          >
+            <option value="all">Tất cả người dùng</option>
+            <option value="vip">Chỉ đang có VIP</option>
+            <option value="online">Chỉ đang Online</option>
+          </select>
+          <input
+            value={giftDays}
+            onChange={(e) => setGiftDays(e.target.value)}
+            placeholder="Ngày VIP cộng thêm"
+            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <input
+            value={giftCoins}
+            onChange={(e) => setGiftCoins(e.target.value)}
+            placeholder="Xu thưởng"
+            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <textarea
+            value={giftMsg}
+            onChange={(e) => setGiftMsg(e.target.value)}
+            placeholder="Lời nhắn hòm thư"
+            rows={3}
+            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <button type="button" onClick={() => void submitGift()} className="w-full rounded-xl bg-fuchsia-600 py-2 text-sm font-medium text-white">
+            Phát ngay
+          </button>
+        </Modal>
+      )}
+
+      {purgeOpen && (
+        <Modal title="Xóa toàn bộ tài khoản (giữ Admin)" onClose={() => setPurgeOpen(false)}>
+          <p className="mb-2 text-sm text-slate-400">
+            Gõ <code className="text-red-300">XOA TAT CA</code> để xác nhận. Tài khoản Admin không bị xóa.
+          </p>
+          <input
+            value={purgeConfirm}
+            onChange={(e) => setPurgeConfirm(e.target.value)}
+            className="mb-3 w-full rounded-lg border border-red-500/40 bg-slate-950 px-3 py-2 text-sm text-white"
+            placeholder=""
+          />
+          <button type="button" onClick={() => void purgeAll()} className="w-full rounded-xl bg-red-600 py-2 text-sm font-medium text-white">
+            Xóa
+          </button>
+        </Modal>
+      )}
+
+      {editUser && (
+        <Modal title={`Sửa · ${editUser.username}`} onClose={() => setEditUser(null)}>
+          <input
+            value={editForm.displayName}
+            onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
+            placeholder="Tên hiển thị"
+            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <input
+            value={editForm.password}
+            onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
+            placeholder="Mật khẩu mới (trống = giữ)"
+            className="mb-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
+          />
+          <input
+            value={editForm.coins}
+            onChange={(e) => setEditForm((f) => ({ ...f, coins: e.target.value }))}
             placeholder="Số xu"
-            value={coinsAmt}
-            onChange={(e) => setCoinsAmt(e.target.value)}
+            className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
           />
-          <input
-            className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            placeholder="Lý do (tuỳ chọn)"
-            value={coinsReason}
-            onChange={(e) => setCoinsReason(e.target.value)}
-          />
-        </div>
-      </AdminModal>
+          <button type="button" onClick={() => void saveEdit()} className="w-full rounded-xl bg-violet-600 py-2 text-sm font-medium text-white">
+            Lưu
+          </button>
+        </Modal>
+      )}
 
-      {/* Password */}
-      <AdminModal
-        open={!!passModal}
-        onClose={() => setPassModal(null)}
-        title={`Đổi MK · ${passModal?.username || ""}`}
-        theme={theme}
-        footer={
-          <>
-            <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={() => setPassModal(null)}>
-              Hủy
-            </button>
-            <button
-              type="button"
-              className={`${btn.compact} ${btn.primary}`}
-              onClick={async () => {
-                await onAction({
-                  action: "reset_password",
-                  username: passModal?.username,
-                  userId: passModal?.id,
-                  password: newPass,
-                });
-                setPassModal(null);
-              }}
-            >
-              Lưu MK
-            </button>
-          </>
-        }
-      >
-        <input
-          type="password"
-          className={`w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-          placeholder="Mật khẩu mới (tối thiểu 8 ký tự)"
-          value={newPass}
-          onChange={(e) => setNewPass(e.target.value)}
-        />
-      </AdminModal>
+      <DeviceSessionModal
+        open={!!deviceUser}
+        user={deviceUser}
+        adminSecret={adminSecret}
+        onClose={() => setDeviceUser(null)}
+        onToast={toast}
+      />
+    </div>
+  );
+}
 
-      {/* Delete one */}
-      <AdminModal
-        open={!!deleteModal}
-        onClose={() => setDeleteModal(null)}
-        title={`Xóa · ${deleteModal?.username || ""}`}
-        theme={theme}
-        footer={
-          <>
-            <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={() => setDeleteModal(null)}>
-              Hủy
-            </button>
-            <button
-              type="button"
-              className={`${btn.compact} ${btn.ban}`}
-              disabled={deleteConfirm !== "XOA"}
-              onClick={async () => {
-                await onAction({
-                  action: "delete_account",
-                  username: deleteModal?.username,
-                  id: deleteModal?.id,
-                });
-                setDeleteModal(null);
-                onRefresh();
-              }}
-            >
-              Xóa vĩnh viễn
-            </button>
-          </>
-        }
-      >
-        <p className="text-sm">Gõ <span className="font-mono font-semibold">XOA</span> để xác nhận.</p>
-        <input
-          className={`mt-2 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-          value={deleteConfirm}
-          onChange={(e) => setDeleteConfirm(e.target.value)}
-          placeholder="XOA"
-        />
-      </AdminModal>
+function Act({
+  onClick,
+  label,
+  icon,
+  tone = "slate",
+}: {
+  onClick: () => void;
+  label: string;
+  icon: React.ReactNode;
+  tone?: "slate" | "amber" | "sky" | "red";
+}) {
+  const map = {
+    slate: "border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700",
+    amber: "border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20",
+    sky: "border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20",
+    red: "border-red-500/40 bg-red-500/10 text-red-200 hover:bg-red-500/20",
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium ${map[tone]}`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
-      {/* Delete all — 2 layer */}
-      <AdminModal
-        open={deleteAllOpen}
-        onClose={() => setDeleteAllOpen(false)}
-        title="Xóa toàn bộ tài khoản"
-        theme={theme}
-        footer={
-          <>
-            <button type="button" className={`${btn.compact} ${btn.ghost}`} onClick={() => setDeleteAllOpen(false)}>
-              Hủy
-            </button>
-            <button
-              type="button"
-              className={`${btn.compact} ${btn.ban}`}
-              disabled={deleteAllC1 !== "XOA_TAT_CA" || deleteAllC2 !== "CONFIRM" || loading}
-              onClick={async () => {
-                await onAction({
-                  action: "delete_all_accounts",
-                  confirm1: deleteAllC1,
-                  confirm2: deleteAllC2,
-                });
-                setDeleteAllOpen(false);
-                setBulkCreated([]);
-                onRefresh();
-              }}
-            >
-              Xóa toàn bộ
-            </button>
-          </>
-        }
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose} role="presentation">
+      <div
+        className="w-full max-w-md rounded-2xl border border-white/10 bg-[#12141C] p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
       >
-        <p className="text-sm text-rose-600 dark:text-rose-300">
-          Thao tác không hoàn tác. Xác nhận 2 lớp:
-        </p>
-        <label className="mt-3 block text-xs">
-          Lớp 1 — gõ <span className="font-mono">XOA_TAT_CA</span>
-          <input
-            className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            value={deleteAllC1}
-            onChange={(e) => setDeleteAllC1(e.target.value)}
-          />
-        </label>
-        <label className="mt-2 block text-xs">
-          Lớp 2 — gõ <span className="font-mono">CONFIRM</span>
-          <input
-            className={`mt-1 w-full rounded-md border px-2.5 py-1.5 text-sm ${t.input}`}
-            value={deleteAllC2}
-            onChange={(e) => setDeleteAllC2(e.target.value)}
-          />
-        </label>
-      </AdminModal>
+        <h3 className="mb-3 text-base font-semibold text-white">{title}</h3>
+        {children}
+      </div>
     </div>
   );
 }

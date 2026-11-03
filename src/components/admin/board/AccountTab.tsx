@@ -130,7 +130,11 @@ function normalizeAccount(raw: unknown): AccountRow | null {
     lastLogin: u.lastLogin != null ? String(u.lastLogin) : u.last_login != null ? String(u.last_login) : null,
     expiresAt: u.expiresAt != null ? String(u.expiresAt) : u.expires_at != null ? String(u.expires_at) : null,
     coins: Number.isFinite(coins) ? coins : 0,
-    avatarUrl: (u.avatarUrl as string) ?? (u.avatar as string) ?? null,
+    avatarUrl:
+      (u.avatarUrl as string) ||
+      (u.avatar as string) ||
+      (u.avatar_url as string) ||
+      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(String(u.username || "u"))}&backgroundType=gradientLinear`,
     isVerified: Boolean(u.isVerified ?? u.verified ?? false),
     online: Boolean(
       u.online ??

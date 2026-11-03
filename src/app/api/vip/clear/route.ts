@@ -5,31 +5,29 @@ import { ensureVipTables } from "@/lib/vipDb";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** User self-clear VIP package (settings) — xóa hết cờ VIP liên quan */
+function confirmOk(raw: string): boolean {
+  const c = raw.trim().toUpperCase().replace(/\s+/g, "");
+  return c === "CONFIRM" || c === "XOA" || c === "DELETE" || c === "XOAGOI" || c === "XÓA";
+}
+
+/** User self-clear VIP (Cài đặt) — UI gõ CONFIRM */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const username = String(body?.username || "").trim().toLowerCase();
-    const confirm = String(body?.confirm || "").trim().toUpperCase();
+    const confirm = String(body?.confirm || "");
     if (!username) {
       return NextResponse.json({ ok: false, error: "Thiếu tài khoản" }, { status: 400 });
     }
-    // Chấp nhận nhiều cách xác nhận (UI có thể gõ XOA / xóa / DELETE)
-    const okConfirm =
-      confirm === "XOA" ||
-      confirm === "DELETE" ||
-      confirm === "XOA GOI" ||
-      confirm === "XÓA" ||
-      confirm.replace(/\s+/g, "") === "XOA";
-    if (!okConfirm) {
+    if (!confirmOk(confirm)) {
       return NextResponse.json(
-        { ok: false, error: "Gõ XOA để xác nhận xóa gói VIP" },
+        { ok: false, error: "Gõ CONFIRM để xác nhận xóa gói VIP" },
         { status: 400 },
       );
     }
     await ensureVipTables();
 
-    // Xóa mọi cột VIP có thể tồn tại (không fail nếu cột thiếu)
+    // Xóa mọi mốc VIP có thể dùng trên hệ thống
     try {
       await sql`
         UPDATE users
@@ -44,17 +42,21 @@ export async function POST(req: NextRequest) {
       try {
         await sql`
           UPDATE users
-          SET is_lifetime_vip = FALSE, vip_expires_at = NULL
+          SET is_lifetime_vip = FALSE, vip_expires_at = NULL, expires_at = NULL
           WHERE lower(username) = ${username}
         `;
       } catch {
-        await sql`
-          UPDATE users SET expires_at = NULL WHERE lower(username) = ${username}
-        `;
+        try {
+          await sql`UPDATE users SET expires_at = NULL WHERE lower(username) = ${username}`;
+        } catch {
+          await sql`
+            UPDATE users SET is_lifetime_vip = FALSE, vip_expires_at = NULL
+            WHERE lower(username) = ${username}
+          `;
+        }
       }
     }
 
-    // Gỡ key active nếu có cột
     try {
       await sql`
         UPDATE users
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
         WHERE lower(username) = ${username}
       `;
     } catch {
-      /* optional columns */
+      /* optional */
     }
 
     return NextResponse.json({

@@ -99,10 +99,17 @@ export async function POST(req: NextRequest) {
     const claimExp = claimed[0].expires_at ? String(claimed[0].expires_at) : keyExpIso;
 
     if (claimIsLife) {
-      await sql`
-        UPDATE users SET is_lifetime_vip = TRUE, vip_expires_at = NULL
-        WHERE lower(username) = ${username}
-      `;
+      try {
+        await sql`
+          UPDATE users SET is_lifetime_vip = TRUE, vip_expires_at = NULL, expires_at = NULL
+          WHERE lower(username) = ${username}
+        `;
+      } catch {
+        await sql`
+          UPDATE users SET is_lifetime_vip = TRUE, vip_expires_at = NULL
+          WHERE lower(username) = ${username}
+        `;
+      }
       return NextResponse.json({
         ok: true,
         message: "Kích hoạt thành công. Gói vĩnh viễn.",
@@ -120,19 +127,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // VIP user = đúng expires_at của key (không cộng thêm từ NOW)
-    // Nếu user đã có VIP dài hơn key → giữ mốc dài hơn (max)
-    const curExp = users[0].vip_expires_at ? Date.parse(String(users[0].vip_expires_at)) : null;
+    // Cộng dồn: phần thời gian CÒN LẠI của key (keyExpiresAt - now)
+    // được cộng vào mốc VIP hiện tại (hoặc từ now nếu đã hết / chưa có VIP).
+    const curExp = users[0].vip_expires_at ? Date.parse(String(users[0].vip_expires_at)) : NaN;
     const keyMs = Date.parse(claimExp);
-    const finalMs =
-      users[0].is_lifetime_vip
-        ? null
-        : Number.isFinite(curExp as number)
-          ? Math.max(curExp as number, keyMs)
-          : keyMs;
+    if (!Number.isFinite(keyMs)) {
+      return NextResponse.json({ ok: false, error: "Key hết hạn không hợp lệ" }, { status: 500 });
+    }
 
     if (users[0].is_lifetime_vip) {
-      // đã vĩnh viễn — key claimed nhưng VIP không đổi
       return NextResponse.json({
         ok: true,
         message: "Tài khoản đang VIP vĩnh viễn. Key đã ghi nhận.",
@@ -143,19 +146,45 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const iso = new Date(finalMs!).toISOString();
-    await sql`
-      UPDATE users SET is_lifetime_vip = FALSE, vip_expires_at = ${iso}::timestamptz
-      WHERE lower(username) = ${username}
-    `;
+    const remainingKeyMs = Math.max(0, keyMs - Date.now());
+    if (remainingKeyMs <= 0) {
+      return NextResponse.json(
+        { ok: false, error: "Key đã hết hạn (thời hạn tính từ lúc Admin tạo)" },
+        { status: 410 },
+      );
+    }
+    const baseMs = Number.isFinite(curExp) && (curExp as number) > Date.now() ? (curExp as number) : Date.now();
+    const finalMs = baseMs + remainingKeyMs;
+    const iso = new Date(finalMs).toISOString();
+
+    try {
+      await sql`
+        UPDATE users
+        SET is_lifetime_vip = FALSE,
+            vip_expires_at = ${iso}::timestamptz,
+            expires_at = ${iso}::timestamptz
+        WHERE lower(username) = ${username}
+      `;
+    } catch {
+      await sql`
+        UPDATE users SET is_lifetime_vip = FALSE, vip_expires_at = ${iso}::timestamptz
+        WHERE lower(username) = ${username}
+      `;
+      try {
+        await sql`UPDATE users SET expires_at = ${iso}::timestamptz WHERE lower(username) = ${username}`;
+      } catch {
+        /* */
+      }
+    }
 
     return NextResponse.json({
       ok: true,
-      message: "Kích hoạt thành công. Thời hạn theo mốc key lúc Admin tạo.",
+      message: "Kích hoạt thành công. Thời hạn còn lại của key đã được cộng dồn vào gói hiện tại.",
       isLifetime: false,
       vipExpiresAt: iso,
       keyExpiresAt: claimExp,
-      remainingMs: Math.max(0, keyMs - Date.now()),
+      remainingMs: Math.max(0, finalMs - Date.now()),
+      addedMs: remainingKeyMs,
       tier: tier.code,
     });
   } catch (e) {

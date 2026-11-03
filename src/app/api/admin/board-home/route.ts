@@ -206,6 +206,11 @@ async function listAccounts(q?: string): Promise<AdminAccount[]> {
       expiresAt: r.expires_at != null ? String(r.expires_at) : null,
       online,
       lastSeenMs: lastMs || null,
+      avatarUrl:
+        r.avatar_url != null && String(r.avatar_url).trim()
+          ? String(r.avatar_url)
+          : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(String(r.username || "u"))}&backgroundType=gradientLinear`,
+      coins: r.coins != null ? Number(r.coins) : 0,
     };
   });
 }
